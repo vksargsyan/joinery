@@ -81,6 +81,17 @@ export class ResultStream {
     return this.finished;
   }
 
+  /**
+   * Ends the stream with `error` when the connection is lost: mysql2 reports a dropped socket
+   * to the connection only, so a paused query would otherwise wait forever. Rows already queued
+   * are still delivered first.
+   */
+  fail(error: unknown): void {
+    if (this.finished) return;
+    this.failure = { error };
+    this.finish();
+  }
+
   private finish(): void {
     this.finished = true;
     this.resolveDone();

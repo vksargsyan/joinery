@@ -152,12 +152,14 @@ export class MysqlSession implements Session {
   ) {
     connection.on('error', (error: unknown) => {
       this.broken = mapMysqlError(error, { where: plan.where });
+      this.active?.stream?.fail(this.broken);
     });
     connection.on('end', () => {
       this.broken ??= new JoineryError({
         code: 'CONNECTION_FAILED',
         message: 'The connection to the server was closed',
       });
+      this.active?.stream?.fail(this.broken);
     });
     // EOF packets end every result set and carry the warning count and transaction status.
     const hook = connection as unknown as PacketHook;

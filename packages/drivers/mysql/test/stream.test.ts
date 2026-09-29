@@ -79,6 +79,22 @@ describe('ResultStream', () => {
     expect(chunks[3]).toEqual({ kind: 'rows', rows: [[2, 'x']] });
   });
 
+  it('fails a paused stream when the connection is lost', async () => {
+    const { command, connection, stream, row } = setup(2);
+    command.emit('fields', fields('n'));
+    row(1);
+    row(2);
+    expect(connection.paused).toBe(true);
+    await stream.next();
+    // mysql2 tells only the connection that the socket died: the command never ends.
+    const lost = new Error('Connection lost');
+    stream.fail(lost);
+    expect(await stream.next()).toEqual({ kind: 'rows', rows: [[1], [2]] });
+    await expect(stream.next()).rejects.toBe(lost);
+    expect(stream.ended).toBe(true);
+    stream.fail(new Error('ignored once ended'));
+  });
+
   it('delivers the rows before an error, then throws it', async () => {
     const { command, stream, row } = setup(10);
     command.emit('fields', fields('n'));
