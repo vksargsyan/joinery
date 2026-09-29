@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { openFileInputSchema } from './app';
 import { idSchema } from './common';
 import { cellValueSchema } from './results';
+import { SYNC_JOB_KINDS } from './sync';
 
 /**
  * Schemas for data transfer jobs (spec §3: the job runner; §12: import and export; §14: job
@@ -384,6 +385,8 @@ export const jobSummarySchema = z.object({
     .optional(),
   /** Files an export wrote. */
   files: z.array(z.string()).optional(),
+  /** A one-line outcome for jobs the counts above do not describe (structure and data sync). */
+  outcome: z.string().max(500).optional(),
 });
 export type JobSummary = z.infer<typeof jobSummarySchema>;
 
@@ -400,7 +403,7 @@ export type JobLogEntry = z.infer<typeof jobLogEntrySchema>;
 /** A job as the job list shows it; finished ones come from the job history. */
 export const jobInfoSchema = z.object({
   id: idSchema,
-  kind: z.enum(['import', 'export', 'run-sql-file']),
+  kind: z.enum(['import', 'export', 'run-sql-file', ...SYNC_JOB_KINDS]),
   title: z.string(),
   profileId: idSchema,
   profileName: z.string(),

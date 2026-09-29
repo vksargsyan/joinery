@@ -1,5 +1,6 @@
 import type { RepositoryContext } from './internal/context';
 import { migrate } from './migrations';
+import { SavedComparisonRepository } from './repositories/comparisons';
 import { FolderRepository } from './repositories/folders';
 import { QueryHistoryRepository } from './repositories/history';
 import { MetadataCacheRepository } from './repositories/metadata-cache';
@@ -35,6 +36,8 @@ export interface Store {
   readonly snippets: SnippetRepository;
   readonly metadataCache: MetadataCacheRepository;
   readonly settings: SettingsRepository;
+  /** Saved structure and data comparisons (spec §13). */
+  readonly comparisons: SavedComparisonRepository;
   /** Forgets session secrets and closes the database. */
   close(): void;
 }
@@ -69,6 +72,7 @@ export function createStore(db: SqliteDatabase, options: StoreOptions): Store {
     snippets: new SnippetRepository(context),
     metadataCache: new MetadataCacheRepository(context),
     settings: new SettingsRepository(context),
+    comparisons: new SavedComparisonRepository(context),
     close() {
       secrets.clearSession();
       db.close();

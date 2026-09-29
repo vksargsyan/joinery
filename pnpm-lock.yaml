@@ -456,6 +456,9 @@ importers:
       '@joinery/redis-tools':
         specifier: workspace:*
         version: link:../redis-tools
+      '@joinery/sync':
+        specifier: workspace:*
+        version: link:../sync
       zod:
         specifier: 'catalog:'
         version: 4.6.5

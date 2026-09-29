@@ -90,6 +90,13 @@ export type { MergeOptions, MergePlan, MergeSummary, Row, RowAction, RowDiff } f
 export { DataSyncScriptBuilder, generateDataSyncScript } from './data/script';
 export type { DataSyncOptions, DataSyncScript } from './data/script';
 export { compareTableData } from './data/compare';
+export { dataSyncOrder, pairDataTables } from './data/pairs';
+export type {
+  DataPairingOptions,
+  DataTablePair,
+  DataTablePairing,
+  SkippedDataTable,
+} from './data/pairs';
 export type {
   DataCompareEvent,
   DataCompareOptions,

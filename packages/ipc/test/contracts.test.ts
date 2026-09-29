@@ -24,6 +24,7 @@ import {
   redisHostContractShape,
   mongoMainContractShape,
   parseRequest,
+  syncMainContractShape,
   safeProfileSchema,
   serve,
   type ApplyPlan,
@@ -439,6 +440,7 @@ describe('mainContract never hands a secret to the renderer', () => {
         profiles: { list: () => [], save: notUsed, delete: notUsed },
       },
       mongo: unusedHandlers(mongoMainContractShape),
+      sync: unusedHandlers(syncMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -603,6 +605,7 @@ describe('desktop additions', () => {
         profiles: { list: () => [], save: notUsed, delete: notUsed },
       },
       mongo: unusedHandlers(mongoMainContractShape),
+      sync: unusedHandlers(syncMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

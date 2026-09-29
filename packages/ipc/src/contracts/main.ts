@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { defineContract } from '../contract';
 import { mongoMainContractShape } from './mongo';
+import { syncMainContractShape } from './sync';
 import {
   appInfoSchema,
   appSettingsPatchSchema,
@@ -260,6 +261,8 @@ export const mainContract = defineContract({
   },
   /** MongoDB GridFS files moved by path through the window's file grants (spec §9). */
   mongo: mongoMainContractShape,
+  /** Structure sync and data sync between two SQL connections (spec §13). */
+  sync: syncMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

@@ -160,8 +160,33 @@ const historyFullText: Migration = {
   },
 };
 
+const savedComparisons: Migration = {
+  version: 3,
+  name: 'saved comparisons',
+  up(db) {
+    // Structure and data compare settings (spec §13). A comparison outlives a deleted
+    // connection: its side is cleared and picked again before the next compare.
+    db.exec(`
+      CREATE TABLE saved_comparisons (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('structure', 'data')),
+        source_profile_id TEXT REFERENCES profiles (id) ON DELETE SET NULL,
+        target_profile_id TEXT REFERENCES profiles (id) ON DELETE SET NULL,
+        definition TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX saved_comparisons_by_name ON saved_comparisons (name COLLATE NOCASE);
+      CREATE INDEX saved_comparisons_by_source ON saved_comparisons (source_profile_id);
+      CREATE INDEX saved_comparisons_by_target ON saved_comparisons (target_profile_id);
+    `);
+  },
+};
+
 /** Every migration, in order. The last one's version is the schema version this build writes. */
-export const MIGRATIONS: readonly Migration[] = [initialSchema, historyFullText];
+export const MIGRATIONS: readonly Migration[] = [initialSchema, historyFullText, savedComparisons];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
 

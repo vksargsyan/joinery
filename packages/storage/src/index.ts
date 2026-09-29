@@ -75,6 +75,14 @@ export type {
   SchemaSnapshotInput,
 } from './repositories/metadata-cache';
 export type { JsonValue, SettingEntry, SettingsRepository } from './repositories/settings';
+export {
+  savedComparisonRecordSchema,
+  type SavedComparisonCreateInput,
+  type SavedComparisonFilter,
+  type SavedComparisonPatch,
+  type SavedComparisonRecord,
+  type SavedComparisonRepository,
+} from './repositories/comparisons';
 
 export {
   PASSPHRASE_SEALER_ID,

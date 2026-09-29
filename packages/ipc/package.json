@@ -16,6 +16,7 @@
     "@joinery/driver-redis": "workspace:*",
     "@joinery/mongo-tools": "workspace:*",
     "@joinery/redis-tools": "workspace:*",
+    "@joinery/sync": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
