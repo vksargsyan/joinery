@@ -109,6 +109,7 @@ describe('connectionHostContract', () => {
       begin: () => {},
       commit: () => {},
       rollback: () => {},
+      sessionState: () => ({ inTransaction: true }),
       ping: () => {},
       serverInfo: () => ({
         engine: 'postgres',
@@ -343,12 +344,15 @@ describe('mainContract never hands a secret to the renderer', () => {
         get: () => leaky,
         save: ({ profile }) => ({ ...profile, password: 'hunter2', version: 1 }),
         delete: notUsed,
+        parseUri: notUsed,
+        secretStatus: notUsed,
       },
       folders: { list: () => [], save: notUsed, delete: notUsed },
       secrets: { set: notUsed, clear: notUsed },
       testConnection: notUsed,
       openConnection: notUsed,
       closeConnection: notUsed,
+      connectionEvents: notUsed,
       history: { list: () => emptyPage, search: () => emptyPage, add: notUsed },
       settings: { get: () => DEFAULT_APP_SETTINGS, set: () => DEFAULT_APP_SETTINGS },
       app: {
@@ -359,7 +363,9 @@ describe('mainContract never hands a secret to the renderer', () => {
           arch: 'x64',
           versions: { node: '22' },
         }),
+        openExternal: notUsed,
       },
+      dialogs: { openFile: notUsed },
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -476,5 +482,186 @@ describe('parseRequest', () => {
     expect(() => parseRequest(mainContract, 'settings.set', { editor: { fontSize: 2 } })).toThrow(
       expect.objectContaining({ code: 'VALIDATION_FAILED' }),
     );
+  });
+});
+
+describe('desktop additions', () => {
+  function serveMain(overrides: Partial<HandlersOf<typeof mainContract>> = {}) {
+    const ports = portPair();
+    const notUsed = (): never => {
+      throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'not used' });
+    };
+    const emptyPage = { entries: [], nextCursor: null };
+    const handlers: HandlersOf<typeof mainContract> = {
+      profiles: {
+        list: () => [],
+        get: notUsed,
+        save: notUsed,
+        delete: notUsed,
+        parseUri: notUsed,
+        secretStatus: notUsed,
+      },
+      folders: { list: () => [], save: notUsed, delete: notUsed },
+      secrets: { set: notUsed, clear: notUsed },
+      testConnection: notUsed,
+      openConnection: notUsed,
+      closeConnection: notUsed,
+      connectionEvents: notUsed,
+      history: { list: () => emptyPage, search: () => emptyPage, add: notUsed },
+      settings: { get: () => DEFAULT_APP_SETTINGS, set: () => DEFAULT_APP_SETTINGS },
+      app: {
+        info: notUsed,
+        openExternal: () => {},
+      },
+      dialogs: { openFile: () => ({ path: null }) },
+      ...overrides,
+    };
+    serve(ports.server, mainContract, handlers);
+    return createClient(ports.client, mainContract);
+  }
+
+  it('reports the transaction state of a session', async () => {
+    const ports = portPair();
+    const handlers = {
+      sessionState: ({ sessionId }: { sessionId: string }) => ({
+        inTransaction: sessionId === 'open',
+      }),
+    };
+    serve(ports.server, connectionHostContract, {
+      ...(Object.fromEntries(
+        [...connectionHostContract.methods.keys()].map((path) => [path, () => undefined]),
+      ) as unknown as HandlersOf<typeof connectionHostContract>),
+      ...handlers,
+    });
+    const host = createClient(ports.client, connectionHostContract);
+    expect(await host.sessionState({ sessionId: 'open' })).toEqual({ inTransaction: true });
+    expect(await host.sessionState({ sessionId: 'idle' })).toEqual({ inTransaction: false });
+  });
+
+  it('returns a parsed URI as a safe draft and never the password', async () => {
+    const draft = safeProfileSchema.parse(profile({ id: newId() }));
+    const main = serveMain({
+      profiles: {
+        list: () => [],
+        get: () => {
+          throw new Error('not used');
+        },
+        save: () => {
+          throw new Error('not used');
+        },
+        delete: () => {},
+        parseUri: ({ uri }) => ({
+          profile: uri.includes('leak')
+            ? { ...draft, endpoint: { kind: 'uri', uri: 'postgresql://app:hunter2@db/app' } }
+            : { ...draft, password: 'hunter2' },
+          passwordFound: true,
+          ignoredParams: [],
+        }),
+        secretStatus: () => ({ canSave: false, missing: [] }),
+      },
+    });
+    const parsed = await main.profiles.parseUri({ uri: 'postgresql://app:hunter2@db/app' });
+    expect(parsed.passwordFound).toBe(true);
+    expect(JSON.stringify(parsed)).not.toContain('hunter2');
+    // A handler that let the password through in the endpoint fails validation on the way out.
+    await expect(main.profiles.parseUri({ uri: 'leak://x' })).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+    });
+    await expect(main.profiles.parseUri({ uri: '   ' })).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
+  it('reports missing secrets by reference only', async () => {
+    const refId = newId();
+    const main = serveMain({
+      profiles: {
+        list: () => [],
+        get: () => {
+          throw new Error('not used');
+        },
+        save: () => {
+          throw new Error('not used');
+        },
+        delete: () => {},
+        parseUri: () => {
+          throw new Error('not used');
+        },
+        secretStatus: ({ profileId }) => ({
+          canSave: profileId === undefined,
+          missing:
+            profileId === 'bad'
+              ? [{ refId: 'hunter2', policy: 'ask', unreadable: false }]
+              : [{ refId, policy: 'ask', unreadable: false, value: 'hunter2' } as never],
+        }),
+      },
+    });
+    expect(await main.profiles.secretStatus({})).toEqual({
+      canSave: true,
+      missing: [{ refId, policy: 'ask', unreadable: false }],
+    });
+    const status = await main.profiles.secretStatus({ profileId: 'p1' });
+    expect(JSON.stringify(status)).not.toContain('hunter2');
+    await expect(main.profiles.secretStatus({ profileId: 'bad' })).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
+  it('streams connection events until the caller stops', async () => {
+    let stopped = false;
+    const main = serveMain({
+      async *connectionEvents(_input, { signal }) {
+        try {
+          yield { connectionId: 'c1', profileId: 'p1', state: 'ready' } as const;
+          yield {
+            connectionId: 'c1',
+            profileId: 'p1',
+            state: 'restarting',
+            attempt: 1,
+            message: 'The connection host exited with code 1',
+          } as const;
+          // A long-lived stream waits on its signal, which aborts when the caller stops.
+          await new Promise((resolve) => signal.addEventListener('abort', resolve));
+        } finally {
+          stopped = true;
+        }
+      },
+    });
+    const seen: string[] = [];
+    for await (const event of main.connectionEvents()) {
+      seen.push(`${event.state}${event.attempt ?? ''}`);
+      if (seen.length === 2) break;
+    }
+    expect(seen).toEqual(['ready', 'restarting1']);
+    await expect.poll(() => stopped).toBe(true);
+  });
+
+  it('only accepts https links for the system browser', async () => {
+    const main = serveMain();
+    await expect(
+      main.app.openExternal({ url: 'https://joinery.dev/docs' }),
+    ).resolves.toBeUndefined();
+    for (const url of [
+      'http://joinery.dev',
+      'javascript:alert(1)',
+      'file:///etc/passwd',
+      'joinery://app/index.html',
+    ]) {
+      await expect(main.app.openExternal({ url }), url).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+      });
+    }
+  });
+
+  it('validates open-file dialog filters', async () => {
+    const main = serveMain();
+    expect(
+      await main.dialogs.openFile({
+        filters: [{ name: 'Certificates', extensions: ['pem', '*'] }],
+      }),
+    ).toEqual({ path: null });
+    await expect(
+      main.dialogs.openFile({ filters: [{ name: 'Bad', extensions: ['../x'] }] }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });

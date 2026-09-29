@@ -1,7 +1,14 @@
+import { createRequire } from 'node:module';
+
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+
+// React lint rules for the desktop renderer; the plugin is a dependency of apps/desktop.
+const reactHooks = createRequire(new URL('./apps/desktop/package.json', import.meta.url))(
+  'eslint-plugin-react-hooks',
+);
 
 export default defineConfig(
   {
@@ -36,6 +43,21 @@ export default defineConfig(
   },
   {
     files: ['apps/desktop/src/renderer/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+  },
+  {
+    files: ['apps/desktop/src/renderer/**/*.tsx', 'apps/desktop/src/renderer/**/*.ts'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+  {
+    // The sandboxed preload runs in a browser context with a small Node-like `process`.
+    files: ['apps/desktop/src/preload/**/*.ts'],
     languageOptions: {
       globals: { ...globals.browser },
     },

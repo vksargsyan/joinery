@@ -83,6 +83,11 @@ export const connectionHostContract = defineContract({
   begin: { input: sessionRef, output: z.void() },
   commit: { input: sessionRef, output: z.void() },
   rollback: { input: sessionRef, output: z.void() },
+  /**
+   * The session's transaction state as the server reports it, so the open-transaction badge
+   * (spec §6) is right after a typed BEGIN or COMMIT too.
+   */
+  sessionState: { input: sessionRef, output: z.object({ inTransaction: z.boolean() }) },
 
   /** Checks the connection is alive: one session's, or the host's metadata session. */
   ping: {

@@ -16,10 +16,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  # Unit checks never launch Electron.
-  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-
 jobs:
   check:
     name: Format, lint, typecheck, unit tests
@@ -47,7 +43,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - run: pnpm audit --prod --audit-level high
+      # Not --prod: the desktop app bundles its dependencies, so they are all devDependencies.
+      - run: pnpm audit --audit-level high
 
   integration:
     name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }})
@@ -99,3 +96,38 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:integration
+
+  e2e:
+    name: Desktop end-to-end (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: joinery
+          POSTGRES_PASSWORD: joinery
+          POSTGRES_DB: joinery_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-retries 20
+    env:
+      JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
+      # Ubuntu runners restrict the unprivileged user namespaces Chromium's sandbox needs. Only
+      # the e2e launcher honours this; the app itself always keeps the renderer sandbox on.
+      JOINERY_E2E_NO_SANDBOX: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: xvfb-run -a pnpm --filter @joinery/desktop test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: /tmp/joinery-e2e-results
+          retention-days: 7

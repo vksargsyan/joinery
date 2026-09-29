@@ -1,4 +1,9 @@
-import { connectionProfileSchema, secretRefsOf } from '@joinery/core';
+import {
+  connectionProfileSchema,
+  engineIdSchema,
+  secretPolicySchema,
+  secretRefsOf,
+} from '@joinery/core';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -212,3 +217,82 @@ export const appInfoSchema = z.object({
   }),
 });
 export type AppInfo = z.infer<typeof appInfoSchema>;
+
+/**
+ * What a pasted connection URI (spec §4) turned into. The profile is a draft with a fresh id and
+ * timestamps that nothing has stored yet. The URI's password is not returned (no method hands a
+ * secret to the renderer): `passwordFound` tells the renderer, which has the URI it pasted, that
+ * there is one to move into the password field.
+ */
+export const parsedConnectionUriSchema = z.object({
+  profile: safeProfileSchema,
+  passwordFound: z.boolean(),
+  /** Query parameters that were dropped (secret-bearing, or not mappable for the engine). */
+  ignoredParams: z.array(z.string()),
+});
+export type ParsedConnectionUriResult = z.infer<typeof parsedConnectionUriSchema>;
+
+export const parseUriInputSchema = z.object({
+  uri: z.string().trim().min(1).max(8192),
+  /** Needed for http(s) URLs; picks MariaDB for a mysql:// URI. */
+  engine: engineIdSchema.optional(),
+});
+
+/**
+ * Which of a profile's secrets main has no usable value for, so the renderer knows what to ask
+ * before `openConnection`. References only: ids and policies, never a value.
+ */
+export const secretStatusSchema = z.object({
+  /** Secrets with the `save` policy can be sealed on this machine (spec §4, safeStorage). */
+  canSave: z.boolean(),
+  missing: z.array(
+    z.object({
+      refId: secretRefIdSchema,
+      policy: secretPolicySchema,
+      /** A saved value exists but cannot be unsealed (other machine, new keychain). */
+      unreadable: z.boolean(),
+    }),
+  ),
+});
+export type SecretStatus = z.infer<typeof secretStatusSchema>;
+
+/** Lifecycle of a connection host as main supervises it (spec §18: crashed hosts restart). */
+export const connectionStateSchema = z.enum([
+  'connecting',
+  'ready',
+  'restarting',
+  'failed',
+  'closed',
+]);
+export type ConnectionState = z.infer<typeof connectionStateSchema>;
+
+/**
+ * A connection host changed state. After `restarting` the renderer's port to that host is dead;
+ * once the host is `ready` again, `openConnection` hands out a fresh one.
+ */
+export const connectionEventSchema = z.object({
+  connectionId: idSchema,
+  profileId: idSchema,
+  state: connectionStateSchema,
+  /** The restart attempt, counting from 1, while `restarting`. */
+  attempt: z.number().int().positive().optional(),
+  /** Why the host stopped or failed; safe to show. */
+  message: z.string().optional(),
+});
+export type ConnectionEvent = z.infer<typeof connectionEventSchema>;
+
+/** An https link to open in the system browser; main checks it again (spec §18). */
+export const externalUrlSchema = z.url({ protocol: /^https$/ }).max(2048);
+
+export const openFileInputSchema = z.object({
+  title: z.string().max(200).optional(),
+  filters: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(100),
+        extensions: z.array(z.string().regex(/^(\*|[A-Za-z0-9]{1,16})$/)).min(1),
+      }),
+    )
+    .max(16)
+    .optional(),
+});

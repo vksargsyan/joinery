@@ -5,7 +5,9 @@ import {
   appInfoSchema,
   appSettingsPatchSchema,
   appSettingsSchema,
+  connectionEventSchema,
   expectedVersionSchema,
+  externalUrlSchema,
   folderSaveInputSchema,
   folderSchema,
   historyAddInputSchema,
@@ -13,8 +15,12 @@ import {
   historyListInputSchema,
   historyPageSchema,
   historySearchInputSchema,
+  openFileInputSchema,
+  parsedConnectionUriSchema,
+  parseUriInputSchema,
   safeProfileSchema,
   secretRefIdSchema,
+  secretStatusSchema,
   secretValueSchema,
   storedProfileSchema,
   transientSecretsSchema,
@@ -55,6 +61,20 @@ export const mainContract = defineContract({
     },
     /** Deletes the profile and its stored secrets. */
     delete: { input: byId, output: z.void() },
+    /**
+     * Parses a pasted connection URI into a draft profile (spec §4), in main so the renderer and
+     * joinery-cli share one parser. The URI's password stays out of the result.
+     */
+    parseUri: { input: parseUriInputSchema, output: parsedConnectionUriSchema },
+    /**
+     * Which of the profile's secrets have no usable value (ask-every-time, session secrets after
+     * a restart, unreadable sealed values), so the renderer can prompt before `openConnection`.
+     * Without `profileId` it only reports whether secrets can be saved on this machine.
+     */
+    secretStatus: {
+      input: z.object({ profileId: idSchema.optional() }),
+      output: secretStatusSchema,
+    },
   },
   folders: {
     list: { input: z.void(), output: z.array(folderSchema) },
@@ -96,6 +116,12 @@ export const mainContract = defineContract({
     progress: taskProgressSchema,
   },
   closeConnection: { input: z.object({ connectionId: idSchema }), output: z.void() },
+  /**
+   * State changes of every connection host (connecting, ready, restarting after a crash,
+   * failed, closed), for as long as the caller reads. Lets the renderer show a crashed host and
+   * offer Reconnect even while none of its calls are running.
+   */
+  connectionEvents: { input: z.void(), item: connectionEventSchema },
   history: {
     list: { input: historyListInputSchema, output: historyPageSchema },
     search: { input: historySearchInputSchema, output: historyPageSchema },
@@ -109,6 +135,12 @@ export const mainContract = defineContract({
   },
   app: {
     info: { input: z.void(), output: appInfoSchema },
+    /** Opens an https link in the system browser, after main checks it (spec §18). */
+    openExternal: { input: z.object({ url: externalUrlSchema }), output: z.void() },
+  },
+  dialogs: {
+    /** A native open-file dialog (TLS CA, certificate and key paths); null when cancelled. */
+    openFile: { input: openFileInputSchema, output: z.object({ path: z.string().nullable() }) },
   },
 });
 

@@ -7,3 +7,4 @@ supersede it with a new one.
 | -------------------------------------------- | ------------------------------------------------------------ | -------- |
 | [0001](0001-monorepo-and-source-packages.md) | pnpm + Turborepo monorepo with source-only internal packages | Accepted |
 | [0002](0002-local-store-on-node-sqlite.md)   | Local store on `node:sqlite` behind a small driver interface | Accepted |
+| [0004](0004-desktop-ports-and-protocol.md)   | Desktop wiring: MessagePorts into the page, app:// scheme    | Accepted |
