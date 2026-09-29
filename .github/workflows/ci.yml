@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly run of the integration tests across the engine version matrix (spec §20).
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Unit checks never launch Electron.
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+jobs:
+  check:
+    name: Format, lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm audit --prod --audit-level high
+
+  integration:
+    name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Pull requests test the current LTS versions; the nightly run covers the full matrix.
+        include: ${{ fromJSON(github.event_name == 'schedule' && '[{"postgres":"14","mysql":"8.0","mariadb":"10.6"},{"postgres":"15","mysql":"8.4","mariadb":"10.11"},{"postgres":"16","mysql":"8.4","mariadb":"11.4"},{"postgres":"17","mysql":"9.7","mariadb":"11.8"},{"postgres":"18","mysql":"9.7","mariadb":"11.8"}]' || '[{"postgres":"16","mysql":"8.4","mariadb":"11.4"}]') }}
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: joinery
+          POSTGRES_PASSWORD: joinery
+          POSTGRES_DB: joinery_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-retries 20
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: joinery
+          MYSQL_DATABASE: joinery_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pjoinery" --health-interval 5s
+          --health-timeout 5s --health-retries 30
+      mariadb:
+        image: mariadb:${{ matrix.mariadb }}
+        env:
+          MARIADB_ROOT_PASSWORD: joinery
+          MARIADB_DATABASE: joinery_test
+        ports: ['3307:3306']
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s
+          --health-timeout 5s --health-retries 30
+    env:
+      JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
+      JOINERY_TEST_MYSQL_URL: mysql://root:joinery@127.0.0.1:3306/joinery_test
+      JOINERY_TEST_MARIADB_URL: mariadb://root:joinery@127.0.0.1:3307/joinery_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:integration
