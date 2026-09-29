@@ -5,6 +5,7 @@ import { openFileInputSchema } from './app';
 import { idSchema } from './common';
 import { cellValueSchema } from './results';
 import { SYNC_JOB_KINDS } from './sync';
+import { transferJobSchema } from './transfer-db';
 
 /**
  * Schemas for data transfer jobs (spec §3: the job runner; §12: import and export; §14: job
@@ -363,6 +364,7 @@ export const jobSpecSchema = z.discriminatedUnion('kind', [
   importJobSchema,
   exportJobSchema,
   runSqlFileJobSchema,
+  transferJobSchema,
 ]);
 export type JobSpec = z.infer<typeof jobSpecSchema>;
 export type JobKind = JobSpec['kind'];
@@ -396,6 +398,8 @@ export const jobRowErrorSchema = z.object({
   line: countSchema.optional(),
   /** The target column that failed, when known. */
   column: z.string().optional(),
+  /** Transfers: the target table (collection, key pattern) of the row. */
+  table: z.string().optional(),
   /** SQL files: 1-based statement number and the column where it starts. */
   statement: countSchema.optional(),
   position: countSchema.optional(),
@@ -450,7 +454,7 @@ export type JobLogEntry = z.infer<typeof jobLogEntrySchema>;
 /** A job as the job list shows it; finished ones come from the job history. */
 export const jobInfoSchema = z.object({
   id: idSchema,
-  kind: z.enum(['import', 'export', 'run-sql-file', ...SYNC_JOB_KINDS]),
+  kind: z.enum(['import', 'export', 'run-sql-file', 'transfer', ...SYNC_JOB_KINDS]),
   title: z.string(),
   profileId: idSchema,
   profileName: z.string(),

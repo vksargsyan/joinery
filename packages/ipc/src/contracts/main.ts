@@ -4,6 +4,7 @@ import { defineContract } from '../contract';
 import { mongoMainContractShape } from './mongo';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
+import { transferDbMainContractShape } from './transfer-db';
 import {
   appInfoSchema,
   appSettingsPatchSchema,
@@ -268,6 +269,8 @@ export const mainContract = defineContract({
   gridViews: gridViewsMainContractShape,
   /** Editor autosave for crash restore (spec §18). */
   autosave: autosaveMainContractShape,
+  /** The data transfer wizard's questions before a transfer job starts (spec §12). */
+  transferDb: transferDbMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

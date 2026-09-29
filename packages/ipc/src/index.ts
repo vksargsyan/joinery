@@ -49,6 +49,7 @@ export * from './schemas/app';
 export * from './schemas/table-data';
 export * from './schemas/metadata';
 export * from './schemas/jobs';
+export * from './schemas/transfer-db';
 export * from './schemas/mongo';
 export * from './schemas/redis';
 export * from './schemas/sync';
@@ -63,6 +64,7 @@ export {
 } from './contracts/connection-host';
 export { mainContract, type MainContract } from './contracts/main';
 export { mongoHostContractShape, mongoMainContractShape } from './contracts/mongo';
+export { transferDbMainContractShape } from './contracts/transfer-db';
 export { redisHostContractShape } from './contracts/redis';
 export { syncMainContractShape } from './contracts/sync';
 export { serverToolsHostContractShape } from './contracts/server-tools';
