@@ -8,10 +8,10 @@ end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreS
 
 ## Status
 
-The foundation, the SQL MVP and most of the NoSQL modules are built: MySQL, MariaDB and PostgreSQL
-work end to end in the desktop app and on the command line, and MongoDB and Redis (or Valkey)
-connect, browse, query and edit there too. Elasticsearch and OpenSearch are designed for (engine
-ids, capability flags, profile shapes) but have no drivers yet.
+The foundation, the SQL MVP and the NoSQL modules are built: MySQL, MariaDB and PostgreSQL work
+end to end in the desktop app and on the command line, MongoDB and Redis (or Valkey) connect,
+browse, query and edit there too, and Elasticsearch and OpenSearch have a driver, an explorer and
+a console. Data moves between engines with transfers, backups and restores.
 
 What works today:
 
@@ -26,7 +26,9 @@ What works today:
 - **Querying**: a Monaco editor with run all / statement at cursor / selection; a splitter that
   understands `DELIMITER`, dollar quoting and nested comments; `:name` / `$1` / `?` parameters;
   confirmation before risky writes and for production profiles; streaming results into a canvas
-  grid 1,000 rows at a time; server-side cancel; transaction controls; history.
+  grid 1,000 rows at a time; server-side cancel; transaction controls; history. Visual explain
+  (Explain and Explain Analyze) shows the plan tree with cost, estimated against actual rows and
+  the slowest node. Editor buffers are autosaved and come back as tabs after a crash.
 - **Autocomplete**: keywords, schemas, tables, columns with alias resolution, join conditions
   from foreign keys, functions with signature help, and snippets, computed in a Web Worker from
   a per-connection metadata cache that is ready at connect and refreshes after DDL.
@@ -35,7 +37,8 @@ What works today:
   grid, form and JSON views. Type-aware cell editors with NULL, empty and DEFAULT kept distinct;
   staged edits, inserts and deletes with undo, applied in one transaction after showing the SQL,
   with conflict detection; foreign key lookups and links; copy as TSV, CSV, JSON, Markdown or
-  SQL, and paste from spreadsheets.
+  SQL, and paste from spreadsheets. Columns can be hidden, reordered, pinned and resized, and
+  saved as named views with their sort and filter.
 - **Table designer**: create and alter tables (columns, indexes, foreign keys, unique and check
   constraints, triggers, partitions, options, comment) with validation as you type; Save shows
   the script with data-loss warnings and row counts before running it. Drop table checks what
@@ -43,6 +46,12 @@ What works today:
 - **Structure sync**: compare two databases, review create / alter / drop operations with
   destructive ones unselected, generate a dependency-ordered script, apply it, and re-compare
   to zero differences. Data compare with server-side range checksums and sync scripts.
+  Comparisons can be saved and re-run.
+- **Data transfer**: copy tables, collections or keys between connections in one streaming job:
+  SQL to SQL across engines (an editable type mapping; create, drop and create, truncate or
+  append; keys, indexes and foreign keys after the data), SQL to MongoDB (child rows embedded
+  through a foreign key), MongoDB to SQL (flattened fields, child tables or JSON columns for
+  arrays) and Redis to Redis (DUMP/RESTORE with TTLs, Cluster-aware).
 - **Import and export**: wizards for CSV, TSV, JSON, JSON Lines (gzip too), Excel (.xlsx, streamed,
   with a worksheet picker and header row) and XML (rows at a detected or chosen path) into an
   existing or a new table, with format, delimiter, header and encoding detection, a live
@@ -76,6 +85,10 @@ What works today:
   with autocomplete and inline docs; Pub/Sub, an INFO dashboard, slow log, clients, latency,
   MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
   Sentinel/Cluster topology.
+- **Elasticsearch and OpenSearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
+  bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
+  health, data streams and aliases; and a Kibana-style console with autocomplete from the open
+  API specification. Writes follow the same confirmation rules as SQL.
 - **Server tools** (MySQL, MariaDB, PostgreSQL, MongoDB): a monitor polled at a chosen interval
   with the history kept for the session (connections, QPS or TPS, cache and buffer pool hit
   ratios, locks, replication and replica lag, the oplog window); sessions with cancel and
@@ -86,13 +99,14 @@ What works today:
   validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
   setParameter. Every change shows its exact statement first.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
-  export, run-file and profile management; test and query for MongoDB and Redis too; backup
-  and restore for every engine.
+  export, run-file, transfer and profile management; test and query for MongoDB, Redis,
+  Elasticsearch and OpenSearch too; backup and restore for every engine.
 
 Not built yet: the scheduler, Parquet, the visual query builder and ER modelling for SQL, cloud
-sync and the AI assistant; for MongoDB the embedded mongosh shell; RediSearch and offline RDB
-analysis; the
-Elasticsearch and OpenSearch module. The product specification lists the full scope.
+sync and the AI assistant; for MongoDB the embedded mongosh shell, and SQL translation and code
+export in the app (the library has them); RediSearch and offline RDB analysis; for Elasticsearch
+and OpenSearch the document grid, mapping editor, query builder and cluster tools; signed and
+auto-updating releases. The product specification lists the full scope.
 
 ## Repository layout
 
