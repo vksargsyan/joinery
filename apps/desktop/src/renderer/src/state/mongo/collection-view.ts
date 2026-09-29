@@ -35,6 +35,7 @@ import {
   type QueryFields,
   type TextIssue,
 } from './query-bar';
+import { QueryBuilder } from './query-builder';
 import { DocumentResults, type ResultMode } from './results';
 
 /**
@@ -106,6 +107,8 @@ export class CollectionView {
   readonly target: CollectionTarget;
   readonly store: StoreApi<CollectionViewState>;
   readonly results = new DocumentResults({ mode: 'tree' });
+  /** The visual query builder, the query bar's second editor. */
+  readonly builder: QueryBuilder;
   readonly #lane: SessionLane;
   #stream: RpcStream<DocumentPage> | undefined;
   #runId = 0;
@@ -139,6 +142,16 @@ export class CollectionView {
       bulk: undefined,
     }));
     this.#lane = new SessionLane(target.profileId, target.db);
+    this.builder = new QueryBuilder({
+      collection: target.collection,
+      query: () => this.state,
+      subscribe: (listener) => this.store.subscribe(listener),
+      setFindText: (text) => this.setFindText(text),
+      sample: (sampleSize, signal) =>
+        this.#lane.run((host, sessionId) =>
+          host.mongo.analyzeSchema({ sessionId, ns: this.ns, options: { sampleSize } }, { signal }),
+        ),
+    });
   }
 
   get state(): CollectionViewState {
@@ -224,8 +237,14 @@ export class CollectionView {
   /** Runs the query in the bar from the first page; problems are shown instead of running. */
   async run(): Promise<void> {
     const s = this.state;
-    if (s.findIssue || Object.keys(s.issues).length > 0) {
-      this.#set({ notice: { kind: 'error', text: 'Fix the query first.' } });
+    const pending = this.builder.pendingIssue();
+    if (s.findIssue || Object.keys(s.issues).length > 0 || pending !== undefined) {
+      this.#set({
+        notice: {
+          kind: 'error',
+          text: pending === undefined ? 'Fix the query first.' : `Fix the query first. ${pending}`,
+        },
+      });
       return;
     }
     let model: QueryModel;
@@ -350,6 +369,11 @@ export class CollectionView {
 
   /** Explains the query in the bar (queryPlanner, or executionStats which runs it). */
   async explain(verbosity: ExplainVerbosity = 'executionStats'): Promise<void> {
+    const pending = this.builder.pendingIssue();
+    if (pending !== undefined) {
+      this.#set({ notice: { kind: 'error', text: `Fix the query first. ${pending}` } });
+      return;
+    }
     let model: QueryModel;
     try {
       model = modelOf(this.state.fields, this.state.extras);
@@ -683,6 +707,7 @@ export class CollectionView {
   }
 
   async dispose(): Promise<void> {
+    this.builder.dispose();
     this.#runId++;
     this.#count?.abort();
     await this.#closeStream();

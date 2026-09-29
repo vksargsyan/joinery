@@ -8,20 +8,23 @@ import {
   type ViewTab,
 } from '../../state/mongo/collection-view';
 import { QUERY_FIELDS, type QueryField } from '../../state/mongo/query-bar';
+import { useQueryBuilder, type QueryEditorMode } from '../../state/mongo/query-builder';
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
 import { BulkDialog, DocumentEditorDialog } from './DocumentDialogs';
 import { ExplainView } from './ExplainView';
 import { openMongoTool } from './open';
+import { Segmented } from './parts';
+import { QueryBuilderPanel } from './QueryBuilderPanel';
 import { ResultViews } from './ResultViews';
 import { ShellEditor } from './ShellEditor';
 
 /**
- * A collection view (spec §9, "Browsing and editing"): the query bar (fields and the find()
- * text, kept in step), the documents as a tree, a table or JSON, explain, the document editor,
- * and bulk update and delete by the current filter. A footer shows how many documents are
- * loaded, the collection's estimated size and the exact count on demand.
+ * A collection view (spec §9, "Browsing and editing"): the query bar (fields or the visual
+ * builder, and the find() text, kept in step), the documents as a tree, a table or JSON, explain,
+ * the document editor, and bulk update and delete by the current filter. A footer shows how many
+ * documents are loaded, the collection's estimated size and the exact count on demand.
  */
 export function CollectionPanel({ view }: { readonly view: CollectionView }) {
   const theme = useTheme();
@@ -271,8 +274,14 @@ const PLACEHOLDERS: Readonly<Record<QueryField, string>> = {
   limit: '0',
 };
 
+const EDITOR_MODES: readonly { readonly value: QueryEditorMode; readonly label: string }[] = [
+  { value: 'fields', label: 'Fields' },
+  { value: 'builder', label: 'Builder' },
+];
+
 function QueryBar(props: { readonly view: CollectionView; readonly theme: 'dark' | 'light' }) {
   const { view } = props;
+  const mode = useQueryBuilder(view.builder, (s) => s.mode);
   const fields = useCollectionState(view, (s) => s.fields);
   const issues = useCollectionState(view, (s) => s.issues);
   const findText = useCollectionState(view, (s) => s.findText);
@@ -295,7 +304,26 @@ function QueryBar(props: { readonly view: CollectionView; readonly theme: 'dark'
       className="flex flex-col gap-1.5 border-b border-border bg-panel px-2 py-1.5"
       data-testid="mongo-query-bar"
     >
-      <div className="grid grid-cols-[3fr_2fr_2fr_5rem_5rem] gap-1.5">
+      <div className="flex items-center gap-2">
+        <Segmented
+          label="Query editor"
+          value={mode}
+          options={EDITOR_MODES}
+          onChange={(next) => view.builder.setMode(next)}
+        />
+        <span className="text-[11px] text-muted">
+          {mode === 'builder'
+            ? 'Drag fields into the filter, projection or sort, or use a field’s + menu'
+            : 'Filter, projection and sort in mongosh syntax'}
+        </span>
+      </div>
+      {mode === 'builder' && <QueryBuilderPanel view={view} />}
+      <div
+        className={cx(
+          'grid grid-cols-[3fr_2fr_2fr_5rem_5rem] gap-1.5',
+          mode === 'builder' && 'hidden',
+        )}
+      >
         {QUERY_FIELDS.map((field) => {
           const issue = issues[field];
           const id = `${view.id}-${field}`;
