@@ -53,7 +53,8 @@ What works today:
   history and a desktop notification when a long job ends.
 - **MongoDB**: host lists, SRV, SCRAM, LDAP and X.509 sign-in; an explorer of databases,
   collections, views, time series, GridFS buckets, indexes, users and roles; a collection view
-  with a mongosh-syntax query bar kept in step with the generated find(), tree, table (with
+  with a mongosh-syntax query bar and a visual query builder (fields from a sample, typed
+  conditions, projection and sort) kept in step with the generated find(), tree, table (with
   drill-down into arrays and sub-documents) and JSON views, a document editor with Extended JSON
   types and conflict detection, bulk update and delete with a matched-count preview, visual
   explain that flags collection scans, an aggregation editor with per-stage previews, an index
@@ -64,14 +65,15 @@ What works today:
   editors for strings, hashes, lists, sets, sorted sets, streams (groups and pending entries),
   RedisJSON, HyperLogLog, bitmaps and geo; TTL, rename and copy; bulk delete with a dry run; a CLI
   with autocomplete and inline docs; Pub/Sub, an INFO dashboard, slow log, clients, latency,
-  MONITOR, big keys, ACL users and the Sentinel/Cluster topology.
+  MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
+  Sentinel/Cluster topology.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file and profile management; test and query for MongoDB and Redis too.
 
 Not built yet: the scheduler, backup and restore, database-to-database data transfer, Excel and
 XML import and export, the visual query builder and ER modelling, explain plan views for SQL,
-server tools, cloud sync and the AI assistant; for MongoDB the visual query builder, SQL to MQL,
-code export and the embedded mongosh shell; RediSearch and offline RDB analysis; the
+server tools, cloud sync and the AI assistant; for MongoDB SQL to MQL, code export and the
+embedded mongosh shell; RediSearch and offline RDB analysis; the
 Elasticsearch and OpenSearch module. The product specification lists the full scope.
 
 ## Repository layout
