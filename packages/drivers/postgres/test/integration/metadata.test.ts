@@ -479,6 +479,18 @@ describe.skipIf(!PG_URL)('PostgreSQL metadata', () => {
       expect(session.inTransaction).toBe(false);
     });
 
+    it('returns the raw JSON output next to the plan', async () => {
+      const result = await session.explainPlan!(`SELECT * FROM ${S}.customers`, {
+        analyze: true,
+        buffers: true,
+      });
+      expect(result).toMatchObject({ rawFormat: 'json', rolledBack: true });
+      const raw = JSON.parse(result.raw) as { Plan: { 'Node Type': string } }[];
+      expect(raw[0]?.Plan['Node Type']).toBe(result.plan.operation);
+      expect(result.plan.detail['Shared Hit Blocks']).toEqual(expect.any(Number));
+      expect(session.inTransaction).toBe(false);
+    });
+
     it('reports errors with positions relative to the statement', async () => {
       await expect(session.explain!('SELECT * FROM nowhere')).rejects.toMatchObject({
         code: 'SQL_ERROR',

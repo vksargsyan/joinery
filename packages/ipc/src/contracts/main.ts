@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { defineContract } from '../contract';
 import { mongoMainContractShape } from './mongo';
 import { syncMainContractShape } from './sync';
+import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
 import {
   appInfoSchema,
   appSettingsPatchSchema,
@@ -263,6 +264,10 @@ export const mainContract = defineContract({
   mongo: mongoMainContractShape,
   /** Structure sync and data sync between two SQL connections (spec §13). */
   sync: syncMainContractShape,
+  /** Saved table views (spec §7): column layout, sort and filter per profile and table. */
+  gridViews: gridViewsMainContractShape,
+  /** Editor autosave for crash restore (spec §18). */
+  autosave: autosaveMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

@@ -1,6 +1,8 @@
 import {
   JoineryError,
+  isSqlEngine,
   newId,
+  type ConnectionProfile,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
@@ -12,6 +14,7 @@ import {
   type PortLike,
   type ServerInfo,
 } from '@joinery/ipc';
+import { analyzeStatement } from '@joinery/sql-tools';
 import { applyChanges } from '@joinery/table-data';
 import type { TransportSession } from '@joinery/tunnel';
 
@@ -232,6 +235,12 @@ export class ConnectionHost {
         if (!session.explain) throw unsupported('EXPLAIN');
         return session.explain(text, options);
       },
+      explainPlan: ({ sessionId, text, options, confirmed }) => {
+        const session = this.#session(sessionId);
+        if (!session.explainPlan) throw unsupported('EXPLAIN');
+        if (options?.analyze) checkExplainAnalyze(this.#resolved.profile, text, confirmed === true);
+        return session.explainPlan(text, options);
+      },
       begin: async ({ sessionId }) => {
         const session = this.#session(sessionId);
         if (!session.begin) throw unsupported('Transactions');
@@ -283,5 +292,34 @@ export class ConnectionHost {
         profile: this.#resolved.profile,
       }),
     };
+  }
+}
+
+/**
+ * The write rules for EXPLAIN ANALYZE, which executes the statement (spec §4, §6), enforced here
+ * whatever the page sends. The drivers roll the statement back, but a read-only profile still
+ * refuses a statement that writes (sequences advance, non-transactional tables keep changes),
+ * and every other profile needs the user's confirmation first.
+ */
+export function checkExplainAnalyze(
+  profile: ConnectionProfile,
+  text: string,
+  confirmed: boolean,
+): void {
+  if (!isSqlEngine(profile.engine)) return;
+  if (!analyzeStatement(text, profile.engine).isWrite) return;
+  if (profile.presentation.readOnly) {
+    throw new JoineryError({
+      code: 'READ_ONLY',
+      message:
+        'This connection is read-only, and EXPLAIN ANALYZE would run a statement that writes',
+      hint: 'Explain it without ANALYZE to see the estimated plan.',
+    });
+  }
+  if (!confirmed) {
+    throw new JoineryError({
+      code: 'CONFIRMATION_REQUIRED',
+      message: 'EXPLAIN ANALYZE of a statement that writes needs confirmation',
+    });
   }
 }

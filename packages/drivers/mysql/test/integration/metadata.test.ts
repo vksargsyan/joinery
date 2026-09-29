@@ -499,5 +499,20 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s metadata', (engine, url) 
       expect(actuals.length).toBeGreaterThan(0);
       expect(plan.detail['analyze_unavailable']).toBeUndefined();
     });
+
+    it('returns the raw output next to the plan', async () => {
+      const estimated = await session.explainPlan!('SELECT * FROM customers WHERE id > 0');
+      expect(estimated.rawFormat).toBe('json');
+      expect(estimated.rolledBack).toBe(false);
+      expect(JSON.parse(estimated.raw)).toEqual(expect.any(Object));
+      const analyzed = await session.explainPlan!('SELECT * FROM customers WHERE id > 0', {
+        analyze: true,
+      });
+      expect(analyzed.rolledBack).toBe(true);
+      // MariaDB's ANALYZE prints JSON; MySQL's EXPLAIN ANALYZE prints its iterator tree.
+      expect(analyzed.rawFormat).toBe(mariadb ? 'json' : 'text');
+      if (!mariadb) expect(analyzed.raw).toMatch(/^-> /);
+      expect(session.inTransaction).toBe(false);
+    });
   });
 });

@@ -10,6 +10,7 @@ import {
   type EngineId,
   type ExecOptions,
   type ExplainOptions,
+  type ExplainResult,
   type IntrospectScope,
   type LargeValueHandle,
   type NoticeSeverity,
@@ -556,6 +557,10 @@ export class MysqlSession implements Session {
    * that is rolled back.
    */
   async explain(text: string, opts: ExplainOptions = {}): Promise<PlanNode> {
+    return (await this.explainPlan(text, opts)).plan;
+  }
+
+  async explainPlan(text: string, opts: ExplainOptions = {}): Promise<ExplainResult> {
     const mariadb = this.flavor === 'mariadb';
     const analyze = opts.analyze === true;
     const estimate = 'EXPLAIN FORMAT=JSON ';
@@ -593,15 +598,23 @@ export class MysqlSession implements Session {
             this.connection.execute(head + text, params, callback);
           } else this.connection.query({ sql: head + text, rowsAsArray: true }, callback);
         });
+      const fromJson = (raw: string, rolledBack: boolean): ExplainResult => ({
+        plan: normaliseMysqlJsonPlan(parseExplainJson(raw)),
+        raw,
+        rawFormat: 'json',
+        rolledBack,
+      });
       // The estimated plan as JSON. MySQL 9's default JSON version 2 has no plan for
       // single-table UPDATE and DELETE; version 1 does, so ask for it for those alone.
-      const estimated = async (): Promise<PlanNode> => {
-        const plan = parseExplainJson(await run(estimate));
-        if (mariadb || !isNotExecutableJsonPlan(plan)) return normaliseMysqlJsonPlan(plan);
+      const estimated = async (rolledBack: boolean): Promise<ExplainResult> => {
+        const raw = await run(estimate);
+        if (mariadb || !isNotExecutableJsonPlan(parseExplainJson(raw))) {
+          return fromJson(raw, rolledBack);
+        }
         const [setting] = await this.query('SELECT @@SESSION.explain_json_format_version AS v');
         await this.query('SET SESSION explain_json_format_version = 1');
         try {
-          return normaliseMysqlJsonPlan(parseExplainJson(await run(estimate)));
+          return fromJson(await run(estimate), rolledBack);
         } finally {
           await this.query('SET SESSION explain_json_format_version = ?', [
             Number(setting?.['v'] ?? 2),
@@ -609,18 +622,26 @@ export class MysqlSession implements Session {
         }
       };
       try {
-        if (!analyze) return await estimated();
+        if (!analyze) return await estimated(false);
         // ANALYZE executes the statement: keep its effects out of the database.
         const nested = this.inTransaction;
         await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
         try {
           const output = await run(prefix);
-          if (mariadb) return normaliseMysqlJsonPlan(parseExplainJson(output));
-          if (!isNotExecutableTreePlan(output)) return normaliseMysqlTreePlan(output);
+          if (mariadb) return fromJson(output, true);
+          if (!isNotExecutableTreePlan(output)) {
+            return {
+              plan: normaliseMysqlTreePlan(output),
+              raw: output,
+              rawFormat: 'text',
+              rolledBack: true,
+            };
+          }
           // MySQL cannot EXPLAIN ANALYZE some statements (single-table UPDATE and DELETE):
           // return the estimated plan and say so, rather than a plan with no rows or timings.
-          const plan = await estimated();
-          return { ...plan, detail: { ...plan.detail, analyze_unavailable: true } };
+          const result = await estimated(true);
+          const detail = { ...result.plan.detail, analyze_unavailable: true };
+          return { ...result, plan: { ...result.plan, detail } };
         } finally {
           await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(
             () => undefined,

@@ -83,6 +83,29 @@ export {
   type SavedComparisonRecord,
   type SavedComparisonRepository,
 } from './repositories/comparisons';
+  gridColumnStateSchema,
+  gridLayoutSchema,
+  gridSortTermSchema,
+  gridViewSchema,
+  gridViewTableSchema,
+  type GridColumnState,
+  type GridLayout,
+  type GridSortTerm,
+  type GridView,
+  type GridViewRepository,
+  type GridViewSaveInput,
+  type GridViewTable,
+} from './repositories/grid-views';
+export {
+  AUTOSAVE_KINDS,
+  MAX_AUTOSAVE_TEXT,
+  autosaveEntrySchema,
+  type AutosaveEntry,
+  type AutosaveEntryInput,
+  type AutosaveKind,
+  type EditorAutosaveRepository,
+  type PreviousRun,
+} from './repositories/editor-autosave';
 
 export {
   PASSPHRASE_SEALER_ID,

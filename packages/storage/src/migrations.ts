@@ -186,7 +186,62 @@ const savedComparisons: Migration = {
 };
 
 /** Every migration, in order. The last one's version is the schema version this build writes. */
-export const MIGRATIONS: readonly Migration[] = [initialSchema, historyFullText, savedComparisons];
+const gridViewsAndAutosave: Migration = {
+  version: 4,
+  name: 'saved grid views, editor autosave and app runs',
+  up(db) {
+    db.exec(`
+      -- Saved table views (spec §7): column layout, sort and filter per profile and table.
+      -- database_name is '' for the profile's default database, so the unique indexes hold.
+      CREATE TABLE grid_views (
+        id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+        database_name TEXT NOT NULL,
+        schema_name TEXT NOT NULL,
+        table_name TEXT NOT NULL,
+        name TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+        layout TEXT NOT NULL,
+        sort TEXT NOT NULL,
+        filter TEXT,
+        version INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+      CREATE UNIQUE INDEX grid_views_by_name
+        ON grid_views (profile_id, database_name, schema_name, table_name, name COLLATE NOCASE);
+      CREATE UNIQUE INDEX grid_views_default
+        ON grid_views (profile_id, database_name, schema_name, table_name) WHERE is_default = 1;
+
+      -- Unsaved editor buffers (spec §18), written every few seconds; never results or secrets.
+      CREATE TABLE editor_autosave (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        profile_id TEXT NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+        database_name TEXT,
+        title TEXT NOT NULL,
+        text TEXT NOT NULL,
+        cursor INTEGER,
+        position INTEGER NOT NULL,
+        saved_at TEXT NOT NULL
+      ) STRICT;
+
+      -- The desktop app's current run: ended_at stays NULL until a clean exit.
+      CREATE TABLE app_runs (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        started_at TEXT NOT NULL,
+        ended_at TEXT
+      ) STRICT;
+    `);
+  },
+};
+
+export const MIGRATIONS: readonly Migration[] = [
+  initialSchema,
+  historyFullText,
+  savedComparisons,
+  gridViewsAndAutosave,
+];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
 

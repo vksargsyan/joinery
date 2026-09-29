@@ -8,6 +8,7 @@ import {
   type ConnectionCheckResult,
   type ExplainFormat,
   type ExplainOptions,
+  type ExplainResult,
   type IntrospectScope,
   type PlanNode,
 } from '@joinery/core';
@@ -75,6 +76,13 @@ export const planNodeSchema: z.ZodType<PlanNode, PlanNode> = z.object({
   get children(): z.ZodArray<z.ZodType<PlanNode, PlanNode>> {
     return z.array(planNodeSchema);
   },
+});
+
+export const explainResultSchema: z.ZodType<ExplainResult, ExplainResult> = z.object({
+  plan: planNodeSchema,
+  raw: z.string(),
+  rawFormat: z.enum(['json', 'text']),
+  rolledBack: z.boolean(),
 });
 
 export const connectionCheckResultSchema: z.ZodType<ConnectionCheckResult, ConnectionCheckResult> =

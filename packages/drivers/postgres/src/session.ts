@@ -9,6 +9,7 @@ import {
   type CellValue,
   type ExecOptions,
   type ExplainOptions,
+  type ExplainResult,
   type IntrospectScope,
   type LargeValueHandle,
   type NoticeSeverity,
@@ -567,6 +568,10 @@ export class PostgresSession implements Session {
    * a transaction (or savepoint) that is rolled back.
    */
   async explain(text: string, opts: ExplainOptions = {}): Promise<PlanNode> {
+    return (await this.explainPlan(text, opts)).plan;
+  }
+
+  async explainPlan(text: string, opts: ExplainOptions = {}): Promise<ExplainResult> {
     const options = ['FORMAT JSON'];
     if (opts.analyze) options.push('ANALYZE');
     if (opts.buffers) options.push('BUFFERS');
@@ -574,15 +579,15 @@ export class PostgresSession implements Session {
     const values = toPgValues(positionalParams(opts.params));
     return this.gate.run(async () => {
       this.assertUsable();
-      const run = async (): Promise<unknown> => {
+      const run = async (): Promise<ExplainResult> => {
+        let cell: unknown;
         try {
           const result = await this.client.query<CellValue[]>({
             text: prefix + text,
             values,
             rowMode: 'array',
           });
-          const cell = result.rows[0]?.[0];
-          return typeof cell === 'string' ? JSON.parse(cell) : cell;
+          cell = result.rows[0]?.[0];
         } catch (error) {
           const mapped = mapPgError(error, { where: this.plan.where, statement: prefix + text });
           if (mapped.position === undefined) throw mapped;
@@ -591,13 +596,20 @@ export class PostgresSession implements Session {
             position: Math.max(0, mapped.position - prefix.length),
           });
         }
+        const parsed: unknown = typeof cell === 'string' ? JSON.parse(cell) : cell;
+        return {
+          plan: normalisePgPlan(parsed),
+          raw: typeof cell === 'string' ? cell : JSON.stringify(parsed, null, 2),
+          rawFormat: 'json',
+          rolledBack: opts.analyze === true,
+        };
       };
-      if (!opts.analyze) return normalisePgPlan(await run());
+      if (!opts.analyze) return run();
       // EXPLAIN ANALYZE executes the statement: keep its effects out of the database.
       const nested = this.inTransaction;
       await this.query(nested ? 'SAVEPOINT joinery_explain' : 'BEGIN');
       try {
-        return normalisePgPlan(await run());
+        return await run();
       } finally {
         if (nested) {
           await this.query('ROLLBACK TO SAVEPOINT joinery_explain').catch(() => undefined);

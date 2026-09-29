@@ -17,7 +17,12 @@ import {
   type HostKeyPromptEvent,
   type mainContract,
 } from '@joinery/ipc';
-import { parseConnectionUri, type Store, type StoredProfile } from '@joinery/storage';
+import {
+  parseConnectionUri,
+  type PreviousRun,
+  type Store,
+  type StoredProfile,
+} from '@joinery/storage';
 
 import type { PortPayload } from '../shared/bridge';
 import { runConnectionCheck } from './checker';
@@ -32,6 +37,7 @@ import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
 import type { SyncService } from './sync';
 import { syncHandlers } from './sync-api';
+import { autosaveHandlers, gridViewHandlers } from './workspace-api';
 
 /**
  * The main contract's handlers (spec §3): profiles, folders, secrets, connections, history,
@@ -70,6 +76,8 @@ export interface MainServices<P> {
   readonly jobs?: JobManager;
   /** Structure and data compare on the job runner (spec §13); without it they are refused. */
   readonly sync?: SyncService;
+  /** How the app's previous run ended (`unclean` after a crash), for editor restore. */
+  readonly previousRun?: PreviousRun['ended'];
 }
 
 /** What differs per window: where its ports go and which window owns its dialogs. */
@@ -289,6 +297,8 @@ export function createMainHandlers<P>(
     ...jobHandlers(services, files),
     mongo: mongoMainHandlers(services, files),
     sync: syncHandlers(services, files),
+    gridViews: gridViewHandlers(store),
+    autosave: autosaveHandlers(store, services.previousRun ?? 'none'),
   };
 }
 

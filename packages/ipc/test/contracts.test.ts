@@ -22,6 +22,8 @@ import {
   mainContract,
   mongoHostContractShape,
   redisHostContractShape,
+  autosaveMainContractShape,
+  gridViewsMainContractShape,
   mongoMainContractShape,
   serverToolsHostContractShape,
   parseRequest,
@@ -114,6 +116,12 @@ describe('connectionHostContract', () => {
         { kind: 'table', name: 'users', path: [...path, 'users'], hasChildren: true },
       ],
       explain: () => plan,
+      explainPlan: ({ options, confirmed }) => ({
+        plan,
+        raw: '[{"Plan": {}}]',
+        rawFormat: 'json',
+        rolledBack: options?.analyze === true && confirmed === true,
+      }),
       begin: () => {},
       commit: () => {},
       rollback: () => {},
@@ -198,6 +206,14 @@ describe('connectionHostContract', () => {
       { kind: 'table', name: 'users', path: ['app', 'public', 'users'], hasChildren: true },
     ]);
     expect(await host.explain({ sessionId: 's1', text: 'select 1' })).toEqual(plan);
+    expect(
+      await host.explainPlan({
+        sessionId: 's1',
+        text: 'delete from t',
+        options: { analyze: true, buffers: true },
+        confirmed: true,
+      }),
+    ).toEqual({ plan, raw: '[{"Plan": {}}]', rawFormat: 'json', rolledBack: true });
     const progress: unknown[] = [];
     expect(
       await host.introspect({ sessionId: 's1' }, { onProgress: (p) => progress.push(p) }),
@@ -443,6 +459,8 @@ describe('mainContract never hands a secret to the renderer', () => {
       },
       mongo: unusedHandlers(mongoMainContractShape),
       sync: unusedHandlers(syncMainContractShape),
+      gridViews: unusedHandlers(gridViewsMainContractShape),
+      autosave: unusedHandlers(autosaveMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -608,6 +626,8 @@ describe('desktop additions', () => {
       },
       mongo: unusedHandlers(mongoMainContractShape),
       sync: unusedHandlers(syncMainContractShape),
+      gridViews: unusedHandlers(gridViewsMainContractShape),
+      autosave: unusedHandlers(autosaveMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

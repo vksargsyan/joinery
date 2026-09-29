@@ -147,6 +147,8 @@ function start(): void {
     return;
   }
   store = openedStore;
+  // Read before this run marks itself as running: editor restore says whether the last one crashed.
+  const previousRun = openedStore.autosave.startRun().ended;
   const spawnHost = utilityHostFactory(join(__dirname, 'connection-host.cjs'));
   // SSH host keys the user trusted and remembered; joinery-cli reads the same file by default.
   const hostKeys = new HostKeyBroker({
@@ -181,6 +183,7 @@ function start(): void {
     keysDir: join(app.getPath('userData'), 'ssh-keys'),
     jobs: jobManager,
     sync,
+    previousRun,
     // The desktop starts dark and without the editor minimap; users change both in settings.
     defaultSettings: {
       ...DEFAULT_APP_SETTINGS,
@@ -321,6 +324,7 @@ app.on('will-quit', () => {
 });
 
 app.on('will-quit', () => {
+  store?.autosave.finishRun();
   store?.close();
   store = undefined;
 });

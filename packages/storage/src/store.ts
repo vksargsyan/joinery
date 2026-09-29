@@ -1,7 +1,9 @@
 import type { RepositoryContext } from './internal/context';
 import { migrate } from './migrations';
 import { SavedComparisonRepository } from './repositories/comparisons';
+import { EditorAutosaveRepository } from './repositories/editor-autosave';
 import { FolderRepository } from './repositories/folders';
+import { GridViewRepository } from './repositories/grid-views';
 import { QueryHistoryRepository } from './repositories/history';
 import { MetadataCacheRepository } from './repositories/metadata-cache';
 import { ProfileRepository } from './repositories/profiles';
@@ -38,6 +40,10 @@ export interface Store {
   readonly settings: SettingsRepository;
   /** Saved structure and data comparisons (spec §13). */
   readonly comparisons: SavedComparisonRepository;
+  /** Saved table views: column layout, sort and filter per profile and table (spec §7). */
+  readonly gridViews: GridViewRepository;
+  /** Unsaved editor buffers and the app's run marker, for crash restore (spec §18). */
+  readonly autosave: EditorAutosaveRepository;
   /** Forgets session secrets and closes the database. */
   close(): void;
 }
@@ -73,6 +79,8 @@ export function createStore(db: SqliteDatabase, options: StoreOptions): Store {
     metadataCache: new MetadataCacheRepository(context),
     settings: new SettingsRepository(context),
     comparisons: new SavedComparisonRepository(context),
+    gridViews: new GridViewRepository(context),
+    autosave: new EditorAutosaveRepository(context),
     close() {
       secrets.clearSession();
       db.close();

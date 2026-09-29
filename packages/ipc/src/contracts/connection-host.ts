@@ -10,6 +10,7 @@ import {
   browseNodeSchema,
   capabilitiesSchema,
   explainOptionsSchema,
+  explainResultSchema,
   introspectScopeSchema,
   planNodeSchema,
 } from '../schemas/driver';
@@ -82,6 +83,21 @@ export const connectionHostContract = defineContract({
       options: explainOptionsSchema.optional(),
     }),
     output: planNodeSchema,
+  },
+  /**
+   * The visual explain (spec §6): the plan tree with the server's raw output. ANALYZE executes
+   * the statement inside a transaction (a savepoint in an open one) that is rolled back; for a
+   * statement that writes it is refused with READ_ONLY on a read-only profile, and needs
+   * `confirmed` everywhere else (CONFIRMATION_REQUIRED without it).
+   */
+  explainPlan: {
+    input: z.object({
+      sessionId: idSchema,
+      text: z.string().min(1),
+      options: explainOptionsSchema.optional(),
+      confirmed: z.boolean().optional(),
+    }),
+    output: explainResultSchema,
   },
 
   begin: { input: sessionRef, output: z.void() },

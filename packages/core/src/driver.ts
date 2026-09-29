@@ -103,6 +103,19 @@ export interface PlanNode {
   readonly children: readonly PlanNode[];
 }
 
+/**
+ * A plan with the server's own EXPLAIN output next to it, for the visual explain's raw view
+ * (spec §6): the tree is normalised, `raw` is exactly what the server printed.
+ */
+export interface ExplainResult {
+  readonly plan: PlanNode;
+  /** EXPLAIN JSON text, or MySQL's EXPLAIN ANALYZE tree text. */
+  readonly raw: string;
+  readonly rawFormat: 'json' | 'text';
+  /** The statement was executed (ANALYZE) inside a transaction or savepoint rolled back after. */
+  readonly rolledBack: boolean;
+}
+
 export interface Session {
   readonly engine: EngineId;
   /** The server's version banner, e.g. "16.4" or "10.11.6-MariaDB". */
@@ -121,6 +134,8 @@ export interface Session {
   /** Children of a tree node; `[]` lists the root level (databases). */
   browse(path: readonly string[]): Promise<BrowseNode[]>;
   explain?(text: string, opts?: ExplainOptions): Promise<PlanNode>;
+  /** `explain` plus the server's raw output; engines with `explain` should offer both. */
+  explainPlan?(text: string, opts?: ExplainOptions): Promise<ExplainResult>;
 
   begin?(): Promise<void>;
   commit?(): Promise<void>;
