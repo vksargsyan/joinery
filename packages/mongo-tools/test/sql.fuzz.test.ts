@@ -364,6 +364,8 @@ const joinQuery = fc
     return sql + page;
   });
 
+// Each property takes a second or two alone; a loaded CI machine running every package's tests
+// at once needs far longer than vitest's 5 s default.
 describe('SQL to MQL fuzzing', () => {
   it('never throws anything but a located SqlTranslationError on token soup', () => {
     fc.assert(
@@ -373,7 +375,7 @@ describe('SQL to MQL fuzzing', () => {
       }),
       { numRuns: RUNS * 10 },
     );
-  });
+  }, 60_000);
 
   it('never throws anything but a located SqlTranslationError on arbitrary text', () => {
     fc.assert(
@@ -384,7 +386,7 @@ describe('SQL to MQL fuzzing', () => {
       }),
       { numRuns: RUNS * 3 },
     );
-  });
+  }, 60_000);
 
   it.each([
     ['plain', plainQuery, 'find'],
@@ -408,5 +410,5 @@ describe('SQL to MQL fuzzing', () => {
       }),
       { numRuns: RUNS },
     );
-  });
+  }, 60_000);
 });
