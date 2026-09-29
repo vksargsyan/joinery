@@ -1,5 +1,5 @@
 import { EJSON, type ChangeEvent } from '@joinery/mongo-tools';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { MongoSession } from '../../src';
 import { MONGO_URL, cells, collect, connectMongo, execId, testDatabase } from './helpers';
@@ -99,6 +99,9 @@ describe.skipIf(!MONGO_URL)('MongoDB transactions and change streams (replica se
     await new Promise((resolve) => setTimeout(resolve, 500));
     await other.insertOne(ns, '{ "_id": 10, "balance": 1 }');
     await other.updateMany(ns, '{ "_id": 10 }', '{ "$set": { "balance": 2 } }');
+    // updateLookup reads the document when the event is read, so delete it only after that:
+    // a delete that gets there first leaves the update's fullDocument null.
+    await vi.waitFor(() => expect(events.length).toBeGreaterThanOrEqual(2), { timeout: 10_000 });
     await other.deleteOne(ns, '10');
     await tail;
     expect(events.map((e) => e.operationType)).toEqual(['insert', 'update', 'delete']);

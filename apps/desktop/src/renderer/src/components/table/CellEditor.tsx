@@ -8,7 +8,15 @@ import {
   type ColumnInfo,
   type EditValue,
 } from '@joinery/table-data';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 
 import { errorMessage } from '../../lib/errors';
 import type { LookupOption } from '../../state/table-view';
@@ -149,7 +157,10 @@ export function CellEditor(props: CellEditorProps) {
   );
   const draft = useMemo(() => draftOf(mode, text, column, locked), [mode, text, column, locked]);
   const onDraft = props.onDraft;
-  useEffect(() => onDraft?.(draft), [draft, onDraft]);
+  // A layout effect, not a passive one: the grid's overlay saves the draft it last received when
+  // Enter is pressed, and an update made in a passive effect renders in a later task, which a
+  // busy renderer can run after the Enter that follows the typing.
+  useLayoutEffect(() => onDraft?.(draft), [draft, onDraft]);
   const focusRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const element = focusRef.current;
