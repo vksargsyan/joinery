@@ -21,8 +21,10 @@ import {
   canonicalTrigger,
   canonicalExpression,
   isMariadbJsonCheck,
+  mysqlTriggerBodyUsesRenames,
   nameKey,
   OPTIONAL_TABLE_OPTIONS,
+  tableContext,
 } from '../normalize';
 import type { CanonicalColumn, NormalizeContext } from '../normalize';
 import {
@@ -50,7 +52,7 @@ import { canonicalType, isMysqlTextType, typeChangeRisk } from '../types';
 import { PHASE, step } from './builder';
 import type { OpDraft, StepDraft } from './builder';
 import type { DiffContext } from './context';
-import { displayName, findRename, key, qualified, tableKey, typeRefs } from './context';
+import { displayName, findRename, key, noteRename, qualified, tableKey, typeRefs } from './context';
 import type { TablePair } from './pairs';
 
 const json = (value: unknown): string => JSON.stringify(value);
@@ -373,7 +375,7 @@ function renameTable(ctx: DiffContext, pair: TablePair): void {
   const provides = [key.rel(pair.schema.key, pair.after)];
   for (const column of pair.source!.columns)
     provides.push(key.col(pair.schema.key, pair.after, column.name));
-  ctx.builder.add({
+  const op = ctx.builder.add({
     id: `table:${tableDisplay(ctx, pair)}:rename`,
     kind: 'rename',
     objectKind: 'table',
@@ -388,6 +390,7 @@ function renameTable(ctx: DiffContext, pair: TablePair): void {
     ],
     changes: [`name: ${pair.before} → ${pair.after}`],
   });
+  noteRename(ctx.state, pair.after, op);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -595,6 +598,7 @@ function diffColumns(ctx: DiffContext, pair: TablePair): void {
       );
     }
     if (op !== undefined) positionOps.set(nameKey(column.name, ctx.options), op);
+    if (op !== undefined && match.renamedFrom !== undefined) noteRename(ctx.state, column.name, op);
     // AFTER needs the previous column in place first.
     if (positioned && op !== undefined && previous !== undefined) {
       const previousOp = positionOps.get(nameKey(previous.name, ctx.options));
@@ -1647,12 +1651,14 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
   const byDefinition =
     ctx.pg &&
     [...pair.source!.indexes, ...pair.target!.indexes].every((i) => i.definition !== undefined);
+  const src = tableContext(pair.source!, ctx.src);
+  const tgt = tableContext(pair.target!, ctx.tgt);
   const canonSource = (i: IndexDef, withComment = true): string => {
-    const c = canonicalIndex(i, ctx.src, byDefinition);
+    const c = canonicalIndex(i, src, byDefinition);
     return json(withComment ? c : { ...c, comment: null, invisible: false });
   };
   const canonTarget = (i: IndexDef, withComment = true): string => {
-    const c = canonicalIndex(mapIndex(pair, i), ctx.tgt, byDefinition);
+    const c = canonicalIndex(mapIndex(pair, i), tgt, byDefinition);
     return json(withComment ? c : { ...c, comment: null, invisible: false });
   };
   const matches = matchSubObjects(
@@ -1912,8 +1918,10 @@ function diffChecks(ctx: DiffContext, pair: TablePair): void {
     );
   const sources = tableChecks(pair.source!, ctx.src);
   const targets = tableChecks(pair.target!, ctx.tgt);
-  const canonSource = (c: CheckDef): string => json(canonicalCheck(c, ctx.src));
-  const canonTarget = (c: CheckDef): string => json(canonicalCheck(c, ctx.tgt));
+  const src = tableContext(pair.source!, ctx.src);
+  const tgt = tableContext(pair.target!, ctx.tgt);
+  const canonSource = (c: CheckDef): string => json(canonicalCheck(c, src));
+  const canonTarget = (c: CheckDef): string => json(canonicalCheck(c, tgt));
   const matches = matchSubObjects(
     ctx,
     pair,
@@ -2438,6 +2446,10 @@ function diffTriggers(ctx: DiffContext, pair: TablePair): void {
     seen.add(target);
     const a = canonicalTrigger(target, ctx.tgt).definition;
     const b = canonicalTrigger(trigger, ctx.src).definition;
+    if (a === b && mysqlTriggerBodyUsesRenames(target, ctx.tgt)) {
+      rebuildRenamedTrigger(ctx, pair, trigger, target);
+      continue;
+    }
     if (a === b) {
       ctx.state.triggers.push({ table: pair, source: trigger, target });
       continue;
@@ -2476,6 +2488,62 @@ function diffTriggers(ctx: DiffContext, pair: TablePair): void {
   }
 }
 
+/**
+ * A MySQL/MariaDB trigger equal to its source once renames are applied, whose body uses a
+ * renamed column or table: the server does not rewrite the body, so it is re-created from the
+ * source definition after the renames (see `orderTriggersAfterRenames`).
+ */
+function rebuildRenamedTrigger(
+  ctx: DiffContext,
+  pair: TablePair,
+  trigger: TriggerDef,
+  target: TriggerDef,
+): void {
+  const server = ctx.dialect === 'mariadb' ? 'MariaDB' : 'MySQL';
+  const op = subOp(
+    ctx,
+    pair,
+    'trigger',
+    trigger.name,
+    'alter',
+    [dropTriggerStep(ctx, pair, target), createTriggerStep(ctx, pair, trigger)],
+    {
+      id: `trigger:${tableDisplay(ctx, pair, trigger.name)}:rebuild`,
+      sourceDdl: renderTrigger(trigger, ctx.dialect),
+      targetDdl: renderTrigger(target, ctx.dialect),
+      changes: ['definition follows the rename'],
+      reason: 'Re-created because its body uses a renamed column or table',
+      warnings: [
+        {
+          code: 'rebuild',
+          message: `${server} does not update trigger bodies when a column or table is renamed: the trigger is re-created with the new names`,
+        },
+      ],
+    },
+  );
+  ctx.state.triggers.push({ table: pair, source: trigger, target, op, dropStep: 0 });
+}
+
+/**
+ * MySQL/MariaDB check the NEW and OLD columns of a trigger when it is created, so a trigger
+ * created from the source definition needs every rename that gives a name it uses (a column
+ * rename that also changes the type is an alter, which step references alone do not require).
+ */
+export function orderTriggersAfterRenames(ctx: DiffContext): void {
+  if (ctx.state.renamedBy.size === 0) return;
+  for (const entry of ctx.state.triggers) {
+    if (entry.op === undefined || entry.source === undefined) continue;
+    const names = new Set(
+      referencedNames(entry.source.definition, ctx.dialect).map((r) => r.name.toLowerCase()),
+    );
+    for (const name of names) {
+      for (const op of ctx.state.renamedBy.get(name) ?? []) {
+        if (op !== entry.op) entry.op.requires.add(op.id);
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Table options, comments, partitions
 
@@ -2505,8 +2573,12 @@ function diffTableOptions(ctx: DiffContext, pair: TablePair): void {
         clauses.push(`COLLATE=${o.collation}`);
       }
     }
-    if (changed('rowformat') && o.rowFormat !== undefined)
-      clauses.push(`ROW_FORMAT=${o.rowFormat.toUpperCase()}`);
+    if (changed('rowformat')) {
+      const declared = Object.entries(o).find(
+        ([k]) => k.toLowerCase().replace(/_/g, '') === 'rowformat',
+      )?.[1];
+      clauses.push(`ROW_FORMAT=${(declared ?? 'DEFAULT').toUpperCase()}`);
+    }
     if (changed('autoincrement') && o.autoIncrement !== undefined)
       clauses.push(`AUTO_INCREMENT=${o.autoIncrement}`);
     if (changed('comment'))
@@ -2868,13 +2940,15 @@ export function rebuildRoutineDependents(ctx: DiffContext, blocker: RoutineBlock
 
     for (const check of target.checks) {
       if (!uses(check.expression)) continue;
-      const canon = json(canonicalCheck(check, ctx.tgt));
+      const canon = json(canonicalCheck(check, tableContext(target, ctx.tgt)));
+      const canonSource = (c: CheckDef): string =>
+        json(canonicalCheck(c, tableContext(source, ctx.src)));
       const match =
         source.checks.find(
           (c) =>
             nameKey(c.name, ctx.options) === nameKey(check.name, ctx.options) &&
-            json(canonicalCheck(c, ctx.src)) === canon,
-        ) ?? source.checks.find((c) => json(canonicalCheck(c, ctx.src)) === canon);
+            canonSource(c) === canon,
+        ) ?? source.checks.find((c) => canonSource(c) === canon);
       const op = existing('check', match !== undefined ? [match.name, check.name] : [check.name]);
       if (op !== undefined) {
         if (op.steps[0]?.removes.length) first(op);

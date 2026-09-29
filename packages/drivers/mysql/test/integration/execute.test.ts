@@ -216,6 +216,39 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
     expect(result[0]![4]).toBe(1);
   });
 
+  it('reads FLOAT values the same with and without parameters (text and binary protocol)', async () => {
+    await collect(
+      session,
+      `CREATE TABLE floats (id int NOT NULL PRIMARY KEY, f float, fu float unsigned,
+         fp float(7,3), d double)`,
+    );
+    await collect(
+      session,
+      `INSERT INTO floats VALUES (1, 0.1, 0.1, 1.5, 0.1), (2, -0.3, 33.3, 12.346, 1.2345678),
+         (3, 19.99, 1234.5, -9999.999, 1e300), (4, 2.5e-7, 3.4e38, 0.001, 1e-300),
+         (5, 1e20, 0, 1234.567, 0.3), (6, 16777200, 100, 0, -0.1), (7, NULL, NULL, NULL, NULL)`,
+    );
+    const sql = 'SELECT id, f, fu, fp, d FROM floats';
+    const text = await rows(session, `${sql} ORDER BY id`);
+    const binary = await rows(session, `${sql} WHERE id > ? ORDER BY id`, [0]);
+    expect(binary).toEqual(text);
+    expect(text).toEqual([
+      [1, 0.1, 0.1, 1.5, 0.1],
+      [2, -0.3, 33.3, 12.346, 1.2345678],
+      [3, 19.99, 1234.5, -9999.999, 1e300],
+      [4, 2.5e-7, 3.4e38, 0.001, 1e-300],
+      [5, 1e20, 0, 1234.567, 0.3],
+      [6, 16777200, 100, 0, -0.1],
+      [7, null, null, null, null],
+    ]);
+    // The binary protocol sends the exact single-precision value, read as the shortest decimal
+    // that round-trips through float32 rather than its double expansion (1.2345677614...). The
+    // server itself rounds FLOAT to six significant digits in the text protocol.
+    await collect(session, 'INSERT INTO floats (id, f) VALUES (8, 1.2345678)');
+    expect(await rows(session, 'SELECT f FROM floats WHERE id = ?', [8])).toEqual([[1.2345678]]);
+    expect(await rows(session, 'SELECT f FROM floats WHERE id = 8')).toEqual([[1.23457]]);
+  });
+
   it('reports status with rows affected and the last insert id', async () => {
     const insert = await collect(session, "INSERT INTO items (name) VALUES ('a'), ('b')");
     const status = insert.find((c) => c.type === 'status');

@@ -45,6 +45,7 @@ export {
   renderExtension,
   renderForeignKey,
   renderMysqlIndexClause,
+  renderOwnedBy,
   renderPgCreateIndex,
   renderPrimaryKey,
   renderRoutine,

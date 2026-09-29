@@ -8,8 +8,13 @@ import type { FieldPacket, TypeCast } from 'mysql2';
  * With the connection options set in config.ts (dateStrings, bigNumberStrings, jsonStrings,
  * decimalNumbers off), mysql2 already returns dates, times, decimals and JSON as the server's
  * text, in both the text and the binary (prepared statement) protocol. The type cast finishes
- * the job: BIGINT becomes number or bigint, BIT becomes an integer, binary strings, BLOBs,
- * GEOMETRY and VECTOR become standalone Uint8Arrays. TINYINT(1) stays a number.
+ * the job: BIGINT becomes number or bigint, BIT becomes an integer, FLOAT becomes the shortest
+ * decimal of its single-precision value (see float32Value), binary strings, BLOBs, GEOMETRY and
+ * VECTOR become standalone Uint8Arrays. TINYINT(1) stays a number.
+ *
+ * FLOAT over the text protocol is the server's text, which MySQL and MariaDB round to six
+ * significant digits: a value needing seven to nine (1.2345678) reads as 1.23457 there and
+ * exactly over the binary protocol. That rounding happens before the value leaves the server.
  */
 
 /** Big-endian BIT(n) bytes → integer. */
@@ -19,9 +24,26 @@ export function bitsToInteger(bytes: Uint8Array): number | bigint {
   return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value;
 }
 
+/**
+ * A single-precision value as the shortest decimal that reads back as the same float32, e.g.
+ * 0.1 for 0.10000000149011612. mysql2 widens a binary-protocol FLOAT (prepared statements) to
+ * that double expansion, while the text protocol carries the server's short text; FLOAT
+ * values normalised this way read the same over both (DOUBLE is exact in both already).
+ */
+export function float32Value(value: number): number {
+  if (!Number.isFinite(value)) return value;
+  const single = Math.fround(value);
+  for (let digits = 1; digits < 9; digits++) {
+    const candidate = Number(single.toPrecision(digits));
+    if (Math.fround(candidate) === single) return candidate;
+  }
+  return Number(single.toPrecision(9));
+}
+
 /** Finishes mysql2's decoding of one value (see the module comment). */
 export function toCellValue(type: string, value: unknown): CellValue {
   if (value === null || value === undefined) return null;
+  if (type === 'FLOAT' && typeof value === 'number') return float32Value(value);
   if (type === 'LONGLONG') {
     if (typeof value === 'string') return parseInteger(value);
     if (typeof value === 'number' || typeof value === 'bigint') return value;

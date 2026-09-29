@@ -21,6 +21,7 @@ import {
 } from '@joinery/core';
 import {
   SessionGate,
+  errorProp,
   positionalParams,
   str,
   type GateLease,
@@ -55,6 +56,57 @@ export function toMysqlParams(
       return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
     return value;
   });
+}
+
+/**
+ * Prepared statements a session keeps (spec §18: an import runs thousands of batches of one
+ * INSERT). Reusing a statement saves a prepare round trip and the parameter definitions the
+ * server sends back for every placeholder.
+ */
+export const PREPARED_STATEMENT_LIMIT = 64;
+
+/** ER_UNKNOWN_STMT_HANDLER, ER_NEED_REPREPARE: the statement must be prepared again. */
+const REPREPARE_ERRNOS = new Set([1243, 1615]);
+
+/**
+ * The SQL texts this connection has a prepared statement for, least recently used first.
+ * mysql2 keeps the statements themselves (keyed by the text, reused by `execute`); this bounds
+ * them and closes them on eviction. The server re-prepares a statement by itself when a table
+ * it uses changes, but it keeps resolving names in the database current when it was prepared
+ * and the parse of the sql_mode and character set of that time: the statements are closed
+ * when the database changes and after SET statements.
+ */
+class PreparedStatements {
+  private readonly texts = new Set<string>();
+
+  constructor(
+    private readonly connection: Connection,
+    private readonly limit: number,
+  ) {}
+
+  /** Records a use of `sql` (about to be prepared or reused), closing the least recent beyond the limit. */
+  use(sql: string): void {
+    this.texts.delete(sql);
+    this.texts.add(sql);
+    for (const oldest of this.texts) {
+      if (this.texts.size <= this.limit) break;
+      this.close(oldest);
+    }
+  }
+
+  /** Closes one statement: after a failed execution, or a one-off one. */
+  close(sql: string): void {
+    this.texts.delete(sql);
+    try {
+      this.connection.unprepare(sql);
+    } catch {
+      // Never prepared (the prepare failed), or the connection is gone and the statement with it.
+    }
+  }
+
+  closeAll(): void {
+    for (const sql of [...this.texts]) this.close(sql);
+  }
 }
 
 const SERVER_STATUS_IN_TRANS = 1;
@@ -129,10 +181,11 @@ class MysqlExecution {
 
 /**
  * One MySQL or MariaDB connection behind the Session contract. Results stream from the text
- * protocol (or the binary protocol when there are parameters) with socket back-pressure;
- * cancel sends KILL QUERY from a control connection; `inTransaction` follows the server status
- * flags of every OK and EOF packet. One thing runs at a time: a new operation closes a paused
- * result, draining it or killing it if it does not end quickly.
+ * protocol (or the binary protocol when there are parameters, through prepared statements the
+ * session keeps for reuse) with socket back-pressure; cancel sends KILL QUERY from a control
+ * connection; `inTransaction` follows the server status flags of every OK and EOF packet. One
+ * thing runs at a time: a new operation closes a paused result, draining it or killing it if it
+ * does not end quickly.
  */
 export class MysqlSession implements Session {
   private readonly gate = new SessionGate();
@@ -140,6 +193,7 @@ export class MysqlSession implements Session {
   private broken: JoineryError | null = null;
   private closed = false;
   private serverStatus = 0;
+  private readonly statements: PreparedStatements;
 
   private constructor(
     readonly engine: EngineId,
@@ -150,6 +204,7 @@ export class MysqlSession implements Session {
     readonly serverVersion: string,
     private database: string | null,
   ) {
+    this.statements = new PreparedStatements(connection, PREPARED_STATEMENT_LIMIT);
     connection.on('error', (error: unknown) => {
       this.broken = mapMysqlError(error, { where: plan.where });
       this.active?.stream?.fail(this.broken);
@@ -294,17 +349,22 @@ export class MysqlSession implements Session {
     const onAbort = (): void => void this.cancel(opts.executionId).catch(() => undefined);
     opts.signal?.addEventListener('abort', onAbort, { once: true });
     const prepared = params.length > 0;
+    const tag = commandOf(text);
+    let failed = false;
 
     try {
       this.assertUsable();
       if (opts.signal?.aborted) throw cancelledError();
       exec.capturing = true;
-      const command = (prepared
-        ? this.connection.execute(text, params)
-        : this.connection.query(text)) as unknown as CommandEvents;
-      const stream = new ResultStream(this.connection, command, pageSize);
-      exec.stream = stream;
-      const tag = commandOf(text);
+      const start = (): ResultStream => {
+        if (prepared) this.statements.use(text);
+        const command = (prepared
+          ? this.connection.execute(text, params)
+          : this.connection.query(text)) as unknown as CommandEvents;
+        return (exec.stream = new ResultStream(this.connection, command, pageSize));
+      };
+      let stream = start();
+      let reprepared = false;
       let resultIndex = -1;
       let columnCount = 0;
       let rowCount = 0;
@@ -320,6 +380,21 @@ export class MysqlSession implements Session {
           if (exec.cancelRequested) {
             await exec.killSent;
             throw cancelledError('Query cancelled');
+          }
+          const errno = Number(errorProp(error, 'errno'));
+          if (
+            prepared &&
+            !reprepared &&
+            resultIndex < 0 &&
+            !sawHeader &&
+            REPREPARE_ERRNOS.has(errno)
+          ) {
+            // The kept statement is unusable (lost, or it cannot be re-prepared in place):
+            // nothing ran, so prepare it again and retry once.
+            reprepared = true;
+            this.statements.close(text);
+            stream = start();
+            continue;
           }
           throw mapMysqlError(error, { where: this.plan.where, statement: text });
         }
@@ -354,6 +429,9 @@ export class MysqlSession implements Session {
       // Only while the session is still ours: a paused consumer may have been preempted.
       if (exec.warnings > 0 && !exec.closeReason) yield* await this.showWarnings();
       yield { type: 'end', durationMs: Math.round(performance.now() - started), rowCount };
+    } catch (error) {
+      failed = true;
+      throw error;
     } finally {
       exec.capturing = false;
       opts.signal?.removeEventListener('abort', onAbort);
@@ -361,13 +439,9 @@ export class MysqlSession implements Session {
       if (this.active === exec) this.active = null;
       await exec.idle();
       await exec.finishStream(kill);
-      if (prepared) {
-        try {
-          this.connection.unprepare(text);
-        } catch {
-          // The statement may never have been prepared.
-        }
-      }
+      // A failed or cancelled execution may leave its statement half-used: prepare it afresh.
+      if (prepared && failed) this.statements.close(text);
+      if (tag === 'USE' || tag === 'SET') this.statements.closeAll();
       lease.release();
     }
   }
@@ -481,6 +555,7 @@ export class MysqlSession implements Session {
     const estimate = 'EXPLAIN FORMAT=JSON ';
     const prefix = analyze ? (mariadb ? 'ANALYZE FORMAT=JSON ' : 'EXPLAIN ANALYZE ') : estimate;
     const params = toMysqlParams(positionalParams(opts.params));
+    // One-off statements: closed afterwards rather than kept (see PreparedStatements).
     const prepared = new Set<string>();
     return this.gate.run(async () => {
       this.assertUsable();
@@ -509,35 +584,29 @@ export class MysqlSession implements Session {
           };
           if (params.length > 0) {
             prepared.add(head + text);
-            this.connection.execute(
-              { sql: head + text, values: params, rowsAsArray: true },
-              callback,
-            );
+            this.connection.execute(head + text, params, callback);
           } else this.connection.query({ sql: head + text, rowsAsArray: true }, callback);
         });
-      if (!analyze) return normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
-      // ANALYZE executes the statement: keep its effects out of the database.
-      const nested = this.inTransaction;
-      await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
       try {
-        const output = await run(prefix);
-        if (mariadb) return normaliseMysqlJsonPlan(JSON.parse(output));
-        if (!isNotExecutableTreePlan(output)) return normaliseMysqlTreePlan(output);
-        // MySQL cannot EXPLAIN ANALYZE some statements (single-table UPDATE and DELETE): return
-        // the estimated plan and say so, rather than a plan with no rows or timings.
-        const plan = normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
-        return { ...plan, detail: { ...plan.detail, analyze_unavailable: true } };
-      } finally {
-        await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(
-          () => undefined,
-        );
-        for (const sql of prepared) {
-          try {
-            this.connection.unprepare(sql);
-          } catch {
-            // not prepared
-          }
+        if (!analyze) return normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
+        // ANALYZE executes the statement: keep its effects out of the database.
+        const nested = this.inTransaction;
+        await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
+        try {
+          const output = await run(prefix);
+          if (mariadb) return normaliseMysqlJsonPlan(JSON.parse(output));
+          if (!isNotExecutableTreePlan(output)) return normaliseMysqlTreePlan(output);
+          // MySQL cannot EXPLAIN ANALYZE some statements (single-table UPDATE and DELETE):
+          // return the estimated plan and say so, rather than a plan with no rows or timings.
+          const plan = normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
+          return { ...plan, detail: { ...plan.detail, analyze_unavailable: true } };
+        } finally {
+          await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(
+            () => undefined,
+          );
         }
+      } finally {
+        for (const sql of prepared) this.statements.close(sql);
       }
     });
   }
@@ -556,8 +625,12 @@ export class MysqlSession implements Session {
 
   async useDatabase(name: string): Promise<void> {
     await this.gate.run(async () => {
-      await this.query(`USE ${quoteIdent(name, this.flavor)}`);
-      this.database = name;
+      try {
+        await this.query(`USE ${quoteIdent(name, this.flavor)}`);
+        this.database = name;
+      } finally {
+        this.statements.closeAll();
+      }
     });
   }
 

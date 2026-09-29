@@ -32,7 +32,7 @@ import { normalizeSql, tokenizeSql, trimStatement } from '../sql-text';
 import { PHASE, step } from './builder';
 import type { OpDraft, StepDraft } from './builder';
 import type { DiffContext } from './context';
-import { displayName, key, qualified, tableKey } from './context';
+import { displayName, key, noteRename, qualified, tableKey } from './context';
 import { pairByName, pairViews } from './pairs';
 import { alterTypeInPlace, rebuildRisk } from './pg-types';
 import type { SchemaPair, ViewPair } from './pairs';
@@ -1032,6 +1032,7 @@ export function diffViews(ctx: DiffContext, schema: SchemaPair): void {
         ...ddl,
         changes,
       });
+      if (pair.renamed) noteRename(ctx.state, pair.after, entry.op);
       if (entry.dropStep !== undefined) {
         ctx.state.blockers.push({
           op: entry.op,

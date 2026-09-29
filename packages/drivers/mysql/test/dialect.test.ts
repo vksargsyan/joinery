@@ -94,6 +94,12 @@ describe('commandOf', () => {
     expect(commandOf('CREATE UNIQUE INDEX i ON t (a)')).toBe('CREATE INDEX');
     expect(commandOf('DROP TABLE IF EXISTS t')).toBe('DROP TABLE');
     expect(commandOf('-- nothing\n')).toBeNull();
+    // Long statements are read from their first words only, even behind a long comment.
+    const values = Array.from({ length: 2000 }, (_, i) => `(${i})`).join(', ');
+    expect(commandOf(`INSERT INTO t VALUES ${values}`)).toBe('INSERT');
+    expect(commandOf(`/* ${'x'.repeat(2000)} */ CREATE TABLE t (a int)`)).toBe('CREATE TABLE');
+    expect(commandOf(`CREATE ${'  '.repeat(600)}TEMPORARY TABLE t (a int)`)).toBe('CREATE TABLE');
+    expect(commandOf(`-- ${'x'.repeat(2000)}`)).toBeNull();
   });
 });
 

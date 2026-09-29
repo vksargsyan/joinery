@@ -1,20 +1,12 @@
 import type { TableDef } from '@joinery/core';
 
 import { diffSchemas } from '../diff/index';
-import { PHASE } from '../diff/builder';
 import type { SchemaDiff, SyncOperation, SyncWarning } from '../model';
 import type { CompareOptions, RenameRule } from '../options';
-import { renderDropTrigger, renderTrigger } from '../render';
 import { generateScript } from '../script';
 import { setAllSelected } from '../selection';
 import { analyzeDataLoss, dropTableDataLoss } from './data-loss';
-import {
-  buildSnapshots,
-  dependentViews,
-  prepare,
-  referencingTables,
-  renameIdentifiers,
-} from './prepare';
+import { buildSnapshots, dependentViews, prepare, referencingTables } from './prepare';
 import type { Prepared } from './prepare';
 import type { DataLossWarning, DesignContext, TableDesign, ValidationIssue } from './types';
 import { validatePrepared } from './validate';
@@ -51,67 +43,6 @@ function compareOptions(p: Prepared, context: DesignContext): CompareOptions {
     ignoreAutoIncrement: false,
     ...given,
     renames: [...renameRules(p, context), ...(given.renames ?? [])],
-  };
-}
-
-/**
- * MySQL and MariaDB keep trigger bodies as written: renaming a column a trigger uses leaves the
- * trigger failing. The sync engine reads such triggers as following the rename (as PostgreSQL
- * does), so the designer re-creates them itself, after the rename, from the edited definition.
- */
-function rebuildMysqlTriggers(p: Prepared, diff: SchemaDiff): SchemaDiff {
-  const live = p.live;
-  if (p.pg || live === null || p.columnRenames.size === 0) return diff;
-  const extra: SyncOperation[] = [];
-  const renameOps = diff.operations
-    .filter((op) => op.objectKind === 'column' && [...p.columnRenames.values()].includes(op.name))
-    .map((op) => op.id);
-  for (const trigger of live.triggers) {
-    if (renameIdentifiers(trigger.definition, p.dialect, p.columnRenames) === trigger.definition)
-      continue;
-    const edited = p.table.triggers.find((t) => t.name === trigger.name);
-    if (edited === undefined) continue;
-    if (diff.operations.some((op) => op.objectKind === 'trigger' && op.name === trigger.name))
-      continue;
-    const drop = renderDropTrigger(trigger, p.table.name, p.dialect);
-    const create = renderTrigger(edited, p.dialect);
-    extra.push({
-      id: `trigger:${p.table.name}.${trigger.name}:rebuild`,
-      kind: 'alter',
-      objectKind: 'trigger',
-      name: trigger.name,
-      qualifiedName: `${p.table.name}.${trigger.name}`,
-      parent: p.table.name,
-      statements: [drop, create],
-      sourceDdl: create,
-      targetDdl: renderTrigger(trigger, p.dialect),
-      destructive: false,
-      selected: true,
-      dependsOn: renameOps,
-      warnings: [
-        {
-          code: 'rebuild',
-          message: `${p.dialect === 'mariadb' ? 'MariaDB' : 'MySQL'} does not update trigger bodies when a column is renamed: the trigger is re-created with the new names`,
-        },
-      ],
-      changes: ['definition follows the column rename'],
-      reason: 'Re-created because a column it uses is renamed',
-      steps: [
-        { phase: PHASE.dropTrigger, statements: [drop] },
-        { phase: PHASE.createTrigger, statements: [create] },
-      ],
-    });
-  }
-  if (extra.length === 0) return diff;
-  const base = diff.operations.length;
-  return {
-    ...diff,
-    operations: [...diff.operations, ...extra],
-    order: [
-      ...diff.order,
-      ...extra.flatMap((_op, k) => [[base + k, 0] as const, [base + k, 1] as const]),
-    ],
-    identical: false,
   };
 }
 
@@ -221,8 +152,8 @@ export function designTable(
   let diff: SchemaDiff;
   try {
     const { source, target } = buildSnapshots(p);
+    // MySQL/MariaDB triggers whose bodies use a renamed column are re-created by the engine.
     diff = setAllSelected(diffSchemas(source, target, compareOptions(p, context)), true);
-    diff = rebuildMysqlTriggers(p, diff);
   } catch (error) {
     return failed(p, issues, error);
   }

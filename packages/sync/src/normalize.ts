@@ -20,7 +20,7 @@ import type {
 import type { CompareOptions, ResolvedCompareOptions } from './options';
 import { resolveCompareOptions } from './options';
 import { pgIndexDefinitionBody, stripMysqlDefiner } from './render';
-import { normalizeSql, stripOuterParens, tokenizeSql, trimStatement } from './sql-text';
+import { normalizeSql, pgBaseType, stripOuterParens, tokenizeSql, trimStatement } from './sql-text';
 import { canonicalType, isMysqlTextType, isNumericType } from './types';
 
 /**
@@ -41,6 +41,8 @@ export interface NormalizeContext {
   readonly databaseCollation?: string;
   /** Old → new identifiers the script renames (PostgreSQL definitions follow renames). */
   readonly renamedIdentifiers?: ReadonlyMap<string, string>;
+  /** Column types of the table whose expressions are normalised (see `tableContext`). */
+  readonly columnTypes?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -72,6 +74,32 @@ export function contextFor(
 
 const isPg = (ctx: NormalizeContext): boolean => ctx.dialect === 'postgres';
 
+const tableContexts = new WeakMap<TableDef, WeakMap<NormalizeContext, NormalizeContext>>();
+
+/**
+ * The context for the expressions of one table (checks, index expressions and predicates,
+ * generated columns). On PostgreSQL it knows the table's column types, so redundant casts of
+ * literals compared with a column are dropped, as the server prints them (`price > 0` reads
+ * back as `(price > (0)::numeric)`). Columns are keyed as normalised text spells them, after
+ * the context's renames.
+ */
+export function tableContext(table: TableDef, ctx: NormalizeContext): NormalizeContext {
+  if (!isPg(ctx)) return ctx;
+  let byContext = tableContexts.get(table);
+  if (byContext === undefined) tableContexts.set(table, (byContext = new WeakMap()));
+  const cached = byContext.get(ctx);
+  if (cached !== undefined) return cached;
+  const columnTypes = new Map<string, string>();
+  for (const column of table.columns) {
+    const name = ctx.renamedIdentifiers?.get(column.name) ?? column.name;
+    const spelled = /^[a-z_][a-z0-9_$]*$/.test(name) ? name : `"${name.replaceAll('"', '""')}"`;
+    columnTypes.set(spelled, pgBaseType(column.dataType));
+  }
+  const result = { ...ctx, columnTypes };
+  byContext.set(ctx, result);
+  return result;
+}
+
 /** Folds a name when name case is ignored. */
 export function nameKey(
   name: string,
@@ -86,6 +114,7 @@ function sqlText(text: string, ctx: NormalizeContext, keepComments = false): str
     keepComments,
     ...(isPg(ctx) ? {} : { stripQualifier: ctx.database }),
     ...(ctx.renamedIdentifiers !== undefined ? { renamedIdentifiers: ctx.renamedIdentifiers } : {}),
+    ...(ctx.columnTypes !== undefined ? { columnTypes: ctx.columnTypes } : {}),
   });
 }
 
@@ -317,7 +346,7 @@ export function canonicalColumn(
       column.generated === undefined
         ? null
         : {
-            expression: canonicalExpression(column.generated.expression, ctx),
+            expression: canonicalExpression(column.generated.expression, tableContext(table, ctx)),
             stored: column.generated.stored,
           },
     identity:
@@ -338,9 +367,26 @@ export function canonicalColumn(
 }
 
 /**
- * Canonical table-level attributes: MySQL engine and row format (compared only when both sides
- * report them), charset, collation, AUTO_INCREMENT counter (unless ignored) and comment;
- * PostgreSQL tablespace, storage parameters, comment and owner.
+ * Canonical MySQL/MariaDB row format. The servers report ROW_FORMAT only when it was declared
+ * (never DEFAULT), and InnoDB stores a table without one in innodb_default_row_format, DYNAMIC
+ * on every supported version (MySQL 5.7.9+, MariaDB 10.2.2+): for InnoDB (the default engine)
+ * a missing or DEFAULT row format is DYNAMIC. Other engines choose from the columns, so there
+ * a missing one stays unknown.
+ */
+function canonicalRowFormat(
+  rowFormat: string | undefined,
+  engine: string | undefined,
+): string | undefined {
+  const declared = rowFormat === undefined || rowFormat === 'default' ? undefined : rowFormat;
+  if (engine !== undefined && engine !== 'innodb') return declared;
+  return declared ?? 'dynamic';
+}
+
+/**
+ * Canonical table-level attributes: MySQL engine (compared only when both sides report it),
+ * row format (see canonicalRowFormat; compared only when known on both sides), charset,
+ * collation, AUTO_INCREMENT counter (unless ignored) and comment; PostgreSQL tablespace,
+ * storage parameters, comment and owner.
  */
 export function canonicalTableOptions(
   table: TableDef,
@@ -365,6 +411,11 @@ export function canonicalTableOptions(
     if (key === 'tablespace' && (value === 'pg_default' || value === '')) continue;
     out[key] = value;
   }
+  if (!isPg(ctx)) {
+    const rowFormat = canonicalRowFormat(out.rowformat, out.engine);
+    if (rowFormat === undefined) delete out.rowformat;
+    else out.rowformat = rowFormat;
+  }
   const c = comment(table.comment, ctx);
   if (c !== undefined) out.comment = c;
   const o = owner(table.owner, ctx);
@@ -372,7 +423,7 @@ export function canonicalTableOptions(
   return out;
 }
 
-/** Keys compared only when both sides report them. */
+/** Keys compared only when both sides report them (see canonicalTableOptions). */
 export const OPTIONAL_TABLE_OPTIONS = new Set(['engine', 'rowformat']);
 
 export function canonicalKey(key: KeyDef, ctx: NormalizeContext): { columns: string[] } {
@@ -482,6 +533,32 @@ export function canonicalTrigger(
 ): { definition: string } {
   const definition = isPg(ctx) ? trigger.definition : stripMysqlDefiner(trigger.definition);
   return { definition: sqlText(trimStatement(definition), ctx, true) };
+}
+
+/** The statement a MySQL/MariaDB trigger runs: its definition after FOR EACH ROW. */
+function mysqlTriggerBody(definition: string, ctx: NormalizeContext): string {
+  const last: string[] = [];
+  let offset = 0;
+  for (const token of tokenizeSql(definition, ctx.dialect)) {
+    offset += token.text.length;
+    if (token.kind === 'ws' || token.kind === 'comment') continue;
+    last.push(token.kind === 'word' ? token.text.toLowerCase() : token.text);
+    if (last.length > 3) last.shift();
+    if (last.join(' ') === 'for each row') return definition.slice(offset);
+  }
+  return definition;
+}
+
+/**
+ * True when the body of a MySQL/MariaDB trigger mentions an identifier the script renames.
+ * Those servers move a trigger with its table (the ON clause follows a table rename) but keep
+ * the body as written, so such a trigger breaks unless it is re-created with the new names.
+ */
+export function mysqlTriggerBodyUsesRenames(trigger: TriggerDef, ctx: NormalizeContext): boolean {
+  if (isPg(ctx) || ctx.renamedIdentifiers === undefined) return false;
+  const body = mysqlTriggerBody(trigger.definition, ctx);
+  const { renamedIdentifiers: _renames, ...plain } = ctx;
+  return sqlText(body, ctx, true) !== sqlText(body, plain, true);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -706,6 +783,7 @@ function normalizeTable(
 ): TableDef {
   const json = mariadbJsonColumns(table, ctx);
   const byDefinition = isPg(ctx);
+  const expressions = tableContext(table, ctx);
   const columns = table.columns.map((column, i) => {
     const c = canonicalColumn(column, table, ctx, schema);
     const out: ColumnDef = {
@@ -742,7 +820,7 @@ function normalizeTable(
       name: ctx.options.ignoreNames ? '' : u.name,
       columns: canonicalKey(u, ctx).columns,
     })),
-    indexes: table.indexes.map((index) => normalizeIndex(index, ctx, byDefinition)),
+    indexes: table.indexes.map((index) => normalizeIndex(index, expressions, byDefinition)),
     foreignKeys: table.foreignKeys.map((fk) => {
       const c = canonicalForeignKey(fk, ctx, schema);
       const out: ForeignKeyDef = {
@@ -767,7 +845,7 @@ function normalizeTable(
       )
       .map((check) => ({
         name: ctx.options.ignoreNames ? '' : check.name,
-        expression: canonicalCheck(check, ctx).expression,
+        expression: canonicalCheck(check, expressions).expression,
       })),
     triggers: table.triggers.map((t) => ({
       ...t,

@@ -81,8 +81,8 @@ const PG_ALIASES: Readonly<Record<string, string>> = {
  * PostgreSQL types in format_type() form. Aliases fold to the canonical name (int4 → integer,
  * bool → boolean, varchar → character varying, timestamptz → timestamp with time zone, ...);
  * float(p) becomes real for p ≤ 24 and double precision otherwise; char without a length is
- * character(1); array dimensions collapse to [] (PostgreSQL ignores them). Quoted user type
- * names are kept as written.
+ * character(1); numeric(p) is numeric(p,0), as the server reports it; array dimensions collapse
+ * to [] (PostgreSQL ignores them). Quoted user type names are kept as written.
  */
 export function canonicalPgType(raw: string): string {
   let text = collapse(raw);
@@ -109,6 +109,9 @@ export function canonicalPgType(raw: string): string {
     canonical = canonical.replace(/ with(out)? time zone$/, '') + ` ${zone} time zone`;
   }
   if (canonical === 'character' && args === undefined) return 'character(1)' + arraySuffix;
+  if (canonical === 'numeric' && args !== undefined && /^\d+$/.test(args)) {
+    return `numeric(${args},0)${arraySuffix}`;
+  }
   if (args !== undefined && args !== '') {
     const zoneMatch = / (with|without) time zone$/.exec(canonical);
     if (zoneMatch) {
@@ -122,6 +125,34 @@ export function canonicalPgType(raw: string): string {
 
 const MYSQL_INT_TYPES = new Set(['tinyint', 'smallint', 'mediumint', 'int', 'bigint']);
 
+/** Display width the servers report for a ZEROFILL (so unsigned) integer declared without one. */
+const MYSQL_ZEROFILL_WIDTHS: Readonly<Record<string, string>> = {
+  tinyint: '3',
+  smallint: '5',
+  mediumint: '8',
+  int: '10',
+  bigint: '20',
+};
+
+/** Alias spellings the servers never report, folded to the type they create. */
+const MYSQL_TYPE_ALIASES: Readonly<Record<string, string>> = {
+  integer: 'int',
+  dec: 'decimal',
+  numeric: 'decimal',
+  fixed: 'decimal',
+  'double precision': 'double',
+  real: 'double',
+  'character varying': 'varchar',
+  character: 'char',
+  long: 'mediumtext',
+  'long varchar': 'mediumtext',
+  'long character varying': 'mediumtext',
+  'long varbinary': 'mediumblob',
+  // MySQL 8 reports GEOMETRYCOLLECTION as geomcollection, MariaDB (which lacks that spelling)
+  // as geometrycollection: one name, valid on both, compares the two families alike.
+  geomcollection: 'geometrycollection',
+};
+
 /**
  * MySQL/MariaDB COLUMN_TYPE text. Rules:
  * - keywords lower-case, enum/set labels untouched, no spaces inside the argument list;
@@ -130,10 +161,14 @@ const MYSQL_INT_TYPES = new Set(['tinyint', 'smallint', 'mediumint', 'int', 'big
  *   does): int(11) = int, bigint(20) unsigned = bigint unsigned. Kept for tinyint(1), which is
  *   the boolean convention and reported by both, and for zerofill columns, whose display
  *   depends on the width;
+ * - ZEROFILL implies UNSIGNED, and a ZEROFILL integer without a width gets the one the servers
+ *   report (int zerofill → int(10) unsigned zerofill);
  * - dec/numeric/fixed → decimal, decimal → decimal(10,0), decimal(p) → decimal(p,0);
  * - double precision/real → double; float(p) → float for p ≤ 24, double otherwise;
  * - character varying → varchar, character → char, char → char(1), binary → binary(1),
- *   bit → bit(1), year(4) → year; datetime(0)/timestamp(0)/time(0) drop the zero precision.
+ *   bit → bit(1), year(4) → year; datetime(0)/timestamp(0)/time(0) drop the zero precision;
+ * - long / long varchar → mediumtext, long varbinary → mediumblob, geomcollection →
+ *   geometrycollection.
  */
 export function canonicalMysqlType(raw: string): string {
   let text = tightenArgs(lowerOutsideQuotes(collapse(raw)));
@@ -142,17 +177,20 @@ export function canonicalMysqlType(raw: string): string {
   if (!match) return text;
   let base = match[1]!.trim();
   let args = match[3];
-  const modifiers = (match[4] ?? '')
-    .trim()
-    .split(' ')
-    .filter((m) => m !== '' && m !== 'signed');
+  const given = new Set(
+    (match[4] ?? '')
+      .trim()
+      .split(' ')
+      .filter((m) => m !== '' && m !== 'signed'),
+  );
+  const zerofill = given.has('zerofill');
+  const modifiers = [
+    ...(given.has('unsigned') || zerofill ? ['unsigned'] : []),
+    ...(zerofill ? ['zerofill'] : []),
+  ];
 
-  if (base === 'integer') base = 'int';
   if (base === 'bool' || base === 'boolean') return 'tinyint(1)';
-  if (base === 'dec' || base === 'numeric' || base === 'fixed') base = 'decimal';
-  if (base === 'double precision' || base === 'real') base = 'double';
-  if (base === 'character varying') base = 'varchar';
-  if (base === 'character') base = 'char';
+  base = MYSQL_TYPE_ALIASES[base] ?? base;
   if (base === 'float' && args !== undefined && !args.includes(',')) {
     base = Number(args) <= 24 ? 'float' : 'double';
     args = undefined;
@@ -167,8 +205,11 @@ export function canonicalMysqlType(raw: string): string {
     args = undefined;
   }
   if (MYSQL_INT_TYPES.has(base) && args !== undefined) {
-    const keep = (base === 'tinyint' && args === '1') || modifiers.includes('zerofill');
+    const keep = (base === 'tinyint' && args === '1') || zerofill;
     if (!keep) args = undefined;
+  }
+  if (MYSQL_INT_TYPES.has(base) && args === undefined && zerofill) {
+    args = MYSQL_ZEROFILL_WIDTHS[base];
   }
   const typeText = args === undefined ? base : `${base}(${args})`;
   return [typeText, ...modifiers].join(' ');

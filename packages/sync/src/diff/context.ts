@@ -204,6 +204,19 @@ export interface DiffState {
   readonly reshapedColumns: Map<string, OpDraft>;
   /** MySQL/MariaDB columns changing type (target names): their foreign keys must step aside. */
   readonly retypedColumns: { table: TablePair; column: string; op: OpDraft }[];
+  /**
+   * New names (lower case) of the tables, columns and views the script renames, with the
+   * operations renaming them: MySQL/MariaDB triggers that use a new name need those operations.
+   */
+  readonly renamedBy: Map<string, OpDraft[]>;
+}
+
+/** Records that `op` gives a table, column or view its new name `to` (see `renamedBy`). */
+export function noteRename(state: DiffState, to: string, op: OpDraft): void {
+  const k = to.toLowerCase();
+  const ops = state.renamedBy.get(k);
+  if (ops === undefined) state.renamedBy.set(k, [op]);
+  else if (!ops.includes(op)) ops.push(op);
 }
 
 export function tableKey(schemaKey: string, name: string): string {

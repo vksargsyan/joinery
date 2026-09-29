@@ -805,17 +805,8 @@ export function buildSnapshots(p: Prepared, mode: 'design' | 'drop' = 'design'):
   const mirror = (text: string): string => renameIdentifiers(text, p.dialect, p.identifierRenames);
   const mysqlTable = live !== null ? { from: live.name, to: p.table.name } : undefined;
 
-  if (live !== null) {
-    // MySQL reports ROW_FORMAT only when it was set: an unset one is the default, so setting
-    // one in the designer is a change from DEFAULT, not an option the live side lacks.
-    const rowFormat =
-      !p.pg && live.options.rowFormat === undefined ? p.table.options.rowFormat : undefined;
-    parts(targetParts, home).tables.push(
-      rowFormat !== undefined && mode === 'design'
-        ? { ...live, options: { ...live.options, rowFormat: 'DEFAULT' } }
-        : live,
-    );
-  }
+  // An unreported MySQL ROW_FORMAT compares as the server default (see canonicalTableOptions).
+  if (live !== null) parts(targetParts, home).tables.push(live);
   if (mode === 'design') parts(sourceParts, home).tables.push(p.table);
 
   const added = new Set<string>([relKey(p, home, live?.name ?? p.table.name)]);

@@ -1,5 +1,7 @@
 import type { SqlDialect } from '@joinery/core';
 
+import { canonicalPgType } from './types';
+
 /**
  * A small, dialect-aware SQL lexer used to compare definitions (views, routines, triggers,
  * checks, defaults) and to find the objects they reference. It is not a parser: it only needs
@@ -270,6 +272,12 @@ export interface NormalizeSqlOptions {
    * (PostgreSQL rewrites dependent definitions on rename, so old names compare as new ones).
    */
   readonly renamedIdentifiers?: ReadonlyMap<string, string>;
+  /**
+   * PostgreSQL expressions of one table (checks, index expressions and predicates, generated
+   * columns): its columns as the normalised text spells them → their type without typmod
+   * (`pgBaseType`). Redundant casts of literals are dropped (see simplifyPgLiteralCasts).
+   */
+  readonly columnTypes?: ReadonlyMap<string, string>;
 }
 
 const SIMPLE_PG_IDENT = /^[a-z_][a-z0-9_$]*$/;
@@ -347,7 +355,13 @@ export function normalizeSql(
     }
   }
   while (out.length > 0 && out[out.length - 1] === ';') out.pop();
-  return (pg ? simplifyPgStringCasts(out) : out).join(' ');
+  if (!pg) return out.join(' ');
+  const simplified = simplifyPgStringCasts(out);
+  return (
+    options.columnTypes === undefined
+      ? simplified
+      : simplifyPgLiteralCasts(simplified, options.columnTypes)
+  ).join(' ');
 }
 
 const STRING_TYPES: readonly (readonly string[])[] = [
@@ -428,6 +442,211 @@ function simplifyPgStringCasts(tokens: readonly string[]): string[] {
         }
       }
       next.push(t);
+    }
+    out = next;
+  }
+  return out;
+}
+
+/**
+ * A PostgreSQL type without its typmod and schema, for telling whether a literal cast targets a
+ * column's type: numeric(10,2) → numeric, timestamp(3) with time zone → timestamp with time
+ * zone, public.mood → mood. Arrays keep their [].
+ */
+export function pgBaseType(type: string): string {
+  let text = canonicalPgType(type).replace(/\((?:[^()'"]|'[^']*')*\)/g, '');
+  for (;;) {
+    const qualifier = /^(?:"(?:[^"]|"")*"|[^".\s]+)\./.exec(text);
+    if (qualifier === null) break;
+    text = text.slice(qualifier[0].length);
+  }
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+const PG_NUMBER = /^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+const PG_INT4_MIN = -2147483648n;
+const PG_INT4_MAX = 2147483647n;
+
+/**
+ * The number a PostgreSQL constant `'text'::type` prints for, as tokens (`- 5` for negatives),
+ * or undefined. PostgreSQL deparses constants that would not re-read as their own type that
+ * way: negative integers ('-5'::integer), integers beyond int4 ('3000000000'::bigint) and
+ * negative decimals ('-2.5'::numeric). Each equals the bare literal.
+ */
+function pgNumericConstant(literal: string, type: string): string[] | undefined {
+  if (!literal.startsWith("'") || !literal.endsWith("'")) return undefined;
+  const text = literal.slice(1, -1);
+  const tokens = (): string[] => (text.startsWith('-') ? ['-', text.slice(1)] : [text]);
+  if (type === 'integer' || type === 'bigint') {
+    if (!/^-?(?:0|[1-9]\d*)$/.test(text)) return undefined;
+    const value = BigInt(text);
+    const int4 = value >= PG_INT4_MIN && value <= PG_INT4_MAX;
+    return int4 === (type === 'integer') ? tokens() : undefined;
+  }
+  if (type === 'numeric') {
+    return /^-?(?:\d+\.\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(text) ? tokens() : undefined;
+  }
+  return undefined;
+}
+
+const PG_TYPE_CONTINUATION: Readonly<Record<string, readonly string[]>> = {
+  double: ['precision'],
+  character: ['varying'],
+  bit: ['varying'],
+};
+
+/**
+ * The cast target at `out[i]` (after `::`): where it ends, and its base type, or null when it
+ * has a typmod or is an array (such casts change values, so they are never dropped).
+ */
+function pgCastTypeAt(
+  out: readonly string[],
+  i: number,
+): { end: number; type: string | null } | undefined {
+  const first = out[i];
+  if (first === undefined || !/^[a-z_"]/.test(first)) return undefined;
+  const words = [first];
+  let k = i + 1;
+  while (out[k] === '.' && out[k + 1] !== undefined && /^[a-z_"]/.test(out[k + 1]!)) {
+    words.push('.', out[k + 1]!);
+    k += 2;
+  }
+  for (const next of PG_TYPE_CONTINUATION[first] ?? []) {
+    if (out[k] === next) {
+      words.push(' ', next);
+      k++;
+    }
+  }
+  let plain = true;
+  if (out[k] === '(') {
+    plain = false;
+    while (k < out.length && out[k] !== ')') k++;
+    k++;
+  }
+  if (
+    (first === 'timestamp' || first === 'time') &&
+    (out[k] === 'with' || out[k] === 'without') &&
+    out[k + 1] === 'time' &&
+    out[k + 2] === 'zone'
+  ) {
+    words.push(' ', out[k]!, ' time zone');
+    k += 3;
+  }
+  while (out[k] === '[') {
+    plain = false;
+    while (k < out.length && out[k] !== ']') k++;
+    k++;
+  }
+  return { end: k, type: plain ? pgBaseType(words.join('')) : null };
+}
+
+/**
+ * A literal with a cast at `out[i]`: `0::numeric`, `(0)::numeric`, `'x'::date`, `(- 1)::numeric`
+ * (a negative constant after pgNumericConstant), with where it ends and the literal alone.
+ */
+function pgLiteralCastAt(
+  out: readonly string[],
+  i: number,
+): { end: number; literal: string[]; type: string | null } | undefined {
+  const isLiteral = (t: string | undefined): boolean =>
+    t !== undefined && (PG_NUMBER.test(t) || isStringLiteral(t));
+  let literal: string[];
+  let k: number;
+  if (isLiteral(out[i])) {
+    literal = [out[i]!];
+    k = i + 1;
+  } else if (out[i] === '(' && PG_NUMBER.test(out[i + 1] ?? '') && out[i + 2] === ')') {
+    literal = [out[i + 1]!];
+    k = i + 3;
+  } else if (
+    out[i] === '(' &&
+    out[i + 1] === '-' &&
+    PG_NUMBER.test(out[i + 2] ?? '') &&
+    out[i + 3] === ')'
+  ) {
+    literal = ['-', out[i + 2]!];
+    k = i + 4;
+  } else {
+    return undefined;
+  }
+  if (out[k] !== '::') return undefined;
+  const cast = pgCastTypeAt(out, k + 1);
+  return cast === undefined ? undefined : { end: cast.end, literal, type: cast.type };
+}
+
+const PG_BINARY_OPERATORS = new Set([
+  '=',
+  '<>',
+  '!=',
+  '<',
+  '>',
+  '<=',
+  '>=',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+]);
+/** Tokens that end an operand on its left or right: nothing binds tighter across them. */
+const PG_OPERAND_START = new Set(['(', ',', 'and', 'or', 'not', 'when', 'then', 'else', 'where']);
+const PG_OPERAND_END = new Set([')', ',', 'and', 'or', 'then', 'else', 'end', 'when']);
+
+/**
+ * PostgreSQL prints the coercions it applies to operator arguments: a check written as
+ * `price > 0` on a numeric column reads back as `(price > (0)::numeric)`, `d > '2020-01-01'`
+ * on a date column as `(d > '2020-01-01'::date)`, and negative or large constants as
+ * `'-1'::integer` or `'3000000000'::bigint`. Those constants become bare literals, and a cast
+ * of a literal is dropped when the literal is a whole operand of a comparison or arithmetic
+ * operator whose other whole operand is a column of exactly the cast's type (without typmod):
+ * the server would apply that coercion anyway. Casts of columns, casts with a typmod, casts to
+ * another type and casts between literals are kept, since they can change the result.
+ */
+function simplifyPgLiteralCasts(
+  tokens: readonly string[],
+  columnTypes: ReadonlyMap<string, string>,
+): string[] {
+  const constants: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]!;
+    const cast = tokens[i + 1] === '::' ? pgCastTypeAt(tokens, i + 2) : undefined;
+    const number =
+      cast !== undefined && cast.type !== null ? pgNumericConstant(t, cast.type) : undefined;
+    if (cast !== undefined && number !== undefined) {
+      constants.push(...number);
+      i = cast.end - 1;
+      continue;
+    }
+    constants.push(t);
+  }
+  let out = constants;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const next: string[] = [];
+    for (let i = 0; i < out.length; i++) {
+      const group = pgLiteralCastAt(out, i);
+      if (group !== undefined && group.type !== null) {
+        const startsOperand = i === 0 || PG_OPERAND_START.has(out[i - 1]!);
+        const endsOperand = (k: number): boolean => k >= out.length || PG_OPERAND_END.has(out[k]!);
+        const right =
+          PG_BINARY_OPERATORS.has(out[i - 1] ?? '') &&
+          columnTypes.get(out[i - 2] ?? '') === group.type &&
+          (i - 3 < 0 || PG_OPERAND_START.has(out[i - 3]!)) &&
+          endsOperand(group.end);
+        const left =
+          startsOperand &&
+          PG_BINARY_OPERATORS.has(out[group.end] ?? '') &&
+          columnTypes.get(out[group.end + 1] ?? '') === group.type &&
+          endsOperand(group.end + 2);
+        if (right || left) {
+          next.push(...group.literal);
+          i = group.end - 1;
+          changed = true;
+          continue;
+        }
+      }
+      next.push(out[i]!);
     }
     out = next;
   }

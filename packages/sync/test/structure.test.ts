@@ -183,6 +183,315 @@ describe('compareSchemas', () => {
       ['rename', ['ALTER TABLE "public"."t" RENAME COLUMN "name" TO "full_name"']],
     ]);
   });
+
+  describe('MySQL triggers and renames', () => {
+    // MySQL and MariaDB move a trigger with its table (its ON clause follows a table rename) but
+    // never rewrite its body: a renamed column or table the body uses leaves the trigger broken.
+    const trigger = (name: string, table: string, body: string) => ({
+      name,
+      timing: 'BEFORE',
+      events: ['INSERT'],
+      definition: `CREATE TRIGGER \`${name}\` BEFORE INSERT ON \`${table}\` FOR EACH ROW ${body}`,
+    });
+    const table = (name: string, a: string, triggers: unknown[]) => ({
+      name,
+      columns: [col('id', 1, 'int'), col(a, 2, 'int'), col('b', 3, 'int')],
+      triggers,
+    });
+    const log = { name: 'log', columns: [col('n', 1, 'int')] };
+    const at = (engine: 'mysql' | 'mariadb', tables: unknown[]) =>
+      snapshot(engine, 'a', [{ name: 'a', tables: [...tables, log] }]);
+
+    for (const engine of ['mysql', 'mariadb'] as const) {
+      it(`re-creates a trigger whose body uses a renamed column, after the rename (${engine})`, () => {
+        const source = at(engine, [
+          table('t', 'a2', [trigger('trg', 't', 'SET NEW.b = NEW.a2 + 1')]),
+        ]);
+        const target = at(engine, [
+          table('t', 'a', [trigger('trg', 't', 'SET NEW.b = NEW.a + 1')]),
+        ]);
+        const { diff } = compareSchemas(source, target, {
+          renames: [{ objectKind: 'column', table: 't', from: 'a', to: 'a2' }],
+        });
+        const rename = diff.operations.find((op) => op.objectKind === 'column')!;
+        const rebuild = diff.operations.find((op) => op.objectKind === 'trigger')!;
+        expect(rebuild).toMatchObject({
+          id: 'trigger:t.trg:rebuild',
+          kind: 'alter',
+          statements: [
+            'DROP TRIGGER IF EXISTS `trg`',
+            'CREATE TRIGGER `trg` BEFORE INSERT ON `t` FOR EACH ROW SET NEW.b = NEW.a2 + 1',
+          ],
+          selected: true,
+        });
+        expect(rebuild.dependsOn).toContain(rename.id);
+        expect(rebuild.warnings.map((w) => w.code)).toEqual(['rebuild']);
+        const statements = generateScript(diff).statements;
+        expect(statements.indexOf(rebuild.statements[1]!)).toBeGreaterThan(
+          statements.indexOf(rename.statements[0]!),
+        );
+        // Unticking the rename unticks the rebuild, which needs the new column name.
+        const unticked = setOperationSelected(diff, rename.id, false);
+        expect(unticked.operations.find((op) => op.id === rebuild.id)!.selected).toBe(false);
+      });
+    }
+
+    it('leaves a trigger that moves with its renamed table alone, and re-creates one whose body names the table', () => {
+      const source = at('mysql', [
+        table('t2', 'a', [
+          trigger('trg', 't2', 'SET NEW.b = NEW.a + 1'),
+          trigger('trg_count', 't2', 'SET NEW.b = (SELECT COUNT(*) FROM t2)'),
+        ]),
+      ]);
+      const target = at('mysql', [
+        table('t', 'a', [
+          trigger('trg', 't', 'SET NEW.b = NEW.a + 1'),
+          trigger('trg_count', 't', 'SET NEW.b = (SELECT COUNT(*) FROM t)'),
+        ]),
+      ]);
+      const { diff } = compareSchemas(source, target, {
+        renames: [{ objectKind: 'table', from: 't', to: 't2' }],
+      });
+      expect(diff.operations.map((op) => op.id).sort()).toEqual([
+        'table:t2:rename',
+        'trigger:t2.trg_count:rebuild',
+      ]);
+      const rebuild = diff.operations.find((op) => op.objectKind === 'trigger')!;
+      expect(rebuild.dependsOn).toEqual(['table:t2:rename']);
+      expect(rebuild.statements[1]).toBe(
+        'CREATE TRIGGER `trg_count` BEFORE INSERT ON `t2` FOR EACH ROW SET NEW.b = (SELECT COUNT(*) FROM t2)',
+      );
+    });
+
+    it('re-creates a trigger of another table whose body uses the renamed column', () => {
+      const other = (column: string) => ({
+        name: 'audit',
+        columns: [col('id', 1, 'int')],
+        triggers: [trigger('audit_bi', 'audit', `INSERT INTO t (${column}) VALUES (NEW.id)`)],
+      });
+      const source = at('mariadb', [table('t', 'a2', []), other('a2')]);
+      const target = at('mariadb', [table('t', 'a', []), other('a')]);
+      const { diff } = compareSchemas(source, target, {
+        renames: [{ objectKind: 'column', table: 't', from: 'a', to: 'a2' }],
+      });
+      expect(diff.operations.map((op) => op.id).sort()).toEqual([
+        'column:t.a2:rename',
+        'trigger:audit.audit_bi:rebuild',
+      ]);
+    });
+
+    it('keeps comparing a changed trigger as a change', () => {
+      const source = at('mysql', [
+        table('t', 'a2', [trigger('trg', 't', 'SET NEW.b = NEW.a2 * 2')]),
+      ]);
+      const target = at('mysql', [table('t', 'a', [trigger('trg', 't', 'SET NEW.b = NEW.a + 1')])]);
+      const { diff } = compareSchemas(source, target, {
+        renames: [{ objectKind: 'column', table: 't', from: 'a', to: 'a2' }],
+      });
+      const op = diff.operations.find((o) => o.objectKind === 'trigger')!;
+      expect(op).toMatchObject({ id: 'trigger:t.trg:alter', changes: ['definition changed'] });
+      expect(op.dependsOn).toContain('column:t.a2:rename');
+    });
+
+    it('keeps PostgreSQL triggers, which follow renames, untouched', () => {
+      const pgTrigger = (column: string) => ({
+        name: 'trg',
+        timing: 'BEFORE',
+        events: ['UPDATE'],
+        definition: `CREATE TRIGGER trg BEFORE UPDATE ON public.t FOR EACH ROW WHEN ((old.${column} IS DISTINCT FROM new.${column})) EXECUTE FUNCTION public.f()`,
+      });
+      const pgAt = (column: string) =>
+        snapshot('postgres', 'a', [
+          {
+            name: 'public',
+            tables: [
+              { name: 't', columns: [col(column, 1, 'integer')], triggers: [pgTrigger(column)] },
+            ],
+          },
+        ]);
+      const { diff } = compareSchemas(pgAt('a2'), pgAt('a'), {
+        renames: [{ objectKind: 'column', table: 't', from: 'a', to: 'a2' }],
+      });
+      expect(diff.operations.map((op) => op.id)).toEqual(['column:public.t.a2:rename']);
+    });
+  });
+
+  describe('PostgreSQL literal casts in checks and index expressions', () => {
+    // Hand-written (model, designer) expressions against what PostgreSQL 16 prints for them.
+    const columns = [
+      col('id', 1, 'integer'),
+      col('price', 2, 'numeric(10,2)'),
+      col('qty', 3, 'integer'),
+      col('big', 4, 'bigint'),
+      col('ratio', 5, 'double precision'),
+      col('d', 6, 'date'),
+      col('m', 7, 'public.mood'),
+      col('v', 8, 'character varying(10)'),
+    ];
+    const at = (checks: string[], indexes: unknown[] = []) =>
+      snapshot('postgres', 'a', [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 't',
+              columns,
+              checks: checks.map((expression, i) => ({ name: `c${i}`, expression })),
+              indexes,
+            },
+          ],
+        },
+      ]);
+    const same = (written: string, reported: string): boolean =>
+      compareSchemas(at([written]), at([reported])).diff.identical;
+
+    it.each([
+      ['price > 0', '(price > (0)::numeric)'],
+      ['0 < price', '((0)::numeric < price)'],
+      ['price >= -1', "(price >= ('-1'::integer)::numeric)"],
+      ['price < 1.5', '(price < 1.5)'],
+      ["price > '5'", "(price > '5'::numeric)"],
+      ['ratio >= 0.5', '(ratio >= (0.5)::double precision)'],
+      ['ratio > 0', '(ratio > (0)::double precision)'],
+      ['ratio > -2.5', "(ratio > ('-2.5'::numeric)::double precision)"],
+      ["d > '2020-01-01'", "(d > '2020-01-01'::date)"],
+      ['big < 3000000000', "(big < '3000000000'::bigint)"],
+      ['big > -5', "(big > '-5'::integer)"],
+      ["m <> 'bad'", "(m <> 'bad'::mood)"],
+      ['price > 0::numeric', '(price > (0)::numeric)'],
+    ])('%s reads back as %s', (written, reported) => {
+      expect(same(written, reported)).toBe(true);
+    });
+
+    it.each([
+      // A cast of the column is never dropped.
+      ["v <> 'x'", "((v)::text <> 'x'::text)"],
+      // Casts that change the meaning: integer division, a typmod, a type that is not the column's.
+      ['qty / 2 > 1', '((qty / (2)::numeric) > 1)'],
+      ['price > 1.234', '(price > (1.234)::numeric(10,2))'],
+      ['qty > 0', '(qty > (0)::numeric)'],
+      // Only literals: nothing says which type they were meant to have.
+      ['2 / 3 > 0', '(((2)::numeric / (3)::numeric) > 0)'],
+    ])('%s differs from %s', (written, reported) => {
+      expect(same(written, reported)).toBe(false);
+    });
+
+    it('compares partial-index predicates and index expressions the same way', () => {
+      const index = (name: string, part: Record<string, unknown>, where?: string) => ({
+        name,
+        columns: [part],
+        ...(where !== undefined ? { where } : {}),
+      });
+      const written = at(
+        [],
+        [
+          index('i1', { name: 'price' }, 'price > 0'),
+          index('i2', { name: null, expression: 'price * 2' }),
+          index('i3', { name: 'd' }, "d > '2020-01-01'"),
+        ],
+      );
+      const reported = at(
+        [],
+        [
+          index('i1', { name: 'price' }, '(price > (0)::numeric)'),
+          index('i2', { name: null, expression: '(price * 2::numeric)' }),
+          index('i3', { name: 'd' }, "(d > '2020-01-01'::date)"),
+        ],
+      );
+      expect(compareSchemas(written, reported).diff.operations).toEqual([]);
+      expect(compareSchemas(reported, written).diff.operations).toEqual([]);
+    });
+
+    it('follows column renames when matching the column type', () => {
+      const renamed = snapshot('postgres', 'a', [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 't',
+              columns: [col('amount', 1, 'numeric(10,2)')],
+              checks: [{ name: 'c', expression: 'amount > 0' }],
+            },
+          ],
+        },
+      ]);
+      const live = snapshot('postgres', 'b', [
+        {
+          name: 'public',
+          tables: [
+            {
+              name: 't',
+              columns: [col('price', 1, 'numeric(10,2)')],
+              checks: [{ name: 'c', expression: '(price > (0)::numeric)' }],
+            },
+          ],
+        },
+      ]);
+      const { diff } = compareSchemas(renamed, live, {
+        renames: [{ objectKind: 'column', table: 't', from: 'price', to: 'amount' }],
+      });
+      expect(diff.operations.map((op) => op.id)).toEqual(['column:public.t.amount:rename']);
+    });
+  });
+
+  it('compares an unreported InnoDB row format as the server default (DYNAMIC)', () => {
+    // MySQL 8.4 and MariaDB 11.4 report ROW_FORMAT only when it was declared (DEFAULT is not),
+    // and InnoDB stores a table without one as DYNAMIC (innodb_default_row_format).
+    const at = (options: Record<string, string>) =>
+      snapshot('mysql', 'a', [
+        { name: 'a', tables: [{ name: 't', columns: [col('id', 1, 'int')], options }] },
+      ]);
+    const alter = (source: Record<string, string>, target: Record<string, string>) =>
+      compareSchemas(at(source), at(target)).diff.operations.flatMap((op) => op.statements);
+    const innodb = { engine: 'InnoDB' };
+    expect(alter({ ...innodb, rowFormat: 'COMPACT' }, innodb)).toEqual([
+      'ALTER TABLE `t` ROW_FORMAT=COMPACT',
+    ]);
+    expect(alter({ rowFormat: 'COMPRESSED' }, {})).toEqual([
+      'ALTER TABLE `t` ROW_FORMAT=COMPRESSED',
+    ]);
+    expect(alter(innodb, { ...innodb, rowFormat: 'COMPACT' })).toEqual([
+      'ALTER TABLE `t` ROW_FORMAT=DEFAULT',
+    ]);
+    expect(alter({ ...innodb, rowFormat: 'DYNAMIC' }, innodb)).toEqual([]);
+    expect(alter(innodb, { ...innodb, rowFormat: 'Dynamic' })).toEqual([]);
+    expect(alter({ ...innodb, rowFormat: 'DEFAULT' }, innodb)).toEqual([]);
+    // Other engines pick their format from the columns: still compared only when both declare it.
+    const myisam = { engine: 'MyISAM' };
+    expect(alter({ ...myisam, rowFormat: 'FIXED' }, myisam)).toEqual([]);
+    expect(alter({ ...myisam, rowFormat: 'FIXED' }, { ...myisam, rowFormat: 'DYNAMIC' })).toEqual([
+      'ALTER TABLE `t` ROW_FORMAT=FIXED',
+    ]);
+  });
+
+  it('compares type spellings equal to what the servers report for them', () => {
+    const pgTable = (type: string) => ({ name: 't', columns: [col('a', 1, type)] });
+    const pgAt = (type: string) =>
+      snapshot('postgres', 'a', [{ name: 'public', tables: [pgTable(type)] }]);
+    expect(compareSchemas(pgAt('numeric(5)'), pgAt('numeric(5,0)')).diff.identical).toBe(true);
+    expect(compareSchemas(pgAt('numeric(5)'), pgAt('numeric(5,1)')).diff.identical).toBe(false);
+
+    const myAt = (engine: 'mysql' | 'mariadb', types: string[]) =>
+      snapshot(engine, 'a', [
+        {
+          name: 'a',
+          tables: [{ name: 't', columns: types.map((t, i) => col(`c${i}`, i + 1, t)) }],
+        },
+      ]);
+    const model = ['int(5) zerofill', 'bigint zerofill', 'long varbinary', 'long varchar'];
+    const reported = [
+      'int(5) unsigned zerofill',
+      'bigint(20) unsigned zerofill',
+      'mediumblob',
+      'mediumtext',
+    ];
+    expect(compareSchemas(myAt('mysql', model), myAt('mysql', reported)).diff.identical).toBe(true);
+    // MySQL reports GEOMETRYCOLLECTION as geomcollection, MariaDB as geometrycollection.
+    const mysql = myAt('mysql', ['geomcollection']);
+    const mariadb = myAt('mariadb', ['geometrycollection']);
+    expect(compareSchemas(mysql, mariadb).diff.operations).toEqual([]);
+    expect(compareSchemas(mariadb, mysql).diff.operations).toEqual([]);
+  });
 });
 
 describe('selection', () => {

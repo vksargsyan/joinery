@@ -32,6 +32,7 @@ import {
   dropForeignKeysBetweenDroppedTables,
   dropTable,
   dropTriggerStep,
+  orderTriggersAfterRenames,
   rebuildForeignKeysOfRetypedColumns,
   rebuildReferencingForeignKeys,
   rebuildRoutineDependents,
@@ -125,6 +126,7 @@ export function diffSchemas(
     readdedColumns: new Map(),
     reshapedColumns: new Map(),
     retypedColumns: [],
+    renamedBy: new Map(),
   };
   for (const pair of tables) {
     if (pair.target !== undefined)
@@ -189,6 +191,7 @@ export function diffSchemas(
   dropForeignKeysBetweenDroppedTables(ctx, dropped);
   rebuildReferencingForeignKeys(ctx);
   if (!pg) rebuildForeignKeysOfRetypedColumns(ctx);
+  if (!pg) orderTriggersAfterRenames(ctx);
   if (pg) rebuildDependents(ctx);
   // Dropping a schema needs everything in it dropped first.
   for (const op of ctx.builder.ops) {

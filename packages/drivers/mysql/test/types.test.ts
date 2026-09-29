@@ -2,7 +2,14 @@ import type { FieldPacket } from 'mysql2';
 import { describe, expect, it } from 'vitest';
 
 import { toMysqlParams } from '../src/session';
-import { bitsToInteger, columnMeta, describeField, mysqlTypeCast, toCellValue } from '../src/types';
+import {
+  bitsToInteger,
+  columnMeta,
+  describeField,
+  float32Value,
+  mysqlTypeCast,
+  toCellValue,
+} from '../src/types';
 
 type FieldInput = Omit<Partial<FieldPacket>, 'constructor'>;
 
@@ -44,6 +51,42 @@ describe('toCellValue', () => {
     expect(toCellValue('TINY', 1)).toBe(1);
     expect(toCellValue('JSON', '{"a":1}')).toBe('{"a":1}');
     expect(toCellValue('VAR_STRING', null)).toBeNull();
+  });
+
+  it('reads FLOAT as the shortest decimal of its single-precision value, whatever the protocol', () => {
+    // Binary protocol: the double expansion of the 4-byte value.
+    expect(toCellValue('FLOAT', 0.10000000149011612)).toBe(0.1);
+    expect(toCellValue('FLOAT', -0.30000001192092896)).toBe(-0.3);
+    expect(toCellValue('FLOAT', 33.29999923706055)).toBe(33.3);
+    expect(toCellValue('FLOAT', 1.2345677614212036)).toBe(1.2345678);
+    // Text protocol: the server's own (six-digit) text, which stays as it is.
+    expect(toCellValue('FLOAT', 0.1)).toBe(0.1);
+    expect(toCellValue('FLOAT', 1.23457)).toBe(1.23457);
+    expect(toCellValue('FLOAT', 16777200)).toBe(16777200);
+    expect(toCellValue('FLOAT', 3.4e38)).toBe(3.4e38);
+    // DOUBLE is already exact.
+    expect(toCellValue('DOUBLE', 0.10000000149011612)).toBe(0.10000000149011612);
+  });
+
+  it('finds the shortest round-trip decimal across the float32 range', () => {
+    expect(float32Value(16777217)).toBe(16777216);
+    expect(float32Value(3.4028234663852886e38)).toBe(3.4028235e38);
+    expect(float32Value(1.401298464324817e-45)).toBe(1e-45);
+    expect(float32Value(1.1754943508222875e-38)).toBe(1.1754944e-38);
+    expect(float32Value(0)).toBe(0);
+    expect(float32Value(Number.NaN)).toBeNaN();
+    expect(float32Value(Infinity)).toBe(Infinity);
+    for (let i = 0; i < 2000; i++) {
+      const bits = new Uint32Array([(Math.random() * 0xffffffff) >>> 0]);
+      const single = new Float32Array(bits.buffer)[0]!;
+      if (!Number.isFinite(single)) continue;
+      const value = float32Value(single);
+      expect(Math.fround(value)).toBe(single);
+      const digits = String(value)
+        .replace(/^-|e.*$|\./g, '')
+        .replace(/^0+|0+$/g, '');
+      expect(digits.length).toBeLessThanOrEqual(9);
+    }
   });
 
   it('reads BIT(64) values beyond 2^53 as bigint', () => {

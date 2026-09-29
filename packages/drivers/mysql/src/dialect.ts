@@ -124,40 +124,58 @@ export function stripDefiner(sql: string): string {
   return sql.replace(pattern, '$1');
 }
 
+const COMMAND_SKIP = new Set([
+  'OR',
+  'REPLACE',
+  'TEMPORARY',
+  'UNIQUE',
+  'FULLTEXT',
+  'SPATIAL',
+  'ONLINE',
+  'OFFLINE',
+  'IGNORE',
+  'ALGORITHM',
+  'UNDEFINED',
+  'MERGE',
+  'TEMPTABLE',
+  'DEFINER',
+  'SQL',
+  'SECURITY',
+  'INVOKER',
+  'IF',
+  'NOT',
+  'EXISTS',
+  'AGGREGATE',
+  'CURRENT_USER',
+]);
+
+/** Characters read to find the command of a long statement (a batched INSERT runs to megabytes). */
+const COMMAND_PREFIX = 1024;
+
+function upperWords(tokens: readonly Token[]): string[] {
+  return tokens.filter((t) => t.kind === 'word').map((t) => t.text.toUpperCase());
+}
+
+/** The command from the leading words, or undefined when they do not decide it. */
+function commandFromWords(words: readonly string[]): string | undefined {
+  const first = words[0];
+  if (first === undefined) return undefined;
+  if (!['CREATE', 'ALTER', 'DROP'].includes(first)) return first;
+  const object = words.slice(1).find((w) => !COMMAND_SKIP.has(w) && !w.includes('@'));
+  return object === undefined ? undefined : `${first} ${object}`;
+}
+
 /** The statement's command for status chunks: "INSERT", "CREATE TABLE", "CALL"... */
 export function commandOf(sql: string): string | null {
-  const words = tokenize(sql)
-    .filter((t) => t.kind === 'word')
-    .map((t) => t.text.toUpperCase());
-  const first = words[0];
-  if (first === undefined) return null;
-  if (!['CREATE', 'ALTER', 'DROP'].includes(first)) return first;
-  const skip = new Set([
-    'OR',
-    'REPLACE',
-    'TEMPORARY',
-    'UNIQUE',
-    'FULLTEXT',
-    'SPATIAL',
-    'ONLINE',
-    'OFFLINE',
-    'IGNORE',
-    'ALGORITHM',
-    'UNDEFINED',
-    'MERGE',
-    'TEMPTABLE',
-    'DEFINER',
-    'SQL',
-    'SECURITY',
-    'INVOKER',
-    'IF',
-    'NOT',
-    'EXISTS',
-    'AGGREGATE',
-    'CURRENT_USER',
-  ]);
-  const object = words.slice(1).find((w) => !skip.has(w) && !w.includes('@'));
-  return object ? `${first} ${object}` : first;
+  if (sql.length > COMMAND_PREFIX) {
+    // The last token of the prefix may be cut short: only the complete ones before it count.
+    const command = commandFromWords(
+      upperWords(tokenize(sql.slice(0, COMMAND_PREFIX)).slice(0, -1)),
+    );
+    if (command !== undefined) return command;
+  }
+  const words = upperWords(tokenize(sql));
+  return commandFromWords(words) ?? words[0] ?? null;
 }
 
 /** Position (0-based) of a MySQL/MariaDB syntax error, from "... near '<text>' at line N". */
