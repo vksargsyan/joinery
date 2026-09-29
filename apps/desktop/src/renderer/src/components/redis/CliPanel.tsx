@@ -11,8 +11,10 @@ import {
   formatCommandLine,
   redisWritePolicy,
 } from '../../../../shared/redis-safety';
+import { useEditorAutosave } from '../../state/autosave';
 import { profileById, queryClient } from '../../state/data';
 import { confirm } from '../../state/dialogs';
+import { usePanels } from '../../state/panels';
 import {
   CliHistory,
   acceptSuggestion,
@@ -63,6 +65,16 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
   const input = useRef<HTMLTextAreaElement>(null);
   const log = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | undefined>(undefined);
+  const title = usePanels((s) => s.panels[panelId]?.title ?? '');
+  // The command line being typed autosaves with its logical database (spec §18).
+  useEditorAutosave(panelId, {
+    kind: 'redis-cli',
+    profileId: target.profileId,
+    database: target.database !== undefined || database !== 0 ? String(database) : null,
+    title,
+    text: line,
+    cursor,
+  });
 
   useEffect(() => {
     let live = true;

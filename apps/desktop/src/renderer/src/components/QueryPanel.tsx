@@ -1,15 +1,19 @@
-import { hasWeakTls, isSqlEngine } from '@joinery/core';
+import { hasWeakTls, isSqlEngine, type SqlDialect } from '@joinery/core';
 import { analyzeStatement } from '@joinery/sql-tools';
 import { Tabs } from 'radix-ui';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { formatCount, formatRows } from '../lib/format';
+import { dismissRestored, useRestored } from '../state/autosave';
 import { connect, useConnections } from '../state/connections';
 import { cachedProfile, useProfiles, useSettings } from '../state/data';
+import { explainQuery } from '../state/explain/run';
+import { naturalLayout, reconcileLayout } from '../state/grid-layout';
 import { resultSource } from '../state/result-sources';
 import { cancelQuery, commit, fetchMore, rollback, runQuery, setAutoCommit } from '../state/runner';
 import { openExportQuery } from '../state/transfer-dialogs';
 import {
+  patchResult,
   patchTab,
   runtimeOf,
   useWorkspace,
@@ -17,8 +21,10 @@ import {
   type QueryTab,
 } from '../state/workspace';
 import { takePendingRun } from './dock';
+import { PlanView } from './explain/PlanView';
 import { disposeModel, QueryEditor } from './QueryEditor';
-import { ResultGrid } from './ResultGrid';
+import { resultColumnKeys, ResultGrid } from './ResultGrid';
+import { ColumnsPopover } from './table/ColumnMenus';
 import { Button, EnvironmentBadge, Icon, cx } from './ui';
 import { useTheme } from './theme';
 
@@ -34,6 +40,7 @@ export function QueryPanel(props: { readonly tabId: string }) {
   const connection = useConnections((state) => (tab ? state.byProfile[tab.profileId] : undefined));
   const settings = useSettings();
   const theme = useTheme();
+  const restored = useRestored((state) => state.tabs[tabId]);
   const [split, setSplit] = useState(0.45);
   const area = useRef<HTMLDivElement>(null);
 
@@ -67,7 +74,10 @@ export function QueryPanel(props: { readonly tabId: string }) {
 
   return (
     <div className="flex h-full flex-col bg-bg" data-testid="query-panel">
-      <Toolbar tab={tab} />
+      <Toolbar
+        tab={tab}
+        canAnalyze={connection?.info?.capabilities.explainFormats.includes('analyze') ?? true}
+      />
       {lost && (
         <div
           role="alert"
@@ -82,6 +92,23 @@ export function QueryPanel(props: { readonly tabId: string }) {
             onClick={() => void connect(tab.profileId).catch(() => undefined)}
           >
             Reconnect
+          </Button>
+        </div>
+      )}
+      {restored && (
+        <div
+          role="status"
+          data-testid="restored-banner"
+          className="flex items-center gap-2 border-b border-accent/30 bg-accent/10 px-3 py-1 text-xs"
+        >
+          <span className="flex-1">
+            {restored.afterCrash
+              ? 'Joinery closed unexpectedly. This tab was restored from its autosave'
+              : 'This tab was restored from the last session'}{' '}
+            (saved at {new Date(restored.savedAt).toLocaleTimeString()}). Results are not kept.
+          </span>
+          <Button size="sm" variant="ghost" onClick={() => dismissRestored(tabId)}>
+            Dismiss
           </Button>
         </div>
       )}
@@ -114,7 +141,7 @@ export function QueryPanel(props: { readonly tabId: string }) {
           onPointerDown={startResize}
         />
         <div className="min-h-0 flex-1">
-          <Results tab={tab} theme={theme} />
+          <Results tab={tab} theme={theme} dialect={dialect} />
         </div>
       </div>
       <footer className="flex items-center gap-2 border-t border-border bg-panel px-3 py-0.5 text-[11px] text-muted">
@@ -132,7 +159,7 @@ export function QueryPanel(props: { readonly tabId: string }) {
   );
 }
 
-function Toolbar({ tab }: { readonly tab: QueryTab }) {
+function Toolbar({ tab, canAnalyze }: { readonly tab: QueryTab; readonly canAnalyze: boolean }) {
   const runSelectionOrStatement = (): void => {
     const selection = runtimeOf(tab.id).editor?.selection();
     void runQuery(tab.id, selection ? 'selection' : 'statement');
@@ -164,9 +191,29 @@ function Toolbar({ tab }: { readonly tab: QueryTab }) {
       </Button>
       <Button
         size="sm"
+        onClick={() => void explainQuery(tab.id, { analyze: false })}
+        disabled={tab.running}
+        title="Show the plan of the selection, or the statement at the cursor (Ctrl/Cmd+E)"
+      >
+        Explain
+      </Button>
+      <Button
+        size="sm"
+        onClick={() => void explainQuery(tab.id, { analyze: true })}
+        disabled={tab.running || !canAnalyze}
+        title={
+          canAnalyze
+            ? 'Run the statement and show the measured plan; changes are rolled back (Ctrl/Cmd+Shift+E)'
+            : 'This server version cannot EXPLAIN ANALYZE'
+        }
+      >
+        Explain Analyze
+      </Button>
+      <Button
+        size="sm"
         variant={tab.running ? 'danger' : 'secondary'}
         onClick={() => void cancelQuery(tab.id)}
-        disabled={!tab.running || tab.cancelling}
+        disabled={!tab.running || tab.cancelling || tab.explain?.status === 'running'}
         title="Cancel the running statement"
       >
         <Icon name="stop" className="h-3.5 w-3.5" />
@@ -223,7 +270,15 @@ function Toolbar({ tab }: { readonly tab: QueryTab }) {
   );
 }
 
-function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark' | 'light' }) {
+function Results({
+  tab,
+  theme,
+  dialect,
+}: {
+  readonly tab: QueryTab;
+  readonly theme: 'dark' | 'light';
+  readonly dialect: SqlDialect;
+}) {
   const errors = tab.messages.filter((m) => m.kind === 'error').length;
   return (
     <Tabs.Root
@@ -244,6 +299,14 @@ function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark
             {result.title}
           </Tabs.Trigger>
         ))}
+        {tab.explain && (
+          <Tabs.Trigger
+            value="plan"
+            className="rounded-t px-2.5 py-1 text-xs text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
+          >
+            {tab.explain.analyze ? 'Plan (analyzed)' : 'Plan'}
+          </Tabs.Trigger>
+        )}
         <Tabs.Trigger
           value="messages"
           className="rounded-t px-2.5 py-1 text-xs text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
@@ -257,7 +320,11 @@ function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark
       {tab.results.map((result) => (
         <Tabs.Content key={result.id} value={result.id} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
-            <ResultGrid view={result} theme={theme} />
+            <ResultGrid
+              view={result}
+              theme={theme}
+              onLayoutChange={(layout) => patchResult(tab.id, result.id, { layout })}
+            />
           </div>
           <div className="flex items-center gap-2 border-t border-border bg-panel px-2 py-1 text-xs">
             <span data-testid="row-count" aria-live="polite">
@@ -275,6 +342,16 @@ function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark
             )}
             {result.fetching && <span className="text-muted">· fetching…</span>}
             <span className="flex-1" />
+            <ColumnsPopover
+              layout={reconcileLayout(result.layout, resultColumnKeys(result))}
+              label={(key) => result.columns[Number(key)]?.name ?? key}
+              onChange={(layout) => patchResult(tab.id, result.id, { layout })}
+              onReset={() =>
+                patchResult(tab.id, result.id, {
+                  layout: naturalLayout(resultColumnKeys(result)),
+                })
+              }
+            />
             <ExportResultsButton resultId={result.id} profileId={tab.profileId} />
             {result.hasMore && (
               <>
@@ -297,6 +374,11 @@ function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark
           </div>
         </Tabs.Content>
       ))}
+      {tab.explain && (
+        <Tabs.Content value="plan" className="min-h-0 flex-1">
+          <PlanView tabId={tab.id} explain={tab.explain} dialect={dialect} />
+        </Tabs.Content>
+      )}
       <Tabs.Content value="messages" className="min-h-0 flex-1 overflow-auto">
         <Messages tab={tab} />
       </Tabs.Content>

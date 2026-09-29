@@ -12,10 +12,13 @@ export interface LaunchedApp {
 
 /**
  * Launches the built app (`out/`) with a throwaway user data directory, so every run starts with
- * an empty local store.
+ * an empty local store. With `userData`, it uses (and keeps) that directory instead, so a test
+ * can relaunch the app on the same store, after a crash for instance.
  */
-export async function launchApp(): Promise<LaunchedApp> {
-  const userData = mkdtempSync(join(tmpdir(), 'joinery-e2e-'));
+export async function launchApp(
+  options: { readonly userData?: string } = {},
+): Promise<LaunchedApp> {
+  const userData = options.userData ?? mkdtempSync(join(tmpdir(), 'joinery-e2e-'));
   const args = [resolve(import.meta.dirname, '..')];
   // Chromium refuses to start its sandbox as root (e.g. in a CI or dev container). Only then,
   // and only from this launcher, is --no-sandbox passed; the app itself always runs sandboxed.
@@ -33,7 +36,7 @@ export async function launchApp(): Promise<LaunchedApp> {
     page,
     async close() {
       await app.close();
-      rmSync(userData, { recursive: true, force: true });
+      if (options.userData === undefined) rmSync(userData, { recursive: true, force: true });
     },
   };
 }

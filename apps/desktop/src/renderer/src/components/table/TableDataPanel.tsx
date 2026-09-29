@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'r
 
 import { formatCount, formatRows } from '../../lib/format';
 import { confirm } from '../../state/dialogs';
+import { naturalLayout } from '../../state/grid-layout';
 import {
   cellErrorKey,
   formatStat,
@@ -15,9 +16,11 @@ import { openTableData } from '../dock';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
 import { ApplyDialog } from './ApplyDialog';
+import { ColumnsPopover } from './ColumnMenus';
 import { FilterBar } from './FilterBar';
 import { FormView, JsonView } from './RecordViews';
 import { EMPTY_SELECTION, TableGrid, selectedColumns, selectedRows, useChanges } from './TableGrid';
+import { ViewPicker } from './ViewPicker';
 
 /**
  * A table data view (spec §7): toolbar, filter bar, the rows as a grid, a form or JSON, and a
@@ -45,6 +48,7 @@ function TableDataView({ view }: { readonly view: TableView }) {
   const stale = useTableState(view, (s) => s.stale);
   const columns = useTableState(view, (s) => s.columns);
   const applying = useTableState(view, (s) => s.applying);
+  const layout = useTableState(view, (s) => s.layout);
   const changes = useChanges(view);
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION);
   const gridRef = useRef<DataEditorRef>(null);
@@ -58,9 +62,11 @@ function TableDataView({ view }: { readonly view: TableView }) {
       .map((row) => view.rowAt(row))
       .filter((ref): ref is RowRef => ref !== undefined);
 
+  /** `column` is a grid (display) position. */
   const openReferenced = (row: number, column: number): void => {
     const ref = view.rowAt(row);
-    const name = columns[column]?.name;
+    const index = view.modelColumn(column);
+    const name = index === undefined ? undefined : columns[index]?.name;
     if (!ref || name === undefined) return;
     for (const fk of view.foreignKeysOf(name)) {
       const target = view.referencedRow(ref, fk);
@@ -164,6 +170,15 @@ function TableDataView({ view }: { readonly view: TableView }) {
             </button>
           ))}
         </div>
+        <ViewPicker view={view} />
+        {viewMode === 'grid' && (
+          <ColumnsPopover
+            layout={layout}
+            label={(key) => key}
+            onChange={(next) => view.setLayout(next)}
+            onReset={() => view.setLayout(naturalLayout(columns.map((c) => c.name)))}
+          />
+        )}
         <span className="mx-1 h-5 w-px bg-border" />
         <Button
           size="sm"
@@ -176,10 +191,13 @@ function TableDataView({ view }: { readonly view: TableView }) {
               view.setFormIndex(row);
               return;
             }
-            // Select the new row's first writable cell and bring it into view.
+            // Select the new row's first writable (visible) cell and bring it into view.
             const col = Math.max(
               0,
-              columns.findIndex((c) => c.readOnly === undefined && !c.autoIncrement),
+              view.display.order.findIndex((i) => {
+                const c = columns[i];
+                return c !== undefined && c.readOnly === undefined && !c.autoIncrement;
+              }),
             );
             setSelection({
               ...EMPTY_SELECTION,
@@ -359,9 +377,12 @@ function Footer(props: { readonly view: TableView; readonly selection: GridSelec
   const complete = !paging.hasMore && !paging.loading && paging.error === undefined;
   const known = exactCount ?? (complete ? paging.rows.length : undefined);
 
+  const layout = useTableState(view, (s) => s.layout);
   const stats = useMemo(() => {
     const rows = selectedRows(selection);
-    const cols = selectedColumns(selection, columns.length);
+    const cols = selectedColumns(selection, view.display.order.length).flatMap(
+      (display) => view.modelColumn(display) ?? [],
+    );
     if (rows.length === 0 || cols.length === 0) return undefined;
     const cells = function* () {
       let n = 0;
@@ -378,7 +399,7 @@ function Footer(props: { readonly view: TableView; readonly selection: GridSelec
     return selectionStats(cells(), rows.length);
     // Figures follow the rows and staged values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection, columns, view, paging.version, changes]);
+  }, [selection, columns, layout, view, paging.version, changes]);
 
   return (
     <footer className="flex flex-wrap items-center gap-2 border-t border-border bg-panel px-2 py-1 text-xs">
@@ -420,7 +441,8 @@ function Footer(props: { readonly view: TableView; readonly selection: GridSelec
       {(() => {
         const [col, row] = selection.current?.cell ?? [];
         const ref = row === undefined ? undefined : view.rowAt(row);
-        const name = col === undefined ? undefined : columns[col]?.name;
+        const index = col === undefined ? undefined : view.modelColumn(col);
+        const name = index === undefined ? undefined : columns[index]?.name;
         const error =
           ref?.key != null && name !== undefined
             ? cellErrors[cellErrorKey(ref.key, name)]

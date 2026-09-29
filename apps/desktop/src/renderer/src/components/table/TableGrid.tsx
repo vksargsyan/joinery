@@ -27,11 +27,13 @@ import {
 } from '@joinery/table-data';
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type Ref } from 'react';
 
+import { moveColumn, setWidth } from '../../state/grid-layout';
 import { cellErrorKey, displayCell, rowStatus } from '../../state/table/grid-model';
 import { sortMark } from '../../state/table/sort';
 import { useTableState, type TableView } from '../../state/table-view';
 import { DARK, LIGHT } from '../ResultGrid';
 import { CellEditor, type Draft } from './CellEditor';
+import { HeaderMenu, type HeaderMenuAt } from './ColumnMenus';
 import { TableContextMenu, type MenuAt } from './TableContextMenu';
 
 /**
@@ -40,6 +42,8 @@ import { TableContextMenu, type MenuAt } from './TableContextMenu';
  * rows green, deleted rows red and struck through — NULL, '' and DEFAULT drawn as distinct
  * muted states, foreign key values with a link to the referenced row. Header clicks sort on
  * the server; scrolling near the end loads the next page. Cells open the type-aware editor.
+ * Columns follow the view's layout (hidden, reordered by dragging headers, pinned, resized):
+ * grid positions are display positions, mapped to the model's columns through `view.display`.
  */
 
 const PALETTE = {
@@ -148,8 +152,16 @@ export function TableGrid(props: {
   const identity = useTableState(view, (s) => s.identity);
   const readOnlyProfile = useTableState(view, (s) => s.readOnlyProfile);
   const status = useTableState(view, (s) => s.status);
+  const layout = useTableState(view, (s) => s.layout);
   const changes = useSyncExternalStore(view.changes.subscribe, view.changes.getSnapshot);
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  // The view recomputes it only when the layout or the columns change (both read above).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const display = useMemo(() => view.display, [view, layout, columns]);
+  // Stable while only widths change, so a resize does not rebuild the cell callbacks.
+  const orderKey = display.order.join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const order = useMemo(() => display.order, [orderKey]);
+  const [headerMenu, setHeaderMenu] = useState<HeaderMenuAt>();
   const palette = PALETTE[props.theme];
   const editable = status === 'ready' && identity.kind !== 'none' && !readOnlyProfile;
   const rows = paging.rows.length + changes.counts.inserted;
@@ -165,39 +177,50 @@ export function TableGrid(props: {
 
   const gridColumns = useMemo<GridColumn[]>(
     () =>
-      columns.map((column) => {
+      order.map((index, at) => {
+        const column = columns[index]!;
         const mark = sortMark(sort, column.name);
         const key = keyColumns.has(column.name) && identity.kind !== 'all-columns';
         return {
           id: column.name,
           title: `${key ? '🔑 ' : ''}${column.name}${mark ? ` ${mark}` : ''}`,
-          width: widths[column.name] ?? initialWidth(column),
+          width: display.widths[at] ?? initialWidth(column),
           icon: foreignKeyColumns.has(column.name)
             ? GridColumnIcon.HeaderReference
             : (ICONS[column.kind] ?? GridColumnIcon.HeaderString),
+          hasMenu: true,
         };
       }),
-    [columns, sort, widths, keyColumns, identity, foreignKeyColumns],
+    [order, display, columns, sort, keyColumns, identity, foreignKeyColumns],
   );
 
   // The latest view and changes for callbacks Glide keeps (the overlay editor, drawCell).
   const latest = useRef({
     changes,
     columns,
+    order,
     editable,
     readOnlyProfile,
     selection: props.selection,
   });
-  latest.current = { changes, columns, editable, readOnlyProfile, selection: props.selection };
+  latest.current = {
+    changes,
+    columns,
+    order,
+    editable,
+    readOnlyProfile,
+    selection: props.selection,
+  };
 
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
-      const column = columns[col];
+      const index = order[col];
+      const column = index === undefined ? undefined : columns[index];
       const ref = view.rowAt(row);
-      if (!column || !ref) {
+      if (!column || !ref || index === undefined) {
         return { kind: GridCellKind.Loading, allowOverlay: false };
       }
-      const value = view.valueAt(ref, col);
+      const value = view.valueAt(ref, index);
       const display = displayCell(value);
       const status = rowStatus(changes, ref);
       const edited = ref.key !== null && changes.isEdited(ref.key, column.name);
@@ -227,7 +250,17 @@ export function TableGrid(props: {
     },
     // `paging.version` changes whenever loaded rows change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view, columns, changes, cellErrors, palette, editable, foreignKeyColumns, paging.version],
+    [
+      view,
+      columns,
+      order,
+      changes,
+      cellErrors,
+      palette,
+      editable,
+      foreignKeyColumns,
+      paging.version,
+    ],
   );
 
   const getRowThemeOverride = useCallback(
@@ -248,8 +281,9 @@ export function TableGrid(props: {
       drawContent();
       const { ctx, rect, row, col } = args;
       const ref = view.rowAt(row);
-      const column = columns[col];
-      if (!ref || !column) return;
+      const index = order[col];
+      const column = index === undefined ? undefined : columns[index];
+      if (!ref || !column || index === undefined) return;
       if (rowStatus(changes, ref) === 'deleted') {
         const y = Math.round(rect.y + rect.height / 2) + 0.5;
         ctx.save();
@@ -262,7 +296,7 @@ export function TableGrid(props: {
         ctx.restore();
       }
       if (foreignKeyColumns.has(column.name)) {
-        const value = view.valueAt(ref, col);
+        const value = view.valueAt(ref, index);
         if (value !== null && value !== undefined && !isDefault(value)) {
           ctx.save();
           ctx.fillStyle = palette.link;
@@ -274,7 +308,7 @@ export function TableGrid(props: {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view, columns, changes, palette, foreignKeyColumns, paging.version],
+    [view, columns, order, changes, palette, foreignKeyColumns, paging.version],
   );
 
   const provideEditor = useMemo<ProvideEditorCallback<GridCell>>(() => {
@@ -285,8 +319,11 @@ export function TableGrid(props: {
         if (!cell) return undefined;
         const [col, row] = cell;
         const ref = view.rowAt(row);
-        const column = latest.current.columns[col];
-        return ref && column ? { ref, column, col, value: view.valueAt(ref, col) } : undefined;
+        const index = latest.current.order[col];
+        const column = index === undefined ? undefined : latest.current.columns[index];
+        return ref && column && index !== undefined
+          ? { ref, column, col, value: view.valueAt(ref, index) }
+          : undefined;
       });
       const [full, setFull] = useState(target?.value);
       const onChange = useRef(editorProps.onChange);
@@ -354,14 +391,21 @@ export function TableGrid(props: {
       if (cell.kind !== GridCellKind.Text) return;
       const value = pendingEdits.get(cell.data);
       pendingEdits.clear();
-      const column = columns[col];
+      const index = order[col];
+      const column = index === undefined ? undefined : columns[index];
       const ref = view.rowAt(row);
-      if (value === undefined || !column || !ref) return;
-      if (sameValue(view.valueAt(ref, col), value)) return;
+      if (value === undefined || !column || !ref || index === undefined) return;
+      if (sameValue(view.valueAt(ref, index), value)) return;
       view.setCell(ref, column.name, value);
     },
-    [view, columns],
+    [view, columns, order],
   );
+
+  const openHeaderMenu = (col: number, x: number, y: number): void => {
+    const index = order[col];
+    const column = index === undefined ? undefined : columns[index];
+    if (column) setHeaderMenu({ x, y, key: column.name });
+  };
 
   const [menu, setMenu] = useState<MenuAt>();
 
@@ -403,16 +447,29 @@ export function TableGrid(props: {
         gridSelection={props.selection}
         onGridSelectionChange={props.onSelectionChange}
         onHeaderClicked={(col, event) => {
-          const column = columns[col];
+          const index = order[col];
+          const column = index === undefined ? undefined : columns[index];
           if (column) void view.toggleSort(column.name, event.shiftKey);
         }}
+        onHeaderMenuClick={(col, bounds) => openHeaderMenu(col, bounds.x, bounds.y + bounds.height)}
+        onHeaderContextMenu={(col, event) => {
+          event.preventDefault();
+          openHeaderMenu(
+            col,
+            event.bounds.x + event.localEventX,
+            event.bounds.y + event.localEventY,
+          );
+        }}
+        freezeColumns={display.frozen}
+        onColumnMoved={(from, to) => view.setLayout(moveColumn(view.state.layout, from, to))}
         onVisibleRegionChanged={(range) => view.onVisibleRows(range.y + range.height)}
         onColumnResize={(column, width) => {
           const id = column.id;
-          if (id !== undefined) setWidths((current) => ({ ...current, [id]: width }));
+          if (id !== undefined) view.setLayout(setWidth(view.state.layout, id, width));
         }}
         onCellClicked={([col, row], event) => {
-          const column = columns[col];
+          const index = order[col];
+          const column = index === undefined ? undefined : columns[index];
           if (!column || !foreignKeyColumns.has(column.name)) return;
           if (event.localEventX >= event.bounds.width - 20) props.onOpenReferenced(row, col);
         }}
@@ -461,7 +518,8 @@ export function TableGrid(props: {
             const ref = view.rowAt(r);
             if (!ref) continue;
             for (let c = range.x; c < range.x + range.width; c++) {
-              const column = columns[c];
+              const index = order[c];
+              const column = index === undefined ? undefined : columns[index];
               if (column?.nullable && column.readOnly === undefined) {
                 cells.push({ ref, column: column.name, value: null });
               }
@@ -477,6 +535,16 @@ export function TableGrid(props: {
           at={menu}
           onClose={() => setMenu(undefined)}
           onOpenReferenced={props.onOpenReferenced}
+        />
+      )}
+      {headerMenu && (
+        <HeaderMenu
+          at={headerMenu}
+          layout={layout}
+          label={headerMenu.key}
+          onChange={(next) => view.setLayout(next)}
+          onClose={() => setHeaderMenu(undefined)}
+          onSort={(direction) => void view.sortBy(headerMenu.key, direction)}
         />
       )}
     </div>

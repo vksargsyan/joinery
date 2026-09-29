@@ -1,10 +1,12 @@
 import { useState } from 'react';
 
 import { formatCount } from '../../lib/format';
+import { useEditorAutosave } from '../../state/autosave';
 import { useConnections } from '../../state/connections';
 import { cachedProfile } from '../../state/data';
 import { useConsoleState, type MongoConsole } from '../../state/mongo/console';
 import { useResults, type ResultMode } from '../../state/mongo/results';
+import { usePanels } from '../../state/panels';
 import { useTheme } from '../theme';
 import { Button, EnvironmentBadge, Icon, Select, cx } from '../ui';
 import { ResultViews } from './ResultViews';
@@ -33,6 +35,15 @@ export function ConsolePanel({ shell }: { readonly shell: MongoConsole }) {
   const connection = useConnections((s) => s.byProfile[shell.target.profileId]);
   const profile = cachedProfile(shell.target.profileId);
   const [text, setText] = useState(shell.target.text ?? '');
+  const title = usePanels((s) => s.panels[shell.id]?.title ?? '');
+  useEditorAutosave(shell.id, {
+    kind: 'mongo-console',
+    profileId: shell.target.profileId,
+    database: database ?? null,
+    title,
+    text,
+    cursor: null,
+  });
   const errors = messages.filter((m) => m.kind === 'error').length;
 
   return (

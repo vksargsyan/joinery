@@ -8,6 +8,7 @@ import {
   type SqlDialect,
   type TableDef,
 } from '@joinery/core';
+import type { GridView } from '@joinery/ipc';
 import { safetyPolicyFor } from '@joinery/sql-tools';
 import {
   allColumnsIdentity,
@@ -46,9 +47,17 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorInfo, errorMessage } from '../lib/errors';
 import { formatCount } from '../lib/format';
+import { mainApi } from '../lib/main-client';
 import { useConnections } from './connections';
 import { profileById } from './data';
 import { confirm, confirmRun } from './dialogs';
+import {
+  displayColumns,
+  naturalLayout,
+  reconcileLayout,
+  type ColumnLayout,
+  type DisplayColumns,
+} from './grid-layout';
 import { findTable, loadSnapshot, useMetadata } from './metadata';
 import { patchPanel } from './panels';
 import { SessionLane, collect } from './session-lane';
@@ -76,6 +85,13 @@ import {
   type RowRef,
 } from './table/grid-model';
 import { PagingController, type PagingOptions, type PagingState } from './table/paging';
+import {
+  sameViewState,
+  storedViewState,
+  viewStateOf,
+  viewTable,
+  type ViewState,
+} from './table/saved-views';
 import { nextSort } from './table/sort';
 
 /**
@@ -136,6 +152,12 @@ export interface TableViewState {
   readonly applying: boolean;
   /** The structure changed while changes were staged: refresh to see it. */
   readonly stale: boolean;
+  /** Which columns the grid shows, in what order, pinned and sized (spec §7). */
+  readonly layout: ColumnLayout;
+  /** The table's saved views, its default first. */
+  readonly views: readonly GridView[];
+  /** The saved view last applied or saved; undefined for the plain table. */
+  readonly activeViewId: string | undefined;
 }
 
 export type ApplyOutcome =
@@ -171,10 +193,15 @@ export class TableView {
   #countExecution: string | undefined;
   #metadataVersion: number;
   readonly #unsubscribe: (() => void)[] = [];
+  /** Opened on a foreign key's row: the default view must not replace that filter. */
+  readonly #pinnedFilter: boolean;
+  #display:
+    { layout: ColumnLayout; columns: readonly ColumnInfo[]; value: DisplayColumns } | undefined;
 
   constructor(id: string, target: TableTarget, options: { readonly filter?: FilterGroup } = {}) {
     this.id = id;
     this.target = target;
+    this.#pinnedFilter = options.filter !== undefined;
     this.#paging = new PagingController(
       (query, signal) =>
         this.#lane.run(async (host, sessionId) => {
@@ -210,6 +237,9 @@ export class TableView {
       notice: undefined,
       applying: false,
       stale: false,
+      layout: { columns: [] },
+      views: [],
+      activeViewId: undefined,
     }));
     this.changes = createChangeStore();
     this.#lane = new SessionLane(target.profileId, target.database);
@@ -259,6 +289,9 @@ export class TableView {
       }
       this.#set({ dialect: profile.engine, readOnlyProfile: profile.presentation.readOnly });
       await this.#loadDefinition();
+      await this.#loadViews();
+      const initial = this.state.views.find((view) => view.isDefault);
+      if (initial) this.#adoptViewState(viewStateOf(initial), initial.id);
       await this.reload();
     } catch (error) {
       this.#set({ status: 'error', error: errorMessage(error) });
@@ -295,6 +328,10 @@ export class TableView {
       identity,
       sort: this.state.sort.filter((term) => names.has(term.column)),
       stale: false,
+      layout: reconcileLayout(
+        this.state.layout.columns.length === 0 ? undefined : this.state.layout,
+        columns.map((c) => c.name),
+      ),
     });
   }
 
@@ -365,6 +402,18 @@ export class TableView {
   async toggleSort(column: string, additive: boolean): Promise<void> {
     if (!(await this.confirmDiscard('Sorting reloads the rows and'))) return;
     this.#set({ sort: nextSort(this.state.sort, column, additive) });
+    await this.reload();
+  }
+
+  /** Sorts by one column alone (the header menu), or drops it from the sort with null. */
+  async sortBy(column: string, direction: 'asc' | 'desc' | null): Promise<void> {
+    if (!(await this.confirmDiscard('Sorting reloads the rows and'))) return;
+    this.#set({
+      sort:
+        direction === null
+          ? this.state.sort.filter((term) => term.column !== column)
+          : [{ column, direction }],
+    });
     await this.reload();
   }
 
@@ -489,6 +538,172 @@ export class TableView {
     this.#set({ identity: allColumnsIdentity(s.table, { dialect: s.dialect }) });
     this.changes.reset();
     await this.reload();
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Column layout and saved views (spec §7: hide, reorder, pin and resize; save views per table)
+
+  /** The grid's visible columns: model indexes in display order, frozen count and widths. */
+  get display(): DisplayColumns {
+    const { layout, columns } = this.state;
+    const cached = this.#display;
+    if (cached && cached.layout === layout && cached.columns === columns) return cached.value;
+    const value = displayColumns(
+      layout,
+      columns.map((c) => c.name),
+    );
+    this.#display = { layout, columns, value };
+    return value;
+  }
+
+  /** The model's column index of a grid (display) column. */
+  modelColumn(display: number): number | undefined {
+    return this.display.order[display];
+  }
+
+  /** The visible columns in display order (what paste and copy work across). */
+  displayedColumns(): ColumnInfo[] {
+    const columns = this.state.columns;
+    return this.display.order.map((i) => columns[i]!);
+  }
+
+  setLayout(layout: ColumnLayout): void {
+    this.#set({ layout });
+  }
+
+  /** What a saved view would keep right now. */
+  viewState(): ViewState {
+    const s = this.state;
+    return {
+      layout: s.layout,
+      sort: s.sort,
+      filter: { mode: s.filterMode, draft: s.draft, raw: s.rawText },
+    };
+  }
+
+  /** The applied view has changes not saved into it (or the plain table was changed). */
+  viewModified(): boolean {
+    const s = this.state;
+    const active = s.views.find((view) => view.id === s.activeViewId);
+    if (active) return !sameViewState(this.viewState(), viewStateOf(active));
+    const names = s.columns.map((c) => c.name);
+    return !sameViewState(this.viewState(), {
+      layout: naturalLayout(names),
+      sort: [],
+      filter: { mode: 'visual', draft: emptyFilter(), raw: '' },
+    });
+  }
+
+  async #loadViews(): Promise<void> {
+    try {
+      const views = await mainApi().gridViews.list(viewTable(this.target));
+      this.#set({ views });
+    } catch (error) {
+      this.#set({
+        views: [],
+        notice: { kind: 'error', text: `Saved views could not be read: ${errorMessage(error)}` },
+      });
+    }
+  }
+
+  /** Puts a view's layout, sort and filter in place (without reading rows). */
+  #adoptViewState(state: ViewState, id: string | undefined): void {
+    const s = this.state;
+    const names = s.columns.map((c) => c.name);
+    const known = new Set(names);
+    const patch: Partial<TableViewState> = {
+      layout: reconcileLayout(state.layout, names),
+      sort: state.sort.filter((term) => known.has(term.column)),
+      activeViewId: id,
+      filterIssues: {},
+      rawIssue: undefined,
+    };
+    if (!this.#pinnedFilter || id === undefined) {
+      const { filter } = state;
+      let active: TableViewState['active'] = {};
+      let issues: Readonly<Record<string, string>> = {};
+      if (filter.mode === 'raw') {
+        if (filter.raw.trim() !== '') active = { rawWhere: filter.raw };
+      } else if (s.dialect) {
+        const compiled = compileDraft(filter.draft, s.columns, s.dialect);
+        issues = compiled.issues;
+        if (Object.keys(issues).length === 0 && compiled.filter) {
+          active = { filter: compiled.filter };
+        }
+      }
+      Object.assign(patch, {
+        draft: filter.draft,
+        filterMode: filter.mode,
+        rawText: filter.raw,
+        active,
+        filterIssues: issues,
+      });
+    }
+    this.#set(patch);
+  }
+
+  /**
+   * Applies a saved view, or the plain table (natural layout, no sort, no filter) with null,
+   * and reads the rows again.
+   */
+  async applyView(id: string | null): Promise<void> {
+    const view = id === null ? undefined : this.state.views.find((v) => v.id === id);
+    if (id !== null && !view) return;
+    if (!(await this.confirmDiscard('Switching the view reloads the rows and'))) return;
+    this.#adoptViewState(
+      view
+        ? viewStateOf(view)
+        : {
+            layout: naturalLayout(this.state.columns.map((c) => c.name)),
+            sort: [],
+            filter: { mode: 'visual', draft: emptyFilter(), raw: '' },
+          },
+      view?.id,
+    );
+    await this.reload();
+  }
+
+  /** Saves the current layout, sort and filter as a new named view. */
+  async saveViewAs(name: string, options: { readonly makeDefault?: boolean } = {}): Promise<void> {
+    const saved = await mainApi().gridViews.save({
+      ...viewTable(this.target),
+      name,
+      ...(options.makeDefault ? { isDefault: true } : {}),
+      ...storedViewState(this.viewState()),
+    });
+    await this.#loadViews();
+    this.#set({
+      activeViewId: saved.id,
+      notice: { kind: 'success', text: `Saved view "${name}"` },
+    });
+  }
+
+  /** Saves the current layout, sort and filter into an existing view. */
+  async updateView(id: string): Promise<void> {
+    const view = this.state.views.find((v) => v.id === id);
+    if (!view) return;
+    await mainApi().gridViews.save({
+      ...viewTable(this.target),
+      id,
+      name: view.name,
+      isDefault: view.isDefault,
+      ...storedViewState(this.viewState()),
+      expectedVersion: view.version,
+    });
+    await this.#loadViews();
+    this.#set({ activeViewId: id, notice: { kind: 'success', text: `Saved view "${view.name}"` } });
+  }
+
+  /** Makes a view the one the table opens with, or none with null. */
+  async setDefaultView(id: string | null): Promise<void> {
+    await mainApi().gridViews.setDefault({ table: viewTable(this.target), id });
+    await this.#loadViews();
+  }
+
+  async deleteView(id: string): Promise<void> {
+    await mainApi().gridViews.delete({ id });
+    await this.#loadViews();
+    if (this.state.activeViewId === id) this.#set({ activeViewId: undefined });
   }
 
   setViewMode(mode: ViewMode): void {
@@ -663,15 +878,15 @@ export class TableView {
   }
 
   /**
-   * Pastes text rows (from Excel, Google Sheets or the grid) at a grid position: onto existing
-   * rows first, new rows past the end. Cells that do not parse for their column are skipped and
-   * marked with their error.
+   * Pastes text rows (from Excel, Google Sheets or the grid) at a grid position, where
+   * `startColumn` counts the visible columns in display order: onto existing rows first, new rows
+   * past the end. Cells that do not parse for their column are skipped and marked with their
+   * error.
    */
   paste(startRow: number, startColumn: number, values: readonly (readonly string[])[]): void {
     if (!this.#refuseUnlessEditable() || values.length === 0) return;
-    const columns = this.state.columns;
     const changes = this.changes.getSnapshot();
-    const pasted = mapPastedRows(values, columns, startColumn);
+    const pasted = mapPastedRows(values, this.displayedColumns(), startColumn);
     const targets: (ExistingRow | RowKey)[] = [];
     const total = this.rowCount();
     for (let r = startRow; r < total && targets.length < values.length; r++) {

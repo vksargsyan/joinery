@@ -1,9 +1,10 @@
-import { newId, type ColumnMeta } from '@joinery/core';
+import { newId, type ColumnMeta, type ExplainResult } from '@joinery/core';
 import type { RpcStream } from '@joinery/ipc';
 import type { ResultChunk } from '@joinery/core';
 import { create } from 'zustand';
 
 import type { HostClient } from '../lib/main-client';
+import type { ColumnLayout } from './grid-layout';
 import type { ResultSetBuffer, StatementResult } from './results';
 
 /**
@@ -28,6 +29,8 @@ export interface ResultView {
   readonly truncated: boolean;
   readonly fetching: boolean;
   readonly version: number;
+  /** Hidden, reordered, pinned and resized columns (keys are column positions); natural if unset. */
+  readonly layout?: ColumnLayout | undefined;
 }
 
 export type MessageKind = 'info' | 'success' | 'notice' | 'warning' | 'error';
@@ -43,21 +46,37 @@ export interface MessageEntry {
   readonly at: string;
 }
 
+/** The tab's visual explain (spec §6): the last EXPLAIN run and its plan. */
+export interface ExplainTabState {
+  readonly status: 'running' | 'done' | 'error';
+  readonly analyze: boolean;
+  /** PostgreSQL BUFFERS: also the choice for the next run. */
+  readonly buffers: boolean;
+  /** The statement explained, as it was sent (parameters bound). */
+  readonly statement: string;
+  readonly result?: ExplainResult;
+  readonly error?: string;
+  readonly at: string;
+}
+
 export interface QueryTab {
   readonly id: string;
   readonly profileId: string;
   readonly title: string;
   readonly initialText: string;
+  /** Where the caret starts (a restored tab's saved caret). */
+  readonly initialCursor?: number | undefined;
   readonly autoCommit: boolean;
   readonly inTransaction: boolean;
   readonly running: boolean;
   readonly cancelling: boolean;
   readonly results: readonly ResultView[];
   readonly messages: readonly MessageEntry[];
-  /** 'messages' or a ResultView id. */
+  /** 'messages', 'plan' or a ResultView id. */
   readonly activePane: string;
   readonly rowLimit: number;
   readonly errorMarker?: { readonly start: number; readonly end: number; readonly message: string };
+  readonly explain?: ExplainTabState | undefined;
 }
 
 interface WorkspaceState {
@@ -177,6 +196,7 @@ export function createTab(options: {
   readonly profileId: string;
   readonly title: string;
   readonly text?: string;
+  readonly cursor?: number;
 }): string {
   const id = newId();
   const tab: QueryTab = {
@@ -184,6 +204,7 @@ export function createTab(options: {
     profileId: options.profileId,
     title: options.title,
     initialText: options.text ?? '',
+    ...(options.cursor === undefined ? {} : { initialCursor: options.cursor }),
     autoCommit: true,
     inTransaction: false,
     running: false,

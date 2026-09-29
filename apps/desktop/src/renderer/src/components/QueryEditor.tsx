@@ -5,16 +5,19 @@ import { useEffect, useRef } from 'react';
 import { syntaxDiagnostics } from '../lib/language';
 import { languageFor, monaco } from '../lib/monaco';
 import { bindModel, registerSqlLanguage, unbindModel } from '../lib/sql-language';
+import { noteEditor } from '../state/autosave';
+import { explainQuery } from '../state/explain/run';
 import { openMetadata, useMetadataStatus } from '../state/metadata';
 import { runQuery } from '../state/runner';
-import { runtimeOf, useWorkspace } from '../state/workspace';
+import { getTab, runtimeOf, useWorkspace } from '../state/workspace';
 
 /**
  * The SQL editor of a query tab (spec §6): Monaco with the dialect's highlighting, and the
  * language worker's syntax errors, autocomplete and signature help for the tab's connection.
  * Ctrl/Cmd+Enter runs the selection, or the statement at the cursor; Ctrl/Cmd+Shift+Enter runs
- * everything; Shift+Alt+F formats. Models outlive the editor view, so undo history survives the
- * dock re-mounting a panel.
+ * everything; Ctrl/Cmd+E explains, Ctrl/Cmd+Shift+E explains with ANALYZE; Shift+Alt+F formats.
+ * Models outlive the editor view, so undo history survives the dock re-mounting a panel. Every
+ * change is handed to autosave, which reads the text when it writes.
  */
 
 registerSqlLanguage();
@@ -86,6 +89,11 @@ export function QueryEditor(props: {
       wordBasedSuggestions: 'off',
     });
     editorRef.current = editor;
+    const cursor = getTab(tabId)?.initialCursor;
+    if (cursor !== undefined && model.getVersionId() === 1) {
+      editor.setPosition(model.getPositionAt(cursor));
+      editor.revealPositionInCenterIfOutsideViewport(model.getPositionAt(cursor));
+    }
     const selection = (): { start: number; end: number } | undefined => {
       const range = editor.getSelection();
       if (!range || range.isEmpty()) return undefined;
@@ -122,6 +130,18 @@ export function QueryEditor(props: {
       run: () => void runQuery(tabId, 'all'),
     });
     editor.addAction({
+      id: 'joinery.explain',
+      label: 'Explain Selection or Statement at Cursor',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyE],
+      run: () => void explainQuery(tabId, { analyze: false }),
+    });
+    editor.addAction({
+      id: 'joinery.explainAnalyze',
+      label: 'Explain Analyze Selection or Statement at Cursor',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyE],
+      run: () => void explainQuery(tabId, { analyze: true }),
+    });
+    editor.addAction({
       id: 'joinery.format',
       label: 'Format SQL',
       keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
@@ -155,9 +175,25 @@ export function QueryEditor(props: {
         );
       });
     };
+    // Autosave (spec §18): the buffer is read when the batch is written, not per keystroke.
+    const autosave = (): void =>
+      noteEditor(tabId, () => {
+        const tab = getTab(tabId);
+        if (!tab || model.isDisposed()) return undefined;
+        return {
+          kind: 'sql',
+          profileId: tab.profileId,
+          database: null,
+          title: tab.title,
+          text: model.getValue(),
+          cursor: runtimeOf(tabId).editor?.cursorOffset() ?? null,
+        };
+      });
+    if (model.getValueLength() > 0) autosave();
     const changes = model.onDidChangeContent(() => {
       clearTimeout(timer);
       timer = setTimeout(check, 500);
+      autosave();
     });
     check();
     editor.focus();

@@ -51,7 +51,9 @@ function dialectOf(profile: StoredProfile): SqlDialect {
 }
 
 /** The tab's session, opened on first use and again after its connection was replaced. */
-async function ensureSession(tabId: string): Promise<{ host: HostClient; sessionId: string }> {
+export async function ensureSession(
+  tabId: string,
+): Promise<{ host: HostClient; sessionId: string }> {
   const tab = getTab(tabId);
   if (!tab) throw new JoineryError({ code: 'NOT_FOUND', message: 'The tab was closed' });
   const connection = await connect(tab.profileId);
@@ -75,7 +77,7 @@ async function ensureSession(tabId: string): Promise<{ host: HostClient; session
 }
 
 /** Forgets a session the server or host has lost, so the next run opens a new one. */
-function dropSessionIfBroken(tabId: string, error: unknown): void {
+export function dropSessionIfBroken(tabId: string, error: unknown): void {
   const code = errorInfo(error).code;
   if (code === 'CONNECTION_FAILED' || code === 'NOT_FOUND') {
     const runtime = runtimeOf(tabId);
@@ -84,7 +86,7 @@ function dropSessionIfBroken(tabId: string, error: unknown): void {
   }
 }
 
-async function refreshTransactionState(tabId: string): Promise<void> {
+export async function refreshTransactionState(tabId: string): Promise<void> {
   const runtime = runtimeOf(tabId);
   if (!runtime.host || !runtime.sessionId) return;
   try {
@@ -96,7 +98,7 @@ async function refreshTransactionState(tabId: string): Promise<void> {
 }
 
 /** Closes a paused result stream, which closes the server-side cursor. */
-async function closeOpenResult(
+export async function closeOpenResult(
   tabId: string,
   status: 'success' | 'cancelled' = 'success',
 ): Promise<void> {

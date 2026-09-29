@@ -10,6 +10,13 @@ import { newId } from '@joinery/core';
 import type { FilterGroup } from '@joinery/table-data';
 import { useEffect } from 'react';
 
+import {
+  discardEditor,
+  dismissRestored,
+  registerRestorer,
+  restoreEditors,
+  useRestored,
+} from '../state/autosave';
 import { createDesigner, disposeDesigner, type DesignerTarget } from '../state/designer';
 import { cachedProfile } from '../state/data';
 import { confirm } from '../state/dialogs';
@@ -22,7 +29,7 @@ import {
   usePanels,
   type PanelKind,
 } from '../state/panels';
-import { disposeRedisPanel } from '../state/redis/panels';
+import { disposeRedisPanel, openRedisPanel } from '../state/redis/panels';
 import { disposeMongoPanel } from '../state/mongo/panels';
 import { disposeSyncPanel } from '../state/sync/panels';
 import { disposeServerToolsPanel } from '../state/server-tools/panels';
@@ -45,6 +52,9 @@ import { Icon, cx } from './ui';
  * panels store names the others; dockview only lays the panels out. Closing goes through
  * `closeTab` (asks when a transaction is open) or `requestClosePanel` (asks when changes are
  * staged or a design is unsaved).
+ *
+ * Editor tabs autosave (spec §18): when the dock is ready it reopens the buffers the previous
+ * run left, marked "restored", and closing a tab on purpose discards its buffer.
  */
 
 let dockApi: DockviewApi | undefined;
@@ -166,6 +176,8 @@ export function openQueryTab(options: {
   readonly profileId: string;
   readonly title: string;
   readonly text?: string;
+  /** Where the caret starts in `text`. */
+  readonly cursor?: number;
   readonly run?: boolean;
 }): string {
   // A MongoDB connection's "query tab" is its command console (spec §9).
@@ -174,6 +186,7 @@ export function openQueryTab(options: {
     profileId: options.profileId,
     title: options.title,
     ...(options.text === undefined ? {} : { text: options.text }),
+    ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
   });
   if (options.run) pendingRuns.add(tabId);
   dockApi?.addPanel<QueryPanelParams>({
@@ -187,6 +200,36 @@ export function openQueryTab(options: {
   return tabId;
 }
 
+// How autosaved buffers reopen (spec §18). A restored tab never runs by itself.
+registerRestorer('sql', (entry, profile) =>
+  profile.engine === 'mongodb'
+    ? undefined
+    : openQueryTab({
+        profileId: profile.id,
+        title: entry.title || `${profile.name} query`,
+        text: entry.text,
+        ...(entry.cursor === null ? {} : { cursor: entry.cursor }),
+      }),
+);
+registerRestorer('mongo-console', (entry, profile) =>
+  openMongoConsole({
+    profileId: profile.id,
+    title: entry.title || `${profile.name} console`,
+    ...(entry.database === null ? {} : { database: entry.database }),
+    text: entry.text,
+  }),
+);
+registerRestorer('redis-cli', (entry, profile) => {
+  const database = entry.database === null ? undefined : Number(entry.database);
+  return openRedisPanel({
+    profileId: profile.id,
+    profileName: profile.name,
+    tool: 'cli',
+    ...(database === undefined || !Number.isInteger(database) ? {} : { database }),
+    line: entry.text,
+  });
+});
+
 /** Runs a tab opened with `run: true` once its editor exists. */
 export function takePendingRun(tabId: string): boolean {
   return pendingRuns.delete(tabId);
@@ -199,6 +242,32 @@ export async function requestCloseTab(tabId: string): Promise<void> {
 
 function QueryPanelHost(props: IDockviewPanelProps<QueryPanelParams>) {
   return <QueryPanel tabId={props.params.tabId} />;
+}
+
+/** The "restored" pill of a tab reopened from autosave; a click dismisses it. */
+function RestoredMarker({ id }: { readonly id: string }) {
+  const restored = useRestored((state) => state.tabs[id]);
+  if (!restored) return null;
+  const when = new Date(restored.savedAt).toLocaleTimeString();
+  const why = restored.afterCrash
+    ? `Restored after Joinery closed unexpectedly (autosaved at ${when})`
+    : `Restored from the last session (autosaved at ${when})`;
+  return (
+    <button
+      type="button"
+      data-testid="restored-marker"
+      title={`${why}. Click to dismiss.`}
+      aria-label={`${why}. Dismiss`}
+      className="rounded bg-accent/15 px-1 text-[10px] font-semibold text-accent hover:bg-accent/25"
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        dismissRestored(id);
+      }}
+    >
+      restored
+    </button>
+  );
 }
 
 function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
@@ -218,6 +287,7 @@ function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
         <span aria-label="Running" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
       )}
       <span className="max-w-48 truncate">{tab?.title ?? props.api.title}</span>
+      <RestoredMarker id={tabId} />
       {tab?.inTransaction && (
         <span
           title="Open transaction"
@@ -284,6 +354,7 @@ function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
       )}
       <Icon name="table" className="h-3.5 w-3.5 text-muted" />
       <span className="max-w-48 truncate">{title}</span>
+      <RestoredMarker id={panelId} />
       {info?.dirty && (
         <span title="Unsaved changes" aria-label="Unsaved changes" className="text-warning">
           ●
@@ -342,7 +413,10 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         event.api.onDidRemovePanel((panel) => {
           if (useWorkspace.getState().tabs[panel.id]) void closeTab(panel.id, { force: true });
           disposePanel(panel.id);
+          // Closed on purpose: its autosaved buffer goes too.
+          discardEditor(panel.id);
         });
+        void restoreEditors();
       }}
     />
   );

@@ -9,7 +9,7 @@ import type { RowRef } from '../../state/table/grid-model';
 import { useTableState, type TableView } from '../../state/table-view';
 import { cx } from '../ui';
 
-/** Where the grid's context menu opened, and the selection it acts on. */
+/** Where the grid's context menu opened, and the selection it acts on (display positions). */
 export interface MenuAt {
   readonly x: number;
   readonly y: number;
@@ -56,12 +56,17 @@ export function TableContextMenu(props: {
   const { view, at } = props;
   const columns = useTableState(view, (s) => s.columns);
   const identity = useTableState(view, (s) => s.identity);
-  const column = columns[at.col];
+  const index = view.modelColumn(at.col);
+  const column = index === undefined ? undefined : columns[index];
   const refs = rowsOf(view, at.selection);
-  const columnIndexes = columnsOf(at.selection, columns.length);
+  // The selection counts visible columns in display order; copy and set work on the model's.
+  const columnIndexes = columnsOf(at.selection, view.display.order.length).flatMap(
+    (display) => view.modelColumn(display) ?? [],
+  );
   const editable = view.editable;
   const cellRef = view.rowAt(at.row);
-  const fkValue = column && cellRef ? view.valueAt(cellRef, at.col) : undefined;
+  const fkValue =
+    column && cellRef && index !== undefined ? view.valueAt(cellRef, index) : undefined;
   const hasFk =
     column !== undefined &&
     view.foreignKeysOf(column.name).length > 0 &&
