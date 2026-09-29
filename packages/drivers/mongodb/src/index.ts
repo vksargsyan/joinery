@@ -34,3 +34,4 @@ export type {
   WatchOptions,
   WriteOptions,
 } from './types';
+export { MongoServerTools, createMongoServerTools } from './server-tools';

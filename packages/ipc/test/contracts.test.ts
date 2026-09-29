@@ -23,6 +23,7 @@ import {
   mongoHostContractShape,
   redisHostContractShape,
   mongoMainContractShape,
+  serverToolsHostContractShape,
   parseRequest,
   syncMainContractShape,
   safeProfileSchema,
@@ -133,6 +134,7 @@ describe('connectionHostContract', () => {
       }),
       mongo: unusedHandlers(mongoHostContractShape),
       redis: unusedHandlers(redisHostContractShape),
+      serverTools: unusedHandlers(serverToolsHostContractShape),
     };
     serve(ports.server, connectionHostContract, handlers);
     return { host: createClient(ports.client, connectionHostContract), closed };

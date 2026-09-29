@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { defineContract } from '../contract';
 import { mongoHostContractShape } from './mongo';
 import { redisHostContractShape } from './redis';
+import { serverToolsHostContractShape } from './server-tools';
 import { idSchema, stringListSchema, taskProgressSchema } from '../schemas/common';
 import {
   browseNodeSchema,
@@ -111,6 +112,8 @@ export const connectionHostContract = defineContract({
   mongo: mongoHostContractShape,
   /** Redis key browser, value editors and server tools (spec §10, §15). */
   redis: redisHostContractShape,
+  /** Server tools of MySQL, MariaDB, PostgreSQL and MongoDB (spec §15). */
+  serverTools: serverToolsHostContractShape,
 });
 
 export type ConnectionHostContract = typeof connectionHostContract;

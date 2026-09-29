@@ -2,3 +2,4 @@ export { PostgresAdapter, checkConnection, createPostgresAdapter } from './adapt
 export { buildPgConnectionPlan, type PgConnectionPlan } from './config';
 export { normalisePgPlan } from './explain';
 export { PostgresSession } from './session';
+export { PostgresServerTools, createPostgresServerTools } from './server-tools';

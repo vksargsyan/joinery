@@ -13,3 +13,4 @@ export {
   parseExplainJson,
 } from './explain';
 export { MysqlSession } from './session';
+export { MysqlServerTools, createMysqlServerTools } from './server-tools';
