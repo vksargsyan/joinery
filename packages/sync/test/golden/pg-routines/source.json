@@ -1,0 +1,120 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "events",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.events_id_seq'::regclass)"
+            },
+            {
+              "name": "title",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "touched",
+              "ordinal": 3,
+              "dataType": "timestamp with time zone",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "events_pkey",
+            "columns": ["id"]
+          },
+          "triggers": [
+            {
+              "name": "events_touch",
+              "timing": "BEFORE",
+              "events": ["INSERT", "UPDATE"],
+              "definition": "CREATE TRIGGER events_touch BEFORE INSERT OR UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.touch()"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "labelled",
+          "definition": "SELECT id,\n    public.label((id)::bigint) AS l\n   FROM public.events",
+          "columns": ["id", "l"],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "add_tax",
+          "kind": "function",
+          "signature": "numeric",
+          "returns": "numeric",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.add_tax(amount numeric)\n RETURNS numeric\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select amount * 1.25 $function$\n",
+          "comment": "VAT",
+          "owner": "postgres"
+        },
+        {
+          "name": "cleanup",
+          "kind": "procedure",
+          "signature": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE PROCEDURE public.cleanup(IN days integer)\n LANGUAGE sql\nAS $procedure$ delete from events where title is null and days > 0 $procedure$\n",
+          "owner": "postgres"
+        },
+        {
+          "name": "label",
+          "kind": "function",
+          "signature": "bigint",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.label(i bigint)\n RETURNS text\n LANGUAGE sql\nAS $function$ select 'n' || i $function$\n",
+          "owner": "postgres"
+        },
+        {
+          "name": "touch",
+          "kind": "function",
+          "returns": "trigger",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE FUNCTION public.touch()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nbegin\n  new.touched := clock_timestamp();\n  return new;\nend $function$\n",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "events_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "events.id",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

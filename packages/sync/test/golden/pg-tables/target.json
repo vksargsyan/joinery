@@ -1,0 +1,177 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "audit_log",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.audit_log_id_seq'::regclass)"
+            },
+            {
+              "name": "payload",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "audit_log_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        },
+        {
+          "name": "customers",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.customers_id_seq'::regclass)"
+            },
+            {
+              "name": "email",
+              "ordinal": 2,
+              "dataType": "character varying(255)",
+              "nullable": false
+            },
+            {
+              "name": "full_name",
+              "ordinal": 3,
+              "dataType": "character varying(100)",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "ordinal": 4,
+              "dataType": "character varying(20)",
+              "nullable": false,
+              "default": "'new'::character varying"
+            },
+            {
+              "name": "legacy_code",
+              "ordinal": 5,
+              "dataType": "character(8)",
+              "nullable": true
+            },
+            {
+              "name": "created_at",
+              "ordinal": 6,
+              "dataType": "timestamp without time zone",
+              "nullable": false,
+              "default": "now()"
+            }
+          ],
+          "primaryKey": {
+            "name": "customers_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "customers_email_key",
+              "columns": ["email"]
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false,
+              "identity": {
+                "generation": "always",
+                "start": "1",
+                "increment": "1"
+              }
+            },
+            {
+              "name": "customer_id",
+              "ordinal": 2,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "total",
+              "ordinal": 3,
+              "dataType": "numeric(10,2)",
+              "nullable": false
+            },
+            {
+              "name": "placed_at",
+              "ordinal": 4,
+              "dataType": "timestamp(6) without time zone",
+              "nullable": true,
+              "default": "CURRENT_TIMESTAMP"
+            }
+          ],
+          "primaryKey": {
+            "name": "orders_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "orders_customer_id_fkey",
+              "columns": ["customer_id"],
+              "refTable": "customers",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "audit_log_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "audit_log.id",
+          "owner": "postgres"
+        },
+        {
+          "name": "customers_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "customers.id",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

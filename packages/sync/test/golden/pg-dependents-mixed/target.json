@@ -1,0 +1,230 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "old_name",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "old_name_pkey",
+            "columns": ["id"]
+          },
+          "triggers": [
+            {
+              "name": "old_name_audit",
+              "timing": "AFTER",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER old_name_audit AFTER INSERT ON public.old_name FOR EACH ROW EXECUTE FUNCTION public.audit()"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "shape_tags",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "tag",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "shape_tags_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "shape_tags_tag_fkey",
+              "columns": ["tag"],
+              "refTable": "shapes",
+              "refColumns": ["tag"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "shapes",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.shapes_id_seq'::regclass)"
+            },
+            {
+              "name": "name",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "origin",
+              "ordinal": 3,
+              "dataType": "public.point2",
+              "nullable": true
+            },
+            {
+              "name": "qty",
+              "ordinal": 4,
+              "dataType": "integer",
+              "nullable": true,
+              "default": "0"
+            },
+            {
+              "name": "legacy",
+              "ordinal": 5,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "tag",
+              "ordinal": 6,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "shapes_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "shapes_tag_key",
+              "columns": ["tag"]
+            }
+          ],
+          "indexes": [
+            {
+              "name": "shapes_legacy_idx",
+              "columns": [
+                {
+                  "name": "legacy",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX shapes_legacy_idx ON public.shapes USING btree (legacy)"
+            },
+            {
+              "name": "shapes_qty_idx",
+              "columns": [
+                {
+                  "name": "qty",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX shapes_qty_idx ON public.shapes USING btree (qty)"
+            }
+          ],
+          "checks": [
+            {
+              "name": "shapes_qty_check",
+              "expression": "((qty >= 0))"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "big_shapes",
+          "definition": "SELECT id\n   FROM public.shapes\n  WHERE (qty > 10)",
+          "columns": ["id"],
+          "owner": "postgres"
+        },
+        {
+          "name": "shape_qty",
+          "materialized": true,
+          "definition": "SELECT id,\n    qty\n   FROM public.shapes",
+          "columns": ["id", "qty"],
+          "indexes": [
+            {
+              "name": "shape_qty_idx",
+              "columns": [
+                {
+                  "name": "qty",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX shape_qty_idx ON public.shape_qty USING btree (qty)"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "audit",
+          "kind": "function",
+          "returns": "trigger",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE FUNCTION public.audit()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ begin return new; end $function$\n",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "shapes_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "shapes.id",
+          "owner": "postgres"
+        }
+      ],
+      "types": [
+        {
+          "name": "point2",
+          "kind": "composite",
+          "definition": "CREATE TYPE public.point2 AS (x integer, y integer)",
+          "owner": "postgres"
+        },
+        {
+          "name": "short_text",
+          "kind": "domain",
+          "definition": "CREATE DOMAIN public.short_text AS character varying(10)",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

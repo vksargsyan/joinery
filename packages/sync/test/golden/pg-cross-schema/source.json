@@ -1,0 +1,104 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "core",
+      "tables": [
+        {
+          "name": "users",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "team_id",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "users_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "users_team_fk",
+              "columns": ["team_id"],
+              "refSchema": "report",
+              "refTable": "teams",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "postgres"
+    },
+    {
+      "name": "public",
+      "owner": "pg_database_owner"
+    },
+    {
+      "name": "report",
+      "tables": [
+        {
+          "name": "teams",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "teams_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "user_teams",
+          "definition": "SELECT u.id,\n    t.title\n   FROM (core.users u\n     JOIN report.teams t ON ((t.id = u.team_id)))",
+          "columns": ["id", "title"],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "postgres"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

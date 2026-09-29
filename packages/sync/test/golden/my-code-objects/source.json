@@ -1,0 +1,149 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "tables": [
+        {
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "total",
+              "ordinal": 2,
+              "dataType": "decimal(10,2)",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "ordinal": 3,
+              "dataType": "varchar(20)",
+              "nullable": false,
+              "default": "'new'"
+            },
+            {
+              "name": "created_at",
+              "ordinal": 4,
+              "dataType": "datetime",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "triggers": [
+            {
+              "name": "orders_bi",
+              "timing": "BEFORE",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER `orders_bi` BEFORE INSERT ON `orders` FOR EACH ROW SET NEW.status = 'pending'"
+            },
+            {
+              "name": "orders_bu",
+              "timing": "BEFORE",
+              "events": ["UPDATE"],
+              "definition": "CREATE TRIGGER `orders_bu` BEFORE UPDATE ON `orders` FOR EACH ROW\nBEGIN\n  IF NEW.total < 0 THEN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'negative total';\n  END IF;\nEND"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "57"
+          }
+        },
+        {
+          "name": "sessions",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "char(36)",
+              "nullable": false
+            },
+            {
+              "name": "expires_at",
+              "ordinal": 2,
+              "dataType": "datetime",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "big_orders",
+          "definition": "select `orders`.`id` AS `id`,`orders`.`total` AS `total` from `orders` where (`orders`.`total` > 500)",
+          "columns": ["id", "total"],
+          "options": {
+            "algorithm": "MERGE",
+            "security": "INVOKER",
+            "definer": "app@%"
+          }
+        },
+        {
+          "name": "vip_orders",
+          "definition": "select `big_orders`.`id` AS `id` from `big_orders` where (`big_orders`.`total` > 1000)",
+          "columns": ["id"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "app@%"
+          }
+        }
+      ],
+      "routines": [
+        {
+          "name": "archive_orders",
+          "kind": "procedure",
+          "language": "SQL",
+          "definer": "app@%",
+          "definition": "CREATE PROCEDURE `archive_orders`(IN days INT)\nBEGIN\n  -- keep a week at least\n  DELETE FROM orders WHERE created_at < NOW() - INTERVAL GREATEST(days, 7) DAY;\nEND"
+        },
+        {
+          "name": "order_total",
+          "kind": "function",
+          "returns": "decimal(10,2)",
+          "language": "SQL",
+          "definer": "app@%",
+          "definition": "CREATE FUNCTION `order_total`(oid INT) RETURNS decimal(10,2)\n    READS SQL DATA\nBEGIN\n  DECLARE t DECIMAL(10,2);\n  SELECT total INTO t FROM orders WHERE id = oid;\n  RETURN t;\nEND"
+        }
+      ],
+      "events": [
+        {
+          "name": "nightly_stats",
+          "definition": "CREATE EVENT `nightly_stats` ON SCHEDULE EVERY 1 DAY STARTS '2026-01-01 02:30:00' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM sessions WHERE expires_at < NOW() - INTERVAL 30 DAY"
+        },
+        {
+          "name": "purge_sessions",
+          "definition": "CREATE EVENT `purge_sessions` ON SCHEDULE EVERY 1 DAY STARTS '2026-01-01 03:00:00' ON COMPLETION NOT PRESERVE DISABLE DO DELETE FROM sessions WHERE expires_at < NOW()",
+          "enabled": false
+        }
+      ],
+      "name": "shop_dev"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

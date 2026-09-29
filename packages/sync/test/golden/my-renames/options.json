@@ -1,0 +1,13 @@
+{
+  "renames": [
+    { "objectKind": "table", "from": "clients", "to": "customers" },
+    { "objectKind": "column", "table": "customers", "from": "fname", "to": "first_name" },
+    {
+      "objectKind": "index",
+      "table": "customers",
+      "from": "idx_email",
+      "to": "idx_customers_email"
+    },
+    { "objectKind": "view", "from": "client_emails", "to": "customer_emails" }
+  ]
+}

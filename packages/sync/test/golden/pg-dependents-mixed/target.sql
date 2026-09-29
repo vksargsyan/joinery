@@ -1,0 +1,13 @@
+create domain short_text as varchar(10);
+create type point2 as (x int, y int);
+create table shapes (id serial primary key, name text, origin point2, qty int default 0 check (qty >= 0), legacy text, tag text unique);
+create index shapes_qty_idx on shapes (qty);
+create index shapes_legacy_idx on shapes (legacy);
+create materialized view shape_qty as select id, qty from shapes;
+create index shape_qty_idx on shape_qty (qty);
+create view big_shapes as select id from shapes where qty > 10;
+create table shape_tags (id int primary key, tag text references shapes(tag));
+create function audit() returns trigger language plpgsql as $$ begin return new; end $$;
+create table old_name (id int primary key);
+create trigger old_name_audit after insert on old_name for each row execute function audit();
+insert into shapes (name, qty) values ('a', 1), ('b', 2);

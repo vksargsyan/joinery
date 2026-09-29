@@ -1,0 +1,143 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_dev",
+  "options": { "charset": "utf8mb4", "collation": "utf8mb4_0900_ai_ci" },
+  "schemas": [
+    {
+      "name": "shop_dev",
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int unsigned",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            { "name": "email", "ordinal": 2, "dataType": "varchar(320)", "nullable": false },
+            {
+              "name": "name",
+              "ordinal": 3,
+              "dataType": "varchar(100)",
+              "nullable": false,
+              "default": "''",
+              "collation": "utf8mb4_bin"
+            },
+            {
+              "name": "status",
+              "ordinal": 4,
+              "dataType": "enum('active','blocked')",
+              "nullable": false,
+              "default": "'active'"
+            },
+            {
+              "name": "created_at",
+              "ordinal": 5,
+              "dataType": "timestamp",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            },
+            {
+              "name": "updated_at",
+              "ordinal": 6,
+              "dataType": "timestamp",
+              "nullable": true,
+              "onUpdate": "CURRENT_TIMESTAMP"
+            }
+          ],
+          "primaryKey": { "name": "PRIMARY", "columns": ["id"] },
+          "indexes": [
+            {
+              "name": "idx_customers_name",
+              "columns": [{ "name": "name", "length": 32 }],
+              "method": "btree"
+            },
+            {
+              "name": "uq_customers_email",
+              "columns": [{ "name": "email" }],
+              "unique": true,
+              "method": "btree"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1"
+          },
+          "comment": "People who buy things"
+        },
+        {
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint unsigned",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            { "name": "customer_id", "ordinal": 2, "dataType": "int unsigned", "nullable": false },
+            {
+              "name": "total",
+              "ordinal": 3,
+              "dataType": "decimal(12,2)",
+              "nullable": false,
+              "default": "0.00"
+            },
+            { "name": "items", "ordinal": 4, "dataType": "json", "nullable": true },
+            {
+              "name": "item_count",
+              "ordinal": 5,
+              "dataType": "int",
+              "nullable": true,
+              "generated": { "expression": "json_length(`items`)", "stored": false }
+            },
+            { "name": "note", "ordinal": 6, "dataType": "text", "nullable": true },
+            {
+              "name": "placed_at",
+              "ordinal": 7,
+              "dataType": "datetime(3)",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP(3)"
+            }
+          ],
+          "primaryKey": { "name": "PRIMARY", "columns": ["id"] },
+          "indexes": [
+            {
+              "name": "fk_orders_customer",
+              "columns": [{ "name": "customer_id" }],
+              "method": "btree"
+            },
+            { "name": "ft_orders_note", "columns": [{ "name": "note" }], "method": "fulltext" },
+            {
+              "name": "idx_orders_placed",
+              "columns": [{ "name": "placed_at", "order": "desc" }],
+              "method": "btree"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "fk_orders_customer",
+              "columns": ["customer_id"],
+              "refTable": "customers",
+              "refColumns": ["id"],
+              "onDelete": "CASCADE"
+            }
+          ],
+          "checks": [{ "name": "orders_chk_1", "expression": "(`total` >= 0)" }],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,142 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "tables": [
+        {
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "total",
+              "ordinal": 2,
+              "dataType": "decimal(10,2)",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "ordinal": 3,
+              "dataType": "varchar(20)",
+              "nullable": false,
+              "default": "'new'"
+            },
+            {
+              "name": "created_at",
+              "ordinal": 4,
+              "dataType": "datetime",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "triggers": [
+            {
+              "name": "orders_bi",
+              "timing": "BEFORE",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER `orders_bi` BEFORE INSERT ON `orders` FOR EACH ROW SET NEW.status = 'new'"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "8811"
+          }
+        },
+        {
+          "name": "sessions",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "char(36)",
+              "nullable": false
+            },
+            {
+              "name": "expires_at",
+              "ordinal": 2,
+              "dataType": "datetime",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "big_orders",
+          "definition": "select `orders`.`id` AS `id`,`orders`.`total` AS `total` from `orders` where (`orders`.`total` > 100)",
+          "columns": ["id", "total"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "app@%"
+          }
+        },
+        {
+          "name": "old_report",
+          "definition": "select count(0) AS `n` from `orders`",
+          "columns": ["n"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "app@%"
+          }
+        }
+      ],
+      "routines": [
+        {
+          "name": "archive_orders",
+          "kind": "procedure",
+          "language": "SQL",
+          "definer": "app@%",
+          "definition": "CREATE PROCEDURE `archive_orders`(IN days INT)\nBEGIN\n  DELETE FROM orders WHERE created_at < NOW() - INTERVAL days DAY;\nEND"
+        },
+        {
+          "name": "order_count",
+          "kind": "function",
+          "returns": "int",
+          "language": "SQL",
+          "definer": "app@%",
+          "definition": "CREATE FUNCTION `order_count`() RETURNS int\n    READS SQL DATA\nRETURN (SELECT COUNT(*) FROM orders)"
+        }
+      ],
+      "events": [
+        {
+          "name": "nightly_stats",
+          "definition": "CREATE EVENT `nightly_stats` ON SCHEDULE EVERY 1 DAY STARTS '2026-01-01 02:00:00' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM sessions WHERE id IS NULL"
+        },
+        {
+          "name": "purge_sessions",
+          "definition": "CREATE EVENT `purge_sessions` ON SCHEDULE EVERY 1 DAY STARTS '2026-01-01 03:00:00' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM sessions WHERE expires_at < NOW()"
+        }
+      ],
+      "name": "shop_prod"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

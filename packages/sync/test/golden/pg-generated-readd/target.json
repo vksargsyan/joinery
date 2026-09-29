@@ -1,0 +1,92 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "calc",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true
+            },
+            {
+              "name": "s",
+              "ordinal": 4,
+              "dataType": "integer",
+              "nullable": true,
+              "generated": {
+                "expression": "(a + b)",
+                "stored": true
+              }
+            }
+          ],
+          "primaryKey": {
+            "name": "calc_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "calc_s_idx",
+              "columns": [
+                {
+                  "name": "s",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX calc_s_idx ON public.calc USING btree (s)"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "notes",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "notes_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

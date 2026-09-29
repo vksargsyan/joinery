@@ -1,0 +1,114 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "billing",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "billing",
+      "tables": [
+        {
+          "name": "accounts",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "balance",
+              "ordinal": 2,
+              "dataType": "decimal(12,2)",
+              "nullable": false,
+              "default": "0.00"
+            },
+            {
+              "name": "created_at",
+              "ordinal": 3,
+              "dataType": "timestamp",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            },
+            {
+              "name": "flags",
+              "ordinal": 4,
+              "dataType": "tinyint(1)",
+              "nullable": false,
+              "default": "0"
+            },
+            {
+              "name": "prefs",
+              "ordinal": 5,
+              "dataType": "json",
+              "nullable": true
+            },
+            {
+              "name": "status",
+              "ordinal": 6,
+              "dataType": "varchar(20)",
+              "nullable": false,
+              "default": "'open'"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1"
+          }
+        },
+        {
+          "name": "audit",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint unsigned",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "account_id",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "detail",
+              "ordinal": 3,
+              "dataType": "json",
+              "nullable": false
+            },
+            {
+              "name": "at",
+              "ordinal": 4,
+              "dataType": "datetime(3)",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP(3)"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

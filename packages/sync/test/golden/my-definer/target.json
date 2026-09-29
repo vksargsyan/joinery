@@ -1,0 +1,58 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.0.39",
+  "database": "ops_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "tables": [
+        {
+          "name": "t",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "v_t",
+          "definition": "select `t`.`id` AS `id` from `t`",
+          "columns": ["id"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "admin@localhost"
+          }
+        }
+      ],
+      "routines": [
+        {
+          "name": "p_count",
+          "kind": "procedure",
+          "language": "SQL",
+          "definer": "admin@localhost",
+          "definition": "CREATE PROCEDURE `p_count`()\nSELECT COUNT(*) FROM t"
+        }
+      ],
+      "name": "ops_prod"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

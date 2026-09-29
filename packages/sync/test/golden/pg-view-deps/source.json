@@ -1,0 +1,73 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "accounts",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "balance",
+              "ordinal": 2,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "code",
+              "ordinal": 3,
+              "dataType": "character varying(10)",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "accounts_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "balances",
+          "definition": "SELECT id,\n    balance,\n    code\n   FROM public.accounts",
+          "columns": ["id", "balance", "code"],
+          "owner": "postgres"
+        },
+        {
+          "name": "codes",
+          "definition": "SELECT id,\n    code\n   FROM public.accounts",
+          "columns": ["id", "code"],
+          "owner": "postgres"
+        },
+        {
+          "name": "rich",
+          "definition": "SELECT id,\n    balance\n   FROM public.balances\n  WHERE (balance > 1000)",
+          "columns": ["id", "balance"],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

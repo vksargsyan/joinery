@@ -1,0 +1,104 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "c",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "p_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "c_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "c_idx_parent",
+              "columns": [
+                {
+                  "name": "p_id",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX c_idx_parent ON public.c USING btree (p_id)"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "c_parent",
+              "columns": ["p_id"],
+              "refTable": "p",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "p",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "p_primary",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "uq_code",
+              "columns": ["code"]
+            }
+          ],
+          "checks": [
+            {
+              "name": "positive",
+              "expression": "((id > 0))"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

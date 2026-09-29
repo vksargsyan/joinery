@@ -1,0 +1,10 @@
+create extension if not exists pgcrypto;
+create schema billing;
+comment on schema billing is 'Money';
+create sequence billing.invoice_no as integer start with 1000 increment by 10 cache 5;
+create table billing.invoices (id uuid primary key default gen_random_uuid(), no integer not null default nextval('billing.invoice_no'), total numeric);
+alter sequence billing.invoice_no owned by billing.invoices.no;
+create sequence public.counter increment by 5 maxvalue 1000000 cycle;
+create domain positive_int as integer check (value > 0);
+create type money_pair as (amount numeric, currency char(3));
+create table public.wallets (id int primary key, credits positive_int, pair money_pair);

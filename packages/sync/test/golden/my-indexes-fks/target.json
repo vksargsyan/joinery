@@ -1,0 +1,206 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "shop_prod",
+      "tables": [
+        {
+          "name": "authors",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "email",
+              "ordinal": 2,
+              "dataType": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "country",
+              "ordinal": 3,
+              "dataType": "char(2)",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "email",
+              "columns": [
+                {
+                  "name": "email"
+                }
+              ],
+              "method": "btree",
+              "unique": true
+            },
+            {
+              "name": "idx_country",
+              "columns": [
+                {
+                  "name": "country"
+                }
+              ],
+              "method": "btree"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "412"
+          }
+        },
+        {
+          "name": "books",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "author_id",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "isbn",
+              "ordinal": 3,
+              "dataType": "varchar(20)",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "ordinal": 4,
+              "dataType": "varchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "published",
+              "ordinal": 5,
+              "dataType": "date",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "fk_books_author",
+              "columns": [
+                {
+                  "name": "author_id"
+                }
+              ],
+              "method": "btree"
+            },
+            {
+              "name": "idx_books_title",
+              "columns": [
+                {
+                  "name": "title"
+                }
+              ],
+              "method": "btree"
+            },
+            {
+              "name": "idx_old_pub",
+              "columns": [
+                {
+                  "name": "published"
+                }
+              ],
+              "method": "btree"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "fk_books_author",
+              "columns": ["author_id"],
+              "refTable": "authors",
+              "refColumns": ["id"]
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1733"
+          }
+        },
+        {
+          "name": "reviews",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "book_id",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "stars",
+              "ordinal": 3,
+              "dataType": "tinyint",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "book_id",
+              "columns": [
+                {
+                  "name": "book_id"
+                }
+              ],
+              "method": "btree"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "reviews_ibfk_1",
+              "columns": ["book_id"],
+              "refTable": "books",
+              "refColumns": ["id"]
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,99 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "items",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "identity": {
+                "generation": "always",
+                "start": "5",
+                "increment": "2"
+              }
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "qty",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true
+            },
+            {
+              "name": "price",
+              "ordinal": 4,
+              "dataType": "numeric",
+              "nullable": false,
+              "default": "0"
+            },
+            {
+              "name": "total",
+              "ordinal": 5,
+              "dataType": "numeric",
+              "nullable": true,
+              "generated": {
+                "expression": "(price * (2)::numeric)",
+                "stored": true
+              }
+            },
+            {
+              "name": "tag",
+              "ordinal": 6,
+              "dataType": "text",
+              "nullable": true,
+              "collation": "C"
+            },
+            {
+              "name": "gen_old",
+              "ordinal": 7,
+              "dataType": "integer",
+              "nullable": true
+            },
+            {
+              "name": "seq_id",
+              "ordinal": 8,
+              "dataType": "integer",
+              "nullable": false,
+              "identity": {
+                "generation": "always",
+                "start": "1",
+                "increment": "1"
+              }
+            }
+          ],
+          "options": {
+            "fillfactor": "70",
+            "autovacuum_enabled": "false"
+          },
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

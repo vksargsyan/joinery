@@ -1,0 +1,73 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "11.4.3-MariaDB",
+  "database": "billing",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "billing",
+      "tables": [
+        {
+          "name": "accounts",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "balance",
+              "ordinal": 2,
+              "dataType": "decimal(12,2)",
+              "nullable": false,
+              "default": "0.00"
+            },
+            {
+              "name": "created_at",
+              "ordinal": 3,
+              "dataType": "timestamp",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            },
+            {
+              "name": "flags",
+              "ordinal": 4,
+              "dataType": "tinyint(1)",
+              "nullable": false,
+              "default": "0"
+            },
+            {
+              "name": "prefs",
+              "ordinal": 5,
+              "dataType": "longtext",
+              "nullable": true,
+              "collation": "utf8mb4_bin"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "checks": [
+            {
+              "name": "prefs",
+              "expression": "json_valid(`prefs`)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci",
+            "autoIncrement": "7712"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

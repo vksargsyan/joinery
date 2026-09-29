@@ -1,0 +1,71 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "paints",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "c",
+              "ordinal": 2,
+              "dataType": "public.color",
+              "nullable": false,
+              "default": "'red'::public.color"
+            },
+            {
+              "name": "palette",
+              "ordinal": 3,
+              "dataType": "public.color[]",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "paints_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "reds",
+          "definition": "SELECT id,\n    c\n   FROM public.paints\n  WHERE (c = 'red'::public.color)",
+          "columns": ["id", "c"],
+          "owner": "postgres"
+        }
+      ],
+      "types": [
+        {
+          "name": "color",
+          "kind": "enum",
+          "values": ["red", "green", "blue", "purple"],
+          "definition": "CREATE TYPE public.color AS ENUM ('red', 'green', 'blue', 'purple')",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,240 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.customers_id_seq'::regclass)"
+            },
+            {
+              "name": "email",
+              "ordinal": 2,
+              "dataType": "character varying(320)",
+              "nullable": false,
+              "comment": "Login e-mail"
+            },
+            {
+              "name": "full_name",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": false,
+              "default": "''::text"
+            },
+            {
+              "name": "status",
+              "ordinal": 4,
+              "dataType": "character varying(20)",
+              "nullable": false,
+              "default": "'active'::character varying"
+            },
+            {
+              "name": "credit",
+              "ordinal": 5,
+              "dataType": "numeric(12,2)",
+              "nullable": false,
+              "default": "0"
+            },
+            {
+              "name": "created_at",
+              "ordinal": 6,
+              "dataType": "timestamp with time zone",
+              "nullable": false,
+              "default": "now()"
+            }
+          ],
+          "primaryKey": {
+            "name": "customers_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "customers_email_key",
+              "columns": ["email"]
+            }
+          ],
+          "indexes": [
+            {
+              "name": "customers_created_idx",
+              "columns": [
+                {
+                  "name": "created_at",
+                  "order": "desc",
+                  "nulls": "first"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX customers_created_idx ON public.customers USING btree (created_at DESC)"
+            }
+          ],
+          "checks": [
+            {
+              "name": "customers_status_check",
+              "expression": "(((status)::text = ANY ((ARRAY['active'::character varying, 'blocked'::character varying])::text[])))"
+            }
+          ],
+          "comment": "People who buy things",
+          "owner": "postgres"
+        },
+        {
+          "name": "order_lines",
+          "columns": [
+            {
+              "name": "order_id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "line_no",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "sku",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": false
+            },
+            {
+              "name": "qty",
+              "ordinal": 4,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "1"
+            }
+          ],
+          "primaryKey": {
+            "name": "order_lines_pkey",
+            "columns": ["order_id", "line_no"]
+          },
+          "foreignKeys": [
+            {
+              "name": "order_lines_order_id_fkey",
+              "columns": ["order_id"],
+              "refTable": "orders",
+              "refColumns": ["id"],
+              "onDelete": "CASCADE",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false,
+              "identity": {
+                "generation": "always",
+                "start": "1000",
+                "increment": "1"
+              }
+            },
+            {
+              "name": "customer_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "total",
+              "ordinal": 3,
+              "dataType": "numeric(12,2)",
+              "nullable": false
+            },
+            {
+              "name": "note",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "placed_at",
+              "ordinal": 5,
+              "dataType": "timestamp(3) without time zone",
+              "nullable": true,
+              "default": "CURRENT_TIMESTAMP"
+            }
+          ],
+          "primaryKey": {
+            "name": "orders_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "orders_customer_idx",
+              "columns": [
+                {
+                  "name": "customer_id",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "where": "(total > (0)::numeric)",
+              "definition": "CREATE INDEX orders_customer_idx ON public.orders USING btree (customer_id) WHERE (total > (0)::numeric)"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "orders_customer_id_fkey",
+              "columns": ["customer_id"],
+              "refTable": "customers",
+              "refColumns": ["id"],
+              "onDelete": "CASCADE",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "checks": [
+            {
+              "name": "orders_total_check",
+              "expression": "((total >= (0)::numeric))"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "customers_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "customers.id",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

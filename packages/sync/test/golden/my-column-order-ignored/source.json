@@ -1,0 +1,65 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_dev",
+  "options": { "charset": "utf8mb4", "collation": "utf8mb4_0900_ai_ci" },
+  "schemas": [
+    {
+      "name": "shop_dev",
+      "tables": [
+        {
+          "name": "products",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            { "name": "title", "ordinal": 2, "dataType": "varchar(200)", "nullable": false },
+            { "name": "sku", "ordinal": 3, "dataType": "varchar(24)", "nullable": false },
+            { "name": "brand", "ordinal": 4, "dataType": "varchar(60)", "nullable": true },
+            {
+              "name": "price",
+              "ordinal": 5,
+              "dataType": "decimal(10,2)",
+              "nullable": false,
+              "default": "0.00"
+            },
+            {
+              "name": "description",
+              "ordinal": 6,
+              "dataType": "mediumtext",
+              "nullable": true,
+              "comment": "HTML allowed"
+            },
+            {
+              "name": "stock",
+              "ordinal": 7,
+              "dataType": "int unsigned",
+              "nullable": false,
+              "default": "0"
+            },
+            {
+              "name": "updated_at",
+              "ordinal": 8,
+              "dataType": "timestamp",
+              "nullable": true,
+              "onUpdate": "CURRENT_TIMESTAMP"
+            },
+            { "name": "notes", "ordinal": 9, "dataType": "varchar(500)", "nullable": true }
+          ],
+          "primaryKey": { "name": "PRIMARY", "columns": ["id"] },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "31"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,1 @@
+-- MySQL 8.4: empty database

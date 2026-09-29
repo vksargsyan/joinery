@@ -1,0 +1,100 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "products",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": false
+            },
+            {
+              "name": "price",
+              "ordinal": 3,
+              "dataType": "numeric(10,2)",
+              "nullable": true
+            },
+            {
+              "name": "active",
+              "ordinal": 4,
+              "dataType": "boolean",
+              "nullable": true,
+              "default": "true"
+            }
+          ],
+          "primaryKey": {
+            "name": "products_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "active_products",
+          "definition": "SELECT id,\n    name\n   FROM public.products\n  WHERE active",
+          "columns": ["id", "name"],
+          "owner": "postgres"
+        },
+        {
+          "name": "cheap",
+          "definition": "SELECT id,\n    price\n   FROM public.products\n  WHERE (price < (10)::numeric)",
+          "columns": ["id", "price"],
+          "owner": "postgres"
+        },
+        {
+          "name": "legacy",
+          "definition": "SELECT id\n   FROM public.products",
+          "columns": ["id"],
+          "owner": "postgres"
+        },
+        {
+          "name": "price_stats",
+          "materialized": true,
+          "definition": "SELECT count(*) AS n\n   FROM public.products",
+          "columns": ["n"],
+          "indexes": [
+            {
+              "name": "price_stats_n",
+              "columns": [
+                {
+                  "name": "n",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX price_stats_n ON public.price_stats USING btree (n)"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

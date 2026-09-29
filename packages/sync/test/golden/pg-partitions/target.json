@@ -1,0 +1,64 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "measurements",
+          "kind": "partitioned",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "taken",
+              "ordinal": 2,
+              "dataType": "date",
+              "nullable": false
+            },
+            {
+              "name": "value",
+              "ordinal": 3,
+              "dataType": "double precision",
+              "nullable": true
+            }
+          ],
+          "partitioning": {
+            "method": "RANGE",
+            "key": "(taken)",
+            "partitions": [
+              {
+                "name": "measurements_2023",
+                "bound": "FOR VALUES FROM ('2023-01-01') TO ('2024-01-01')"
+              },
+              {
+                "name": "measurements_2024",
+                "bound": "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')"
+              }
+            ]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

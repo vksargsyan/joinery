@@ -1,0 +1,123 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "categories",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "categories_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        },
+        {
+          "name": "products",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": false
+            },
+            {
+              "name": "price",
+              "ordinal": 3,
+              "dataType": "numeric(10,2)",
+              "nullable": true
+            },
+            {
+              "name": "active",
+              "ordinal": 4,
+              "dataType": "boolean",
+              "nullable": true,
+              "default": "true"
+            }
+          ],
+          "primaryKey": {
+            "name": "products_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "active_products",
+          "definition": "SELECT id,\n    name,\n    price\n   FROM public.products\n  WHERE (active AND (price IS NOT NULL))",
+          "columns": ["id", "name", "price"],
+          "comment": "Shown in the shop",
+          "owner": "postgres"
+        },
+        {
+          "name": "category_list",
+          "definition": "SELECT id,\n    upper(title) AS title\n   FROM public.categories",
+          "columns": ["id", "title"],
+          "owner": "postgres"
+        },
+        {
+          "name": "cheap",
+          "definition": "SELECT price,\n    id\n   FROM public.products\n  WHERE (price < (5)::numeric)",
+          "columns": ["price", "id"],
+          "owner": "postgres"
+        },
+        {
+          "name": "price_stats",
+          "materialized": true,
+          "definition": "SELECT count(*) AS n,\n    avg(price) AS avg_price\n   FROM public.products",
+          "columns": ["n", "avg_price"],
+          "indexes": [
+            {
+              "name": "price_stats_n",
+              "columns": [
+                {
+                  "name": "n",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX price_stats_n ON public.price_stats USING btree (n)"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

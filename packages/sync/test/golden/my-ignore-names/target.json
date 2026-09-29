@@ -1,0 +1,126 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "wms_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "wms_prod",
+      "tables": [
+        {
+          "name": "customers",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        },
+        {
+          "name": "orders",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "customer_id",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "warehouse_id",
+              "ordinal": 3,
+              "dataType": "int",
+              "nullable": true
+            },
+            {
+              "name": "qty",
+              "ordinal": 4,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "price",
+              "ordinal": 5,
+              "dataType": "decimal(10,2)",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "customer_id",
+              "columns": [
+                {
+                  "name": "customer_id"
+                }
+              ],
+              "method": "btree"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "orders_ibfk_1",
+              "columns": ["customer_id"],
+              "refTable": "customers",
+              "refColumns": ["id"]
+            }
+          ],
+          "checks": [
+            {
+              "name": "orders_chk_1",
+              "expression": "(`price` >= 0)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        },
+        {
+          "name": "warehouses",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

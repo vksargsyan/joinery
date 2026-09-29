@@ -1,0 +1,89 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "links_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "tables": [
+        {
+          "name": "links",
+          "columns": [
+            {
+              "name": "a",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "b",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["a", "b"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        },
+        {
+          "name": "tags",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int unsigned",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "name",
+              "ordinal": 2,
+              "dataType": "varchar(64)",
+              "nullable": false
+            },
+            {
+              "name": "label",
+              "ordinal": 3,
+              "dataType": "varchar(100)",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "uq_tags_name",
+              "columns": [
+                {
+                  "name": "name"
+                }
+              ],
+              "unique": true,
+              "method": "btree"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1"
+          }
+        }
+      ],
+      "name": "links_dev"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}
