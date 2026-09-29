@@ -13,6 +13,9 @@ import {
 } from '../src';
 import { deferred, fakeElectronPort, nodeChannel, portPair, sleep } from './helpers';
 
+/** Message round trips can take seconds while every package's tests run at once. */
+const WAIT = { timeout: 10_000 };
+
 const contract = defineContract({
   add: {
     input: z.object({ a: z.number(), b: z.number().default(0) }),
@@ -195,7 +198,7 @@ describe('unary calls', () => {
     await started.promise;
     controller.abort();
     expect((await rejection(call)).code).toBe('CANCELLED');
-    await vi.waitFor(() => expect(handlerSignal?.aborted).toBe(true));
+    await vi.waitFor(() => expect(handlerSignal?.aborted).toBe(true), WAIT);
     expect(handlerSignal?.reason).toMatchObject({ code: 'CANCELLED' });
   });
 
@@ -294,7 +297,7 @@ describe('streams', () => {
     for await (const item of client.count({ n: 10_000 })) {
       if (item === 2) break;
     }
-    await vi.waitFor(() => expect(closed).toBe(true));
+    await vi.waitFor(() => expect(closed).toBe(true), WAIT);
     expect(abortedInFinally).toBe(true);
     expect(produced).toBeLessThan(10);
   });
@@ -510,7 +513,7 @@ describe('validation', () => {
     port1.postMessage({ $rpc: 1, t: 'call', id: 7, m: 42 });
     port1.postMessage({ $rpc: 1, t: 'nonsense', id: 8 });
     port1.postMessage({ $rpc: 1, t: 'call', id: 9, m: 'add', k: 'unary', i: { a: 1, b: 1 } });
-    await vi.waitFor(() => expect(replies).toHaveLength(3));
+    await vi.waitFor(() => expect(replies).toHaveLength(3), WAIT);
     expect(replies).toContainEqual(
       expect.objectContaining({
         t: 'error',
@@ -555,7 +558,7 @@ describe('lifecycle', () => {
     expect((await rejection(unary)).code).toBe('CONNECTION_FAILED');
     expect((await rejection(pendingNext)).code).toBe('CONNECTION_FAILED');
     expect((await rejection(client.add({ a: 1 }))).code).toBe('CONNECTION_FAILED');
-    await vi.waitFor(() => expect(signals.every((s) => s.aborted)).toBe(true));
+    await vi.waitFor(() => expect(signals.every((s) => s.aborted)).toBe(true), WAIT);
     expect(signals).toHaveLength(2);
   });
 
@@ -576,7 +579,7 @@ describe('lifecycle', () => {
     expect((await rejection(call)).code).toBe('CANCELLED');
     expect((await rejection(stream.next())).code).toBe('CANCELLED');
     expect((await rejection(client.add({ a: 1 }))).code).toBe('CONNECTION_FAILED');
-    await vi.waitFor(() => expect(handlerSignal?.aborted).toBe(true));
+    await vi.waitFor(() => expect(handlerSignal?.aborted).toBe(true), WAIT);
   });
 
   it('server.dispose() aborts handlers and fails their callers', async () => {

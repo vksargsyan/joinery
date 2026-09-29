@@ -31,7 +31,9 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      # Two packages at a time: each vitest run already uses every core, and more at once starved
+      # the timing-sensitive tests (parser warm-up, message round trips) on the 4-core runner.
+      - run: pnpm test --concurrency=2
 
   audit:
     name: Dependency audit
