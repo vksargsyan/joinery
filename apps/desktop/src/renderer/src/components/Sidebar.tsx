@@ -29,6 +29,7 @@ import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
 import { openDataCompare, openStructureCompare } from '../state/sync/panels';
 import { openTransferFrom } from '../state/transfer-db/api';
+import { BackupMenuItems } from './backup/BackupDialogs';
 import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
 import { RedisTree, openRedisTool } from './redis/RedisTree';
@@ -386,6 +387,7 @@ function ProfileItem(props: {
                   profile.engine === 'redis') && (
                   <MenuItem onSelect={() => openTransferFrom(profile)}>Transfer data to…</MenuItem>
                 )}
+                <BackupMenuItems profile={profile} />
                 <MenuItem onSelect={() => refreshObjects(profile.id, [])}>Refresh objects</MenuItem>
                 <MenuItem onSelect={() => void close()}>Disconnect</MenuItem>
               </>
@@ -640,6 +642,14 @@ function ObjectNode(props: {
                     database: node.path[0] ?? '',
                     schemas: node.name,
                   }}
+                />
+              )}
+              {((node.kind === 'database' && node.path.length === 1) ||
+                (node.kind === 'schema' && node.path.length === 2)) && (
+                <BackupMenuItems
+                  profile={profile}
+                  location={{ database: node.path[0], schema: node.path[1] }}
+                  restore={node.kind === 'database'}
                 />
               )}
               {node.hasChildren && (

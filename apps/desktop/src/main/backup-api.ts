@@ -1,10 +1,6 @@
 import { basename } from 'node:path';
 
-import {
-  JoineryError,
-  requiresWriteConfirmation,
-  type ConnectionProfile,
-} from '@joinery/core';
+import { JoineryError, requiresWriteConfirmation, type ConnectionProfile } from '@joinery/core';
 import {
   backupInspectionSchema,
   nativeToolSchema,

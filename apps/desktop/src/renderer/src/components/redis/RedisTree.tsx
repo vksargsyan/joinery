@@ -16,6 +16,7 @@ import {
   withDatabaseSession,
   type RedisTool,
 } from '../../state/redis/panels';
+import { BackupMenuItems } from '../backup/BackupDialogs';
 import { MenuItem, Row } from '../Sidebar';
 import { Icon } from '../ui';
 import { TypeBadge } from './common';
@@ -301,6 +302,15 @@ function TreeNode(props: {
                 Transfer keys to…
               </MenuItem>
             )}
+            <BackupMenuItems
+              profile={profile}
+              location={{
+                ...(database !== undefined ? { database: String(database) } : {}),
+                ...(pattern !== undefined ? { pattern } : {}),
+                ...(clusterNode !== undefined ? { node: clusterNode } : {}),
+              }}
+              restore={node.kind !== 'namespace'}
+            />
             <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>Refresh</MenuItem>
           </>
         }

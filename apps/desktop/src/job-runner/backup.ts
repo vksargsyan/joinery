@@ -63,8 +63,11 @@ function jobProgress(
   progress: BackupProgress | RestoreProgress,
   restoring: boolean,
 ): Omit<JobProgress, 'elapsedMs'> {
+  const phase =
+    progress.object !== undefined ? `${progress.phase}: ${progress.object}` : progress.phase;
   return {
-    phase: progress.object !== undefined ? `${progress.phase}: ${progress.object}` : progress.phase,
+    // The job list's phase line is short; a long object name is cut.
+    phase: phase.length > 300 ? `${phase.slice(0, 299)}…` : phase,
     rowsRead: progress.rows,
     rowsWritten: progress.rows,
     bytes: progress.bytes,
@@ -84,7 +87,8 @@ export function checkBackupJob(job: BackupJob, engine: string): void {
   if (native && !isSqlEngine(engine as never)) {
     throw invalid('The native tools back up MySQL, MariaDB and PostgreSQL only');
   }
-  if (native && job.format === 'jbak') throw invalid('The native tools do not write .jbak archives');
+  if (native && job.format === 'jbak')
+    throw invalid('The native tools do not write .jbak archives');
   if (!native && job.format === 'custom') throw invalid('The custom format needs pg_dump');
   if (job.format === 'custom' && engine !== 'postgres') {
     throw invalid('The custom format is PostgreSQL only');
@@ -129,7 +133,10 @@ export async function runBackupJob(job: BackupJob, ctx: BackupJobContext): Promi
     const database = job.database ?? (await currentDatabase(session));
     const tables = (job.selection?.include ?? [])
       .filter((ref) => ref.kind === 'table')
-      .map((ref) => ({ ...(ref.schema !== undefined ? { schema: ref.schema } : {}), name: ref.name }));
+      .map((ref) => ({
+        ...(ref.schema !== undefined ? { schema: ref.schema } : {}),
+        name: ref.name,
+      }));
     summary = await nativeBackup({
       ...common,
       resolved: ctx.resolved,
@@ -183,7 +190,10 @@ function rowError(error: RestoreSummary['errors'][number]): JobRowError {
   };
 }
 
-async function databaseOptions(path: string, passphrase: string | undefined): Promise<Record<string, string>> {
+async function databaseOptions(
+  path: string,
+  passphrase: string | undefined,
+): Promise<Record<string, string>> {
   const handle = await open(path, 'r');
   const head = Buffer.alloc(8);
   try {
@@ -226,7 +236,9 @@ export async function runRestoreJob(job: RestoreJob, ctx: BackupJobContext): Pro
       onProgress: (p: RestoreProgress) => ctx.progress(jobProgress(p, true)),
       onLog: ctx.log,
       onError: job.onError,
-      ...(job.confirmedConflicts !== undefined ? { confirmedConflicts: job.confirmedConflicts } : {}),
+      ...(job.confirmedConflicts !== undefined
+        ? { confirmedConflicts: job.confirmedConflicts }
+        : {}),
     };
     let summary: RestoreSummary;
     if (job.method === 'native') {
@@ -283,7 +295,11 @@ export function runBackupTask(
 }
 
 /** The database a job's first session opens: none yet when the restore creates it. */
-export function connectDatabase(job: { readonly kind: string; readonly database?: string | undefined; readonly createDatabase?: boolean | undefined }): string | undefined {
+export function connectDatabase(job: {
+  readonly kind: string;
+  readonly database?: string | undefined;
+  readonly createDatabase?: boolean | undefined;
+}): string | undefined {
   return job.kind === 'restore' && job.createDatabase === true ? undefined : job.database;
 }
 
@@ -293,7 +309,9 @@ const BACKUP_REQUESTS: ReadonlySet<string> = new Set([
   'native-tools',
 ]);
 
-export function isBackupRequest(request: { readonly kind: string }): request is BackupRunnerRequest {
+export function isBackupRequest(request: {
+  readonly kind: string;
+}): request is BackupRunnerRequest {
   return BACKUP_REQUESTS.has(request.kind);
 }
 
@@ -334,7 +352,14 @@ export async function inspectFile(path: string, passphrase?: string): Promise<Ba
 async function planIntoNewDatabase(job: RestoreJob): Promise<RestorePlan> {
   const info = await inspectBackup(job.path, job.passphrase);
   if (!info.manifest) {
-    return { format: info.format, objects: [], added: [], skipped: [], conflicts: [], warnings: [] };
+    return {
+      format: info.format,
+      objects: [],
+      added: [],
+      skipped: [],
+      conflicts: [],
+      warnings: [],
+    };
   }
   const select = job.select !== undefined ? new Set(job.select) : undefined;
   const chosen = resolveSelection(info.manifest.objects, {
@@ -351,7 +376,10 @@ async function planIntoNewDatabase(job: RestoreJob): Promise<RestorePlan> {
 }
 
 /** The profile with another default database. */
-export function inDatabase(resolved: ResolvedProfile, database: string | undefined): ResolvedProfile {
+export function inDatabase(
+  resolved: ResolvedProfile,
+  database: string | undefined,
+): ResolvedProfile {
   if (database === undefined) return resolved;
   const { profile } = resolved;
   return {
