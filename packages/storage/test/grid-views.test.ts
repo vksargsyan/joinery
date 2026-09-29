@@ -114,10 +114,10 @@ describe('grid views', () => {
     expect(store.db.get('SELECT count(*) AS n FROM grid_views')).toEqual({ n: 0 });
   });
 
-  it('is created by its own migration on a version 2 store', () => {
+  it('is created by its own migration on a version 3 store', () => {
     const db = openDatabase(':memory:');
-    migrate(db, MIGRATIONS.slice(0, 2));
-    expect(migrate(db).applied).toEqual([3]);
+    migrate(db, MIGRATIONS.slice(0, 3));
+    expect(migrate(db).applied).toEqual([4]);
     const tables = db
       .all("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .map((row) => row['name']);

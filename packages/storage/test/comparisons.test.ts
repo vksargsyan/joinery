@@ -11,7 +11,7 @@ import { fakeClock, memoryStore, postgresProfile, thrown } from './helpers';
 
 describe('saved comparisons', () => {
   it('is a migration of its own', () => {
-    expect(MIGRATIONS.at(-1)?.name).toBe('saved comparisons');
+    expect(MIGRATIONS.find((m) => m.name === 'saved comparisons')?.version).toBe(3);
   });
 
   it('creates, reads, updates with version bumps and deletes', () => {
