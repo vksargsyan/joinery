@@ -1,25 +1,40 @@
 import {
+  ENDPOINT_KINDS,
   ENGINES,
   environmentSchema,
+  isSqlEngine,
   newId,
   tlsModeSchema,
+  type Auth,
+  type ConnectionOptions,
   type ConnectionProfile,
   type ConnectionProfileInput,
   type EngineId,
+  type HostPort,
   type ProxyOptions,
   type SecretPolicy,
   type SecretRef,
   type SshAuth,
   type SshTunnel,
 } from '@joinery/core';
-import { uriCarriesSecret } from '@joinery/ipc';
+import { uriCarriesSecret, type ParsedConnectionUriResult } from '@joinery/ipc';
 import { z } from 'zod';
+
+import {
+  READ_PREFERENCES,
+  liftMongoUriOptions,
+  passwordFromUri,
+  uriHosts,
+  uriScheme,
+} from './connection-uri';
+
+export { passwordFromUri, READ_PREFERENCES, type ReadPreference } from './connection-uri';
 
 /**
  * The connection dialog's form model (spec §4) and its mapping to and from a profile. The form is
- * flat strings and booleans, which is what inputs produce; `formToProfile` builds the profile the
- * main contract validates again. Fields the dialog does not show (tags, other options) are
- * carried over from the edited profile unchanged.
+ * flat strings, booleans and host rows, which is what inputs produce; `formToProfile` builds the
+ * profile the main contract validates again. Fields the dialog does not show (tags, other
+ * options) are carried over from the edited profile unchanged.
  *
  * Every secret (the password, SSH passwords and key passphrases, the proxy password) is typed
  * into the form and leaves it as a `SecretField`: a reference with its policy plus the typed
@@ -27,14 +42,66 @@ import { z } from 'zod';
  */
 
 /** Engines the dialog can configure today; the others are listed as coming soon. */
-export const DIALOG_ENGINES = ['postgres', 'mysql', 'mariadb'] as const;
+export const DIALOG_ENGINES = ['postgres', 'mysql', 'mariadb', 'mongodb', 'redis'] as const;
 export type DialogEngine = (typeof DIALOG_ENGINES)[number];
-export const COMING_SOON_ENGINES: readonly EngineId[] = [
-  'mongodb',
-  'redis',
-  'elasticsearch',
-  'opensearch',
-];
+export const COMING_SOON_ENGINES: readonly EngineId[] = ['elasticsearch', 'opensearch'];
+
+/** Every endpoint form the dialog's engines accept (core's `ENDPOINT_KINDS` says which). */
+export const FORM_ENDPOINT_KINDS = [
+  'host',
+  'socket',
+  'uri',
+  'hosts',
+  'srv',
+  'sentinel',
+  'cluster',
+] as const;
+export type FormEndpointKind = (typeof FORM_ENDPOINT_KINDS)[number];
+
+/** The endpoint forms an engine accepts, in the order the dialog lists them. */
+export function endpointKindsFor(engine: DialogEngine): readonly FormEndpointKind[] {
+  return FORM_ENDPOINT_KINDS_BY_ENGINE[engine];
+}
+
+const FORM_ENDPOINT_KINDS_BY_ENGINE: Readonly<Record<DialogEngine, readonly FormEndpointKind[]>> = {
+  postgres: ENDPOINT_KINDS.postgres.filter(isFormEndpointKind),
+  mysql: ENDPOINT_KINDS.mysql.filter(isFormEndpointKind),
+  mariadb: ENDPOINT_KINDS.mariadb.filter(isFormEndpointKind),
+  mongodb: ENDPOINT_KINDS.mongodb.filter(isFormEndpointKind),
+  redis: ENDPOINT_KINDS.redis.filter(isFormEndpointKind),
+};
+
+function isFormEndpointKind(kind: string): kind is FormEndpointKind {
+  return (FORM_ENDPOINT_KINDS as readonly string[]).includes(kind);
+}
+
+export const AUTH_METHODS = ['none', 'password', 'clientCertificate', 'awsIam'] as const;
+export type FormAuthMethod = (typeof AUTH_METHODS)[number];
+
+/**
+ * How each engine's users sign in, as the dialog offers it (spec §4). SQL engines always take a
+ * user and an optional password; the method is not shown for them.
+ */
+export const ENGINE_AUTH_METHODS: Readonly<Record<DialogEngine, readonly FormAuthMethod[]>> = {
+  postgres: ['password'],
+  mysql: ['password'],
+  mariadb: ['password'],
+  mongodb: ['none', 'password', 'clientCertificate', 'awsIam'],
+  redis: ['none', 'password'],
+};
+
+/**
+ * MongoDB SASL mechanisms for a user and password. PLAIN is LDAP, whose users live in the
+ * `$external` database; '' lets the driver negotiate with the server (SCRAM-SHA-256 when the
+ * user has such credentials, else SCRAM-SHA-1), which is what a URI without authMechanism means.
+ */
+export const MONGO_MECHANISMS = ['SCRAM-SHA-256', 'SCRAM-SHA-1', 'PLAIN', ''] as const;
+
+/** The database that holds LDAP, X.509 and AWS users in MongoDB. */
+export const EXTERNAL_AUTH_SOURCE = '$external';
+
+/** Redis Sentinel's default port. */
+export const SENTINEL_PORT = 26379;
 
 export const PASSWORD_MODES = ['save', 'session', 'ask', 'none'] as const;
 export type PasswordMode = (typeof PASSWORD_MODES)[number];
@@ -50,6 +117,9 @@ export const PROXY_KINDS = ['none', 'socks5', 'http'] as const;
 /** At most this many hops: jump hosts plus the SSH server that forwards to the database. */
 export const MAX_SSH_HOPS = 8;
 
+/** At most this many rows in a host list, Sentinel list or cluster seed list. */
+export const MAX_HOST_ROWS = 50;
+
 const portText = z
   .string()
   .trim()
@@ -60,6 +130,26 @@ const portText = z
 function isPort(value: string): boolean {
   return portText.safeParse(value).success;
 }
+
+/** A Redis logical database: a non-negative integer (0 to 15 on a default server). */
+function isRedisDatabase(value: string): boolean {
+  return /^\d{1,10}$/.test(value) && Number(value) <= 2_147_483_647;
+}
+
+/** MongoDB database names: under 64 characters, none of / \ . " $ space or NUL. */
+function isMongoDatabaseName(value: string): boolean {
+  return value.length < 64 && !/[/\\. "$\0]/.test(value);
+}
+
+const MONGO_NAME_MESSAGE =
+  'A MongoDB database name has fewer than 64 characters and no spaces or / \\ . " $';
+
+/** One host of a MongoDB host list, a Redis cluster seed or a Sentinel, as the dialog edits it. */
+export const hostRowSchema = z.object({
+  host: z.string().trim().max(255),
+  port: z.string().trim(),
+});
+export type HostRowValues = z.infer<typeof hostRowSchema>;
 
 /** One SSH hop as the dialog edits it; the last one forwards to the database. */
 export const sshHopFormSchema = z.object({
@@ -78,20 +168,57 @@ export const sshHopFormSchema = z.object({
 });
 export type SshHopFormValues = z.infer<typeof sshHopFormSchema>;
 
+/**
+ * Why a MongoDB or Redis endpoint cannot go through an SSH tunnel or a proxy, for the dialog to
+ * explain next to those sections. The tunnel forwards to one host, and the drivers then talk to
+ * that host directly instead of following the addresses the servers announce.
+ */
+export function tunnelLimitation(engine: DialogEngine): string | undefined {
+  if (engine === 'mongodb') {
+    return 'Through an SSH tunnel or a proxy, Joinery connects directly to one MongoDB host: the other replica set members announce addresses that are not reachable through it. Use Host and port (or a single-host mongodb:// URI).';
+  }
+  if (engine === 'redis') {
+    return 'Only Host and port (or a single-host URI) can go through an SSH tunnel or a proxy. Sentinel and Cluster cannot yet: Joinery would have to reach every node the servers announce.';
+  }
+  return undefined;
+}
+
 export const connectionFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Give the connection a name').max(200),
     engine: z.enum(DIALOG_ENGINES),
-    endpointKind: z.enum(['host', 'socket', 'uri']),
+    endpointKind: z.enum(FORM_ENDPOINT_KINDS),
+    /** The host of a host endpoint, or the SRV host name of a mongodb+srv endpoint. */
     host: z.string().trim().max(255),
     port: z.string().trim(),
     socketPath: z.string().trim().max(1024),
     uri: z.string().trim().max(8192),
+    /** MongoDB host list or Redis cluster seeds. */
+    hostList: z.array(hostRowSchema).max(MAX_HOST_ROWS),
+    /** MongoDB replica set name for a host list; optional. */
+    replicaSet: z.string().trim().max(255),
+    sentinels: z.array(hostRowSchema).max(MAX_HOST_ROWS),
+    /** The master the Sentinels watch. */
+    masterName: z.string().trim().max(255),
+    /** SQL and MongoDB default database; Redis logical database number. */
     database: z.string().trim().max(255),
-    user: z.string().trim().max(255),
+    /** MongoDB and Redis only: SQL engines always sign in with a user and optional password. */
+    authMethod: z.enum(AUTH_METHODS),
+    user: z.string().trim().max(1024),
     /** Typed password; empty while editing keeps the stored one. */
     password: z.string().max(65_536),
     passwordMode: z.enum(PASSWORD_MODES),
+    /** SASL mechanism or auth plugin; the dialog edits it for MongoDB and keeps it otherwise. */
+    mechanism: z.string().trim().max(64),
+    awsRegion: z.string().trim().max(64),
+    awsProfile: z.string().trim().max(255),
+    /** MongoDB: the database holding the user; empty uses the driver's default (admin). */
+    authSource: z.string().trim().max(255),
+    directConnection: z.boolean(),
+    /** MongoDB: empty uses the driver's default (primary). */
+    readPreference: z.union([z.literal(''), z.enum(READ_PREFERENCES)]),
+    /** Redis key browser delimiter; empty uses ":". Not trimmed: a space is a delimiter too. */
+    keyDelimiter: z.string().max(16, 'Use a delimiter of at most 16 characters'),
     tlsMode: tlsModeSchema,
     caPath: z.string().trim().max(4096),
     certPath: z.string().trim().max(4096),
@@ -115,69 +242,220 @@ export const connectionFormSchema = z
     proxyPasswordMode: z.enum(PASSWORD_MODES),
   })
   .superRefine((form, ctx) => {
-    if (form.endpointKind === 'host') {
-      if (form.host === '')
-        ctx.addIssue({ code: 'custom', path: ['host'], message: 'Enter a host' });
-      if (!portText.safeParse(form.port).success) {
-        ctx.addIssue({ code: 'custom', path: ['port'], message: 'Port must be 1 to 65535' });
-      }
-    }
-    if (form.endpointKind === 'socket' && form.socketPath === '') {
-      ctx.addIssue({ code: 'custom', path: ['socketPath'], message: 'Enter the socket path' });
-    }
-    if (form.endpointKind === 'uri') {
-      if (form.uri === '') ctx.addIssue({ code: 'custom', path: ['uri'], message: 'Enter a URI' });
-      else if (uriCarriesSecret(form.uri)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['uri'],
-          message: 'Remove the password from the URI and put it in the password field',
-        });
-      }
-    }
-    const tunnelled = form.sshEnabled || form.proxyKind !== 'none';
-    if (tunnelled && form.endpointKind === 'socket') {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['socketPath'],
-        message:
-          'A Unix socket cannot be reached through an SSH tunnel or a proxy; use the host and port the SSH server sees',
-      });
-    }
-    if (form.sshEnabled) {
-      if (form.sshHops.length === 0) {
-        ctx.addIssue({ code: 'custom', path: ['sshHops'], message: 'Add the SSH server' });
-      }
-      form.sshHops.forEach((hop, index) => {
-        const at = (field: keyof SshHopFormValues, message: string): void =>
-          ctx.addIssue({ code: 'custom', path: ['sshHops', index, field], message });
-        if (hop.host === '') at('host', 'Enter the SSH host');
-        if (!isPort(hop.port)) at('port', 'Port must be 1 to 65535');
-        if (hop.user === '') at('user', 'Enter the SSH user');
-        if (hop.authMethod === 'privateKey' && hop.keyPath === '') {
-          at('keyPath', 'Choose the private key file');
-        }
-      });
-      const keepAlive = Number(form.sshKeepAlive);
-      if (!/^\d+(\.\d+)?$/.test(form.sshKeepAlive) || keepAlive > 3600) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['sshKeepAlive'],
-          message: 'Keep-alive is 0 (off) to 3600 seconds',
-        });
-      }
-    }
-    if (form.proxyKind !== 'none') {
-      if (form.proxyHost === '') {
-        ctx.addIssue({ code: 'custom', path: ['proxyHost'], message: 'Enter the proxy host' });
-      }
-      if (!isPort(form.proxyPort)) {
-        ctx.addIssue({ code: 'custom', path: ['proxyPort'], message: 'Port must be 1 to 65535' });
-      }
-    }
+    const issue = (path: (string | number)[], message: string): void =>
+      ctx.addIssue({ code: 'custom', path, message });
+    endpointIssues(form, issue);
+    authIssues(form, issue);
+    optionIssues(form, issue);
+    tunnelIssues(form, issue);
   });
 
 export type ConnectionFormValues = z.infer<typeof connectionFormSchema>;
+
+type IssueAt = (path: (string | number)[], message: string) => void;
+
+function rowIssues(rows: readonly HostRowValues[], field: string, issue: IssueAt): void {
+  rows.forEach((row, index) => {
+    if (row.host === '') issue([field, index, 'host'], 'Enter a host');
+    if (!isPort(row.port)) issue([field, index, 'port'], 'Port must be 1 to 65535');
+  });
+}
+
+function endpointIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (!endpointKindsFor(form.engine).includes(form.endpointKind)) {
+    issue(['endpointKind'], `${ENGINES[form.engine].displayName} cannot connect this way`);
+    return;
+  }
+  switch (form.endpointKind) {
+    case 'host':
+      if (form.host === '') issue(['host'], 'Enter a host');
+      if (!isPort(form.port)) issue(['port'], 'Port must be 1 to 65535');
+      break;
+    case 'srv':
+      if (form.host === '') issue(['host'], 'Enter the SRV host name');
+      else if (/[:/,@?]/.test(form.host)) {
+        issue(['host'], 'Enter the host name only: mongodb+srv takes no port, user or scheme');
+      }
+      break;
+    case 'socket':
+      if (form.socketPath === '') issue(['socketPath'], 'Enter the socket path');
+      break;
+    case 'hosts':
+    case 'cluster':
+      if (form.hostList.length === 0) issue(['hostList'], 'Add at least one host');
+      rowIssues(form.hostList, 'hostList', issue);
+      break;
+    case 'sentinel':
+      if (form.sentinels.length === 0) issue(['sentinels'], 'Add at least one Sentinel');
+      rowIssues(form.sentinels, 'sentinels', issue);
+      if (form.masterName === '') {
+        issue(['masterName'], 'Enter the name of the master the Sentinels watch');
+      }
+      break;
+    case 'uri':
+      uriIssues(form, issue);
+      break;
+  }
+}
+
+function uriIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (form.uri === '') {
+    issue(['uri'], 'Enter a URI');
+    return;
+  }
+  if (uriCarriesSecret(form.uri)) {
+    issue(['uri'], 'Remove the password from the URI and put it in the password field');
+    return;
+  }
+  const scheme = uriScheme(form.uri) ?? '';
+  if (form.engine === 'mongodb' && scheme !== 'mongodb' && scheme !== 'mongodb+srv') {
+    issue(['uri'], 'A MongoDB URI starts with mongodb:// or mongodb+srv://');
+  }
+  if (form.engine === 'redis') {
+    if (scheme !== 'redis' && scheme !== 'rediss') {
+      issue(['uri'], 'A Redis URI starts with redis:// or rediss:// (TLS)');
+    } else if (scheme === 'rediss' && form.tlsMode === 'disable') {
+      issue(['tlsMode'], 'A rediss:// URI connects with TLS: choose a TLS mode, or use redis://');
+    } else if (scheme === 'redis' && form.tlsMode !== 'disable') {
+      issue(
+        ['tlsMode'],
+        'A redis:// URI connects without TLS: choose Disable TLS, or use rediss://',
+      );
+    }
+  }
+}
+
+function authIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (isSqlEngine(form.engine)) return;
+  if (!ENGINE_AUTH_METHODS[form.engine].includes(form.authMethod)) {
+    issue(['authMethod'], `${ENGINES[form.engine].displayName} does not offer this sign-in`);
+    return;
+  }
+  if (form.engine === 'mongodb' && form.authMethod === 'password' && form.user === '') {
+    issue(['user'], 'Enter the user name');
+  }
+  if (form.authMethod === 'clientCertificate') {
+    if (form.tlsMode === 'disable') issue(['tlsMode'], 'X.509 authentication needs TLS');
+    if (form.certPath === '') issue(['certPath'], 'Choose the client certificate');
+    if (form.keyPath === '') {
+      issue(['keyPath'], 'Choose the client key (the same file when the PEM holds both)');
+    }
+  }
+  if (form.authMethod === 'awsIam' && form.awsRegion === '') {
+    issue(['awsRegion'], 'Enter the AWS region');
+  }
+}
+
+function optionIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (form.engine === 'redis' && showsDatabase(form) && form.database !== '') {
+    if (!isRedisDatabase(form.database)) {
+      issue(['database'], 'Enter a database number (0 to 15 on a default server)');
+    }
+  }
+  if (form.engine === 'mongodb' && form.endpointKind !== 'uri') {
+    if (form.database !== '' && !isMongoDatabaseName(form.database)) {
+      issue(['database'], MONGO_NAME_MESSAGE);
+    }
+    if (
+      showsAuthSource(form) &&
+      form.authSource !== '' &&
+      form.authSource !== EXTERNAL_AUTH_SOURCE &&
+      !isMongoDatabaseName(form.authSource)
+    ) {
+      issue(['authSource'], MONGO_NAME_MESSAGE);
+    }
+  }
+}
+
+function tunnelIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (form.sshEnabled || form.proxyKind !== 'none') tunnelledEndpointIssues(form, issue);
+  if (form.sshEnabled) sshIssues(form, issue);
+  if (form.proxyKind !== 'none') {
+    if (form.proxyHost === '') issue(['proxyHost'], 'Enter the proxy host');
+    if (!isPort(form.proxyPort)) issue(['proxyPort'], 'Port must be 1 to 65535');
+  }
+}
+
+/** A tunnel or proxy forwards to one host, which the drivers then talk to directly. */
+function tunnelledEndpointIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (form.endpointKind === 'socket') {
+    issue(
+      ['socketPath'],
+      'A Unix socket cannot be reached through an SSH tunnel or a proxy; use the host and port the SSH server sees',
+    );
+  } else if (form.engine === 'mongodb') {
+    if (form.endpointKind === 'hosts' || form.endpointKind === 'srv') {
+      issue(
+        ['endpointKind'],
+        'A host list or SRV record cannot go through an SSH tunnel or a proxy: Joinery connects directly to one host, and the other members are not reachable through it. Connect with Host and port.',
+      );
+    } else if (
+      form.endpointKind === 'uri' &&
+      (uriScheme(form.uri) === 'mongodb+srv' || uriHosts(form.uri).length > 1)
+    ) {
+      issue(
+        ['uri'],
+        'Only a single-host mongodb:// URI can go through an SSH tunnel or a proxy: Joinery connects directly to that one host',
+      );
+    }
+  } else if (form.engine === 'redis') {
+    if (form.endpointKind === 'sentinel' || form.endpointKind === 'cluster') {
+      issue(
+        ['endpointKind'],
+        'Sentinel and Cluster cannot go through an SSH tunnel or a proxy yet: Joinery would have to reach every node the servers announce. Connect with Host and port.',
+      );
+    } else if (form.endpointKind === 'uri' && uriHosts(form.uri).length > 1) {
+      issue(
+        ['uri'],
+        'Only a single-host URI can go through an SSH tunnel or a proxy: Joinery connects directly to that one host',
+      );
+    }
+  }
+}
+
+function sshIssues(form: ConnectionFormValues, issue: IssueAt): void {
+  if (form.sshHops.length === 0) issue(['sshHops'], 'Add the SSH server');
+  form.sshHops.forEach((hop, index) => {
+    const at = (field: keyof SshHopFormValues, message: string): void =>
+      issue(['sshHops', index, field], message);
+    if (hop.host === '') at('host', 'Enter the SSH host');
+    if (!isPort(hop.port)) at('port', 'Port must be 1 to 65535');
+    if (hop.user === '') at('user', 'Enter the SSH user');
+    if (hop.authMethod === 'privateKey' && hop.keyPath === '') {
+      at('keyPath', 'Choose the private key file');
+    }
+  });
+  const keepAlive = Number(form.sshKeepAlive);
+  if (!/^\d+(\.\d+)?$/.test(form.sshKeepAlive) || keepAlive > 3600) {
+    issue(['sshKeepAlive'], 'Keep-alive is 0 (off) to 3600 seconds');
+  }
+}
+
+/**
+ * Whether the form edits the default database. A URI names its own; a Redis cluster has only
+ * database 0.
+ */
+export function showsDatabase(
+  form: Pick<ConnectionFormValues, 'engine' | 'endpointKind'>,
+): boolean {
+  if (form.endpointKind === 'uri') return false;
+  return !(form.engine === 'redis' && form.endpointKind === 'cluster');
+}
+
+/**
+ * Whether the form edits MongoDB's authentication database: for a user and SCRAM password. LDAP,
+ * X.509 and AWS users always live in `$external`.
+ */
+export function showsAuthSource(
+  form: Pick<ConnectionFormValues, 'engine' | 'endpointKind' | 'authMethod' | 'mechanism'>,
+): boolean {
+  return (
+    form.engine === 'mongodb' &&
+    form.endpointKind !== 'uri' &&
+    form.authMethod === 'password' &&
+    form.mechanism !== 'PLAIN'
+  );
+}
 
 /** A new SSH hop: port 22, password authentication. */
 export function defaultSshHop(): SshHopFormValues {
@@ -194,6 +472,25 @@ export function defaultSshHop(): SshHopFormValues {
   };
 }
 
+/** A new row of a host list or cluster seed list: localhost on the engine's port. */
+export function defaultHostRow(engine: DialogEngine): HostRowValues {
+  return { host: 'localhost', port: String(ENGINES[engine].defaultPort) };
+}
+
+/** A new row of a Sentinel list: localhost on Sentinel's port. */
+export function defaultSentinelRow(): HostRowValues {
+  return { host: 'localhost', port: String(SENTINEL_PORT) };
+}
+
+/** Sign-in method of a new form: SQL takes a user and password, MongoDB and Redis start open. */
+const DEFAULT_AUTH_METHOD: Readonly<Record<DialogEngine, FormAuthMethod>> = {
+  postgres: 'password',
+  mysql: 'password',
+  mariadb: 'password',
+  mongodb: 'none',
+  redis: 'none',
+};
+
 export function defaultFormValues(engine: DialogEngine = 'postgres'): ConnectionFormValues {
   return {
     name: '',
@@ -203,10 +500,22 @@ export function defaultFormValues(engine: DialogEngine = 'postgres'): Connection
     port: String(ENGINES[engine].defaultPort),
     socketPath: '',
     uri: '',
+    hostList: [defaultHostRow(engine)],
+    replicaSet: '',
+    sentinels: [defaultSentinelRow()],
+    masterName: '',
     database: '',
+    authMethod: DEFAULT_AUTH_METHOD[engine],
     user: '',
     password: '',
     passwordMode: 'save',
+    mechanism: engine === 'mongodb' ? 'SCRAM-SHA-256' : '',
+    awsRegion: '',
+    awsProfile: '',
+    authSource: '',
+    directConnection: false,
+    readPreference: '',
+    keyDelimiter: ':',
     tlsMode: 'verify-full',
     caPath: '',
     certPath: '',
@@ -232,32 +541,137 @@ export function isDialogEngine(engine: EngineId): engine is DialogEngine {
   return (DIALOG_ENGINES as readonly EngineId[]).includes(engine);
 }
 
+/**
+ * The form after the user picks another engine. What every engine shares (name, host, user,
+ * password, TLS, tunnel, presentation) stays; engine-specific fields go back to the new engine's
+ * defaults: an endpoint form it lacks becomes host and port, the port follows when it still held
+ * the old engine's default, and host lists, sign-in method and options start over. MySQL and
+ * MariaDB, or PostgreSQL, keep a URI, socket and database typed for either.
+ */
+export function switchEngine(
+  values: ConnectionFormValues,
+  engine: DialogEngine,
+): ConnectionFormValues {
+  if (engine === values.engine) return values;
+  const fresh = defaultFormValues(engine);
+  const bothSql = isSqlEngine(values.engine) && isSqlEngine(engine);
+  return {
+    ...values,
+    engine,
+    endpointKind: endpointKindsFor(engine).includes(values.endpointKind)
+      ? values.endpointKind
+      : 'host',
+    port: values.port === String(ENGINES[values.engine].defaultPort) ? fresh.port : values.port,
+    socketPath: bothSql ? values.socketPath : '',
+    uri: bothSql ? values.uri : '',
+    hostList: fresh.hostList,
+    replicaSet: '',
+    sentinels: fresh.sentinels,
+    masterName: '',
+    database: bothSql ? values.database : '',
+    authMethod: ENGINE_AUTH_METHODS[engine].includes(values.authMethod)
+      ? values.authMethod
+      : fresh.authMethod,
+    mechanism: fresh.mechanism,
+    awsRegion: '',
+    awsProfile: '',
+    authSource: '',
+    directConnection: false,
+    readPreference: '',
+    keyDelimiter: fresh.keyDelimiter,
+  };
+}
+
+/**
+ * The form after the user picks another way to connect. An SRV record implies TLS, as in MongoDB
+ * drivers, so choosing it turns TLS back on (the user may turn it off again). A host or seed list
+ * still holding its default row starts from the single host typed so far, and the single host,
+ * while untouched, from the list's first row.
+ */
+export function switchEndpointKind(
+  values: ConnectionFormValues,
+  kind: FormEndpointKind,
+): ConnectionFormValues {
+  const next: ConnectionFormValues = { ...values, endpointKind: kind };
+  if (kind === 'srv' && values.tlsMode === 'disable') next.tlsMode = 'verify-full';
+  const [only, ...others] = values.hostList;
+  const pristine =
+    others.length === 0 &&
+    (only === undefined || only.host === '' || sameRow(only, defaultHostRow(values.engine)));
+  if ((kind === 'hosts' || kind === 'cluster') && values.endpointKind === 'host' && pristine) {
+    next.hostList = [{ host: values.host, port: values.port }];
+  }
+  const fromList = values.endpointKind === 'hosts' || values.endpointKind === 'cluster';
+  const untouched =
+    (values.host === '' || values.host === 'localhost') &&
+    values.port === String(ENGINES[values.engine].defaultPort);
+  if (kind === 'host' && fromList && untouched && only !== undefined && only.host !== '') {
+    next.host = only.host;
+    next.port = only.port;
+  }
+  return next;
+}
+
+function sameRow(a: HostRowValues, b: HostRowValues): boolean {
+  return a.host === b.host && a.port === b.port;
+}
+
+function rowsFrom(hosts: readonly HostPort[]): HostRowValues[] {
+  return hosts.map((host) => ({ host: host.host, port: String(host.port) }));
+}
+
+function hostsFrom(rows: readonly HostRowValues[]): HostPort[] {
+  return rows.map((row) => ({ host: row.host, port: Number(row.port) }));
+}
+
 /** Form values for an existing (or parsed) profile. The password field starts empty. */
 export function profileToForm(profile: ConnectionProfile): ConnectionFormValues {
   const engine = isDialogEngine(profile.engine) ? profile.engine : 'postgres';
   const values = defaultFormValues(engine);
   const { endpoint, auth, tls, presentation, options } = profile;
+  values.endpointKind =
+    endpoint.kind === 'urls' || endpoint.kind === 'cloudId' ? 'host' : endpoint.kind;
   if (endpoint.kind === 'host') {
-    values.endpointKind = 'host';
     values.host = endpoint.host;
     values.port = String(endpoint.port);
   } else if (endpoint.kind === 'socket') {
-    values.endpointKind = 'socket';
     values.socketPath = endpoint.path;
   } else if (endpoint.kind === 'uri') {
-    values.endpointKind = 'uri';
     values.uri = endpoint.uri;
+  } else if (endpoint.kind === 'hosts') {
+    values.hostList = rowsFrom(endpoint.hosts);
+    values.replicaSet = endpoint.replicaSet ?? '';
+  } else if (endpoint.kind === 'srv') {
+    values.host = endpoint.host;
+  } else if (endpoint.kind === 'sentinel') {
+    values.sentinels = rowsFrom(endpoint.sentinels);
+    values.masterName = endpoint.masterName;
+  } else if (endpoint.kind === 'cluster') {
+    values.hostList = rowsFrom(endpoint.seeds);
   }
   let passwordMode: PasswordMode = 'none';
   if (auth.method === 'password') {
     values.user = auth.user ?? '';
+    values.mechanism = auth.mechanism ?? '';
     passwordMode = auth.password ? auth.password.policy : 'none';
+  } else if (auth.method === 'clientCertificate') {
+    values.user = auth.user ?? '';
+  } else if (auth.method === 'awsIam') {
+    values.user = auth.user ?? '';
+    values.awsRegion = auth.region;
+    values.awsProfile = auth.awsProfile ?? '';
   }
+  const method = ENGINE_AUTH_METHODS[engine].find((known) => known === auth.method);
+  if (method !== undefined) values.authMethod = method;
   return {
     ...values,
     name: profile.name,
     database: options.defaultDatabase ?? '',
     passwordMode,
+    authSource: options.authSource ?? '',
+    directConnection: options.directConnection === true,
+    readPreference: options.readPreference ?? '',
+    keyDelimiter: options.keyDelimiter ?? '',
     tlsMode: tls.mode,
     caPath: tls.caPath ?? '',
     certPath: tls.certPath ?? '',
@@ -361,16 +775,10 @@ export function formToProfile(
   existing?: ConnectionProfile,
   now: () => string = () => new Date().toISOString(),
 ): ProfileFromForm {
-  const endpoint: ConnectionProfile['endpoint'] =
-    form.endpointKind === 'host'
-      ? { kind: 'host', host: form.host, port: Number(form.port) }
-      : form.endpointKind === 'socket'
-        ? { kind: 'socket', path: form.socketPath }
-        : { kind: 'uri', uri: form.uri };
-
+  const usesPassword = isSqlEngine(form.engine) || form.authMethod === 'password';
   const previousRef = existing?.auth.method === 'password' ? existing.auth.password : undefined;
   const passwordRef =
-    form.passwordMode === 'none'
+    !usesPassword || form.passwordMode === 'none'
       ? undefined
       : { id: previousRef?.id ?? newId(), policy: form.passwordMode };
   const secrets: SecretField[] = [];
@@ -390,12 +798,8 @@ export function formToProfile(
     id: existing?.id ?? newId(),
     name: form.name,
     engine: form.engine,
-    endpoint,
-    auth: {
-      method: 'password',
-      ...(form.user === '' ? {} : { user: form.user }),
-      ...(passwordRef ? { password: passwordRef } : {}),
-    },
+    endpoint: endpointFromForm(form),
+    auth: authFromForm(form, passwordRef),
     tls: {
       ...(existing?.tls ?? {}),
       mode: form.tlsMode,
@@ -403,11 +807,7 @@ export function formToProfile(
       certPath: optional(form.certPath),
       keyPath: optional(form.keyPath),
     },
-    options: {
-      ...(existing?.options ?? {}),
-      defaultDatabase:
-        form.endpointKind === 'uri' ? existing?.options.defaultDatabase : optional(form.database),
-    },
+    options: optionsFromForm(form, existing?.options),
     presentation: {
       ...(existing?.presentation ?? {}),
       folderId: form.folderId === '' ? null : form.folderId,
@@ -420,6 +820,120 @@ export function formToProfile(
     updatedAt: timestamp,
   };
   return { profile, passwordRef, secrets };
+}
+
+function endpointFromForm(form: ConnectionFormValues): ConnectionProfile['endpoint'] {
+  switch (form.endpointKind) {
+    case 'host':
+      return { kind: 'host', host: form.host, port: Number(form.port) };
+    case 'socket':
+      return { kind: 'socket', path: form.socketPath };
+    case 'uri':
+      return { kind: 'uri', uri: form.uri };
+    case 'hosts':
+      return {
+        kind: 'hosts',
+        hosts: hostsFrom(form.hostList),
+        ...(form.replicaSet === '' ? {} : { replicaSet: form.replicaSet }),
+      };
+    case 'srv':
+      return { kind: 'srv', host: form.host };
+    case 'sentinel':
+      return {
+        kind: 'sentinel',
+        sentinels: hostsFrom(form.sentinels),
+        masterName: form.masterName,
+      };
+    case 'cluster':
+      return { kind: 'cluster', seeds: hostsFrom(form.hostList) };
+  }
+}
+
+function authFromForm(form: ConnectionFormValues, passwordRef: SecretRef | undefined): Auth {
+  const user = form.user === '' ? {} : { user: form.user };
+  const method = isSqlEngine(form.engine) ? 'password' : form.authMethod;
+  switch (method) {
+    case 'none':
+      return { method: 'none' };
+    case 'password':
+      return {
+        method: 'password',
+        ...user,
+        ...(passwordRef ? { password: passwordRef } : {}),
+        ...(form.mechanism === '' ? {} : { mechanism: form.mechanism }),
+      };
+    case 'clientCertificate':
+      return { method: 'clientCertificate', ...user };
+    case 'awsIam':
+      return {
+        method: 'awsIam',
+        ...user,
+        region: form.awsRegion,
+        ...(form.awsProfile === '' ? {} : { awsProfile: form.awsProfile }),
+      };
+  }
+}
+
+/**
+ * The profile's options: everything the dialog does not show is kept, the engine's own options
+ * come from the form, and another engine's options are dropped. What a URI endpoint states
+ * itself (database, MongoDB's authSource, readPreference, directConnection) is not edited next to
+ * it: the edited profile's values stay.
+ */
+function optionsFromForm(
+  form: ConnectionFormValues,
+  existing: ConnectionOptions | undefined,
+): NonNullable<ConnectionProfileInput['options']> {
+  const {
+    authSource: previousAuthSource,
+    directConnection: previousDirect,
+    readPreference: previousReadPreference,
+    keyDelimiter: _keyDelimiter,
+    ...shared
+  } = existing ?? {};
+  const viaUri = form.endpointKind === 'uri';
+  const options: NonNullable<ConnectionProfileInput['options']> = {
+    ...shared,
+    defaultDatabase: viaUri
+      ? existing?.defaultDatabase
+      : showsDatabase(form)
+        ? optional(form.database)
+        : undefined,
+  };
+  if (form.engine === 'mongodb') {
+    options.authSource = viaUri ? previousAuthSource : mongoAuthSource(form);
+    options.readPreference = viaUri
+      ? previousReadPreference
+      : form.readPreference === ''
+        ? undefined
+        : form.readPreference;
+    options.directConnection = viaUri
+      ? previousDirect
+      : form.endpointKind !== 'host'
+        ? undefined
+        : form.directConnection
+          ? true
+          : previousDirect === false
+            ? false
+            : undefined;
+  }
+  if (form.engine === 'redis') options.keyDelimiter = optional(form.keyDelimiter);
+  return options;
+}
+
+/**
+ * MongoDB's authSource for the form's sign-in: what the user typed for SCRAM, `$external` for
+ * LDAP (the only place LDAP users can be), and for X.509 and AWS only an explicit `$external`
+ * (their default; any other database would be refused by the driver).
+ */
+function mongoAuthSource(form: ConnectionFormValues): string | undefined {
+  if (form.authMethod === 'password') {
+    return form.mechanism === 'PLAIN' ? EXTERNAL_AUTH_SOURCE : optional(form.authSource);
+  }
+  if (form.authMethod === 'clientCertificate' || form.authMethod === 'awsIam') {
+    return form.authSource === EXTERNAL_AUTH_SOURCE ? EXTERNAL_AUTH_SOURCE : undefined;
+  }
+  return undefined;
 }
 
 /** A reference for a secret, keeping the id the edited profile had for it. */
@@ -491,22 +1005,84 @@ function proxyFromForm(
   };
 }
 
-/**
- * The password in a pasted URI, which the page still has: main's parser never sends it back
- * (secrets only flow towards main). Handles `scheme://user:password@host` and `password=`.
- */
-export function passwordFromUri(uri: string): string | undefined {
-  const userinfo = /^[a-z][a-z0-9+.-]*:\/\/([^/?#@]*)@/i.exec(uri.trim())?.[1];
-  const colon = userinfo?.indexOf(':') ?? -1;
-  if (userinfo !== undefined && colon >= 0) return safeDecode(userinfo.slice(colon + 1));
-  const param = /[?&;](?:password|passwd|pwd|pass)=([^&;#]*)/i.exec(uri)?.[1];
-  return param === undefined ? undefined : safeDecode(param.replaceAll('+', ' '));
+/** Main's `profiles.parseUri`, passed in so the fill can run (and be tested) without main. */
+export type ParseUri = (input: {
+  readonly uri: string;
+  readonly engine?: EngineId;
+}) => Promise<ParsedConnectionUriResult>;
+
+export interface FilledFromUri {
+  readonly values: ConnectionFormValues;
+  /** Query parameters the profile could not hold, secret-bearing ones included. */
+  readonly ignoredParams: readonly string[];
 }
 
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
+/** What "Fill from URI" needs besides the pasted text. */
+export interface FillFromUriOptions {
+  /** The engine chosen when the fill starts: MariaDB claims a mysql:// URI. */
+  readonly engine: DialogEngine;
+  readonly parse: ParseUri;
+  /**
+   * The form as it is when the parsed profile is back. Called after every parse, so a name the
+   * user typed meanwhile is kept rather than replaced by the URI's.
+   */
+  readonly current: () => ConnectionFormValues;
+  /** Secrets can be saved on this system; a found password is otherwise kept for the session. */
+  readonly canSave: boolean;
+}
+
+/**
+ * The form after "Fill from URI". Main parses the URI into a draft profile and says whether it
+ * held a password, which is then taken from the pasted text here (main never sends one back).
+ * The name (unless empty) and the presentation fields stay as the user set them.
+ *
+ * A MongoDB URI whose options the structured endpoints cannot express comes back as a whole-URI
+ * endpoint. When the only such options are authSource, readPreference and directConnection,
+ * which the profile holds in its own fields, they are moved there and the rest is parsed again,
+ * so the form shows the host, host list or SRV record instead.
+ */
+export async function formFromUri(
+  text: string,
+  options: FillFromUriOptions,
+): Promise<FilledFromUri> {
+  const { parse, canSave } = options;
+  const uri = text.trim();
+  const engine = options.engine === 'mariadb' && /^mysql:/i.test(uri) ? 'mariadb' : undefined;
+  let parsed = await parse({ uri, ...(engine ? { engine } : {}) });
+  let profile = parsed.profile;
+  const lifted =
+    profile.engine === 'mongodb' && profile.endpoint.kind === 'uri'
+      ? liftMongoUriOptions(uri)
+      : undefined;
+  if (lifted) {
+    const retry = await parse({ uri: lifted.uri }).catch(() => undefined);
+    const kind = retry?.profile.endpoint.kind;
+    // directConnection only applies to a single host; elsewhere it stays in the URI.
+    if (
+      retry &&
+      kind !== 'uri' &&
+      (lifted.options.directConnection === undefined || kind === 'host')
+    ) {
+      parsed = retry;
+      profile = { ...retry.profile, options: { ...retry.profile.options, ...lifted.options } };
+    }
   }
+  // Read the fields to keep only now: the user may have typed a name while main parsed.
+  const current = options.current();
+  const next = profileToForm(profile);
+  const password = parsed.passwordFound ? passwordFromUri(uri) : undefined;
+  return {
+    values: {
+      ...next,
+      name: current.name === '' ? next.name : current.name,
+      environment: current.environment,
+      readOnly: current.readOnly,
+      confirmWrites: current.confirmWrites,
+      color: current.color,
+      folderId: current.folderId,
+      password: password ?? '',
+      passwordMode: password === undefined ? current.passwordMode : canSave ? 'save' : 'session',
+    },
+    ignoredParams: parsed.ignoredParams,
+  };
 }

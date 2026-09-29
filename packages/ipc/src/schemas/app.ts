@@ -26,13 +26,55 @@ export const secretValueSchema = z.string().max(65_536);
 /** Secrets for one call only (Test Connection before saving, "ask every time"), by SecretRef id. */
 export const transientSecretsSchema = z.record(secretRefIdSchema, secretValueSchema);
 
-const URI_USERINFO_PASSWORD = /^[a-z][a-z0-9+.-]*:\/\/[^/?#@]*:[^/?#@]*@/i;
-const URI_SECRET_PARAM =
-  /[?&;](?:password|passwd|pwd|pass|sslpassword|secret|token|api[-_]?key|access[-_]?key)=/i;
+const URI_SCHEME = /^\s*(?:jdbc:)?[a-z][a-z0-9+.-]*:\/\//i;
+/** Every `name=` after a `?`, `&` or `;`, wherever it is (JDBC puts parameters after `;`). */
+const URI_PARAM_NAMES = /[?&;]([^=?&;#]*)=/g;
+/**
+ * Parameter names whose values are secrets: password, sslpassword, MariaDB's password2,
+ * MongoDB's tlsCertificateKeyFilePassword, sslPEMKeyPassword and proxyPassword, tokens, API
+ * and access keys, anything named secret.
+ */
+const SECRET_PARAM_NAME =
+  /(?:password|passwd|passphrase)\d*$|^(?:pwd|pass)$|secret|token$|(?:api|access)[-_]?key$/i;
+/** MongoDB's authMechanismProperties can carry the temporary AWS credentials' session token. */
+const AWS_SESSION_TOKEN = /[?&;]authMechanismProperties=[^&;#]*AWS_SESSION_TOKEN(?::|%3A)/i;
 
-/** True when a connection URI or node URL carries a password or token. */
+/**
+ * True when a connection URI or node URL carries a password or token: in its user info
+ * (`scheme://user:password@host`, including multi-host MongoDB and Redis URIs and IPv6
+ * literals, which WHATWG `URL` cannot parse) or in a secret-named query parameter.
+ */
 export function uriCarriesSecret(uri: string): boolean {
-  return URI_USERINFO_PASSWORD.test(uri) || URI_SECRET_PARAM.test(uri);
+  return (
+    authorityHasPassword(uri) ||
+    AWS_SESSION_TOKEN.test(uri) ||
+    [...uri.matchAll(URI_PARAM_NAMES)].some((match) =>
+      SECRET_PARAM_NAME.test(decodeOrKeep(match[1] ?? '')),
+    )
+  );
+}
+
+/**
+ * The user info is what precedes the last `@` of the authority, which ends at the first `/`,
+ * `?` or `#` (as @joinery/storage's URI parser reads it); a `:` in it starts a password, even an
+ * empty one.
+ */
+function authorityHasPassword(uri: string): boolean {
+  const scheme = URI_SCHEME.exec(uri);
+  if (!scheme) return false;
+  const rest = uri.slice(scheme[0].length);
+  const end = rest.search(/[/?#]/);
+  const authority = end < 0 ? rest : rest.slice(0, end);
+  const at = authority.lastIndexOf('@');
+  return at >= 0 && authority.slice(0, at).includes(':');
+}
+
+function decodeOrKeep(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
 }
 
 /**
