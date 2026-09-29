@@ -25,6 +25,7 @@ import {
 import { disposeRedisPanel } from '../state/redis/panels';
 import { disposeMongoPanel } from '../state/mongo/panels';
 import { disposeSyncPanel } from '../state/sync/panels';
+import { disposeServerToolsPanel } from '../state/server-tools/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
@@ -34,6 +35,7 @@ import { RedisPanel } from './redis/RedisPanel';
 import { MongoPanel } from './mongo/MongoPanel';
 import { SyncPanel } from './sync/SyncPanel';
 import { openMongoConsole } from './mongo/open';
+import { ServerToolsPanel } from './server-tools/ServerToolsPanel';
 import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
 
@@ -155,6 +157,7 @@ function disposePanel(id: string): void {
   else if (info.kind === 'redis') disposeRedisPanel(id);
   else if (info.kind === 'mongo') disposeMongoPanel(id);
   else if (info.kind === 'sync') disposeSyncPanel(id);
+  else if (info.kind === 'server-tools') disposeServerToolsPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -258,6 +261,10 @@ function SyncPanelHost(props: IDockviewPanelProps<PanelParams>) {
   return <SyncPanel panelId={props.params.panelId} />;
 }
 
+function ServerToolsPanelHost(props: IDockviewPanelProps<PanelParams>) {
+  return <ServerToolsPanel panelId={props.params.panelId} />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -321,6 +328,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         redis: RedisPanelHost,
         mongo: MongoPanelHost,
         sync: SyncPanelHost,
+        serverTools: ServerToolsPanelHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}

@@ -24,6 +24,7 @@ import {
   useExplorer,
 } from '../state/explorer';
 import { refreshObjects } from '../state/metadata';
+import { hasServerTools, openServerTools } from '../state/server-tools/panels';
 import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
 import { openDataCompare, openStructureCompare } from '../state/sync/panels';
@@ -376,6 +377,9 @@ function ProfileItem(props: {
                 {isSqlEngine(profile.engine) && (
                   <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
                 )}
+                {hasServerTools(profile.engine) && (
+                  <MenuItem onSelect={() => openServerTools(profile)}>Server tools</MenuItem>
+                )}
                 <MenuItem onSelect={() => refreshObjects(profile.id, [])}>Refresh objects</MenuItem>
                 <MenuItem onSelect={() => void close()}>Disconnect</MenuItem>
               </>
@@ -553,6 +557,20 @@ function ObjectNode(props: {
                     }
                   >
                     Export…
+                  </MenuItem>
+                  <MenuItem
+                    onSelect={() =>
+                      openServerTools(profile, {
+                        tab: 'maintenance',
+                        focus: {
+                          database: table.database,
+                          container: table.schema,
+                          name: table.name,
+                        },
+                      })
+                    }
+                  >
+                    Maintenance…
                   </MenuItem>
                 </>
               ) : (

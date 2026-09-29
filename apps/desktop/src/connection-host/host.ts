@@ -21,6 +21,7 @@ import { executeRedisGuarded, isRedisSession, redisHandlers } from './redis';
 import type { HostRequest } from '../shared/host-protocol';
 import { mongoHandlers } from './mongo';
 import { runHostRequest, type HostRequestOptions } from './mongo-files';
+import { serverToolsHandlers } from './server-tools';
 
 /** Opens a driver session, through the profile's SSH tunnel or proxy when it has one. */
 export type SessionOpener = (resolved: ResolvedProfile) => Promise<TransportSession>;
@@ -274,6 +275,10 @@ export class ConnectionHost {
         resetSession: (sessionId, database) => this.#resetSession(sessionId, database),
       }),
       mongo: mongoHandlers({
+        session: (sessionId) => this.#session(sessionId),
+        profile: this.#resolved.profile,
+      }),
+      serverTools: serverToolsHandlers({
         session: (sessionId) => this.#session(sessionId),
         profile: this.#resolved.profile,
       }),

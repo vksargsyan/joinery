@@ -68,6 +68,15 @@ What works today:
   with autocomplete and inline docs; Pub/Sub, an INFO dashboard, slow log, clients, latency,
   MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
   Sentinel/Cluster topology.
+- **Server tools** (MySQL, MariaDB, PostgreSQL, MongoDB): a monitor polled at a chosen interval
+  with the history kept for the session (connections, QPS or TPS, cache and buffer pool hit
+  ratios, locks, replication and replica lag, the oplog window); sessions with cancel and
+  terminate (KILL QUERY / KILL CONNECTION, killOp); top queries from pg_stat_statements,
+  performance_schema digests or the profiler, with the reason and fix when they are off; users,
+  roles, membership and a grants matrix, plus default privileges and row-level security policies
+  on PostgreSQL; VACUUM, ANALYZE, REINDEX, CLUSTER, OPTIMIZE, CHECK, REPAIR, compact and
+  validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
+  setParameter. Every change shows its exact statement first.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file and profile management; test and query for MongoDB and Redis too.
 

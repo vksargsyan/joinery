@@ -17,6 +17,7 @@ import {
   type MongoObject,
 } from '../../state/mongo/explorer';
 import { openCreateCollection, openCreateView } from '../../state/mongo/create-dialogs';
+import { openServerTools } from '../../state/server-tools/panels';
 import { MenuItem, Row } from '../Sidebar';
 import { Icon } from '../ui';
 import { MongoCreateDialogs } from './CreateDialogs';
@@ -195,6 +196,18 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
         {object.kind !== 'view' && (
           <MenuItem
             onSelect={() =>
+              openServerTools(profile, {
+                tab: 'maintenance',
+                focus: { container: db, name: object.name },
+              })
+            }
+          >
+            Maintenance…
+          </MenuItem>
+        )}
+        {object.kind !== 'view' && (
+          <MenuItem
+            onSelect={() =>
               openMongoTool({
                 tool: 'changes',
                 target: {
@@ -247,6 +260,11 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
           onSelect={() => openMongoTool({ tool: 'users', target: { profileId, db, tab: 'users' } })}
         >
           Users and roles
+        </MenuItem>
+        <MenuItem
+          onSelect={() => openServerTools(profile, { tab: 'topQueries', focus: { container: db } })}
+        >
+          Profiler…
         </MenuItem>
       </>
     );
