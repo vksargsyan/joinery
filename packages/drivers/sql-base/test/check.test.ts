@@ -188,3 +188,169 @@ describe('checkConnection', () => {
     expect(session.closed).toBe(true);
   });
 });
+
+describe('checkConnection through a tunnel (runSshStep)', () => {
+  const ssh = {
+    hops: [{ host: 'bastion.example.com', user: 'me', auth: { method: 'agent' as const } }],
+  };
+
+  function tunnel(status: 'ok' | 'failed' = 'ok') {
+    const state = { closed: 0, calls: 0 };
+    const runSshStep: CheckConnectionDeps['runSshStep'] = async () => {
+      state.calls += 1;
+      if (status === 'failed') {
+        return {
+          result: {
+            step: 'ssh',
+            status: 'failed',
+            durationMs: 3,
+            message: 'The SSH server bastion.example.com:22 rejected the password',
+            hint: 'Check the SSH user name and password',
+          },
+        };
+      }
+      return {
+        result: { step: 'ssh', status: 'ok', durationMs: 3, message: 'SSH me@bastion → db' },
+        transport: {
+          endpointOverride: { host: '127.0.0.1', port: 40123 },
+          close: async () => {
+            state.closed += 1;
+          },
+        },
+      };
+    };
+    return { state, runSshStep };
+  }
+
+  it('checks the first hop, opens the tunnel, runs the driver steps through it and closes it', async () => {
+    const { state, runSshStep } = tunnel();
+    let seen: ResolvedProfile | undefined;
+    const lookups: string[] = [];
+    const results = await run(
+      resolved({ ssh }),
+      adapter(async () => fakeSession()),
+      {
+        ...okDeps,
+        lookup: async (host) => {
+          lookups.push(host);
+          return '192.0.2.20';
+        },
+        runSshStep,
+      },
+    );
+    expect(statuses(results)).toEqual([
+      'dns:ok',
+      'tcp:ok',
+      'ssh:ok',
+      'tls:ok',
+      'auth:ok',
+      'ping:ok',
+      'version:ok',
+    ]);
+    expect(lookups).toEqual(['bastion.example.com']);
+    expect(results[0]!.message).toContain('bastion.example.com');
+    expect(results[2]!.message).toBe('SSH me@bastion → db');
+    expect(state.closed).toBe(1);
+
+    const connectSpy = adapter(async () => fakeSession());
+    const original = connectSpy.connect;
+    connectSpy.connect = async (profile) => {
+      seen = profile;
+      return original(profile);
+    };
+    await run(resolved({ ssh }), connectSpy, { ...okDeps, runSshStep });
+    expect(seen?.endpointOverride).toEqual({ host: '127.0.0.1', port: 40123 });
+    expect(seen?.profile.endpoint).toEqual({ kind: 'host', host: 'db.example.com', port: 5432 });
+    expect(state.closed).toBe(2);
+  });
+
+  it('names a failing SSH step and skips the rest', async () => {
+    const { runSshStep } = tunnel('failed');
+    const results = await run(
+      resolved({ ssh }),
+      adapter(async () => fakeSession()),
+      { ...okDeps, runSshStep },
+    );
+    expect(statuses(results)).toEqual([
+      'dns:ok',
+      'tcp:ok',
+      'ssh:failed',
+      'tls:skipped',
+      'auth:skipped',
+      'ping:skipped',
+      'version:skipped',
+    ]);
+    expect(results[2]!.hint).toMatch(/password/);
+  });
+
+  it('does not open the tunnel when the first hop does not resolve', async () => {
+    const { state, runSshStep } = tunnel();
+    const results = await run(
+      resolved({ ssh }),
+      adapter(async () => fakeSession()),
+      {
+        ...okDeps,
+        lookup: async () => {
+          throw Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' });
+        },
+        runSshStep,
+      },
+    );
+    expect(results[0]).toMatchObject({ step: 'dns', status: 'failed' });
+    expect(results[0]!.message).toContain('bastion.example.com');
+    expect(state.calls).toBe(0);
+  });
+
+  it('runs a proxy-only profile through the transport without the proxy', async () => {
+    const { state, runSshStep } = tunnel();
+    let seen: ResolvedProfile | undefined;
+    const results = await run(
+      resolved({ proxy: { kind: 'socks5', host: '10.0.0.5', port: 1080 } }),
+      {
+        ...adapter(async () => fakeSession()),
+        connect: async (profile) => {
+          seen = profile;
+          return fakeSession();
+        },
+      },
+      { ...okDeps, runSshStep },
+    );
+    expect(statuses(results)).toEqual([
+      'dns:skipped',
+      'tcp:ok',
+      'ssh:ok',
+      'tls:ok',
+      'auth:ok',
+      'ping:ok',
+      'version:ok',
+    ]);
+    expect(seen?.profile.proxy).toBeUndefined();
+    expect(seen?.endpointOverride).toEqual({ host: '127.0.0.1', port: 40123 });
+    expect(state.closed).toBe(1);
+  });
+
+  it('closes the transport when authentication fails', async () => {
+    const { state, runSshStep } = tunnel();
+    const results = await run(
+      resolved({ ssh }),
+      adapter(async () => {
+        throw new JoineryError({ code: 'AUTH_FAILED', message: 'password authentication failed' });
+      }),
+      { ...okDeps, runSshStep },
+    );
+    expect(statuses(results).slice(2, 5)).toEqual(['ssh:ok', 'tls:ok', 'auth:failed']);
+    expect(state.closed).toBe(1);
+  });
+
+  it('accepts partial deps', async () => {
+    const results: ConnectionCheckResult[] = [];
+    for await (const result of checkConnection(
+      resolved({ endpoint: { kind: 'host', host: '10.1.2.3', port: 5432 } }),
+      adapter(async () => fakeSession()),
+      { probe: async () => undefined },
+    )) {
+      results.push(result);
+    }
+    expect(statuses(results)[1]).toBe('tcp:ok');
+  });
+});

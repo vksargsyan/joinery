@@ -112,15 +112,16 @@ describe('resolveEndpoint', () => {
     expect(resolveEndpoint(tunnelled).target).toMatchObject({ host: '127.0.0.1', port: 40002 });
   });
 
-  it('refuses proxies and endpoint kinds the SQL engines do not take', () => {
-    expect(() =>
-      resolveEndpoint(resolved({ proxy: { kind: 'socks5', host: 'proxy', port: 1080 } })),
-    ).toThrow(
+  it('refuses proxies without an open route and endpoint kinds the SQL engines do not take', () => {
+    const proxied = resolved({ proxy: { kind: 'socks5', host: 'proxy', port: 1080 } });
+    expect(() => resolveEndpoint(proxied)).toThrow(
       expect.objectContaining({
         code: 'NOT_SUPPORTED',
         message: expect.stringContaining('SOCKS5'),
       }),
     );
+    const routed = { ...proxied, endpointOverride: { host: '127.0.0.1', port: 40003 } };
+    expect(resolveEndpoint(routed).target).toMatchObject({ host: '127.0.0.1', port: 40003 });
     const base = resolved();
     const odd = {
       ...base,

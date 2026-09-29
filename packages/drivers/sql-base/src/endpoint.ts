@@ -117,11 +117,11 @@ export function assertSupportedNetwork(resolved: ResolvedProfile): void {
       hint: 'SSH tunnels are opened by the connection host; connect through it rather than calling the driver directly',
     });
   }
-  if (profile.proxy) {
+  if (profile.proxy && !resolved.endpointOverride) {
     throw new JoineryError({
       code: 'NOT_SUPPORTED',
-      message: `${profile.proxy.kind === 'http' ? 'HTTP' : 'SOCKS5'} proxies are not supported for ${ENGINES[profile.engine].displayName} connections yet`,
-      hint: 'Remove the proxy from the profile, or use an SSH tunnel instead',
+      message: `This profile uses ${profile.proxy.kind === 'http' ? 'an HTTP' : 'a SOCKS5'} proxy for ${ENGINES[profile.engine].displayName}, but no proxy route is open for it`,
+      hint: 'Proxies are opened by the connection host; connect through it rather than calling the driver directly',
     });
   }
 }
