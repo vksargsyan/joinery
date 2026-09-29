@@ -33,6 +33,7 @@ import { BackupMenuItems } from './backup/BackupDialogs';
 import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
 import { RedisTree, openRedisTool } from './redis/RedisTree';
+import { SearchTree } from './search/SearchTree';
 import { openQueryTab, openTableData, openTableDesigner } from './dock';
 import type { ConnectionDialogMode } from './ConnectionDialog';
 import { Button, EnvironmentBadge, Icon, cx } from './ui';
@@ -374,7 +375,11 @@ function ProfileItem(props: {
             {connected ? (
               <>
                 <MenuItem onSelect={() => void newQuery()}>
-                  {profile.engine === 'redis' ? 'Open CLI' : 'New query tab'}
+                  {profile.engine === 'redis'
+                    ? 'Open CLI'
+                    : profile.engine === 'elasticsearch' || profile.engine === 'opensearch'
+                      ? 'Open console'
+                      : 'New query tab'}
                 </MenuItem>
                 {isSqlEngine(profile.engine) && (
                   <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
@@ -433,6 +438,13 @@ function ProfileItem(props: {
           <RedisTree profile={profile} depth={depth + 1} />
         </div>
       )}
+      {expanded &&
+        connected &&
+        (profile.engine === 'elasticsearch' || profile.engine === 'opensearch') && (
+          <div role="group">
+            <SearchTree profile={profile} depth={depth + 1} onError={props.onError} />
+          </div>
+        )}
     </div>
   );
 }

@@ -33,6 +33,7 @@ import { disposeRedisPanel, openRedisPanel } from '../state/redis/panels';
 import { disposeMongoPanel } from '../state/mongo/panels';
 import { disposeSyncPanel } from '../state/sync/panels';
 import { disposeServerToolsPanel } from '../state/server-tools/panels';
+import { disposeSearchPanel } from '../state/search/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
@@ -43,6 +44,8 @@ import { MongoPanel } from './mongo/MongoPanel';
 import { SyncPanel } from './sync/SyncPanel';
 import { openMongoConsole } from './mongo/open';
 import { ServerToolsPanel } from './server-tools/ServerToolsPanel';
+import { openSearchConsole } from './search/open';
+import { SearchPanel } from './search/SearchPanel';
 import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
 
@@ -168,6 +171,7 @@ function disposePanel(id: string): void {
   else if (info.kind === 'mongo') disposeMongoPanel(id);
   else if (info.kind === 'sync') disposeSyncPanel(id);
   else if (info.kind === 'server-tools') disposeServerToolsPanel(id);
+  else if (info.kind === 'search') disposeSearchPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -181,7 +185,10 @@ export function openQueryTab(options: {
   readonly run?: boolean;
 }): string {
   // A MongoDB connection's "query tab" is its command console (spec §9).
-  if (cachedProfile(options.profileId)?.engine === 'mongodb') return openMongoConsole(options);
+  const engine = cachedProfile(options.profileId)?.engine;
+  if (engine === 'mongodb') return openMongoConsole(options);
+  // An Elasticsearch / OpenSearch connection's "query tab" is its console (spec §11).
+  if (engine === 'elasticsearch' || engine === 'opensearch') return openSearchConsole(options);
   const tabId = createTab({
     profileId: options.profileId,
     title: options.title,
@@ -335,6 +342,10 @@ function ServerToolsPanelHost(props: IDockviewPanelProps<PanelParams>) {
   return <ServerToolsPanel panelId={props.params.panelId} />;
 }
 
+function SearchPanelHost(props: IDockviewPanelProps<PanelParams>) {
+  return <SearchPanel panelId={props.params.panelId} />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -400,6 +411,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         mongo: MongoPanelHost,
         sync: SyncPanelHost,
         serverTools: ServerToolsPanelHost,
+        search: SearchPanelHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}

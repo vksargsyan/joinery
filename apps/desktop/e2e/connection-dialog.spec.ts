@@ -43,13 +43,22 @@ function field(dialog: Locator, label: string): Locator {
   return dialog.getByLabel(label, { exact: true });
 }
 
-test('offers MongoDB and Redis on their ports; Elasticsearch and OpenSearch are coming', async () => {
+test('offers MongoDB and Redis on their ports, Elasticsearch and OpenSearch by URL', async () => {
   const dialog = await newConnection();
   const engine = field(dialog, 'Database engine');
   await expect(engine.locator('option[value="mongodb"]')).toBeEnabled();
   await expect(engine.locator('option[value="redis"]')).toBeEnabled();
-  await expect(engine.locator('option[value="elasticsearch"]')).toBeDisabled();
-  await expect(engine.locator('option[value="opensearch"]')).toBeDisabled();
+  await expect(engine.locator('option[value="elasticsearch"]')).toBeEnabled();
+  await expect(engine.locator('option[value="opensearch"]')).toBeEnabled();
+
+  await engine.selectOption('elasticsearch');
+  await expect(field(dialog, 'Connect with').locator('option')).toHaveText([
+    'Node URLs',
+    'Cloud ID (Elastic Cloud)',
+  ]);
+  await expect(field(dialog, 'Node URL 1')).toHaveValue('https://localhost:9200');
+  await engine.selectOption('opensearch');
+  await expect(field(dialog, 'Connect with').locator('option')).toHaveText(['Node URLs']);
 
   await engine.selectOption('mongodb');
   await expect(field(dialog, 'Port')).toHaveValue('27017');

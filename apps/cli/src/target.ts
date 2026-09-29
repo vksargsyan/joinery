@@ -1,7 +1,6 @@
 import {
   ENGINES,
   connectionProfileSchema,
-  isSqlEngine,
   type ConnectionProfile,
   type ResolvedProfile,
   type SecretRef,
@@ -34,6 +33,11 @@ import {
  * A saved profile's SSH tunnel and proxy come with it; their missing secrets are read from
  * JOINERY_SSH_PASSWORD, JOINERY_SSH_KEY_PASSPHRASE and JOINERY_PROXY_PASSWORD or asked for. A URI
  * target gets its tunnel and proxy from the command line (`--ssh`, `--proxy`, see tunnels.ts).
+ *
+ * An `http://` or `https://` URL is an Elasticsearch node (OpenSearch with `--engine
+ * opensearch`; the session detects the distribution either way). It can log in with the URL's
+ * user and password, or with an API key from JOINERY_API_KEY; a saved profile's API key or
+ * bearer token comes from its secret, JOINERY_API_KEY / JOINERY_BEARER_TOKEN, or a prompt.
  */
 
 /** Per-run overrides applied on top of the profile or URI. */
@@ -46,7 +50,12 @@ export interface TargetOverrides {
   readonly readOnly?: boolean;
   /** --ssh, --proxy and the host key flags. The route flags apply to URI targets only. */
   readonly tunnel?: TunnelFlags;
+  /** --engine: what an http(s):// URL points to (default Elasticsearch). */
+  readonly engine?: SearchEngineId;
 }
+
+/** The engines behind http(s):// URLs. */
+export type SearchEngineId = 'elasticsearch' | 'opensearch';
 
 /** A resolved connection target, ready to connect. Its secrets never print. */
 export interface Target {
@@ -73,6 +82,16 @@ export interface TargetDeps {
 }
 
 const URI_RE = /^(?:jdbc:)?[a-z][a-z0-9+.-]*:\/\//i;
+/** The engines joinery-cli connects to. */
+const CLI_ENGINES: ReadonlySet<string> = new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'mongodb',
+  'redis',
+  'elasticsearch',
+  'opensearch',
+]);
 const SQL_SCHEMES = new Set(['postgres', 'postgresql', 'mysql', 'mariadb']);
 /** MongoDB URIs work with `test` and `query` (the SQL commands refuse them when they connect). */
 const MONGO_SCHEMES = new Set(['mongodb', 'mongodb+srv']);
@@ -83,8 +102,15 @@ export const REDIS_SCHEMES: ReadonlySet<string> = new Set([
   'redis+sentinel',
   'rediss+sentinel',
 ]);
+/** Elasticsearch / OpenSearch node URLs work with `test` and `query`. */
+export const SEARCH_SCHEMES: ReadonlySet<string> = new Set(['http', 'https']);
 /** SecretRef id for a password the CLI adds to a profile or URI that had none. */
 export const CLI_PASSWORD_REF = 'joinery-cli-password';
+/** SecretRef id for the API key JOINERY_API_KEY gives an http(s):// URL target. */
+export const CLI_API_KEY_REF = 'joinery-cli-api-key';
+/** The variables that supply a search profile's API key or bearer token. */
+export const API_KEY_ENV = 'JOINERY_API_KEY';
+export const BEARER_TOKEN_ENV = 'JOINERY_BEARER_TOKEN';
 
 /** True when the argument is a connection URI rather than a profile name. */
 export function isConnectionUri(spec: string): boolean {
@@ -175,8 +201,10 @@ export function describeEndpoint(profile: ConnectionProfile): string {
       return `${endpoint.sentinels.map((h) => `${h.host}:${h.port}`).join(',')} (Sentinel master ${endpoint.masterName})`;
     case 'cluster':
       return `${endpoint.seeds.map((h) => `${h.host}:${h.port}`).join(',')} (Cluster)`;
-    default:
-      return endpoint.kind;
+    case 'urls':
+      return endpoint.urls.map(redactUri).join(', ');
+    case 'cloudId':
+      return `Elastic Cloud deployment ${endpoint.cloudId.split(':')[0] ?? ''}`.trimEnd();
   }
 }
 
@@ -188,13 +216,25 @@ async function resolveUri(
   deps: TargetDeps,
 ): Promise<Target> {
   const scheme = /^(?:jdbc:)?([a-z][a-z0-9+.-]*):/i.exec(spec.trim())?.[1]?.toLowerCase() ?? '';
-  if (!SQL_SCHEMES.has(scheme) && !MONGO_SCHEMES.has(scheme) && !REDIS_SCHEMES.has(scheme)) {
+  const search = SEARCH_SCHEMES.has(scheme);
+  if (
+    !SQL_SCHEMES.has(scheme) &&
+    !MONGO_SCHEMES.has(scheme) &&
+    !REDIS_SCHEMES.has(scheme) &&
+    !search
+  ) {
     throw new CliError(`joinery-cli does not support "${scheme}://" URIs`, {
       code: 'NOT_SUPPORTED',
-      hint: 'Use a postgres://, postgresql://, mysql://, mariadb://, mongodb://, mongodb+srv://, redis:// or rediss:// URI, or a saved profile name',
+      hint: 'Use a postgres://, postgresql://, mysql://, mariadb://, mongodb://, mongodb+srv://, redis://, rediss://, http:// or https:// URI, or a saved profile name',
     });
   }
-  const parsed = parseConnectionUri(spec);
+  if (overrides.engine !== undefined && !search) {
+    deps.reporter.warn('--engine applies to http:// and https:// URLs; it is ignored here');
+  }
+  const parsed = parseConnectionUri(
+    spec,
+    search ? { engine: overrides.engine ?? 'elasticsearch' } : {},
+  );
   if (parsed.ignoredParams.length > 0) {
     deps.reporter.warn(`ignored URI parameters: ${parsed.ignoredParams.join(', ')}`);
   }
@@ -222,9 +262,24 @@ async function resolveUri(
     passwordKnown: false,
     ...(overrides.readOnly ? { readOnlySource: 'flag' as const } : {}),
   };
+  const apiKey = deps.env[API_KEY_ENV];
+  if (search && profile.auth.method === 'none' && apiKey !== undefined && apiKey !== '') {
+    return withApiKey(target, apiKey);
+  }
   const password = parsed.password ?? deps.env['JOINERY_PASSWORD'];
   if (password !== undefined) target = withPassword(target, password);
   return target;
+}
+
+/** A search URL target that logs in with an API key (JOINERY_API_KEY). */
+function withApiKey(target: Target, apiKey: string): Target {
+  const ref = { id: CLI_API_KEY_REF, policy: 'ask' as const };
+  return {
+    ...target,
+    profile: { ...target.profile, auth: { method: 'apiKey', apiKey: ref } },
+    secrets: secretMap([...Object.entries(target.secrets), [ref.id, apiKey]]),
+    passwordKnown: true,
+  };
 }
 
 async function resolveProfile(
@@ -246,9 +301,12 @@ async function resolveProfile(
       `--ssh, --ssh-key, --ssh-agent, --ssh-password-env and --proxy apply to URI targets; "${profile.name}" uses its saved SSH and proxy settings`,
     );
   }
-  if (!isSqlEngine(profile.engine) && profile.engine !== 'mongodb' && profile.engine !== 'redis') {
+  if (overrides.engine !== undefined) {
+    deps.reporter.warn(`--engine applies to URL targets; "${profile.name}" keeps its engine`);
+  }
+  if (!CLI_ENGINES.has(profile.engine)) {
     throw new CliError(
-      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL, MariaDB, MongoDB and Redis`,
+      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL, MariaDB, MongoDB, Redis, Elasticsearch and OpenSearch`,
       { code: 'NOT_SUPPORTED' },
     );
   }
@@ -258,10 +316,25 @@ async function resolveProfile(
   const auth = profile.auth;
   const passwordRef = auth.method === 'password' ? auth.password : undefined;
   const tunnelSecrets = tunnelSecretsOf(profile);
+  const tokenRef =
+    auth.method === 'apiKey'
+      ? { ref: auth.apiKey, what: 'API key', env: API_KEY_ENV }
+      : auth.method === 'bearer'
+        ? { ref: auth.token, what: 'bearer token', env: BEARER_TOKEN_ENV }
+        : undefined;
 
   for (const ref of resolved.missing) {
     if (passwordRef && ref.id === passwordRef.id) {
       secrets.push([ref.id, await missingPassword(profile, ref, unreadable.has(ref.id), deps)]);
+    } else if (tokenRef && ref.id === tokenRef.ref.id) {
+      const value = await missingSecret(
+        profile,
+        tokenRef.what,
+        tokenRef.env,
+        unreadable.has(ref.id),
+        deps,
+      );
+      secrets.push([ref.id, value]);
     } else if (profile.tls.keyPassphrase && ref.id === profile.tls.keyPassphrase.id) {
       const value = await missingSecret(
         profile,

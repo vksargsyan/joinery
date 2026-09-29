@@ -23,6 +23,7 @@ import {
   endpointKindsFor,
   formFromUri,
   formToProfile,
+  isSearchDialogEngine,
   profileToForm,
   switchEndpointKind,
   switchEngine,
@@ -32,7 +33,7 @@ import {
 } from '../state/connection-form';
 import { keys, useCanSaveSecrets, useFolders } from '../state/data';
 import { ENDPOINT_LABELS, EndpointFields, URI_EXAMPLES } from './connection/EndpointFields';
-import { MongoFields, RedisFields, SqlFields } from './connection/EngineFields';
+import { MongoFields, RedisFields, SearchFields, SqlFields } from './connection/EngineFields';
 import { PathField, type ConnectionForm } from './connection/fields';
 import { ProxySection, SshSection, type KeyState } from './connection/NetworkSections';
 import { Button, Field, Icon, Input, Modal, Select, cx } from './ui';
@@ -140,6 +141,8 @@ export function ConnectionDialog(props: {
       'uri',
       'hostList',
       'sentinels',
+      'urls',
+      'cloudId',
     ]);
   };
 
@@ -416,6 +419,13 @@ export function ConnectionDialog(props: {
           <MongoFields form={form} canSave={canSave} editing={editing !== undefined} />
         ) : engine === 'redis' ? (
           <RedisFields form={form} canSave={canSave} editing={editing !== undefined} />
+        ) : isSearchDialogEngine(engine) ? (
+          <SearchFields
+            form={form}
+            engine={engine}
+            canSave={canSave}
+            editing={editing !== undefined}
+          />
         ) : (
           <SqlFields form={form} canSave={canSave} editing={editing !== undefined} />
         )}
@@ -429,6 +439,12 @@ export function ConnectionDialog(props: {
           </Select>
         </Field>
         <div />
+        {isSearchDialogEngine(engine) && endpointKind === 'urls' && (
+          <p className="col-span-2 -mt-1 text-xs text-muted">
+            The URL scheme decides: https:// connects with TLS in the mode chosen here, http://
+            needs “Disable TLS”.
+          </p>
+        )}
         {endpointKind === 'srv' && (
           <p className="col-span-2 -mt-1 text-xs text-muted">
             An SRV record (mongodb+srv) implies TLS, as in MongoDB drivers; choose “Disable TLS”

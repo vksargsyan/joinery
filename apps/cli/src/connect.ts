@@ -6,6 +6,7 @@ import {
   type Session,
   type SqlDialect,
 } from '@joinery/core';
+import { createSearchAdapter } from '@joinery/driver-elasticsearch';
 import {
   checkConnection as checkMongoConnection,
   createMongoAdapter,
@@ -43,6 +44,11 @@ export const defaultAdapters: AdapterFactory = (engine: EngineId): DriverAdapter
     case 'redis': {
       const redis = createRedisAdapter();
       return withSshStepCheck(redis, (resolved, deps) => redis.checkConnection(resolved, deps));
+    }
+    case 'elasticsearch':
+    case 'opensearch': {
+      const search = createSearchAdapter({ engine });
+      return withSshStepCheck(search, (resolved, deps) => search.checkConnection(resolved, deps));
     }
     default:
       throw new CliError(`joinery-cli cannot connect to ${engine} yet`, { code: 'NOT_SUPPORTED' });

@@ -56,6 +56,7 @@ export * from './schemas/sync';
 export * from './schemas/server-tools';
 export * from './schemas/workspace';
 export * from './schemas/backup';
+export * from './schemas/search';
 
 export {
   connectionHostContract,
@@ -71,3 +72,4 @@ export { redisHostContractShape } from './contracts/redis';
 export { syncMainContractShape } from './contracts/sync';
 export { serverToolsHostContractShape } from './contracts/server-tools';
 export { autosaveMainContractShape, gridViewsMainContractShape } from './contracts/workspace';
+export { searchHostContractShape } from './contracts/search';

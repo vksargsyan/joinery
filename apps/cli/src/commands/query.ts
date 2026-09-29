@@ -35,6 +35,7 @@ import { createResultWriter, type OutputFormat, type ResultWriter } from '../out
 import { isRedisTarget, redisQueryCommand } from '../redis';
 import { formatDuration, openTarget, plural, type Runtime } from '../runtime';
 import { confirmStatement, type ConfirmState } from '../safety';
+import { isSearchTarget, searchQueryCommand } from '../search';
 import type { TargetOverrides } from '../target';
 
 export interface QueryOptions extends TargetOverrides {
@@ -88,6 +89,7 @@ export async function queryCommand(
 ): Promise<ExitCode> {
   if (engineOf(runtime, spec) === 'mongodb') return mongoQueryCommand(runtime, spec, options);
   if (isRedisTarget(runtime, spec)) return redisQueryCommand(runtime, spec, options);
+  if (isSearchTarget(runtime, spec)) return searchQueryCommand(runtime, spec, options);
   const input = scriptInput(runtime, options);
   const { reporter, interrupts, ctx } = runtime;
   const connection = await openTarget(runtime, spec, options);

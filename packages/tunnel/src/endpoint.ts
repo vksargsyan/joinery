@@ -10,6 +10,56 @@ function notTunnellable(message: string, hint: string): JoineryError {
 }
 
 /**
+ * The host and port of an Elasticsearch / OpenSearch node URL: the URL's port, else 443 for
+ * https and 80 for http. A URL without a scheme is https unless TLS is off. Never echoes the URL.
+ */
+export function searchUrlTarget(url: string, tlsByDefault: boolean): HostPort {
+  const text = url.trim();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(text)
+    ? text
+    : `${tlsByDefault ? 'https' : 'http'}://${text}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    throw new JoineryError({
+      code: 'VALIDATION_FAILED',
+      message: 'A node URL is not valid',
+      hint: 'Use the form https://host:9200',
+    });
+  }
+  const host = parsed.hostname.replace(/^\[(.*)\]$/, '$1');
+  const port = parsed.port ? Number(parsed.port) : parsed.protocol === 'http:' ? 80 : 443;
+  return { host, port };
+}
+
+/**
+ * The https URL of an Elastic Cloud deployment's Elasticsearch endpoint from its Cloud ID
+ * ("name:base64(host[:port]$es-id$kibana-id)").
+ */
+export function cloudIdUrl(cloudId: string): string {
+  const encoded = cloudId.slice(cloudId.indexOf(':') + 1).trim();
+  let decoded: string;
+  try {
+    decoded = atob(encoded);
+  } catch {
+    decoded = '';
+  }
+  const [domain, esId] = decoded.split('$');
+  if (!domain || !esId) {
+    throw new JoineryError({
+      code: 'VALIDATION_FAILED',
+      message: 'The Cloud ID is not valid',
+      hint: "Copy the Cloud ID from the deployment's page in Elastic Cloud (name:base64 text)",
+    });
+  }
+  const colon = domain.lastIndexOf(':');
+  const port = colon === -1 ? '' : domain.slice(colon + 1);
+  const host = colon === -1 ? domain : domain.slice(0, colon);
+  return `https://${esId}.${host}${port && port !== '443' ? `:${port}` : ''}`;
+}
+
+/**
  * What a profile's SSH tunnel or proxy has to reach (see `tunnelReach`): one server, or a
  * topology of several whose members the driver discovers and reaches by the addresses they
  * announce (a MongoDB replica set, Redis Sentinel or Cluster).
@@ -60,6 +110,21 @@ export function tunnelReach(profile: ConnectionProfile): TunnelReach {
       return { kind: 'nodes', seeds: endpoint.sentinels.map(({ host, port }) => ({ host, port })) };
     case 'cluster':
       return { kind: 'nodes', seeds: endpoint.seeds.map(({ host, port }) => ({ host, port })) };
+    case 'urls': {
+      // Elasticsearch / OpenSearch: one node URL (the others would bypass the tunnel).
+      if (endpoint.urls.length !== 1) {
+        throw notTunnellable(
+          'Only a single node URL can be reached through an SSH tunnel or a proxy',
+          'Keep one URL in the list (Joinery does not discover other nodes through a tunnel)',
+        );
+      }
+      return {
+        kind: 'host',
+        target: searchUrlTarget(endpoint.urls[0]!, profile.tls.mode !== 'disable'),
+      };
+    }
+    case 'cloudId':
+      return { kind: 'host', target: searchUrlTarget(cloudIdUrl(endpoint.cloudId), true) };
     case 'uri':
       return profile.engine === 'mongodb'
         ? mongoUriReach(endpoint.uri)
@@ -67,11 +132,6 @@ export function tunnelReach(profile: ConnectionProfile): TunnelReach {
             kind: 'host',
             target: singleHostUri(endpoint.uri, ENGINES[profile.engine].defaultPort),
           };
-    default:
-      throw notTunnellable(
-        `A "${endpoint.kind}" endpoint cannot be reached through an SSH tunnel or a proxy yet`,
-        'Use a single host and port endpoint, or connect without the tunnel',
-      );
   }
 }
 

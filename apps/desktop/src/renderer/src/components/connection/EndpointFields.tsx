@@ -8,6 +8,7 @@ import {
 } from '../../state/connection-form';
 import { Field, Input } from '../ui';
 import { HostListField } from './HostListField';
+import { UrlListField } from './UrlListField';
 import { Note, type ConnectionForm } from './fields';
 
 /** How each endpoint form reads in the "Connect with" list. */
@@ -19,6 +20,8 @@ export const ENDPOINT_LABELS: Readonly<Record<FormEndpointKind, string>> = {
   srv: 'SRV record (mongodb+srv)',
   sentinel: 'Sentinel',
   cluster: 'Cluster',
+  urls: 'Node URLs',
+  cloudId: 'Cloud ID (Elastic Cloud)',
 };
 
 /** A pasted-URI example per engine, with a password to show where it goes. */
@@ -28,6 +31,8 @@ export const URI_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
   mariadb: 'mariadb://user:password@host:3306/database',
   mongodb: 'mongodb+srv://user:password@cluster0.example.net/database',
   redis: 'rediss://user:password@host:6380/0',
+  elasticsearch: 'https://elastic:password@host:9200',
+  opensearch: 'https://admin:password@host:9200',
 };
 
 /** The same, without the password, for the stored URI field. */
@@ -37,6 +42,8 @@ const STORED_URI_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
   mariadb: 'mariadb://user@host:3306/database',
   mongodb: 'mongodb://user@host1:27017,host2:27017/database?replicaSet=rs0',
   redis: 'redis://user@host:6379/0',
+  elasticsearch: 'https://host:9200',
+  opensearch: 'https://host:9200',
 };
 
 const SOCKET_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
@@ -45,6 +52,8 @@ const SOCKET_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
   mariadb: '/run/mysqld/mysqld.sock',
   mongodb: '/tmp/mongodb-27017.sock',
   redis: '/var/run/redis/redis-server.sock',
+  elasticsearch: '',
+  opensearch: '',
 };
 
 /** The inputs of the chosen endpoint form: host and port, socket, URI, host lists, SRV. */
@@ -191,6 +200,30 @@ export function EndpointFields(props: {
             />
           </Field>
           <div />
+        </>
+      );
+    case 'urls':
+      return <UrlListField form={form} />;
+    case 'cloudId':
+      return (
+        <>
+          <Field
+            label="Cloud ID"
+            htmlFor="cx-cloud-id"
+            error={errors.cloudId?.message}
+            className="col-span-2"
+          >
+            <Input
+              id="cx-cloud-id"
+              placeholder="deployment:ZXUtd2VzdC0xLmF3cy5mb3VuZC5pbyRjZWM2ZjI2MWE3NGJmMjRjZTMzYmI4ODExYjg0Mjk0ZiQ="
+              {...register('cloudId')}
+              aria-invalid={!!errors.cloudId}
+            />
+          </Field>
+          <Note>
+            From the deployment page in Elastic Cloud. Joinery connects to its Elasticsearch
+            endpoint over TLS.
+          </Note>
         </>
       );
   }

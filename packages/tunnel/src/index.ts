@@ -8,7 +8,14 @@ export {
   type SshStepOutcome,
   type TransportSession,
 } from './check';
-export { needsTransport, tunnelReach, tunnelTarget, type TunnelReach } from './endpoint';
+export {
+  cloudIdUrl,
+  needsTransport,
+  searchUrlTarget,
+  tunnelReach,
+  tunnelTarget,
+  type TunnelReach,
+} from './endpoint';
 export {
   FileKnownHosts,
   MemoryKnownHosts,

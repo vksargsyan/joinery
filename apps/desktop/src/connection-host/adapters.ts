@@ -1,8 +1,8 @@
-import { ENGINES, JoineryError, type DriverAdapter, type EngineId } from '@joinery/core';
+import { JoineryError, type DriverAdapter, type EngineId } from '@joinery/core';
 
 /**
  * The driver adapter for an engine, loaded on demand so a host only pulls in its own driver
- * (spec §2). Engines without a driver yet fail with NOT_SUPPORTED.
+ * (spec §2). An engine without a driver fails with NOT_SUPPORTED.
  */
 export async function loadAdapter(engine: EngineId): Promise<DriverAdapter> {
   switch (engine) {
@@ -32,10 +32,22 @@ export async function loadAdapter(engine: EngineId): Promise<DriverAdapter> {
       const adapter = createRedisAdapter();
       return withSshStepCheck(adapter, (resolved, deps) => adapter.checkConnection(resolved, deps));
     }
-    default:
+    case 'elasticsearch':
+    case 'opensearch': {
+      const [{ createSearchAdapter }, { withSshStepCheck }] = await Promise.all([
+        import('@joinery/driver-elasticsearch'),
+        import('@joinery/tunnel'),
+      ]);
+      const adapter = createSearchAdapter({ engine });
+      return withSshStepCheck(adapter, (resolved, deps) => adapter.checkConnection(resolved, deps));
+    }
+    default: {
+      // Every engine has a driver; a profile from a newer version may name one this lacks.
+      const unknown: never = engine;
       throw new JoineryError({
         code: 'NOT_SUPPORTED',
-        message: `${ENGINES[engine].displayName} is not supported yet`,
+        message: `The engine "${String(unknown)}" is not supported`,
       });
+    }
   }
 }

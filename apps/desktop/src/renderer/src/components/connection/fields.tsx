@@ -34,23 +34,31 @@ export function SecretModeSelect({
   );
 }
 
-/** The database password and where it is kept; the value typed here goes to main only. */
+/**
+ * The database password (or another sign-in secret: an API key, a token) and where it is kept;
+ * the value typed here goes to main only.
+ */
 export function PasswordFields(props: {
   readonly form: ConnectionForm;
   readonly canSave: boolean;
   /** An existing profile: an empty field keeps the stored password. */
   readonly editing: boolean;
+  /** What the secret is called; "Password" by default. */
+  readonly secretLabel?: string;
+  /** The sign-in cannot do without it, so "none" is not offered. */
+  readonly required?: boolean;
 }) {
-  const { register, control } = props.form;
+  const { register, control, formState } = props.form;
   const mode = useWatch({ control, name: 'passwordMode' });
+  const label = props.secretLabel ?? 'Password';
   return (
     <>
       <Field
-        label="Password"
+        label={label}
         htmlFor="cx-password"
         hint={
           props.editing && mode !== 'none' && mode !== 'ask'
-            ? 'Leave empty to keep the stored password'
+            ? `Leave empty to keep the stored ${label.toLowerCase()}`
             : undefined
         }
       >
@@ -63,8 +71,9 @@ export function PasswordFields(props: {
         />
       </Field>
       <Field
-        label="Password storage"
+        label={`${label} storage`}
         htmlFor="cx-password-mode"
+        error={formState.errors.passwordMode?.message}
         hint={
           props.canSave ? undefined : 'No keychain or secret service is available on this system'
         }
@@ -72,7 +81,7 @@ export function PasswordFields(props: {
         <SecretModeSelect
           id="cx-password-mode"
           canSave={props.canSave}
-          optional
+          optional={props.required !== true}
           {...register('passwordMode')}
         />
       </Field>

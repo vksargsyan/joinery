@@ -24,6 +24,7 @@ import {
   redisHostContractShape,
   autosaveMainContractShape,
   gridViewsMainContractShape,
+  searchHostContractShape,
   mongoMainContractShape,
   serverToolsHostContractShape,
   transferDbMainContractShape,
@@ -145,6 +146,7 @@ describe('connectionHostContract', () => {
       mongo: unusedHandlers(mongoHostContractShape),
       redis: unusedHandlers(redisHostContractShape),
       serverTools: unusedHandlers(serverToolsHostContractShape),
+      search: unusedHandlers(searchHostContractShape),
     };
     serve(ports.server, connectionHostContract, handlers);
     return { host: createClient(ports.client, connectionHostContract), closed };

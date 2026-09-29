@@ -60,6 +60,10 @@ export const BROWSE_NODE_KINDS = [
   'key',
   /** A cluster node or shard (Redis Cluster primary, MongoDB shard). */
   'node',
+  /** An Elasticsearch / OpenSearch data stream. */
+  'data-stream',
+  /** An Elasticsearch / OpenSearch alias. */
+  'alias',
   'other',
 ] as const;
 export type BrowseNodeKind = (typeof BROWSE_NODE_KINDS)[number];

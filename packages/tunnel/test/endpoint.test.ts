@@ -1,7 +1,7 @@
 import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
 import { describe, expect, it } from 'vitest';
 
-import { needsTransport, tunnelReach, tunnelTarget } from '../src';
+import { cloudIdUrl, needsTransport, tunnelReach, tunnelTarget } from '../src';
 
 function profile(input: Partial<ConnectionProfileInput>) {
   return connectionProfileSchema.parse({
@@ -170,6 +170,37 @@ describe('tunnelReach', () => {
     }
     expect(error).toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(JSON.stringify(error)).not.toContain('topsecret');
+  });
+
+  it('reaches one Elasticsearch or OpenSearch node URL, or a Cloud ID', () => {
+    const search = (endpoint: ConnectionProfileInput['endpoint'], tls = 'verify-full' as const) =>
+      tunnelTarget(profile({ engine: 'elasticsearch', endpoint, tls: { mode: tls } }));
+    expect(search({ kind: 'urls', urls: ['https://es.internal:9243/prefix'] })).toEqual({
+      host: 'es.internal',
+      port: 9243,
+    });
+    expect(search({ kind: 'urls', urls: ['es.internal'] })).toEqual({
+      host: 'es.internal',
+      port: 443,
+    });
+    expect(search({ kind: 'urls', urls: ['http://[fd00::9]'] })).toEqual({
+      host: 'fd00::9',
+      port: 80,
+    });
+    expect(() => search({ kind: 'urls', urls: ['https://a:9200', 'https://b:9200'] })).toThrow(
+      expect.objectContaining({ code: 'NOT_SUPPORTED' }),
+    );
+    const cloudId = `prod:${btoa('us-east-1.aws.found.io:443$abc123$def456')}`;
+    expect(search({ kind: 'cloudId', cloudId })).toEqual({
+      host: 'abc123.us-east-1.aws.found.io',
+      port: 443,
+    });
+    expect(cloudIdUrl(`x:${btoa('eu.cloud.es.io:9243$es$kb')}`)).toBe(
+      'https://es.eu.cloud.es.io:9243',
+    );
+    expect(() => cloudIdUrl('nonsense')).toThrow(
+      expect.objectContaining({ code: 'VALIDATION_FAILED' }),
+    );
   });
 
   it('knows when a profile needs a transport', () => {

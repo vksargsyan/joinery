@@ -5,6 +5,7 @@ import { defineContract } from '../contract';
 import { mongoHostContractShape } from './mongo';
 import { redisHostContractShape } from './redis';
 import { serverToolsHostContractShape } from './server-tools';
+import { searchHostContractShape } from './search';
 import { idSchema, stringListSchema, taskProgressSchema } from '../schemas/common';
 import {
   browseNodeSchema,
@@ -130,6 +131,8 @@ export const connectionHostContract = defineContract({
   redis: redisHostContractShape,
   /** Server tools of MySQL, MariaDB, PostgreSQL and MongoDB (spec §15). */
   serverTools: serverToolsHostContractShape,
+  /** Elasticsearch and OpenSearch cluster, index and document services and the console (§11). */
+  search: searchHostContractShape,
 });
 
 export type ConnectionHostContract = typeof connectionHostContract;

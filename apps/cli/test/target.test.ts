@@ -108,10 +108,8 @@ describe('URI targets', () => {
     expect(bare.passwordKnown).toBe(false);
   });
 
-  it('refuses engines the CLI does not drive', async () => {
-    await expect(
-      resolveTarget('https://es.example.com:9200', {}, deps(store)),
-    ).rejects.toMatchObject({
+  it('refuses URIs the CLI does not drive', async () => {
+    await expect(resolveTarget('ftp://files.example.com', {}, deps(store))).rejects.toMatchObject({
       code: 'NOT_SUPPORTED',
     });
   });

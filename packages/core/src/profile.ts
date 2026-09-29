@@ -154,6 +154,12 @@ export const connectionOptionsSchema = z.object({
     .optional(),
   /** Redis: the delimiter that splits key names into the browser's namespace tree (default ":"). */
   keyDelimiter: z.string().min(1).max(16).optional(),
+  /**
+   * Elasticsearch / OpenSearch: discover the cluster's other nodes from the listed URLs and
+   * spread requests over them (off by default: the addresses nodes announce are often not
+   * reachable from a desktop).
+   */
+  sniff: z.boolean().optional(),
 });
 export type ConnectionOptions = z.infer<typeof connectionOptionsSchema>;
 

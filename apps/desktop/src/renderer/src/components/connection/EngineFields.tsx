@@ -2,6 +2,7 @@ import { useWatch } from 'react-hook-form';
 
 import {
   ENGINE_AUTH_METHODS,
+  type SearchDialogEngine,
   EXTERNAL_AUTH_SOURCE,
   MONGO_MECHANISMS,
   READ_PREFERENCES,
@@ -48,6 +49,8 @@ const MONGO_AUTH_LABELS: Readonly<Record<FormAuthMethod, string>> = {
   none: 'None',
   password: 'User and password',
   clientCertificate: 'X.509 client certificate',
+  apiKey: 'API key',
+  bearer: 'Bearer token',
 };
 
 const MECHANISM_LABELS: Readonly<Record<(typeof MONGO_MECHANISMS)[number], string>> = {
@@ -246,6 +249,67 @@ export function RedisFields(props: SectionProps) {
             <Input id="cx-user" autoComplete="off" {...register('user')} />
           </Field>
           <PasswordFields {...props} />
+        </>
+      ) : (
+        <div />
+      )}
+    </>
+  );
+}
+
+const SEARCH_AUTH_LABELS: Readonly<Partial<Record<FormAuthMethod, string>>> = {
+  none: 'None',
+  password: 'User and password (basic)',
+  apiKey: 'API key',
+  bearer: 'Bearer token',
+};
+
+/**
+ * Elasticsearch and OpenSearch (spec §4, §11): no sign-in, basic authentication, an API key
+ * (Elasticsearch) or a bearer token, each secret kept like a password.
+ */
+export function SearchFields(props: SectionProps & { readonly engine: SearchDialogEngine }) {
+  const { register, control, formState } = props.form;
+  const errors = formState.errors;
+  const authMethod = useWatch({ control, name: 'authMethod' });
+  return (
+    <>
+      <Field label="Authentication" htmlFor="cx-auth-method" error={errors.authMethod?.message}>
+        <Select id="cx-auth-method" {...register('authMethod')}>
+          {ENGINE_AUTH_METHODS[props.engine].map((method) => (
+            <option key={method} value={method}>
+              {SEARCH_AUTH_LABELS[method]}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      {authMethod === 'password' ? (
+        <>
+          <Field label="User" htmlFor="cx-user" error={errors.user?.message}>
+            <Input
+              id="cx-user"
+              autoComplete="off"
+              placeholder={props.engine === 'opensearch' ? 'admin' : 'elastic'}
+              {...register('user')}
+              aria-invalid={!!errors.user}
+            />
+          </Field>
+          <PasswordFields {...props} />
+        </>
+      ) : authMethod === 'apiKey' ? (
+        <>
+          <div />
+          <PasswordFields {...props} secretLabel="API key" required />
+          <Note>
+            The encoded key Elasticsearch shows when it creates one, or its id and key as
+            id:api_key.
+          </Note>
+        </>
+      ) : authMethod === 'bearer' ? (
+        <>
+          <div />
+          <PasswordFields {...props} secretLabel="Token" required />
+          <Note>Sent as Authorization: Bearer, e.g. an OAuth2 or JWT access token.</Note>
         </>
       ) : (
         <div />

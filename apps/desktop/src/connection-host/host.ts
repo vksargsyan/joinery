@@ -19,7 +19,9 @@ import { applyChanges } from '@joinery/table-data';
 import type { TransportSession } from '@joinery/tunnel';
 
 import { redisWritePolicy } from '../shared/redis-safety';
+import { searchWritePolicy } from '../shared/search-writes';
 import { executeRedisGuarded, isRedisSession, redisHandlers } from './redis';
+import { executeSearchGuarded, searchHandlers } from './search';
 
 import type { HostRequest } from '../shared/host-protocol';
 import { mongoHandlers } from './mongo';
@@ -223,9 +225,23 @@ export class ConnectionHost {
           ...(params === undefined ? {} : { params }),
           ...(pageSize === undefined ? {} : { pageSize }),
         };
-        return isRedisSession(session)
-          ? executeRedisGuarded(session, text, options, redisWritePolicy(this.#resolved.profile))
-          : session.execute(text, options);
+        if (isRedisSession(session)) {
+          return executeRedisGuarded(
+            session,
+            text,
+            options,
+            redisWritePolicy(this.#resolved.profile),
+          );
+        }
+        if (session.engine === 'elasticsearch' || session.engine === 'opensearch') {
+          return executeSearchGuarded(
+            session,
+            text,
+            options,
+            searchWritePolicy(this.#resolved.profile),
+          );
+        }
+        return session.execute(text, options);
       },
       cancel: ({ sessionId, executionId }) => this.#session(sessionId).cancel(executionId),
       introspect: ({ sessionId, scope }) => this.#session(sessionId).introspect(scope),
@@ -290,6 +306,11 @@ export class ConnectionHost {
       serverTools: serverToolsHandlers({
         session: (sessionId) => this.#session(sessionId),
         profile: this.#resolved.profile,
+      }),
+      search: searchHandlers({
+        session: (sessionId) => this.#session(sessionId),
+        profile: this.#resolved.profile,
+        policy: searchWritePolicy(this.#resolved.profile),
       }),
     };
   }
