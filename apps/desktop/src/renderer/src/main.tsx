@@ -10,6 +10,7 @@ import { errorMessage } from './lib/errors';
 import { connectMain } from './lib/main-client';
 import { watchConnectionEvents } from './state/connections';
 import { queryClient } from './state/data';
+import { watchMetadata } from './state/metadata';
 
 /** Renderer entry: connect to main over the port the preload forwards, then render. */
 async function start(): Promise<void> {
@@ -25,6 +26,7 @@ async function start(): Promise<void> {
     return;
   }
   void watchConnectionEvents();
+  watchMetadata();
   root.render(
     <QueryClientProvider client={queryClient}>
       <App />

@@ -6,12 +6,17 @@ import { mainApi } from './lib/main-client';
 import { ConnectionDialog, type ConnectionDialogMode } from './components/ConnectionDialog';
 import { Dock, openQueryTab } from './components/dock';
 import { HistoryPanel } from './components/HistoryPanel';
+import { HostKeyPrompts } from './components/HostKeyPrompt';
+import { JobsPanel } from './components/jobs/JobsPanel';
+import { TransferDialogs } from './components/jobs/TransferDialogs';
 import { Prompts } from './components/Prompts';
 import { Sidebar } from './components/Sidebar';
 import { useTheme } from './components/theme';
 import { Button, Icon } from './components/ui';
 import { useConnections } from './state/connections';
 import { keys, useProfiles } from './state/data';
+import { runningCount, showJobs, useJobs, watchJobs } from './state/jobs';
+import { usePanels } from './state/panels';
 import { useWorkspace } from './state/workspace';
 
 /**
@@ -24,11 +29,19 @@ export function App() {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<ConnectionDialogMode>();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const jobsOpen = useJobs((state) => state.open);
+  const jobsRunning = useJobs(runningCount);
   const profiles = useProfiles();
   const activeTab = useWorkspace((state) =>
     state.activeTabId ? state.tabs[state.activeTabId] : undefined,
   );
-  const activeProfile = profiles.data?.find((p) => p.id === activeTab?.profileId);
+  // Table data views and designers count as the active tab too.
+  const activeId = useWorkspace((state) => state.activeTabId);
+  const activePanelProfile = usePanels((state) =>
+    activeId ? state.panels[activeId]?.profileId : undefined,
+  );
+  const activeProfileId = activeTab?.profileId ?? activePanelProfile;
+  const activeProfile = profiles.data?.find((p) => p.id === activeProfileId);
   const production = activeProfile?.presentation.environment === 'production';
   const readyProfiles = useConnections(
     useShallow((state) =>
@@ -42,13 +55,17 @@ export function App() {
     document.documentElement.dataset['theme'] = theme;
   }, [theme]);
 
+  useEffect(() => {
+    void watchJobs();
+  }, []);
+
   const toggleTheme = async (): Promise<void> => {
     await mainApi().settings.set({ theme: theme === 'dark' ? 'light' : 'dark' });
     await queryClient.invalidateQueries({ queryKey: keys.settings });
   };
 
   const newQuery = (): void => {
-    const profileId = activeTab?.profileId ?? readyProfiles[0];
+    const profileId = activeProfileId ?? readyProfiles[0];
     const profile = profiles.data?.find((p) => p.id === profileId);
     if (profile) openQueryTab({ profileId: profile.id, title: `${profile.name} query` });
   };
@@ -87,6 +104,22 @@ export function App() {
         </Button>
         <Button
           size="sm"
+          variant={jobsOpen ? 'secondary' : 'ghost'}
+          onClick={() => showJobs(!jobsOpen)}
+          aria-pressed={jobsOpen}
+        >
+          Jobs
+          {jobsRunning > 0 && (
+            <span
+              className="rounded bg-accent px-1 text-[10px] text-accent-fg"
+              aria-label={`${jobsRunning} running`}
+            >
+              {jobsRunning}
+            </span>
+          )}
+        </Button>
+        <Button
+          size="sm"
           variant="ghost"
           onClick={() => void toggleTheme()}
           aria-label="Switch theme"
@@ -106,6 +139,11 @@ export function App() {
             <HistoryPanel onClose={() => setHistoryOpen(false)} />
           </div>
         )}
+        {jobsOpen && (
+          <div className="w-96 shrink-0">
+            <JobsPanel />
+          </div>
+        )}
       </div>
       {production && (
         <div
@@ -115,6 +153,8 @@ export function App() {
         />
       )}
       <Prompts />
+      <HostKeyPrompts />
+      <TransferDialogs />
       {dialog && <ConnectionDialog mode={dialog} onClose={() => setDialog(undefined)} />}
     </div>
   );

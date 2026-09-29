@@ -6,17 +6,35 @@ import {
   type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
 } from 'dockview-react';
+import { newId } from '@joinery/core';
+import type { FilterGroup } from '@joinery/table-data';
 import { useEffect } from 'react';
 
+import { createDesigner, disposeDesigner, type DesignerTarget } from '../state/designer';
+import { confirm } from '../state/dialogs';
+import {
+  panelInfo,
+  panelKey,
+  panelWithKey,
+  registerPanel,
+  unregisterPanel,
+  usePanels,
+  type PanelKind,
+} from '../state/panels';
 import { closeTab } from '../state/runner';
+import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
+import { TableDesignerPanel } from './designer/TableDesignerPanel';
 import { QueryPanel } from './QueryPanel';
+import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
 
 /**
- * The main area (spec §19: dockview): query tabs as dock panels that can be split and rearranged.
- * The workspace store owns tab state; dockview only lays the panels out. Closing goes through
- * `closeTab`, which asks first when the tab has an open transaction.
+ * The main area (spec §19: dockview): query tabs, table data views and table designers as dock
+ * panels that can be split and rearranged. The workspace store owns query tab state and the
+ * panels store names the others; dockview only lays the panels out. Closing goes through
+ * `closeTab` (asks when a transaction is open) or `requestClosePanel` (asks when changes are
+ * staged or a design is unsaved).
  */
 
 let dockApi: DockviewApi | undefined;
@@ -24,6 +42,102 @@ const pendingRuns = new Set<string>();
 
 interface QueryPanelParams {
   readonly tabId: string;
+}
+
+interface PanelParams {
+  readonly panelId: string;
+}
+
+function addPanel(kind: PanelKind, id: string, title: string): void {
+  dockApi?.addPanel<PanelParams>({
+    id,
+    component: kind === 'table-data' ? 'tableData' : 'tableDesigner',
+    tabComponent: 'panelTab',
+    title,
+    params: { panelId: id },
+    renderer: 'always',
+  });
+}
+
+function focusPanel(key: string): string | undefined {
+  const open = panelWithKey(key);
+  if (!open) return undefined;
+  dockApi?.getPanel(open.id)?.api.setActive();
+  return open.id;
+}
+
+/**
+ * Opens a table's data view (spec §7), or focuses the one already open. With a filter (a
+ * foreign key's referenced row) it always opens a new view filtered to it.
+ */
+export function openTableData(
+  target: TableTarget,
+  options: { readonly filter?: FilterGroup } = {},
+): string {
+  const key = panelKey('data', target);
+  if (!options.filter) {
+    const open = focusPanel(key);
+    if (open) return open;
+  }
+  const id = newId();
+  registerPanel({
+    id,
+    kind: 'table-data',
+    profileId: target.profileId,
+    title: target.name,
+    ...(options.filter ? {} : { key }),
+  });
+  createTableView(id, target, options);
+  addPanel('table-data', id, target.name);
+  return id;
+}
+
+/** Opens the table designer (spec §8) on a table, or on a new one when `name` is null. */
+export function openTableDesigner(target: DesignerTarget): string {
+  const key =
+    target.name === null ? undefined : panelKey('design', { ...target, name: target.name });
+  if (key) {
+    const open = focusPanel(key);
+    if (open) return open;
+  }
+  const id = newId();
+  const title = target.name === null ? 'New table' : `${target.name} (design)`;
+  registerPanel({
+    id,
+    kind: 'table-designer',
+    profileId: target.profileId,
+    title,
+    ...(key ? { key } : {}),
+  });
+  createDesigner(id, target);
+  addPanel('table-designer', id, title);
+  return id;
+}
+
+/** Closes a data view or designer, asking first when it holds unsaved work. */
+export async function requestClosePanel(id: string): Promise<void> {
+  const info = panelInfo(id);
+  if (info?.dirty) {
+    const ok = await confirm({
+      title: `Close "${info.title}"?`,
+      message:
+        info.kind === 'table-data'
+          ? 'The staged changes were not applied and will be lost.'
+          : 'The design was not saved and will be lost.',
+      confirmLabel: 'Close without saving',
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  dockApi?.getPanel(id)?.api.close();
+}
+
+function disposePanel(id: string): void {
+  const info = panelInfo(id);
+  if (!info) return;
+  unregisterPanel(id);
+  if (info.kind === 'table-data') void disposeTableView(id);
+  else void disposeDesigner(id);
 }
 
 /** Opens a query tab for a connection, optionally with text, and runs it when asked. */
@@ -104,6 +218,53 @@ function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
   );
 }
 
+function TableDataHost(props: IDockviewPanelProps<PanelParams>) {
+  return <TableDataPanel panelId={props.params.panelId} />;
+}
+
+function TableDesignerHost(props: IDockviewPanelProps<PanelParams>) {
+  return <TableDesignerPanel panelId={props.params.panelId} />;
+}
+
+function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
+  const panelId = props.params.panelId;
+  const info = usePanels((state) => state.panels[panelId]);
+  const title = info?.title ?? props.api.title ?? '';
+  return (
+    <div
+      className="flex h-full items-center gap-1.5 px-2 text-[13px]"
+      onMouseDown={(event) => {
+        if (event.button === 1) {
+          event.preventDefault();
+          void requestClosePanel(panelId);
+        }
+      }}
+    >
+      {info?.busy && (
+        <span aria-label="Working" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+      )}
+      <Icon name="table" className="h-3.5 w-3.5 text-muted" />
+      <span className="max-w-48 truncate">{title}</span>
+      {info?.dirty && (
+        <span title="Unsaved changes" aria-label="Unsaved changes" className="text-warning">
+          ●
+        </span>
+      )}
+      <button
+        type="button"
+        aria-label={`Close ${title}`}
+        className="rounded p-0.5 text-muted hover:bg-hover hover:text-fg"
+        onClick={(event) => {
+          event.stopPropagation();
+          void requestClosePanel(panelId);
+        }}
+      >
+        <Icon name="close" className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 function Watermark() {
   return (
     <div className="flex h-full items-center justify-center text-center text-muted">
@@ -121,8 +282,12 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
     <DockviewReact
       className={cx('joinery-dock h-full')}
       theme={props.theme === 'dark' ? themeDark : themeLight}
-      components={{ query: QueryPanelHost }}
-      tabComponents={{ queryTab: QueryTabHeader }}
+      components={{
+        query: QueryPanelHost,
+        tableData: TableDataHost,
+        tableDesigner: TableDesignerHost,
+      }}
+      tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}
       disableFloatingGroups
       onReady={(event) => {
@@ -133,6 +298,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         // A panel removed by the dock itself (not through requestCloseTab) still frees its tab.
         event.api.onDidRemovePanel((panel) => {
           if (useWorkspace.getState().tabs[panel.id]) void closeTab(panel.id, { force: true });
+          disposePanel(panel.id);
         });
       }}
     />

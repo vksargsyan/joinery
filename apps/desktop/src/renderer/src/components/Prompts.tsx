@@ -158,7 +158,7 @@ function Secrets({ prompt }: { readonly prompt: Extract<Prompt, { kind: 'secrets
         {prompt.missing.map((ref, index) => (
           <Field
             key={ref.refId}
-            label={prompt.missing.length === 1 ? 'Password' : `Secret ${index + 1}`}
+            label={ref.label ?? (prompt.missing.length === 1 ? 'Password' : `Secret ${index + 1}`)}
             htmlFor={`secret-${index}`}
             hint={
               ref.unreadable

@@ -2,6 +2,7 @@ import {
   JoineryError,
   capabilitiesFor,
   newId,
+  schemaSnapshotSchema,
   toColumnChunk,
   type BrowseNode,
   type ConnectionProfile,
@@ -22,6 +23,8 @@ import {
   parseRequest,
   safeProfileSchema,
   serve,
+  type ApplyPlan,
+  type Snippet,
   type HandlersOf,
 } from '../src';
 import { portPair } from './helpers';
@@ -110,6 +113,14 @@ describe('connectionHostContract', () => {
       commit: () => {},
       rollback: () => {},
       sessionState: () => ({ inTransaction: true }),
+      applyChanges: ({ plan }) => ({
+        rows: plan.statements.map((statement) => ({
+          kind: statement.kind,
+          key: statement.key,
+          ...(statement.kind === 'delete' ? {} : { newKey: `n${statement.key}` }),
+          row: statement.kind === 'delete' ? null : [...statement.params],
+        })),
+      }),
       ping: () => {},
       serverInfo: () => ({
         engine: 'postgres',
@@ -187,6 +198,51 @@ describe('connectionHostContract', () => {
     const info = await host.serverInfo();
     expect(info.capabilities.transactionalDdl).toBe(true);
     await expect(host.ping()).resolves.toBeUndefined();
+  });
+
+  it('carries a change plan with every cell kind and returns the rows as written', async () => {
+    const { host } = setup();
+    const plan: ApplyPlan = {
+      dialect: 'postgres',
+      table: { schema: 'public', name: 'items' },
+      identity: { kind: 'primary-key', name: 'items_pkey', columns: ['id'] },
+      columns: ['id', 'data', 'note'],
+      statements: [
+        {
+          kind: 'update',
+          key: 'n5',
+          label: 'id = 5',
+          sql: 'UPDATE "public"."items" SET "data" = $1 WHERE "id" = $2 RETURNING "id", "data", "note"',
+          params: [new Uint8Array([1, 2]), 2n ** 62n],
+          preview: `UPDATE "public"."items" SET "data" = '\\x0102'::bytea WHERE "id" = 4611686018427387904`,
+          returnsRow: true,
+          knownValues: { id: 2n ** 62n, data: new Uint8Array([1, 2]), note: null },
+        },
+        {
+          kind: 'delete',
+          key: 'n6',
+          label: 'id = 6',
+          sql: 'DELETE FROM "public"."items" WHERE "id" = $1',
+          params: [6],
+          preview: 'DELETE FROM "public"."items" WHERE "id" = 6',
+          returnsRow: false,
+          readBack: { sql: 'SELECT 1', params: [] },
+          knownValues: {},
+        },
+      ],
+      previewSql: '…',
+    };
+    const result = await host.applyChanges({ sessionId: 's1', plan });
+    expect(result.rows).toEqual([
+      { kind: 'update', key: 'n5', newKey: 'nn5', row: [new Uint8Array([1, 2]), 2n ** 62n] },
+      { kind: 'delete', key: 'n6', row: null },
+    ]);
+    await expect(
+      host.applyChanges({
+        sessionId: 's1',
+        plan: { ...plan, statements: [{ ...plan.statements[0]!, sql: '' }] },
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });
 
@@ -365,7 +421,18 @@ describe('mainContract never hands a secret to the renderer', () => {
         }),
         openExternal: notUsed,
       },
-      dialogs: { openFile: notUsed },
+      dialogs: { openFile: notUsed, saveFile: notUsed, openDirectory: notUsed },
+      hostKeys: { prompts: notUsed, answer: notUsed },
+      ssh: { inspectKey: notUsed },
+      metadata: { get: () => [], put: notUsed, invalidate: notUsed },
+      snippets: { list: () => [] },
+      jobs: { start: notUsed, cancel: notUsed, list: () => [], events: notUsed, clear: notUsed },
+      transfer: {
+        preview: notUsed,
+        autoMatch: notUsed,
+        planTable: notUsed,
+        profiles: { list: () => [], save: notUsed, delete: notUsed },
+      },
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -513,7 +580,22 @@ describe('desktop additions', () => {
         info: notUsed,
         openExternal: () => {},
       },
-      dialogs: { openFile: () => ({ path: null }) },
+      dialogs: {
+        openFile: () => ({ path: null }),
+        saveFile: () => ({ path: null }),
+        openDirectory: () => ({ path: null }),
+      },
+      hostKeys: { prompts: notUsed, answer: () => {} },
+      ssh: { inspectKey: notUsed },
+      metadata: { get: () => [], put: notUsed, invalidate: notUsed },
+      snippets: { list: () => [] },
+      jobs: { start: notUsed, cancel: notUsed, list: () => [], events: notUsed, clear: notUsed },
+      transfer: {
+        preview: notUsed,
+        autoMatch: notUsed,
+        planTable: notUsed,
+        profiles: { list: () => [], save: notUsed, delete: notUsed },
+      },
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);
@@ -664,4 +746,299 @@ describe('desktop additions', () => {
       main.dialogs.openFile({ filters: [{ name: 'Bad', extensions: ['../x'] }] }),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
+
+  it('streams host key questions and validates the answers', async () => {
+    const answers: string[] = [];
+    const prompt = {
+      promptId: 'k1',
+      kind: 'unknown' as const,
+      host: 'bastion.example.com',
+      port: 22,
+      key: { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:abc+/DEF0123' },
+      known: [],
+      profileName: 'Prod',
+      purpose: 'connect' as const,
+    };
+    const main = serveMain({
+      hostKeys: {
+        async *prompts(_input, { signal }) {
+          yield { type: 'open', prompt };
+          yield { type: 'closed', promptId: 'k1' };
+          await new Promise((resolve) => signal.addEventListener('abort', resolve));
+        },
+        answer: ({ promptId, answer }) => {
+          answers.push(`${promptId}:${answer}`);
+        },
+      },
+    });
+    const seen: unknown[] = [];
+    for await (const event of main.hostKeys.prompts()) {
+      seen.push(event);
+      if (seen.length === 2) break;
+    }
+    expect(seen).toEqual([
+      { type: 'open', prompt },
+      { type: 'closed', promptId: 'k1' },
+    ]);
+    await main.hostKeys.answer({ promptId: 'k1', answer: 'trust-remember' });
+    await expect(
+      main.hostKeys.answer({ promptId: 'k1', answer: 'trust-always' as never }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(answers).toEqual(['k1:trust-remember']);
+
+    const bad = serveMain({
+      hostKeys: {
+        async *prompts() {
+          yield {
+            type: 'open',
+            prompt: { ...prompt, key: { algorithm: 'ssh-rsa', fingerprintSha256: 'MD5:aa:bb' } },
+          };
+        },
+        answer: () => {},
+      },
+    });
+    await expect(
+      (async () => {
+        for await (const _event of bad.hostKeys.prompts()) {
+          // The malformed fingerprint fails validation before it reaches the page.
+        }
+      })(),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('describes a private key by public facts only', async () => {
+    const main = serveMain({
+      ssh: {
+        inspectKey: ({ path, passphrase }) =>
+          ({
+            format: 'ppk',
+            encrypted: true,
+            locked: passphrase === undefined,
+            keyType: 'ssh-ed25519',
+            fingerprintSha256: 'SHA256:abc',
+            keyPath: `${path}.pem`,
+            converted: true,
+            privateKey: '-----BEGIN PRIVATE KEY-----',
+            passphrase,
+          }) as never,
+      },
+    });
+    const info = await main.ssh.inspectKey({ path: '/keys/id.ppk', passphrase: 'hunter2' });
+    expect(info).toEqual({
+      format: 'ppk',
+      encrypted: true,
+      locked: false,
+      keyType: 'ssh-ed25519',
+      fingerprintSha256: 'SHA256:abc',
+      keyPath: '/keys/id.ppk.pem',
+      converted: true,
+    });
+    expect(JSON.stringify(info)).not.toContain('hunter2');
+    await expect(main.ssh.inspectKey({ path: '  ' })).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
+  it('labels missing secrets without their values', async () => {
+    const refId = newId();
+    const main = serveMain({
+      profiles: {
+        list: () => [],
+        get: notUsedHere,
+        save: notUsedHere,
+        delete: () => {},
+        parseUri: notUsedHere,
+        secretStatus: () => ({
+          canSave: true,
+          missing: [
+            { refId, policy: 'ask', unreadable: false, label: 'SSH password for ops@bastion:22' },
+          ],
+        }),
+      },
+    });
+    expect((await main.profiles.secretStatus({})).missing[0]?.label).toBe(
+      'SSH password for ops@bastion:22',
+    );
+  });
 });
+
+describe('metadata cache and snippets', () => {
+  const snapshot: SchemaSnapshot = schemaSnapshotSchema.parse({
+    engine: 'mysql',
+    database: 'shop',
+    schemas: [
+      {
+        name: 'shop',
+        tables: [
+          {
+            name: 'orders',
+            columns: [{ name: 'id', ordinal: 1, dataType: 'int', nullable: false }],
+            primaryKey: { name: 'PRIMARY', columns: ['id'] },
+          },
+        ],
+      },
+    ],
+    capturedAt: now,
+  });
+
+  /** Handlers for every method, nested like the contract, that fail if called. */
+  function unusedHandlers(): HandlersOf<typeof mainContract> {
+    const root: Record<string, unknown> = {};
+    for (const path of mainContract.methods.keys()) {
+      const parts = path.split('.');
+      let node = root;
+      for (const part of parts.slice(0, -1)) node = (node[part] ??= {}) as Record<string, unknown>;
+      node[parts.at(-1)!] = notUsedHere;
+    }
+    return root as unknown as HandlersOf<typeof mainContract>;
+  }
+
+  function serveCache() {
+    const cache = new Map<string, { snapshot: SchemaSnapshot; storedAt: string }>();
+    const ports = portPair();
+    const key = (profileId: string, database: string): string => `${profileId}/${database}`;
+    const info = (profileId: string, entry: { snapshot: SchemaSnapshot; storedAt: string }) => ({
+      profileId,
+      database: entry.snapshot.database,
+      capturedAt: entry.snapshot.capturedAt,
+      storedAt: entry.storedAt,
+    });
+    serve(ports.server, mainContract, {
+      ...unusedHandlers(),
+      metadata: {
+        get: ({ profileId, databases }) =>
+          [...cache]
+            .filter(([k]) => k.startsWith(`${profileId}/`))
+            .map(([, entry]) => ({ ...info(profileId, entry), snapshot: entry.snapshot }))
+            .filter((entry) => !databases || databases.includes(entry.database)),
+        put: ({ profileId, snapshot }) => {
+          if (profileId === 'gone') {
+            throw new JoineryError({ code: 'NOT_FOUND', message: 'Profile gone was not found' });
+          }
+          const entry = { snapshot, storedAt: now };
+          cache.set(key(profileId, snapshot.database), entry);
+          return info(profileId, entry);
+        },
+        invalidate: ({ profileId, database }) => {
+          let dropped = 0;
+          for (const k of [...cache.keys()]) {
+            if (
+              database === undefined
+                ? k.startsWith(`${profileId}/`)
+                : k === key(profileId, database)
+            ) {
+              cache.delete(k);
+              dropped++;
+            }
+          }
+          return { dropped };
+        },
+      },
+      snippets: {
+        list: ({ engine }) =>
+          (
+            [
+              {
+                id: 's1',
+                name: 'Select all',
+                prefix: 'sel',
+                description: null,
+                body: 'SELECT * FROM ${1:table}',
+                engines: [],
+                version: 1,
+                createdAt: now,
+                updatedAt: now,
+                secretNote: 'not part of the schema',
+              },
+              {
+                id: 's2',
+                name: 'Vacuum',
+                prefix: null,
+                description: 'PostgreSQL only',
+                body: 'VACUUM ANALYZE ${1:table}',
+                engines: ['postgres'],
+                version: 2,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ] as (Snippet & { secretNote?: string })[]
+          ).filter(
+            (s) => engine === undefined || s.engines.length === 0 || s.engines.includes(engine),
+          ),
+      },
+    });
+    return createClient(ports.client, mainContract);
+  }
+
+  it('stores, reads and drops snapshots per profile and database', async () => {
+    const main = serveCache();
+    // Defaults the snapshot schema fills in need not be sent.
+    const { options: _options, extensions: _extensions, ...minimal } = snapshot;
+    expect(
+      await main.metadata.put({ profileId: 'p1', snapshot: minimal as SchemaSnapshot }),
+    ).toEqual({
+      profileId: 'p1',
+      database: 'shop',
+      capturedAt: now,
+      storedAt: now,
+    });
+    await main.metadata.put({ profileId: 'p1', snapshot: { ...snapshot, database: 'crm' } });
+    await main.metadata.put({ profileId: 'p2', snapshot });
+
+    const all = await main.metadata.get({ profileId: 'p1' });
+    expect(all.map((entry) => entry.database).sort()).toEqual(['crm', 'shop']);
+    expect(all.find((entry) => entry.database === 'shop')?.snapshot).toEqual(snapshot);
+    expect(
+      (await main.metadata.get({ profileId: 'p1', databases: ['crm'] })).map((e) => e.database),
+    ).toEqual(['crm']);
+
+    expect(await main.metadata.invalidate({ profileId: 'p1', database: 'crm' })).toEqual({
+      dropped: 1,
+    });
+    expect(await main.metadata.invalidate({ profileId: 'p1' })).toEqual({ dropped: 1 });
+    expect(await main.metadata.get({ profileId: 'p1' })).toEqual([]);
+    expect(await main.metadata.get({ profileId: 'p2' })).toHaveLength(1);
+  });
+
+  it('rejects malformed snapshots and passes errors through', async () => {
+    const main = serveCache();
+    const { database: _database, ...noDatabase } = snapshot;
+    await expect(
+      main.metadata.put({ profileId: 'p1', snapshot: noDatabase as SchemaSnapshot }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(main.metadata.put({ profileId: '', snapshot })).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+    });
+    await expect(main.metadata.put({ profileId: 'gone', snapshot })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('lists snippets, filtered by engine, with only the fields of the schema', async () => {
+    const main = serveCache();
+    const all = await main.snippets.list();
+    expect(all.map((snippet) => snippet.id)).toEqual(['s1', 's2']);
+    expect(all[0]).not.toHaveProperty('secretNote');
+    expect((await main.snippets.list({ engine: 'mysql' })).map((snippet) => snippet.id)).toEqual([
+      's1',
+    ]);
+    await expect(main.snippets.list({ engine: 'oracle' as never })).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+    });
+  });
+
+  it('carries the keyword case setting, upper by default', () => {
+    expect(DEFAULT_APP_SETTINGS.editor.keywordCase).toBe('upper');
+    const request = parseRequest(mainContract, 'settings.set', {
+      editor: { keywordCase: 'preserve' },
+    });
+    expect(request.input).toEqual({ editor: { keywordCase: 'preserve' } });
+    expect(() =>
+      parseRequest(mainContract, 'settings.set', { editor: { keywordCase: 'title' } }),
+    ).toThrow();
+  });
+});
+
+function notUsedHere(): never {
+  throw new Error('not used');
+}

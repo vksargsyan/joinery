@@ -17,6 +17,13 @@ import {
 } from './commands/profiles';
 import { queryCommand } from './commands/query';
 import { testCommand } from './commands/test';
+import {
+  exportDataCommand,
+  importDataCommand,
+  runFileCommand,
+  type ExportDataOptions,
+  type ImportDataOptions,
+} from './commands/transfer';
 import type { CliContext } from './context';
 import {
   BrokenPipeError,
@@ -30,6 +37,8 @@ import { Interrupts } from './interrupt';
 import {
   actionList,
   collect,
+  columnMap,
+  delimiter,
   ignoreList,
   list,
   nonNegativeInteger,
@@ -97,8 +106,9 @@ Environment:
   NO_COLOR                   turn colours off
 
 Exit codes:
-  0 success / no differences, 1 differences found or a failed connection test,
-  2 error, 130 interrupted (Ctrl+C).
+  0 success / no differences, 1 differences found, a failed connection test, or an
+  import or SQL file that skipped rows or failed statements, 2 error, 130 interrupted
+  (Ctrl+C).
 `;
 
 /**
@@ -171,7 +181,16 @@ export async function runCli(argv: readonly string[], ctx: CliContext): Promise<
 }
 
 /** Commands that connect take the SSH tunnel and proxy options. */
-const TUNNEL_COMMANDS = new Set(['test', 'query', 'compare', 'data-compare', 'ddl']);
+const TUNNEL_COMMANDS = new Set([
+  'test',
+  'query',
+  'compare',
+  'data-compare',
+  'ddl',
+  'import',
+  'export',
+  'run-file',
+]);
 
 function addTunnelOptions(command: Command): void {
   command
@@ -532,6 +551,191 @@ Examples:
       },
     );
 
+  // import -----------------------------------------------------------------------------------
+  program
+    .command('import')
+    .description('import a CSV, TSV, JSON or JSON Lines file into a table')
+    .argument('<target>', 'profile name or id, or connection URI')
+    .requiredOption('--table <name>', 'table to import into (schema.table on PostgreSQL)')
+    .requiredOption('--file <path>', 'file to read, gzip allowed ("-" for stdin)')
+    .addOption(
+      new Option('--format <format>', 'file format (default: from the name and content)').choices([
+        'csv',
+        'tsv',
+        'json',
+        'jsonl',
+      ]),
+    )
+    .option(
+      '--delimiter <char>',
+      'CSV delimiter: one character, or tab, comma, semicolon, pipe (default: detected)',
+      delimiter,
+    )
+    .option('--no-header', 'the first row is data, not column names')
+    .option('--encoding <name>', 'text encoding, e.g. windows-1252 (default: detected)')
+    .option('--null <text>', 'unquoted text that means NULL (default: an empty field)')
+    .addOption(
+      new Option('--mode <mode>', 'what to do with each row')
+        .choices(['append', 'update', 'upsert', 'delete', 'replace'])
+        .default('append'),
+    )
+    .option(
+      '--key <columns>',
+      'key columns for update, upsert and delete (default: primary key)',
+      list,
+    )
+    .option('--create', "create the table from the file's columns and inferred types")
+    .option('--batch-size <n>', 'rows per batch (default 1000)', positiveInteger)
+    .addOption(
+      new Option('--transaction <mode>', 'one transaction for the file, or one per batch')
+        .choices(['single', 'per-batch'])
+        .default('single'),
+    )
+    .addOption(
+      new Option('--on-error <action>', 'stop (and roll back) or skip failing rows')
+        .choices(['stop', 'skip'])
+        .default('stop'),
+    )
+    .option(
+      '--map <file=column>',
+      'pair a file column with a table column; repeatable (default: match by name)',
+      collect(columnMap),
+    )
+    .option(
+      '--disable-fk-checks',
+      'skip foreign key checks during the load (PostgreSQL: session_replication_role, needs superuser)',
+    )
+    .option('--error-log <file>', 'write every failing row and its error to a file')
+    .option('--database <name>', 'database to connect to')
+    .option('--read-only', 'refuse to write (the import is refused)')
+    .addOption(yesOption('import without asking on production connections and for replace/delete'))
+    .addOption(tlsOption())
+    .addHelpText(
+      'after',
+      `
+The format, encoding, CSV delimiter, quote and header are detected from the file unless
+given. Columns are matched to the table's by name (case, spaces, _ and - do not count);
+unmatched table columns get their defaults. Rows load in batches of parameterised INSERT
+(or UPDATE, upsert, DELETE) statements in one transaction by default: with --on-error stop
+the first bad row rolls everything back; with skip, bad rows are reported (row, line,
+column, message) and the rest is kept. Ctrl+C cancels and rolls back.
+
+Exit codes: 0 imported, 1 imported but rows were skipped, 2 failed, 130 interrupted.
+Safety: read-only targets refuse; production and "confirm writes" profiles, and the
+replace (empties the table first) and delete modes, need --yes or a confirmation.
+
+Examples:
+  joinery import dev --table public.people --file people.csv
+  joinery import dev --table people --file export.json.gz --mode upsert --key id
+  joinery import dev --table staging.raw --file data.tsv --create --on-error skip
+  cat rows.csv | joinery import "mysql://app@db/shop" --table orders --file - --map "Order No=id"`,
+    )
+    .action((target: string, options: ImportCliOptions) => {
+      schedule((runtime) => importDataCommand(runtime, target, importOptions(options)));
+    });
+
+  // export -----------------------------------------------------------------------------------
+  program
+    .command('export')
+    .description('export tables or a query result to CSV, TSV, JSON, JSON Lines or SQL')
+    .argument('<target>', 'profile name or id, or connection URI')
+    .option(
+      '--table <name>',
+      'table to export (schema.table on PostgreSQL); repeatable',
+      collect(String),
+    )
+    .option('--query <sql>', 'export the result of this query instead')
+    .addOption(
+      new Option('--format <format>', 'output format')
+        .choices(['csv', 'tsv', 'json', 'jsonl', 'sql', 'sql-ddl'])
+        .makeOptionMandatory(),
+    )
+    .requiredOption(
+      '--out <path>',
+      'file to write ("-" for stdout); a folder for several tables without --one-file',
+    )
+    .option('--gzip', 'compress the output with gzip')
+    .option('--one-file', 'several tables into one file (sql, sql-ddl and json)')
+    .option('--no-header', 'CSV and TSV: no header line')
+    .option('--delimiter <char>', 'CSV delimiter (default ,)', delimiter)
+    .option('--null <text>', 'CSV and TSV: text written for NULL (default: an empty field)')
+    .option('--pretty', 'JSON: indent each object')
+    .option(
+      '--rows-per-insert <n>',
+      'SQL: rows per INSERT statement (default 100)',
+      positiveInteger,
+    )
+    .option('--drop-table', 'sql-ddl: DROP TABLE IF EXISTS before each CREATE TABLE')
+    .option('--bom', 'start with a UTF-8 byte order mark (for Excel)')
+    .option('--database <name>', 'database to connect to')
+    .addOption(
+      yesOption('run a --query that needs confirmation (as query would ask) without asking'),
+    )
+    .addOption(tlsOption())
+    .addHelpText(
+      'after',
+      `
+Rows stream from a server-side cursor to the file page by page, so memory stays flat. JSON
+keeps bigints and decimals exact and embeds JSON columns; SQL writes multi-row INSERTs (with
+the CREATE TABLE, indexes and foreign keys for sql-ddl). Several tables go to <out>/<table>
+files, or with --one-file into one SQL file (foreign keys last) or one JSON object keyed by
+table name. A failed or cancelled export removes the partial file.
+
+Examples:
+  joinery export prod --table public.orders --format csv --out orders.csv
+  joinery export prod --table orders --table items --format sql-ddl --one-file --out shop.sql --gzip
+  joinery export prod --table orders --table items --format jsonl --out exports/
+  joinery export dev --query "select id, email from users where active" --format json --out - | jq .`,
+    )
+    .action((target: string, options: ExportCliOptions) => {
+      schedule((runtime) => exportDataCommand(runtime, target, exportOptions(options)));
+    });
+
+  // run-file ---------------------------------------------------------------------------------
+  program
+    .command('run-file')
+    .description('run a .sql file statement by statement with progress and an error log')
+    .argument('<target>', 'profile name or id, or connection URI')
+    .argument('<file>', 'the SQL file (gzip allowed)')
+    .option('--continue', 'keep going after a failed statement (default: stop)')
+    .option('--error-log <file>', 'write failed statements and their errors to a file')
+    .option('--encoding <name>', 'text encoding (default: detected)')
+    .option('--database <name>', 'database to connect to')
+    .option('--read-only', 'refuse statements that write')
+    .addOption(yesOption('run statements that need confirmation without asking'))
+    .addOption(tlsOption())
+    .addHelpText(
+      'after',
+      `
+The file streams through the statement splitter (DELIMITER, dollar quoting and comments are
+handled), so multi-gigabyte dumps run in flat memory; result rows are discarded (use
+\`joinery query -f\` to see them). Statements run as the file says, its own BEGIN/COMMIT
+included.
+
+Exit codes: 0 every statement ran, 1 some failed with --continue, 2 stopped at a failure,
+130 interrupted. Safety as for query: risky statements and, on production profiles, every
+write need --yes or a confirmation; read-only targets refuse writes.
+
+Examples:
+  joinery run-file dev migrate.sql
+  joinery run-file "postgres://app@localhost/app" dump.sql.gz --continue --error-log errors.log`,
+    )
+    .action((target: string, file: string, options: RunFileCliOptions) => {
+      schedule((runtime) =>
+        runFileCommand(runtime, target, {
+          file,
+          continueOnError: options.continue === true,
+          yes: options.yes === true,
+          ...(options.errorLog !== undefined ? { errorLog: options.errorLog } : {}),
+          ...(options.encoding !== undefined ? { encoding: options.encoding } : {}),
+          ...(options.database !== undefined ? { database: options.database } : {}),
+          ...(options.readOnly ? { readOnly: true } : {}),
+          ...(options.tls !== undefined ? { tls: options.tls } : {}),
+          ...tunnelFlags(options),
+        }),
+      );
+    });
+
   // profiles ---------------------------------------------------------------------------------
   const profiles = program
     .command('profiles')
@@ -688,6 +892,108 @@ function queryOptions(options: QueryCliOptions): Parameters<typeof queryCommand>
     ...(options.tls !== undefined ? { tls: options.tls } : {}),
     ...tunnelFlags(options),
   };
+}
+
+interface ImportCliOptions extends TunnelCliOptions {
+  table: string;
+  file: string;
+  format?: 'csv' | 'tsv' | 'json' | 'jsonl';
+  delimiter?: string;
+  header: boolean;
+  encoding?: string;
+  null?: string;
+  mode: ImportDataOptions['mode'];
+  key?: string[];
+  create?: boolean;
+  batchSize?: number;
+  transaction: 'single' | 'per-batch';
+  onError: 'stop' | 'skip';
+  map?: (readonly [string, string])[];
+  disableFkChecks?: boolean;
+  errorLog?: string;
+  database?: string;
+  readOnly?: boolean;
+  yes?: boolean;
+  tls?: TlsMode;
+}
+
+/** The import command's options from its flags. */
+export function importOptions(options: ImportCliOptions): ImportDataOptions {
+  return {
+    table: options.table,
+    file: options.file,
+    header: options.header !== false,
+    mode: options.mode,
+    create: options.create === true,
+    onError: options.onError,
+    transaction: options.transaction,
+    disableForeignKeyChecks: options.disableFkChecks === true,
+    map: options.map ?? [],
+    yes: options.yes === true,
+    ...(options.format !== undefined ? { format: options.format } : {}),
+    ...(options.delimiter !== undefined ? { delimiter: options.delimiter } : {}),
+    ...(options.encoding !== undefined ? { encoding: options.encoding } : {}),
+    ...(options.null !== undefined ? { nullMarker: options.null } : {}),
+    ...(options.key !== undefined ? { key: options.key } : {}),
+    ...(options.batchSize !== undefined ? { batchSize: options.batchSize } : {}),
+    ...(options.errorLog !== undefined ? { errorLog: options.errorLog } : {}),
+    ...(options.database !== undefined ? { database: options.database } : {}),
+    ...(options.readOnly ? { readOnly: true } : {}),
+    ...(options.tls !== undefined ? { tls: options.tls } : {}),
+    ...tunnelFlags(options),
+  };
+}
+
+interface ExportCliOptions extends TunnelCliOptions {
+  table?: string[];
+  query?: string;
+  format: ExportDataOptions['format'];
+  out: string;
+  gzip?: boolean;
+  oneFile?: boolean;
+  header: boolean;
+  delimiter?: string;
+  null?: string;
+  pretty?: boolean;
+  rowsPerInsert?: number;
+  dropTable?: boolean;
+  bom?: boolean;
+  database?: string;
+  yes?: boolean;
+  tls?: TlsMode;
+}
+
+/** The export command's options from its flags. */
+export function exportOptions(options: ExportCliOptions): ExportDataOptions {
+  return {
+    tables: options.table ?? [],
+    format: options.format,
+    out: options.out,
+    gzip: options.gzip === true,
+    oneFile: options.oneFile === true,
+    header: options.header !== false,
+    pretty: options.pretty === true,
+    dropTable: options.dropTable === true,
+    bom: options.bom === true,
+    yes: options.yes === true,
+    ...(options.query !== undefined ? { query: options.query } : {}),
+    ...(options.delimiter !== undefined ? { delimiter: options.delimiter } : {}),
+    ...(options.null !== undefined ? { nullMarker: options.null } : {}),
+    ...(options.rowsPerInsert !== undefined ? { rowsPerInsert: options.rowsPerInsert } : {}),
+    ...(options.database !== undefined ? { database: options.database } : {}),
+    ...(options.tls !== undefined ? { tls: options.tls } : {}),
+    ...tunnelFlags(options),
+  };
+}
+
+interface RunFileCliOptions extends TunnelCliOptions {
+  continue?: boolean;
+  errorLog?: string;
+  encoding?: string;
+  database?: string;
+  readOnly?: boolean;
+  yes?: boolean;
+  tls?: TlsMode;
 }
 
 interface CompareCliOptions extends TunnelCliOptions {

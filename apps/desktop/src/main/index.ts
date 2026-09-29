@@ -12,6 +12,7 @@ import {
   BrowserWindow,
   Menu,
   MessageChannelMain,
+  Notification,
   app,
   dialog,
   ipcMain,
@@ -27,6 +28,10 @@ import { HELLO_CHANNEL, PORT_CHANNEL, type PortPayload } from '../shared/bridge'
 import { buildContentSecurityPolicy } from '../shared/csp';
 import { createMainHandlers, type MainServices, type OpenFileOptions } from './api';
 import { APP_ENTRY_URL, APP_ORIGIN, APP_SCHEME, createAppProtocolHandler } from './app-protocol';
+import { HostKeyBroker, knownHostsFile } from './host-keys';
+import { utilityJobRunnerFactory } from './job-runner-process';
+import { JobManager } from './jobs';
+import { notificationFor, settingsJobHistory, type SaveFileOptions } from './jobs-api';
 import { menuTemplate } from './menu';
 import { createSafeStorageSealer } from './sealer';
 import {
@@ -93,6 +98,7 @@ if (!app.requestSingleInstanceLock()) {
 
 let store: Store | undefined;
 let supervisor: ConnectionSupervisor<MessagePortMain> | undefined;
+let jobs: JobManager | undefined;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -140,7 +146,11 @@ function start(): void {
   }
   store = openedStore;
   const spawnHost = utilityHostFactory(join(__dirname, 'connection-host.cjs'));
-  const connections = new ConnectionSupervisor<MessagePortMain>({ spawn: spawnHost });
+  // SSH host keys the user trusted and remembered; joinery-cli reads the same file by default.
+  const hostKeys = new HostKeyBroker({
+    store: knownHostsFile(join(app.getPath('userData'), 'known_hosts')),
+  });
+  const connections = new ConnectionSupervisor<MessagePortMain>({ spawn: spawnHost, hostKeys });
   supervisor = connections;
   const services: MainServices<MessagePortMain> = {
     store: openedStore,
@@ -162,6 +172,9 @@ function start(): void {
       },
     }),
     openExternal,
+    hostKeys,
+    keysDir: join(app.getPath('userData'), 'ssh-keys'),
+    jobs: startJobs(openedStore, hostKeys),
     // The desktop starts dark and without the editor minimap; users change both in settings.
     defaultSettings: {
       ...DEFAULT_APP_SETTINGS,
@@ -215,7 +228,8 @@ function serveMainContract(services: MainServices<MessagePortMain>): void {
     const openFile = async (options: OpenFileOptions): Promise<string | null> => {
       const result = await dialog.showOpenDialog(owner, {
         ...(options.title === undefined ? {} : { title: options.title }),
-        properties: ['openFile'],
+        // SSH keys live in ~/.ssh, a hidden folder.
+        properties: ['openFile', 'showHiddenFiles'],
         filters: (options.filters ?? []).map((f) => ({
           name: f.name,
           extensions: [...f.extensions],
@@ -223,14 +237,49 @@ function serveMainContract(services: MainServices<MessagePortMain>): void {
       });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     };
+    const saveFile = async (options: SaveFileOptions): Promise<string | null> => {
+      const result = await dialog.showSaveDialog(owner, {
+        ...(options.title === undefined ? {} : { title: options.title }),
+        ...(options.defaultName === undefined ? {} : { defaultPath: options.defaultName }),
+        filters: (options.filters ?? []).map((f) => ({
+          name: f.name,
+          extensions: [...f.extensions],
+        })),
+      });
+      return result.canceled ? null : (result.filePath ?? null);
+    };
+    const openDirectory = async (options: { title?: string | undefined }) => {
+      const result = await dialog.showOpenDialog(owner, {
+        ...(options.title === undefined ? {} : { title: options.title }),
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      return result.canceled ? null : (result.filePaths[0] ?? null);
+    };
     const server = serve(
       fromElectronPort(port1),
       mainContract,
-      createMainHandlers(services, { sendPort, openFile }),
+      createMainHandlers(services, { sendPort, openFile, saveFile, openDirectory }),
     );
     servers.set(contents, { server, port: port1 });
     sendPort({ kind: 'main' }, port2);
   });
+}
+
+/**
+ * The job runner (spec §3): started on demand, its history kept in the local store, and a
+ * desktop notification when a long job ends (spec §14).
+ */
+function startJobs(openedStore: Store, hostKeys: HostKeyBroker): JobManager {
+  jobs = new JobManager({
+    spawn: utilityJobRunnerFactory(join(__dirname, 'job-runner.cjs')),
+    history: settingsJobHistory(openedStore),
+    hostKeys,
+    notify: (job) => {
+      if (!Notification.isSupported()) return;
+      new Notification(notificationFor(job)).show();
+    },
+  });
+  return jobs;
 }
 
 function createMainWindow(): void {
@@ -254,6 +303,8 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   supervisor?.closeAll();
+  jobs?.shutdown();
+  jobs = undefined;
   supervisor = undefined;
 });
 

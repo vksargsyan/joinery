@@ -108,6 +108,9 @@ importers:
       '@joinery/sync':
         specifier: workspace:*
         version: link:../../packages/sync
+      '@joinery/transfer':
+        specifier: workspace:*
+        version: link:../../packages/transfer
       '@joinery/tunnel':
         specifier: workspace:*
         version: link:../../packages/tunnel
@@ -147,6 +150,9 @@ importers:
       '@joinery/driver-postgres':
         specifier: workspace:*
         version: link:../../packages/drivers/postgres
+      '@joinery/driver-sql-base':
+        specifier: workspace:*
+        version: link:../../packages/drivers/sql-base
       '@joinery/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
@@ -156,6 +162,18 @@ importers:
       '@joinery/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@joinery/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
+      '@joinery/table-data':
+        specifier: workspace:*
+        version: link:../../packages/table-data
+      '@joinery/transfer':
+        specifier: workspace:*
+        version: link:../../packages/transfer
+      '@joinery/tunnel':
+        specifier: workspace:*
+        version: link:../../packages/tunnel
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
@@ -174,6 +192,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
+      '@types/ssh2':
+        specifier: ^1.15.6
+        version: 1.15.6
       '@vitejs/plugin-react':
         specifier: ^5.2.0
         version: 5.2.0(vite@7.3.6(@types/node@22.20.4)(jiti@2.7.0)(lightningcss@1.33.0))
@@ -216,6 +237,9 @@ importers:
       react-responsive-carousel:
         specifier: ^3.2.23
         version: 3.2.23
+      ssh2:
+        specifier: ^1.17.0
+        version: 1.17.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

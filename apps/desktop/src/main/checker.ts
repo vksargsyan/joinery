@@ -7,16 +7,25 @@ import {
 
 import { hostToMainSchema } from '../shared/host-protocol';
 import type { HostProcessFactory } from './host-process';
+import { answerHostKeyRequest, type HostKeyVerification } from './host-keys';
+
+export interface ConnectionCheckOptions {
+  readonly signal?: AbortSignal;
+  readonly timeoutMs?: number;
+  /** Answers SSH host key questions; without it every host key is refused. */
+  readonly hostKeys?: HostKeyVerification;
+}
 
 /**
  * Test Connection (spec §4) in a short-lived connection host: drivers never load into main, and
  * a check that hangs or crashes takes only its own process down. Yields each step as the host
- * reports it. Stopping early (abort, leaving the loop) kills the process.
+ * reports it. Stopping early (abort, leaving the loop) kills the process. The timeout waits
+ * while the user answers a host key question.
  */
 export async function* runConnectionCheck<P>(
   spawn: HostProcessFactory<P>,
   resolved: ResolvedProfile,
-  options: { readonly signal?: AbortSignal; readonly timeoutMs?: number } = {},
+  options: ConnectionCheckOptions = {},
 ): AsyncGenerator<ConnectionCheckResult> {
   const queue: ConnectionCheckResult[] = [];
   let finished: { error?: JoineryError } | undefined;
@@ -25,6 +34,20 @@ export async function* runConnectionCheck<P>(
     finished ??= outcome;
     wake?.();
   };
+
+  const timeoutMs = options.timeoutMs ?? 60_000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const armTimer = (): void => {
+    clearTimeout(timer);
+    timer = setTimeout(
+      () =>
+        settle({
+          error: new JoineryError({ code: 'TIMEOUT', message: 'The connection test timed out' }),
+        }),
+      timeoutMs,
+    );
+  };
+  let pendingHostKeys = 0;
 
   const process = spawn(`Joinery connection test: ${resolved.profile.name}`);
   process.onMessage((raw) => {
@@ -38,6 +61,19 @@ export async function* runConnectionCheck<P>(
       settle({});
     } else if (message.type === 'failed') {
       settle({ error: fromErrorData(message.error) });
+    } else if (message.type === 'host-key') {
+      pendingHostKeys += 1;
+      clearTimeout(timer);
+      void answerHostKeyRequest(
+        process,
+        message,
+        options.hostKeys,
+        { profileName: resolved.profile.name, purpose: 'test' },
+        () => finished === undefined,
+      ).finally(() => {
+        pendingHostKeys -= 1;
+        if (pendingHostKeys === 0 && finished === undefined) armTimer();
+      });
     }
   });
   process.onExit((code) =>
@@ -48,13 +84,7 @@ export async function* runConnectionCheck<P>(
       }),
     }),
   );
-  const timer = setTimeout(
-    () =>
-      settle({
-        error: new JoineryError({ code: 'TIMEOUT', message: 'The connection test timed out' }),
-      }),
-    options.timeoutMs ?? 60_000,
-  );
+  armTimer();
   const onAbort = (): void =>
     settle({ error: new JoineryError({ code: 'CANCELLED', message: 'Cancelled' }) });
   options.signal?.addEventListener('abort', onAbort, { once: true });
@@ -77,6 +107,7 @@ export async function* runConnectionCheck<P>(
       wake = undefined;
     }
   } finally {
+    finished ??= {};
     clearTimeout(timer);
     options.signal?.removeEventListener('abort', onAbort);
     process.kill();

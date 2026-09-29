@@ -1,11 +1,14 @@
 import { hasWeakTls, isSqlEngine } from '@joinery/core';
+import { analyzeStatement } from '@joinery/sql-tools';
 import { Tabs } from 'radix-ui';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { formatCount, formatRows } from '../lib/format';
 import { connect, useConnections } from '../state/connections';
-import { useProfiles, useSettings } from '../state/data';
+import { cachedProfile, useProfiles, useSettings } from '../state/data';
+import { resultSource } from '../state/result-sources';
 import { cancelQuery, commit, fetchMore, rollback, runQuery, setAutoCommit } from '../state/runner';
+import { openExportQuery } from '../state/transfer-dialogs';
 import {
   patchTab,
   runtimeOf,
@@ -272,6 +275,7 @@ function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark
             )}
             {result.fetching && <span className="text-muted">· fetching…</span>}
             <span className="flex-1" />
+            <ExportResultsButton resultId={result.id} profileId={tab.profileId} />
             {result.hasMore && (
               <>
                 <Button
@@ -297,6 +301,27 @@ function Results({ tab, theme }: { readonly tab: QueryTab; readonly theme: 'dark
         <Messages tab={tab} />
       </Tabs.Content>
     </Tabs.Root>
+  );
+}
+
+/**
+ * "Export results…": the statement runs again in the job runner, every row to a file. Not for
+ * a statement that writes (DELETE … RETURNING): running it again would write again.
+ */
+function ExportResultsButton(props: { readonly resultId: string; readonly profileId: string }) {
+  const source = resultSource(props.resultId);
+  const profile = cachedProfile(props.profileId);
+  if (!source || !profile || !isSqlEngine(profile.engine)) return null;
+  if (analyzeStatement(source.text, profile.engine).isWrite) return null;
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => openExportQuery(profile, source)}
+      title="Run the statement again and write every row to a file"
+    >
+      Export results…
+    </Button>
   );
 }
 

@@ -163,6 +163,10 @@ export const historyPageSchema = z.object({
 });
 export type HistoryPage = z.infer<typeof historyPageSchema>;
 
+/** `preserve` follows the case of the word being typed, or of the keywords before it. */
+export const keywordCaseSchema = z.enum(['upper', 'lower', 'preserve']);
+export type KeywordCase = z.infer<typeof keywordCaseSchema>;
+
 export const appSettingsSchema = z.object({
   theme: z.enum(['system', 'light', 'dark', 'high-contrast']),
   /** BCP 47 tag; English at launch (spec §18). */
@@ -176,6 +180,8 @@ export const appSettingsSchema = z.object({
     vimKeymap: z.boolean(),
     minimap: z.boolean(),
     formatOnSave: z.boolean(),
+    /** Case of keywords and built-in function names autocomplete inserts (spec §6). */
+    keywordCase: keywordCaseSchema,
   }),
   results: z.object({
     /** Rows per fetched page. */
@@ -199,7 +205,14 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   locale: 'en',
   telemetry: false,
   updateChannel: 'stable',
-  editor: { fontSize: 13, tabSize: 2, vimKeymap: false, minimap: true, formatOnSave: false },
+  editor: {
+    fontSize: 13,
+    tabSize: 2,
+    vimKeymap: false,
+    minimap: true,
+    formatOnSave: false,
+    keywordCase: 'upper',
+  },
   results: { pageSize: 1000, rowLimit: 10_000 },
   connections: { hostPoolCap: 8 },
 };
@@ -251,6 +264,8 @@ export const secretStatusSchema = z.object({
       policy: secretPolicySchema,
       /** A saved value exists but cannot be unsealed (other machine, new keychain). */
       unreadable: z.boolean(),
+      /** What the secret is for, e.g. "SSH password for ops@bastion:22"; names no value. */
+      label: z.string().max(300).optional(),
     }),
   ),
 });
@@ -296,3 +311,79 @@ export const openFileInputSchema = z.object({
     .max(16)
     .optional(),
 });
+
+/** An SSH host key as the server presented it; public, shown so the user can compare it. */
+export const hostKeyInfoSchema = z.object({
+  /** e.g. ssh-ed25519, ecdsa-sha2-nistp256, ssh-rsa. */
+  algorithm: z.string().min(1).max(100),
+  /** `SHA256:…` (unpadded base64), as `ssh-keygen -lf` prints it. */
+  fingerprintSha256: z.string().regex(/^SHA256:[A-Za-z0-9+/]{1,100}$/),
+});
+
+/**
+ * A question about an SSH server's host key (spec §4), asked while a connection host opens a
+ * tunnel. `unknown`: Joinery has not seen this server's key. `changed`: the key differs from the
+ * remembered one (`known`), which may be a man-in-the-middle attack.
+ */
+export const hostKeyPromptSchema = z.object({
+  promptId: idSchema,
+  kind: z.enum(['unknown', 'changed']),
+  /** The SSH server as the profile names it (a jump host's next hop as the previous one sees it). */
+  host: z.string().min(1).max(255),
+  port: z.number().int().min(1).max(65535),
+  key: hostKeyInfoSchema,
+  /** The remembered keys of a `changed` server; empty for `unknown`. */
+  known: z.array(hostKeyInfoSchema),
+  /** The connection being opened or tested, for context. */
+  profileName: z.string().max(200),
+  purpose: z.enum(['connect', 'test']),
+});
+export type HostKeyPrompt = z.infer<typeof hostKeyPromptSchema>;
+
+/** A host key question opened, or closed (answered, timed out, or cancelled elsewhere). */
+export const hostKeyPromptEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('open'), prompt: hostKeyPromptSchema }),
+  z.object({ type: z.literal('closed'), promptId: idSchema }),
+]);
+export type HostKeyPromptEvent = z.infer<typeof hostKeyPromptEventSchema>;
+
+/**
+ * The user's answer to a host key question. An `unknown` key can be trusted for this connection
+ * only (`trust-once`), trusted and remembered (`trust-remember`), or refused (`cancel`). A
+ * `changed` key has no trust answer: `cancel`, or `forget-known` to remove the remembered key
+ * after checking with the server's administrator, which then asks about the new key as `unknown`.
+ */
+export const hostKeyAnswerSchema = z.enum([
+  'trust-once',
+  'trust-remember',
+  'forget-known',
+  'cancel',
+]);
+export type HostKeyAnswer = z.infer<typeof hostKeyAnswerSchema>;
+
+/** A private key file to check, with the passphrase typed so far (never stored by this call). */
+export const inspectKeyInputSchema = z.object({
+  path: z.string().trim().min(1).max(4096),
+  passphrase: secretValueSchema.optional(),
+});
+
+/**
+ * What the connection dialog shows about an SSH private key (spec §4). Public facts only: the key
+ * material and passphrase never leave main.
+ */
+export const privateKeyInfoSchema = z.object({
+  format: z.enum(['openssh', 'pem', 'pkcs8', 'ppk']),
+  encrypted: z.boolean(),
+  /** Encrypted and no passphrase given yet: ask for one and inspect again. */
+  locked: z.boolean(),
+  /** e.g. ssh-ed25519; unknown for a locked PEM or PKCS#8 key. */
+  keyType: z.string().max(100).optional(),
+  /** `SHA256:…`; unknown for a locked PEM or PKCS#8 key. */
+  fingerprintSha256: z.string().max(100).optional(),
+  comment: z.string().max(1000).optional(),
+  /** The path the profile should use: the file itself, or the converted copy of a PuTTY key. */
+  keyPath: z.string().min(1).max(4096),
+  /** A PuTTY key was converted to PEM and saved at `keyPath`, readable by the owner only. */
+  converted: z.boolean(),
+});
+export type PrivateKeyInfo = z.infer<typeof privateKeyInfoSchema>;

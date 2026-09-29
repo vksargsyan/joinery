@@ -17,7 +17,7 @@ import { bufferOf, type ResultView } from '../state/workspace';
  * NULL is drawn muted so it stays distinct from an empty string.
  */
 
-const DARK: Partial<Theme> = {
+export const DARK: Partial<Theme> = {
   accentColor: '#4f8cff',
   accentLight: 'rgba(79, 140, 255, 0.18)',
   textDark: '#e6e8ec',
@@ -45,7 +45,7 @@ const DARK: Partial<Theme> = {
   fontFamily: "'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
 };
 
-const LIGHT: Partial<Theme> = {
+export const LIGHT: Partial<Theme> = {
   accentColor: '#2f6fec',
   accentLight: 'rgba(47, 111, 236, 0.14)',
   headerFontStyle: '600 12px',

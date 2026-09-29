@@ -12,6 +12,27 @@ import {
   type PortLike,
   type ServerInfo,
 } from '@joinery/ipc';
+import { applyChanges } from '@joinery/table-data';
+import type { TransportSession } from '@joinery/tunnel';
+
+/** Opens a driver session, through the profile's SSH tunnel or proxy when it has one. */
+export type SessionOpener = (resolved: ResolvedProfile) => Promise<TransportSession>;
+
+export interface ConnectionHostOptions {
+  /** How sessions open; the adapter directly by default. The app passes the process's tunnels. */
+  readonly open?: SessionOpener;
+  /**
+   * The SSH session under the tunnel dropped, taking every session of this host with it. Called
+   * once; main then restarts the host, which reopens the tunnel.
+   */
+  readonly onTransportLost?: (error: JoineryError) => void;
+}
+
+/** A driver session and how to close it (and release its tunnel). */
+interface OpenedSession {
+  readonly session: Session;
+  readonly close: () => Promise<void>;
+}
 
 /**
  * One open connection (spec §3): a driver adapter, a metadata session opened at start (it proves
@@ -22,19 +43,32 @@ import {
 export class ConnectionHost {
   readonly #adapter: DriverAdapter;
   readonly #resolved: ResolvedProfile;
-  readonly #sessions = new Map<string, { readonly session: Session; readonly owner: symbol }>();
-  #meta: Session | undefined;
+  readonly #sessions = new Map<string, OpenedSession & { readonly owner: symbol }>();
+  readonly #open: SessionOpener;
+  readonly #onTransportLost: ((error: JoineryError) => void) | undefined;
+  #meta: OpenedSession | undefined;
   #info: ServerInfo | undefined;
+  #lost = false;
 
-  constructor(adapter: DriverAdapter, resolved: ResolvedProfile) {
+  constructor(
+    adapter: DriverAdapter,
+    resolved: ResolvedProfile,
+    options: ConnectionHostOptions = {},
+  ) {
     this.#adapter = adapter;
     this.#resolved = resolved;
+    this.#open = options.open ?? ((profile) => this.#connectDirect(profile));
+    this.#onTransportLost = options.onTransportLost;
   }
 
-  /** Connects the metadata session. Rejects with the driver's error (AUTH_FAILED, TLS_FAILED...). */
+  /**
+   * Connects the metadata session (and the tunnel, when the profile has one). Rejects with the
+   * driver's or the tunnel's error (AUTH_FAILED, TLS_FAILED, SSH_FAILED...).
+   */
   async start(): Promise<ServerInfo> {
-    const session = await this.#adapter.connect(this.#resolved);
-    this.#meta = session;
+    const opened = await this.#connect(this.#resolved);
+    this.#meta = opened;
+    const session = opened.session;
     this.#info = {
       engine: session.engine,
       serverVersion: session.serverVersion,
@@ -59,13 +93,16 @@ export class ConnectionHost {
     return { dispose };
   }
 
-  /** Closes every session (open transactions roll back with them). */
+  /**
+   * Closes every session (open transactions roll back with them); the last one to close
+   * releases the tunnel.
+   */
   async shutdown(): Promise<void> {
-    const sessions = [...this.#sessions.values()].map((entry) => entry.session);
+    const sessions: OpenedSession[] = [...this.#sessions.values()];
     this.#sessions.clear();
     if (this.#meta) sessions.push(this.#meta);
     this.#meta = undefined;
-    await Promise.allSettled(sessions.map((session) => session.close()));
+    await Promise.allSettled(sessions.map((opened) => opened.close()));
   }
 
   get sessionCount(): number {
@@ -75,7 +112,23 @@ export class ConnectionHost {
   async #closeOwnedBy(owner: symbol): Promise<void> {
     const owned = [...this.#sessions].filter(([, entry]) => entry.owner === owner);
     for (const [id] of owned) this.#sessions.delete(id);
-    await Promise.allSettled(owned.map(([, entry]) => entry.session.close()));
+    await Promise.allSettled(owned.map(([, entry]) => entry.close()));
+  }
+
+  async #connectDirect(resolved: ResolvedProfile): Promise<TransportSession> {
+    const session = await this.#adapter.connect(resolved);
+    return { session, close: () => session.close() };
+  }
+
+  /** Opens a session and watches its tunnel for a dropped SSH session. */
+  async #connect(resolved: ResolvedProfile): Promise<OpenedSession> {
+    const opened = await this.#open(resolved);
+    opened.transport?.onError((error) => {
+      if (error.engineCode !== 'SSH_DISCONNECTED' || this.#lost) return;
+      this.#lost = true;
+      this.#onTransportLost?.(error);
+    });
+    return { session: opened.session, close: () => opened.close() };
   }
 
   #session(sessionId: string): Session {
@@ -93,7 +146,7 @@ export class ConnectionHost {
   #metaSession(): Session {
     if (!this.#meta)
       throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
-    return this.#meta;
+    return this.#meta.session;
   }
 
   #profileFor(database: string | undefined): ResolvedProfile {
@@ -113,16 +166,16 @@ export class ConnectionHost {
       });
     return {
       openSession: async ({ database }) => {
-        const session = await this.#adapter.connect(this.#profileFor(database));
+        const opened = await this.#connect(this.#profileFor(database));
         const sessionId = newId();
-        this.#sessions.set(sessionId, { session, owner });
+        this.#sessions.set(sessionId, { ...opened, owner });
         return { sessionId };
       },
       closeSession: async ({ sessionId }) => {
         const entry = this.#sessions.get(sessionId);
         if (!entry) return;
         this.#sessions.delete(sessionId);
-        await entry.session.close();
+        await entry.close();
       },
       execute: ({ sessionId, text, executionId, params, pageSize }, { signal }) =>
         this.#session(sessionId).execute(text, {
@@ -157,6 +210,16 @@ export class ConnectionHost {
       sessionState: ({ sessionId }) => ({
         inTransaction: this.#session(sessionId).inTransaction,
       }),
+      applyChanges: ({ sessionId, plan }, { signal }) => {
+        // The grid refuses too; this keeps a read-only profile read-only whatever the page sends.
+        if (this.#resolved.profile.presentation.readOnly) {
+          throw new JoineryError({
+            code: 'READ_ONLY',
+            message: 'This connection is read-only, so the changes were not applied',
+          });
+        }
+        return applyChanges(this.#session(sessionId), plan, { signal });
+      },
       ping: async (input) => {
         const id = input?.sessionId;
         await (id === undefined ? this.#metaSession() : this.#session(id)).ping();

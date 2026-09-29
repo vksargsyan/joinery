@@ -179,7 +179,7 @@ describe('main contract handlers', () => {
     const { saved, passwordId } = await saveProfileWithPassword(main, 'ask');
     expect(await main.profiles.secretStatus({ profileId: saved.id })).toEqual({
       canSave: true,
-      missing: [{ refId: passwordId, policy: 'ask', unreadable: false }],
+      missing: [{ refId: passwordId, policy: 'ask', unreadable: false, label: 'Password' }],
     });
     await expect(main.openConnection({ profileId: saved.id })).rejects.toMatchObject({
       code: 'AUTH_FAILED',
@@ -199,7 +199,7 @@ describe('main contract handlers', () => {
     const { saved, passwordId } = await saveProfileWithPassword(main, 'session');
     store.secrets.clearSession();
     expect((await main.profiles.secretStatus({ profileId: saved.id })).missing).toEqual([
-      { refId: passwordId, policy: 'session', unreadable: false },
+      { refId: passwordId, policy: 'session', unreadable: false, label: 'Password' },
     ]);
     await main.openConnection({ profileId: saved.id, secrets: { [passwordId]: ASKED } });
     expect(store.secrets.get({ id: passwordId, policy: 'session' })).toBe(ASKED);

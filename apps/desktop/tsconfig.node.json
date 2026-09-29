@@ -8,6 +8,7 @@
     "src/main",
     "src/preload",
     "src/connection-host",
+    "src/job-runner",
     "src/shared",
     "src/renderer/src/env.d.ts",
     "test",

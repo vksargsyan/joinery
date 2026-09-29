@@ -2,17 +2,22 @@ import type { SqlDialect } from '@joinery/core';
 import { formatSql } from '@joinery/sql-tools';
 import { useEffect, useRef } from 'react';
 
-import { syntaxDiagnostics } from '../lib/diagnostics';
+import { syntaxDiagnostics } from '../lib/language';
 import { languageFor, monaco } from '../lib/monaco';
+import { bindModel, registerSqlLanguage, unbindModel } from '../lib/sql-language';
+import { openMetadata, useMetadataStatus } from '../state/metadata';
 import { runQuery } from '../state/runner';
 import { runtimeOf, useWorkspace } from '../state/workspace';
 
 /**
- * The SQL editor of a query tab (spec §6): Monaco with the dialect's highlighting.
+ * The SQL editor of a query tab (spec §6): Monaco with the dialect's highlighting, and the
+ * language worker's syntax errors, autocomplete and signature help for the tab's connection.
  * Ctrl/Cmd+Enter runs the selection, or the statement at the cursor; Ctrl/Cmd+Shift+Enter runs
  * everything; Shift+Alt+F formats. Models outlive the editor view, so undo history survives the
  * dock re-mounting a panel.
  */
+
+registerSqlLanguage();
 
 const models = new Map<string, monaco.editor.ITextModel>();
 
@@ -21,13 +26,16 @@ function modelFor(tabId: string, text: string, dialect: SqlDialect): monaco.edit
   if (!model || model.isDisposed()) {
     model = monaco.editor.createModel(text, languageFor(dialect));
     models.set(tabId, model);
+    bindModel(model, tabId);
   }
   return model;
 }
 
 /** Frees a closed tab's text model. */
 export function disposeModel(tabId: string): void {
-  models.get(tabId)?.dispose();
+  const model = models.get(tabId);
+  if (model) unbindModel(model);
+  model?.dispose();
   models.delete(tabId);
 }
 
@@ -54,6 +62,10 @@ export function QueryEditor(props: {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | undefined>(undefined);
   const initialText = useWorkspace((state) => state.tabs[tabId]?.initialText ?? '');
   const marker = useWorkspace((state) => state.tabs[tabId]?.errorMarker);
+  const profileId = useWorkspace((state) => state.tabs[tabId]?.profileId);
+  const loadingMetadata = useMetadataStatus((state) =>
+    profileId === undefined ? false : state.byProfile[profileId]?.loading === true,
+  );
 
   useEffect(() => {
     const element = container.current;
@@ -70,6 +82,8 @@ export function QueryEditor(props: {
       renderLineHighlight: 'line',
       tabSize: 2,
       ariaLabel: 'SQL editor',
+      // Suggestions come from the language service; words from the text would only add noise.
+      wordBasedSuggestions: 'off',
     });
     editorRef.current = editor;
     const selection = (): { start: number; end: number } | undefined => {
@@ -116,10 +130,11 @@ export function QueryEditor(props: {
     // Inline syntax errors from the language worker, a moment after typing stops.
     let timer: ReturnType<typeof setTimeout> | undefined;
     let latest = 0;
+    const channel = model.uri.toString();
     const check = (): void => {
       const request = ++latest;
       const version = model.getVersionId();
-      void syntaxDiagnostics(model.getValue(), dialect).then((diagnostics) => {
+      void syntaxDiagnostics(model.getValue(), dialect, channel).then((diagnostics) => {
         if (request !== latest || model.isDisposed() || model.getVersionId() !== version) return;
         monaco.editor.setModelMarkers(
           model,
@@ -157,6 +172,10 @@ export function QueryEditor(props: {
     // The editor is created once per tab; option changes are applied below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId]);
+
+  useEffect(() => {
+    if (profileId !== undefined) openMetadata(profileId);
+  }, [profileId]);
 
   useEffect(() => {
     monaco.editor.setTheme(props.theme === 'dark' ? 'joinery-dark' : 'joinery-light');
@@ -208,5 +227,18 @@ export function QueryEditor(props: {
     editor.revealLineInCenterIfOutsideViewport(start.lineNumber);
   }, [marker]);
 
-  return <div ref={container} className="h-full w-full" data-testid="sql-editor" />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={container} className="h-full w-full" data-testid="sql-editor" />
+      {loadingMetadata && (
+        <div
+          role="status"
+          data-testid="metadata-loading"
+          className="pointer-events-none absolute right-4 bottom-1 rounded bg-panel/80 px-1.5 text-[11px] text-muted"
+        >
+          Loading metadata…
+        </div>
+      )}
+    </div>
+  );
 }

@@ -46,6 +46,9 @@ export * from './schemas/common';
 export * from './schemas/results';
 export * from './schemas/driver';
 export * from './schemas/app';
+export * from './schemas/table-data';
+export * from './schemas/metadata';
+export * from './schemas/jobs';
 
 export {
   connectionHostContract,

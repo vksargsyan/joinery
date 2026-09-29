@@ -106,3 +106,11 @@ select {
   --dv-paneview-header-border-color: var(--border);
   --dv-tabs-and-actions-container-height: 34px;
 }
+
+/* Glide Data Grid's overlay editors render into #portal: keep it above the dock panels. */
+#portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 35;
+}

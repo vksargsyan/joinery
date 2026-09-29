@@ -11,9 +11,9 @@ import { buildContentSecurityPolicy } from './src/shared/csp';
 const root = import.meta.dirname;
 
 /**
- * Three builds (spec §19): main + connection host (Node, CommonJS), the sandboxed preload (one
- * CommonJS file) and the React renderer. Every dependency is bundled, so the packaged app
- * carries only `out/` and no node_modules (ADR 0004).
+ * Three builds (spec §19): main + connection host + job runner (Node, CommonJS), the sandboxed
+ * preload (one CommonJS file) and the React renderer. Every dependency is bundled, so the
+ * packaged app carries only `out/` and no node_modules (ADR 0004).
  */
 
 /** The React Refresh preamble the dev server inlines into index.html, allowed by hash. */
@@ -59,11 +59,20 @@ export default defineConfig({
         input: {
           index: resolve(root, 'src/main/index.ts'),
           'connection-host': resolve(root, 'src/connection-host/index.ts'),
+          'job-runner': resolve(root, 'src/job-runner/index.ts'),
         },
         output: nodeOutput,
         // Optional native or platform-specific modules that the bundled drivers never load here;
-        // dt-sql-parser only serves editor diagnostics, which run in the renderer.
-        external: ['pg-native', 'cloudflare:sockets', 'dt-sql-parser', /^dt-sql-parser\//],
+        // dt-sql-parser only serves editor diagnostics, which run in the renderer. ssh2 tries its
+        // optional native helpers (cpu-features, sshcrypto.node) and falls back to plain JS.
+        external: [
+          'pg-native',
+          'cloudflare:sockets',
+          'dt-sql-parser',
+          /^dt-sql-parser\//,
+          'cpu-features',
+          /\.node$/,
+        ],
       },
     },
   },

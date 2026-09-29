@@ -3,6 +3,7 @@ import type { Folder, StoredProfile } from '@joinery/ipc';
 import { useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { create } from 'zustand';
 
 import { errorMessage } from '../lib/errors';
 import { mainApi } from '../lib/main-client';
@@ -10,23 +11,49 @@ import { connect, disconnect, useConnections } from '../state/connections';
 import { keys, useFolders, useProfiles } from '../state/data';
 import { confirm } from '../state/dialogs';
 import {
+  isDesignableTable,
   loadChildren,
+  newTableLocation,
   opensData,
   pathKey,
   resetExplorer,
   selectStatementFor,
+  tableLocation,
+  tablesFolderPath,
   toggleNode,
   useExplorer,
 } from '../state/explorer';
-import { openQueryTab } from './dock';
+import { refreshObjects } from '../state/metadata';
+import type { DesignerTarget } from '../state/designer';
+import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
+import { DropTableDialog } from './designer/ReviewDialogs';
+import { openQueryTab, openTableData, openTableDesigner } from './dock';
 import type { ConnectionDialogMode } from './ConnectionDialog';
 import { Button, EnvironmentBadge, Icon, cx } from './ui';
 
 /**
  * The connections sidebar (spec §4, §5): profiles grouped by folder with their environment, and
  * under each open connection its lazily loaded object tree. Keyboard: arrows move, Right/Left
- * expand and collapse, Enter opens.
+ * expand and collapse, Enter opens. Tables open in the data view and the table designer
+ * (spec §7, §8); views and other relations open their rows in a query tab.
  */
+
+/** The table the "Drop table…" review is open for. */
+const useDropRequest = create<{
+  readonly target?: DesignerTarget & { readonly name: string };
+}>()(() => ({}));
+
+function DropTableHost() {
+  const target = useDropRequest((state) => state.target);
+  if (!target) return null;
+  return (
+    <DropTableDialog
+      target={target}
+      onClose={() => useDropRequest.setState({ target: undefined })}
+      onDropped={() => undefined}
+    />
+  );
+}
 
 export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) => void }) {
   const profiles = useProfiles();
@@ -113,6 +140,7 @@ export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) =
           />
         ))}
       </div>
+      <DropTableHost />
     </aside>
   );
 }
@@ -336,9 +364,8 @@ function ProfileItem(props: {
             {connected ? (
               <>
                 <MenuItem onSelect={() => void newQuery()}>New query tab</MenuItem>
-                <MenuItem onSelect={() => void loadChildren(profile.id, [])}>
-                  Refresh objects
-                </MenuItem>
+                <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
+                <MenuItem onSelect={() => refreshObjects(profile.id, [])}>Refresh objects</MenuItem>
                 <MenuItem onSelect={() => void close()}>Disconnect</MenuItem>
               </>
             ) : (
@@ -418,17 +445,34 @@ function ObjectNode(props: {
   readonly dialect: SqlDialect;
   readonly depth: number;
 }) {
-  const { node, profile } = props;
+  const { node, profile, dialect } = props;
   const expanded = useExplorer((s) => s.expanded[profile.id]?.[pathKey(node.path)] === true);
+  const table = isDesignableTable(node, dialect) ? tableLocation(node, dialect) : undefined;
+  const newTable = newTableLocation(node, dialect);
   const openData = (): void => {
+    if (table) {
+      openTableData({ profileId: profile.id, ...table });
+      return;
+    }
     if (!opensData(node)) return;
     openQueryTab({
       profileId: profile.id,
       title: node.name,
-      text: selectStatementFor(node, props.dialect),
+      text: selectStatementFor(node, dialect),
       run: true,
     });
   };
+  const designTarget = (
+    name: string | null,
+    location = table ?? newTable,
+  ): DesignerTarget | undefined =>
+    location && {
+      profileId: profile.id,
+      database: location.database,
+      schema: location.schema,
+      name,
+      tablesPath: tablesFolderPath({ ...location, name: '' }, dialect),
+    };
   return (
     <div
       role="treeitem"
@@ -458,13 +502,77 @@ function ObjectNode(props: {
           </span>
         }
         menu={
-          opensData(node) || node.hasChildren ? (
+          opensData(node) || node.hasChildren || newTable ? (
             <>
-              {opensData(node) && <MenuItem onSelect={openData}>Open rows</MenuItem>}
-              {node.hasChildren && (
-                <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>
-                  Refresh
+              {table ? (
+                <>
+                  <MenuItem onSelect={openData}>Open data</MenuItem>
+                  <MenuItem onSelect={() => openTableDesigner(designTarget(table.name)!)}>
+                    Design table
+                  </MenuItem>
+                  <MenuItem onSelect={() => openImportWizard(profile, table, table.name)}>
+                    Import data…
+                  </MenuItem>
+                  <MenuItem
+                    onSelect={() =>
+                      openExportTables(
+                        profile,
+                        table,
+                        [table.name],
+                        tablesFolderPath(table, dialect),
+                      )
+                    }
+                  >
+                    Export…
+                  </MenuItem>
+                </>
+              ) : (
+                opensData(node) && <MenuItem onSelect={openData}>Open rows</MenuItem>
+              )}
+              {newTable && (
+                <>
+                  <MenuItem onSelect={() => openTableDesigner(designTarget(null, newTable)!)}>
+                    New table…
+                  </MenuItem>
+                  <MenuItem onSelect={() => openImportWizard(profile, newTable, null)}>
+                    Import into new table…
+                  </MenuItem>
+                  <MenuItem
+                    onSelect={() =>
+                      openExportTables(
+                        profile,
+                        newTable,
+                        [],
+                        tablesFolderPath({ ...newTable, name: '' }, dialect),
+                      )
+                    }
+                  >
+                    Export tables…
+                  </MenuItem>
+                </>
+              )}
+              {node.kind === 'database' && (
+                <MenuItem onSelect={() => openRunSqlFile(profile, node.name)}>
+                  Run SQL file…
                 </MenuItem>
+              )}
+              {node.hasChildren && (
+                <MenuItem onSelect={() => refreshObjects(profile.id, node.path)}>Refresh</MenuItem>
+              )}
+              {table && (
+                <>
+                  <DropdownMenu.Separator className="my-1 h-px bg-border" />
+                  <MenuItem
+                    danger
+                    onSelect={() =>
+                      useDropRequest.setState({
+                        target: { ...designTarget(table.name)!, name: table.name },
+                      })
+                    }
+                  >
+                    Drop table…
+                  </MenuItem>
+                </>
               )}
             </>
           ) : undefined
@@ -558,6 +666,11 @@ function Row(props: {
             <DropdownMenu.Content
               align="start"
               className="z-50 min-w-44 rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+              // The menu is portalled, but React events still bubble to the row: a click on an
+              // item would toggle the row and menu keys would move through the tree.
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
             >
               {props.menu}
             </DropdownMenu.Content>

@@ -47,7 +47,7 @@ describe('Test Connection in a short-lived host', () => {
         setImmediate(() =>
           process.emit({
             type: 'failed',
-            error: { code: 'NOT_SUPPORTED', message: 'SSH tunnels are not supported yet' },
+            error: { code: 'NOT_SUPPORTED', message: 'MongoDB is not supported yet' },
           }),
         );
       }

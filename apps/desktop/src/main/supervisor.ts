@@ -7,8 +7,9 @@ import {
 } from '@joinery/core';
 import type { ConnectionEvent, ConnectionState, ServerInfo } from '@joinery/ipc';
 
-import { hostToMainSchema } from '../shared/host-protocol';
+import { hostToMainSchema, type HostToMain } from '../shared/host-protocol';
 import type { HostProcess, HostProcessFactory } from './host-process';
+import { answerHostKeyRequest, isPermanentFailure, type HostKeyVerification } from './host-keys';
 
 /**
  * Spawns and supervises one connection host per open connection (spec §3, §18). A host that
@@ -16,6 +17,11 @@ import type { HostProcess, HostProcessFactory } from './host-process';
  * resolved profile; other connections and the UI are unaffected. Every state change is published
  * so the renderer can show it: its MessagePort to the dead host closes, and once the host is ready
  * again `open` hands out a fresh one.
+ *
+ * A host whose SSH tunnel drops reports `failed` and is restarted the same way, which reopens the
+ * tunnel. A failure that retrying cannot fix (a changed or refused host key, rejected
+ * credentials) ends the restarts at once. Host key questions from a host go to `hostKeys`; the
+ * ready timeout waits while the user answers one.
  */
 
 export interface SupervisorOptions<P> {
@@ -30,6 +36,8 @@ export interface SupervisorOptions<P> {
   readonly readyTimeoutMs?: number;
   /** Grace period for `shutdown` before the process is killed. */
   readonly shutdownGraceMs?: number;
+  /** Answers the hosts' SSH host key questions; without it every host key is refused. */
+  readonly hostKeys?: HostKeyVerification;
   readonly now?: () => number;
 }
 
@@ -59,6 +67,8 @@ interface Connection<P> {
   waiters: Waiter[];
   restartTimer: ReturnType<typeof setTimeout> | undefined;
   readyTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Host key questions the current process is waiting on. */
+  pendingHostKeys: number;
 }
 
 export class ConnectionSupervisor<P> {
@@ -68,6 +78,7 @@ export class ConnectionSupervisor<P> {
   readonly #stableAfterMs: number;
   readonly #readyTimeoutMs: number;
   readonly #shutdownGraceMs: number;
+  readonly #hostKeys: HostKeyVerification | undefined;
   readonly #now: () => number;
   readonly #connections = new Map<string, Connection<P>>();
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
@@ -80,6 +91,7 @@ export class ConnectionSupervisor<P> {
     this.#stableAfterMs = options.stableAfterMs ?? 60_000;
     this.#readyTimeoutMs = options.readyTimeoutMs ?? 60_000;
     this.#shutdownGraceMs = options.shutdownGraceMs ?? 2_000;
+    this.#hostKeys = options.hostKeys;
     this.#now = options.now ?? (() => Date.now());
     if (this.#backoff.length === 0) throw new RangeError('backoffMs needs at least one delay');
   }
@@ -138,6 +150,7 @@ export class ConnectionSupervisor<P> {
       waiters: [],
       restartTimer: undefined,
       readyTimer: undefined,
+      pendingHostKeys: 0,
     };
     this.#connections.set(connection.connectionId, connection);
     const ready = this.#whenReady(connection);
@@ -227,8 +240,19 @@ export class ConnectionSupervisor<P> {
       return;
     }
     connection.process = process;
+    connection.pendingHostKeys = 0;
     process.onMessage((raw) => this.#onMessage(connection, process, raw));
     process.onExit((code) => this.#onExit(connection, process, code));
+    this.#armReadyTimer(connection, process);
+    try {
+      process.send({ type: 'connect', resolved: connection.resolved });
+    } catch (error) {
+      this.#startFailed(connection, asError(error, 'The connection host could not be reached'));
+    }
+  }
+
+  #armReadyTimer(connection: Connection<P>, process: HostProcess<P>): void {
+    if (connection.readyTimer) clearTimeout(connection.readyTimer);
     connection.readyTimer = setTimeout(() => {
       if (connection.process !== process) return;
       this.#startFailed(
@@ -239,10 +263,32 @@ export class ConnectionSupervisor<P> {
         }),
       );
     }, this.#readyTimeoutMs);
+  }
+
+  /** Asks about a host key; the ready timeout waits while the user compares the fingerprint. */
+  async #answerHostKey(
+    connection: Connection<P>,
+    process: HostProcess<P>,
+    request: Extract<HostToMain, { type: 'host-key' }>,
+  ): Promise<void> {
+    const current = (): boolean => connection.process === process;
+    connection.pendingHostKeys += 1;
+    if (connection.readyTimer) clearTimeout(connection.readyTimer);
+    connection.readyTimer = undefined;
     try {
-      process.send({ type: 'connect', resolved: connection.resolved });
-    } catch (error) {
-      this.#startFailed(connection, asError(error, 'The connection host could not be reached'));
+      await answerHostKeyRequest(
+        process,
+        request,
+        this.#hostKeys,
+        { profileName: connection.resolved.profile.name, purpose: 'connect' },
+        current,
+      );
+    } finally {
+      if (current()) {
+        connection.pendingHostKeys -= 1;
+        const waiting = connection.state === 'connecting' || connection.state === 'restarting';
+        if (connection.pendingHostKeys === 0 && waiting) this.#armReadyTimer(connection, process);
+      }
     }
   }
 
@@ -262,6 +308,8 @@ export class ConnectionSupervisor<P> {
       for (const waiter of connection.waiters.splice(0)) waiter.resolve(opened);
     } else if (message.type === 'failed') {
       this.#startFailed(connection, fromErrorData(message.error));
+    } else if (message.type === 'host-key') {
+      void this.#answerHostKey(connection, process, message);
     }
   }
 
@@ -294,6 +342,12 @@ export class ConnectionSupervisor<P> {
       this.#connections.delete(connection.connectionId);
       connection.state = 'failed';
       this.#publish(connection, error.message);
+      this.#rejectWaiters(connection, error);
+      return;
+    }
+    if (isPermanentFailure(error)) {
+      connection.state = 'failed';
+      this.#publish(connection, withHint(error));
       this.#rejectWaiters(connection, error);
       return;
     }
@@ -356,6 +410,11 @@ export class ConnectionSupervisor<P> {
       }
     }
   }
+}
+
+/** The message and its fix hint, for an event the user reads without the error object. */
+function withHint(error: JoineryError): string {
+  return error.hint ? `${error.message.replace(/\.$/, '')}. ${error.hint}` : error.message;
 }
 
 function asError(error: unknown, message: string): JoineryError {

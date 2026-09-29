@@ -63,7 +63,7 @@ describe('formatError', () => {
   });
 
   it('uses diff-style exit codes', () => {
-    expect(EXIT).toEqual({ ok: 0, differences: 1, error: 2, interrupted: 130 });
+    expect(EXIT).toEqual({ ok: 0, differences: 1, partial: 1, error: 2, interrupted: 130 });
   });
 });
 

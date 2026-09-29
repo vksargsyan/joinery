@@ -11,9 +11,11 @@ import { bindParameters, safetyPolicyFor } from '@joinery/sql-tools';
 
 import { errorInfo, errorMessage } from '../lib/errors';
 import { mainApi, type HostClient } from '../lib/main-client';
+import { noteStatementsRun, noteTransactionEnd } from './autocomplete';
 import { connect } from './connections';
 import { profileById, queryClient } from './data';
 import { askParameters, confirm, confirmRun } from './dialogs';
+import { rememberResultSource } from './result-sources';
 import { StatementResult, summarise } from './results';
 import { buildRunPlan, parameterValues, type PlannedStatement, type RunMode } from './run-plan';
 import {
@@ -255,6 +257,7 @@ async function runStatement(run: StatementRun): Promise<boolean> {
     return false;
   }
 
+  rememberResultSource(run.runId, statement.index, bound.text, bound.values);
   const executionId = newId();
   const controller = new AbortController();
   const runtime = runtimeOf(tabId);
@@ -450,6 +453,7 @@ export async function runQuery(tabId: string, mode: RunMode): Promise<void> {
     activePane: 'messages',
   });
   const runId = newId();
+  const ran: PlannedStatement[] = [];
   try {
     const { host, sessionId } = await ensureSession(tabId);
     if (!getTab(tabId)?.autoCommit && !getTab(tabId)?.inTransaction) {
@@ -471,6 +475,7 @@ export async function runQuery(tabId: string, mode: RunMode): Promise<void> {
         many: plan.statements.length > 1,
       });
       if (!ok) break;
+      ran.push(statement);
     }
   } catch (error) {
     if (errorInfo(error).code !== 'CANCELLED') {
@@ -482,6 +487,8 @@ export async function runQuery(tabId: string, mode: RunMode): Promise<void> {
     runtime.execution = undefined;
     patchTab(tabId, { running: false, cancelling: false });
     await refreshTransactionState(tabId);
+    // Autocomplete refreshes after DDL and follows the tab's USE / SET search_path.
+    noteStatementsRun(tabId, ran);
   }
 }
 
@@ -583,6 +590,7 @@ async function transaction(tabId: string, action: 'commit' | 'rollback'): Promis
   await closeOpenResult(tabId);
   try {
     await runtime.host[action]({ sessionId: runtime.sessionId });
+    noteTransactionEnd(tabId, action === 'commit');
     addMessage(tabId, { kind: 'success', text: action === 'commit' ? 'Committed' : 'Rolled back' });
   } catch (error) {
     addMessage(tabId, { kind: 'error', text: errorMessage(error) });

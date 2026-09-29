@@ -11,6 +11,7 @@ import {
   planNodeSchema,
 } from '../schemas/driver';
 import { pageSizeSchema, queryParamsSchema, resultChunkSchema } from '../schemas/results';
+import { applyPlanSchema, applyResultSchema } from '../schemas/table-data';
 
 const sessionRef = z.object({ sessionId: idSchema });
 
@@ -83,6 +84,15 @@ export const connectionHostContract = defineContract({
   begin: { input: sessionRef, output: z.void() },
   commit: { input: sessionRef, output: z.void() },
   rollback: { input: sessionRef, output: z.void() },
+  /**
+   * Runs the table data grid's change plan (spec §7) on one session in one transaction (a
+   * savepoint inside an open one): every statement must touch exactly one row, otherwise it
+   * rolls back and fails with CONFLICT. Refused with READ_ONLY on a read-only profile.
+   */
+  applyChanges: {
+    input: z.object({ sessionId: idSchema, plan: applyPlanSchema }),
+    output: applyResultSchema,
+  },
   /**
    * The session's transaction state as the server reports it, so the open-transaction badge
    * (spec §6) is right after a typed BEGIN or COMMIT too.

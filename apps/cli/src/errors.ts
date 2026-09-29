@@ -8,6 +8,8 @@ export const EXIT = {
   ok: 0,
   /** Differences found or remaining; a failed connection test. */
   differences: 1,
+  /** An import or SQL file finished, but skipped rows or failed statements on the way. */
+  partial: 1,
   /** Any error: bad arguments, connection or SQL failure, refused or unconfirmed statement. */
   error: 2,
   interrupted: 130,

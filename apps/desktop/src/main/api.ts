@@ -1,4 +1,10 @@
-import { JoineryError, connectionProfileSchema, newId, secretRefsOf } from '@joinery/core';
+import {
+  JoineryError,
+  connectionProfileSchema,
+  newId,
+  secretRefsOf,
+  type ConnectionProfile,
+} from '@joinery/core';
 import {
   DEFAULT_APP_SETTINGS,
   appSettingsPatchSchema,
@@ -8,14 +14,19 @@ import {
   type AppSettingsPatch,
   type ConnectionEvent,
   type HandlersOf,
+  type HostKeyPromptEvent,
   type mainContract,
 } from '@joinery/ipc';
 import { parseConnectionUri, type Store, type StoredProfile } from '@joinery/storage';
 
 import type { PortPayload } from '../shared/bridge';
 import { runConnectionCheck } from './checker';
+import { hostKeyPromptEvents, type HostKeyBroker } from './host-keys';
 import type { HostProcessFactory } from './host-process';
+import type { JobManager } from './jobs';
+import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
 import { resolveProfile } from './secrets';
+import { metadataHandlers, snippetHandlers } from './metadata';
 import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
 
@@ -45,10 +56,19 @@ export interface MainServices<P> {
   readonly openExternal: (url: string) => Promise<void>;
   /** Settings used when none are stored. */
   readonly defaultSettings?: AppSettings;
+  /**
+   * Asks the user about SSH host keys and keeps the known-hosts file. Without it (tests), no
+   * question is ever asked and every unknown host key is refused.
+   */
+  readonly hostKeys?: HostKeyBroker;
+  /** Where PuTTY keys converted on import are saved (owner-only); `<userData>/ssh-keys`. */
+  readonly keysDir?: string;
+  /** Runs import, export and SQL file jobs in the job runner; without it jobs are refused. */
+  readonly jobs?: JobManager;
 }
 
 /** What differs per window: where its ports go and which window owns its dialogs. */
-export interface WindowServices<P> {
+export interface WindowServices<P> extends FileDialogs {
   readonly sendPort: (payload: PortPayload, port: P) => void;
   readonly openFile: (options: OpenFileOptions) => Promise<string | null>;
 }
@@ -84,6 +104,7 @@ export function createMainHandlers<P>(
 ): HandlersOf<typeof mainContract> {
   const { store, supervisor } = services;
   const defaults = services.defaultSettings ?? DEFAULT_APP_SETTINGS;
+  const files = new FileGrants();
 
   const requireProfile = (id: string): StoredProfile => {
     const profile = store.profiles.get(id);
@@ -127,14 +148,17 @@ export function createMainHandlers<P>(
       secretStatus: ({ profileId }) => {
         const canSave = store.secrets.canSave();
         if (profileId === undefined) return { canSave, missing: [] };
-        const resolved = store.secrets.resolve(requireProfile(profileId));
+        const profile = requireProfile(profileId);
+        const resolved = store.secrets.resolve(profile);
         const unreadable = new Set(resolved.unreadable.map((ref) => ref.id));
+        const labels = secretLabels(profile);
         return {
           canSave,
           missing: resolved.missing.map((ref) => ({
             refId: ref.id,
             policy: ref.policy,
             unreadable: unreadable.has(ref.id),
+            ...(labels.has(ref.id) ? { label: labels.get(ref.id)!.slice(0, 300) } : {}),
           })),
         };
       },
@@ -178,6 +202,7 @@ export function createMainHandlers<P>(
     testConnection: ({ profile, secrets }, { signal }) =>
       runConnectionCheck(services.spawnHost, resolveProfile(store, profile, secrets ?? {}), {
         signal,
+        ...(services.hostKeys ? { hostKeys: services.hostKeys } : {}),
       }),
 
     openConnection: async ({ profileId, secrets }, { progress }) => {
@@ -224,9 +249,86 @@ export function createMainHandlers<P>(
     },
 
     dialogs: {
-      openFile: async (options) => ({ path: await window.openFile(options) }),
+      openFile: async (options) => {
+        const path = await window.openFile(options);
+        // A file the user picked is one this window's jobs may read (import, Run SQL File).
+        if (path !== null) files.grantRead(path);
+        return { path };
+      },
+      ...fileDialogHandlers(window, files),
     },
+
+    hostKeys: {
+      prompts: (_input, { signal }) => hostKeyEvents(services.hostKeys, signal),
+      answer: ({ promptId, answer }) => {
+        services.hostKeys?.answer(promptId, answer);
+      },
+    },
+
+    ssh: {
+      inspectKey: async ({ path, passphrase }) => {
+        if (services.keysDir === undefined) {
+          throw new JoineryError({
+            code: 'NOT_SUPPORTED',
+            message: 'Private keys cannot be checked here',
+          });
+        }
+        // Loaded on first use: the key code brings ssh2, which start-up does not need.
+        const { inspectPrivateKey } = await import('./ssh-keys');
+        return inspectPrivateKey(path, passphrase, services.keysDir);
+      },
+    },
+
+    metadata: metadataHandlers(store),
+    snippets: snippetHandlers(store),
+    ...jobHandlers(services, files),
   };
+}
+
+/** The host key questions for one window; with no broker, nothing until the caller stops. */
+async function* hostKeyEvents(
+  broker: HostKeyBroker | undefined,
+  signal: AbortSignal,
+): AsyncGenerator<HostKeyPromptEvent> {
+  if (broker) {
+    yield* hostKeyPromptEvents(broker, signal);
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    if (signal.aborted) resolve();
+    else signal.addEventListener('abort', () => resolve(), { once: true });
+  });
+}
+
+/** "ops@bastion:22", with an IPv6 host bracketed. */
+function hostLabel(host: string, port: number, user?: string): string {
+  return `${user === undefined ? '' : `${user}@`}${host.includes(':') ? `[${host}]` : host}:${port}`;
+}
+
+/** What each of a profile's secrets is for, so a prompt can say which one it asks for. */
+function secretLabels(profile: ConnectionProfile): Map<string, string> {
+  const labels = new Map<string, string>();
+  const { auth, tls, ssh, proxy } = profile;
+  if (auth.method === 'password' && auth.password) labels.set(auth.password.id, 'Password');
+  if (auth.method === 'apiKey') labels.set(auth.apiKey.id, 'API key');
+  if (auth.method === 'bearer') labels.set(auth.token.id, 'Token');
+  if (tls.keyPassphrase) labels.set(tls.keyPassphrase.id, 'TLS client key passphrase');
+  for (const hop of ssh?.hops ?? []) {
+    const where = hostLabel(hop.host, hop.port, hop.user);
+    if (hop.auth.method === 'password') {
+      labels.set(hop.auth.password.id, `SSH password for ${where}`);
+    } else if (hop.auth.method === 'privateKey' && hop.auth.passphrase) {
+      labels.set(hop.auth.passphrase.id, `Passphrase of the SSH key ${hop.auth.keyPath}`);
+    }
+  }
+  if (proxy?.password) {
+    const kind = proxy.kind === 'http' ? 'HTTP' : 'SOCKS5';
+    labels.set(
+      proxy.password.id,
+      `${kind} proxy password for ${hostLabel(proxy.host, proxy.port)}`,
+    );
+  }
+  return labels;
 }
 
 /** Current states first, then every change, until the caller stops. */

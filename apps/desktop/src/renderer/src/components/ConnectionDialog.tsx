@@ -6,10 +6,10 @@ import {
   type ConnectionCheckStep,
   type ConnectionProfile,
 } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import type { PrivateKeyInfo, StoredProfile } from '@joinery/ipc';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 
 import { errorInfo, errorMessage } from '../lib/errors';
 import { formatDuration } from '../lib/format';
@@ -17,11 +17,14 @@ import { mainApi } from '../lib/main-client';
 import {
   COMING_SOON_ENGINES,
   DIALOG_ENGINES,
+  MAX_SSH_HOPS,
   connectionFormSchema,
   defaultFormValues,
+  defaultSshHop,
   formToProfile,
   passwordFromUri,
   profileToForm,
+  typedSecrets,
   type ConnectionFormValues,
 } from '../state/connection-form';
 import { keys, useCanSaveSecrets, useFolders } from '../state/data';
@@ -29,8 +32,10 @@ import { Button, Field, Icon, Input, Modal, Select, cx } from './ui';
 
 /**
  * Create, edit or duplicate a connection (spec §4): endpoint, credentials with their storage
- * policy, TLS, and presentation (environment, read-only, confirm writes, colour, folder). Test
- * Connection runs the stepwise check in a short-lived connection host and shows each step.
+ * policy, TLS, an SSH tunnel (with jump hosts) and a proxy, and presentation (environment,
+ * read-only, confirm writes, colour, folder). Test Connection runs the stepwise check in a
+ * short-lived connection host and shows each step. Every secret typed here goes to main with its
+ * policy and never comes back; private key files are read and checked by main.
  */
 
 export type ConnectionDialogMode =
@@ -104,6 +109,58 @@ export function ConnectionDialog(props: {
     previousEngine.current = engine;
   }, [values.engine, getValues, setValue]);
 
+  const {
+    fields: hops,
+    insert: insertHop,
+    remove: removeHop,
+  } = useFieldArray({
+    control,
+    name: 'sshHops',
+  });
+  const [keyStates, setKeyStates] = useState<Readonly<Record<string, KeyState>>>({});
+
+  /** Reads the hop's key file in main: type, fingerprint, passphrase needed, PPK conversion. */
+  const inspectKey = async (index: number, withPassphrase: boolean): Promise<void> => {
+    const fieldId = hops[index]?.id;
+    const hop = getValues(`sshHops.${index}`);
+    if (fieldId === undefined || !hop || hop.authMethod !== 'privateKey' || hop.keyPath === '') {
+      return;
+    }
+    setKeyStates((current) => ({ ...current, [fieldId]: { status: 'checking' } }));
+    try {
+      const info = await mainApi().ssh.inspectKey({
+        path: hop.keyPath,
+        ...(withPassphrase && hop.passphrase !== '' ? { passphrase: hop.passphrase } : {}),
+      });
+      if (info.keyPath !== hop.keyPath) {
+        setValue(`sshHops.${index}.keyPath`, info.keyPath, { shouldDirty: true });
+      }
+      if (info.encrypted && hop.passphraseMode === 'none') {
+        setValue(`sshHops.${index}.passphraseMode`, canSave ? 'save' : 'session');
+      } else if (!info.encrypted && hop.passphraseMode !== 'none') {
+        setValue(`sshHops.${index}.passphraseMode`, 'none');
+      }
+      setKeyStates((current) => ({ ...current, [fieldId]: { status: 'ok', info } }));
+    } catch (error) {
+      setKeyStates((current) => ({
+        ...current,
+        [fieldId]: { status: 'error', message: errorMessage(error) },
+      }));
+    }
+  };
+
+  // Show the type and fingerprint of the keys an edited profile already uses.
+  const inspectedOnOpen = useRef(false);
+  useEffect(() => {
+    if (inspectedOnOpen.current) return;
+    inspectedOnOpen.current = true;
+    getValues('sshHops').forEach((hop, index) => {
+      if (getValues('sshEnabled') && hop.authMethod === 'privateKey' && hop.keyPath !== '') {
+        void inspectKey(index, false);
+      }
+    });
+  });
+
   const draftProfile = (): ConnectionProfile | undefined => {
     const parsed = connectionFormSchema.safeParse(getValues());
     if (!parsed.success) return undefined;
@@ -153,7 +210,7 @@ export function ConnectionDialog(props: {
     const valid = await form.trigger();
     if (!valid) return;
     const current = getValues();
-    const { profile, passwordRef } = formToProfile(current, editing);
+    const { profile, secrets: secretFields } = formToProfile(current, editing);
     checkAbort.current?.abort();
     const controller = new AbortController();
     checkAbort.current = controller;
@@ -162,8 +219,7 @@ export function ConnectionDialog(props: {
     setCheckState('running');
     let failed = false;
     try {
-      const secrets =
-        passwordRef && current.password !== '' ? { [passwordRef.id]: current.password } : undefined;
+      const secrets = typedSecrets(secretFields);
       for await (const step of mainApi().testConnection(
         { profile, ...(secrets ? { secrets } : {}) },
         { signal: controller.signal },
@@ -181,7 +237,8 @@ export function ConnectionDialog(props: {
 
   const save = handleSubmit(async (form) => {
     setSaveError(undefined);
-    if (form.passwordMode === 'save' && !canSave && form.password !== '') {
+    const { profile, secrets } = formToProfile(form, editing);
+    if (!canSave && secrets.some((field) => field.ref.policy === 'save' && field.value !== '')) {
       setSaveError(
         'This system has no secure storage for passwords. Choose "Remember for this session" or "Ask every time".',
       );
@@ -189,22 +246,15 @@ export function ConnectionDialog(props: {
     }
     setSaving(true);
     try {
-      const { profile, passwordRef } = formToProfile(form, editing);
       const saved = await mainApi().profiles.save({
         profile,
         ...(editing ? { expectedVersion: editing.version } : {}),
       });
-      if (passwordRef) {
-        const previousPolicy =
-          editing?.auth.method === 'password' ? editing.auth.password?.policy : undefined;
-        if (form.password !== '' && passwordRef.policy !== 'ask') {
-          await mainApi().secrets.set({
-            profileId: saved.id,
-            refId: passwordRef.id,
-            value: form.password,
-          });
-        } else if (passwordRef.policy === 'ask' || previousPolicy !== passwordRef.policy) {
-          await mainApi().secrets.clear({ profileId: saved.id, refId: passwordRef.id });
+      for (const { ref, value, previousPolicy } of secrets) {
+        if (value !== '' && ref.policy !== 'ask') {
+          await mainApi().secrets.set({ profileId: saved.id, refId: ref.id, value });
+        } else if (ref.policy === 'ask' || previousPolicy !== ref.policy) {
+          await mainApi().secrets.clear({ profileId: saved.id, refId: ref.id });
         }
       }
       await queryClient.invalidateQueries({ queryKey: keys.profiles });
@@ -220,6 +270,8 @@ export function ConnectionDialog(props: {
   const localWithStrictTls =
     !weakTls && values.endpointKind === 'host' && isLocalHost(values.host ?? '');
   const tlsStepFailed = checks.some((step) => step.step === 'tls' && step.status === 'failed');
+  const proxyOnly =
+    !values.sshEnabled && values.proxyKind !== undefined && values.proxyKind !== 'none';
   const production = values.environment === 'production';
   const title =
     mode.kind === 'edit'
@@ -436,6 +488,18 @@ export function ConnectionDialog(props: {
           </p>
         )}
 
+        <SshSection
+          form={form}
+          hops={hops}
+          keyStates={keyStates}
+          canSave={canSave}
+          editing={editing !== undefined}
+          onInspect={(index, withPassphrase) => void inspectKey(index, withPassphrase)}
+          onAddJumpHost={() => insertHop(Math.max(hops.length - 1, 0), defaultSshHop())}
+          onRemove={(index) => removeHop(index)}
+        />
+        <ProxySection form={form} canSave={canSave} editing={editing !== undefined} />
+
         <Field label="Environment" htmlFor="cx-env">
           <Select id="cx-env" {...register('environment')}>
             <option value="dev">Development</option>
@@ -509,7 +573,9 @@ export function ConnectionDialog(props: {
                   >
                     {step.status === 'ok' ? '✓' : step.status === 'failed' ? '✗' : '–'}
                   </span>
-                  <span className="font-medium">{STEP_LABELS[step.step]}</span>
+                  <span className="font-medium">
+                    {step.step === 'ssh' && proxyOnly ? 'Proxy' : STEP_LABELS[step.step]}
+                  </span>
                   <span className="text-xs text-muted">
                     {step.status === 'skipped' ? 'skipped' : formatDuration(step.durationMs)}
                   </span>
@@ -548,6 +614,410 @@ export function ConnectionDialog(props: {
         </p>
       )}
     </Modal>
+  );
+}
+
+type KeyState =
+  | { readonly status: 'checking' }
+  | { readonly status: 'ok'; readonly info: PrivateKeyInfo }
+  | { readonly status: 'error'; readonly message: string };
+
+type ConnectionForm = UseFormReturn<ConnectionFormValues>;
+
+const KEY_FORMATS: Readonly<Record<PrivateKeyInfo['format'], string>> = {
+  openssh: 'OpenSSH',
+  pem: 'PEM',
+  pkcs8: 'PKCS#8',
+  ppk: 'PuTTY',
+};
+
+/** The SSH tunnel: jump hosts in connection order, then the server that reaches the database. */
+function SshSection(props: {
+  readonly form: ConnectionForm;
+  readonly hops: readonly { readonly id: string }[];
+  readonly keyStates: Readonly<Record<string, KeyState>>;
+  readonly canSave: boolean;
+  /** An existing profile: empty secret fields keep the stored values. */
+  readonly editing: boolean;
+  readonly onInspect: (index: number, withPassphrase: boolean) => void;
+  readonly onAddJumpHost: () => void;
+  readonly onRemove: (index: number) => void;
+}) {
+  const { form, hops } = props;
+  const { register, control, formState } = form;
+  const enabled = useWatch({ control, name: 'sshEnabled' });
+  const errors = formState.errors;
+  return (
+    <fieldset
+      className="col-span-2 flex flex-col gap-3 rounded border border-border p-3"
+      aria-label="SSH tunnel"
+    >
+      <label className="flex items-center gap-2 text-[13px] font-medium">
+        <input type="checkbox" {...register('sshEnabled')} />
+        Connect through an SSH tunnel
+      </label>
+      {enabled && (
+        <>
+          {hops.length > 1 && (
+            <p className="text-xs text-muted">
+              Joinery connects to the jump hosts in order, then to the SSH server, which forwards to
+              the database. The database host and port are as the SSH server sees them.
+            </p>
+          )}
+          {hops.map((hop, index) => (
+            <SshHopFields
+              key={hop.id}
+              form={form}
+              index={index}
+              title={
+                index === hops.length - 1
+                  ? 'SSH server'
+                  : `Jump host ${hops.length > 2 ? index + 1 : ''}`.trim()
+              }
+              removable={hops.length > 1}
+              keyState={props.keyStates[hop.id]}
+              canSave={props.canSave}
+              editing={props.editing}
+              onInspect={(withPassphrase) => props.onInspect(index, withPassphrase)}
+              onRemove={() => props.onRemove(index)}
+            />
+          ))}
+          <div className="flex items-end gap-3">
+            <Button size="sm" onClick={props.onAddJumpHost} disabled={hops.length >= MAX_SSH_HOPS}>
+              <Icon name="plus" className="h-3.5 w-3.5" />
+              Add jump host
+            </Button>
+            <span className="flex-1" />
+            <Field
+              label="Keep-alive (seconds)"
+              htmlFor="cx-ssh-keepalive"
+              error={errors.sshKeepAlive?.message}
+              className="w-40"
+            >
+              <Input
+                id="cx-ssh-keepalive"
+                inputMode="numeric"
+                {...register('sshKeepAlive')}
+                aria-invalid={!!errors.sshKeepAlive}
+              />
+            </Field>
+          </div>
+        </>
+      )}
+    </fieldset>
+  );
+}
+
+function SshHopFields(props: {
+  readonly form: ConnectionForm;
+  readonly index: number;
+  readonly title: string;
+  readonly removable: boolean;
+  readonly keyState: KeyState | undefined;
+  readonly canSave: boolean;
+  readonly editing: boolean;
+  readonly onInspect: (withPassphrase: boolean) => void;
+  readonly onRemove: () => void;
+}) {
+  const { form, index, keyState } = props;
+  const { register, control, setValue, formState } = form;
+  const hop = useWatch({ control, name: `sshHops.${index}` });
+  const errors = formState.errors.sshHops?.[index];
+  const id = (field: string): string => `cx-ssh-${index}-${field}`;
+  const keyPath = register(`sshHops.${index}.keyPath`);
+
+  const browse = async (): Promise<void> => {
+    const { path } = await mainApi().dialogs.openFile({
+      title: 'SSH private key',
+      filters: [
+        { name: 'All files', extensions: ['*'] },
+        { name: 'PuTTY keys', extensions: ['ppk'] },
+        { name: 'PEM keys', extensions: ['pem', 'key'] },
+      ],
+    });
+    if (path === null) return;
+    setValue(`sshHops.${index}.keyPath`, path, { shouldDirty: true, shouldValidate: true });
+    props.onInspect(false);
+  };
+
+  const info = keyState?.status === 'ok' ? keyState.info : undefined;
+  const encrypted = info?.encrypted ?? hop.passphraseMode !== 'none';
+
+  return (
+    <div
+      role="group"
+      aria-label={props.title}
+      className="grid grid-cols-6 gap-x-3 gap-y-2 rounded border border-border bg-panel-2/40 p-2"
+    >
+      <div className="col-span-6 flex items-center gap-2">
+        <span className="text-xs font-semibold text-muted uppercase">{props.title}</span>
+        <span className="flex-1" />
+        {props.removable && (
+          <Button size="sm" variant="ghost" onClick={props.onRemove}>
+            Remove
+          </Button>
+        )}
+      </div>
+      <Field
+        label="SSH host"
+        htmlFor={id('host')}
+        error={errors?.host?.message}
+        className="col-span-3"
+      >
+        <Input
+          id={id('host')}
+          placeholder="bastion.example.com"
+          {...register(`sshHops.${index}.host`)}
+          aria-invalid={!!errors?.host}
+        />
+      </Field>
+      <Field label="SSH port" htmlFor={id('port')} error={errors?.port?.message}>
+        <Input
+          id={id('port')}
+          inputMode="numeric"
+          {...register(`sshHops.${index}.port`)}
+          aria-invalid={!!errors?.port}
+        />
+      </Field>
+      <Field
+        label="SSH user"
+        htmlFor={id('user')}
+        error={errors?.user?.message}
+        className="col-span-2"
+      >
+        <Input
+          id={id('user')}
+          autoComplete="off"
+          {...register(`sshHops.${index}.user`)}
+          aria-invalid={!!errors?.user}
+        />
+      </Field>
+      <Field label="SSH authentication" htmlFor={id('auth')} className="col-span-2">
+        <Select id={id('auth')} {...register(`sshHops.${index}.authMethod`)}>
+          <option value="password">Password</option>
+          <option value="privateKey">Private key</option>
+          <option value="agent">SSH agent</option>
+        </Select>
+      </Field>
+      {hop.authMethod === 'password' && (
+        <>
+          <Field
+            label="SSH password"
+            htmlFor={id('password')}
+            className="col-span-2"
+            hint={
+              props.editing && hop.passwordMode !== 'ask'
+                ? 'Leave empty to keep the stored password'
+                : undefined
+            }
+          >
+            <Input
+              id={id('password')}
+              type="password"
+              autoComplete="new-password"
+              {...register(`sshHops.${index}.password`)}
+            />
+          </Field>
+          <Field label="SSH password storage" htmlFor={id('password-mode')} className="col-span-2">
+            <SecretModeSelect
+              id={id('password-mode')}
+              canSave={props.canSave}
+              optional={false}
+              {...register(`sshHops.${index}.passwordMode`)}
+            />
+          </Field>
+        </>
+      )}
+      {hop.authMethod === 'agent' && (
+        <p className="col-span-4 self-end pb-2 text-xs text-muted">
+          Uses the keys of the running ssh-agent (SSH_AUTH_SOCK), or Pageant on Windows.
+        </p>
+      )}
+      {hop.authMethod === 'privateKey' && (
+        <>
+          <Field
+            label="Private key"
+            htmlFor={id('key')}
+            error={errors?.keyPath?.message}
+            className="col-span-4"
+          >
+            <div className="flex gap-1">
+              <Input
+                id={id('key')}
+                placeholder="~/.ssh/id_ed25519"
+                {...keyPath}
+                onBlur={(event) => {
+                  void keyPath.onBlur(event);
+                  props.onInspect(false);
+                }}
+                aria-invalid={!!errors?.keyPath}
+              />
+              <Button onClick={() => void browse()} aria-label="Browse for the private key">
+                Browse…
+              </Button>
+            </div>
+          </Field>
+          <div className="col-span-6 -mt-1 text-xs" data-testid={`ssh-key-${index}`}>
+            {keyState?.status === 'checking' && (
+              <span className="text-muted">Checking the key…</span>
+            )}
+            {keyState?.status === 'error' && (
+              <span role="alert" className="text-danger">
+                {keyState.message}
+              </span>
+            )}
+            {info && (
+              <span className="text-muted">
+                {KEY_FORMATS[info.format]} key
+                {info.keyType ? ` · ${info.keyType}` : ''}
+                {info.fingerprintSha256 ? (
+                  <>
+                    {' · '}
+                    <code className="font-mono">{info.fingerprintSha256}</code>
+                  </>
+                ) : null}
+                {info.encrypted ? ' · protected by a passphrase' : ''}
+                {info.converted
+                  ? ` · converted from PuTTY format and saved as ${info.keyPath}`
+                  : ''}
+              </span>
+            )}
+          </div>
+          {encrypted && (
+            <>
+              <Field
+                label="Key passphrase"
+                htmlFor={id('passphrase')}
+                className="col-span-3"
+                hint={
+                  props.editing && hop.passphraseMode !== 'ask' && hop.passphrase === ''
+                    ? 'Leave empty to keep the stored passphrase'
+                    : info?.locked
+                      ? 'Enter the passphrase and check it'
+                      : undefined
+                }
+              >
+                <div className="flex gap-1">
+                  <Input
+                    id={id('passphrase')}
+                    type="password"
+                    autoComplete="new-password"
+                    {...register(`sshHops.${index}.passphrase`)}
+                  />
+                  <Button onClick={() => props.onInspect(true)} disabled={hop.passphrase === ''}>
+                    Check
+                  </Button>
+                </div>
+              </Field>
+              <Field
+                label="Passphrase storage"
+                htmlFor={id('passphrase-mode')}
+                className="col-span-3"
+              >
+                <SecretModeSelect
+                  id={id('passphrase-mode')}
+                  canSave={props.canSave}
+                  optional={false}
+                  {...register(`sshHops.${index}.passphraseMode`)}
+                />
+              </Field>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** HTTP CONNECT or SOCKS5 proxy in front of the database (or of the first SSH hop). */
+function ProxySection(props: {
+  readonly form: ConnectionForm;
+  readonly canSave: boolean;
+  readonly editing: boolean;
+}) {
+  const { register, control, formState } = props.form;
+  const kind = useWatch({ control, name: 'proxyKind' });
+  const mode = useWatch({ control, name: 'proxyPasswordMode' });
+  const errors = formState.errors;
+  return (
+    <fieldset
+      className="col-span-2 grid grid-cols-[1fr_90px_1fr] gap-x-3 gap-y-2 rounded border border-border p-3"
+      aria-label="Proxy settings"
+    >
+      <Field label="Proxy" htmlFor="cx-proxy-kind" className="col-span-3">
+        <Select id="cx-proxy-kind" {...register('proxyKind')}>
+          <option value="none">No proxy</option>
+          <option value="socks5">SOCKS5</option>
+          <option value="http">HTTP (CONNECT)</option>
+        </Select>
+      </Field>
+      {kind !== undefined && kind !== 'none' && (
+        <>
+          <Field label="Proxy host" htmlFor="cx-proxy-host" error={errors.proxyHost?.message}>
+            <Input
+              id="cx-proxy-host"
+              {...register('proxyHost')}
+              aria-invalid={!!errors.proxyHost}
+            />
+          </Field>
+          <Field label="Proxy port" htmlFor="cx-proxy-port" error={errors.proxyPort?.message}>
+            <Input
+              id="cx-proxy-port"
+              inputMode="numeric"
+              {...register('proxyPort')}
+              aria-invalid={!!errors.proxyPort}
+            />
+          </Field>
+          <Field label="Proxy user" htmlFor="cx-proxy-user" hint="Optional">
+            <Input id="cx-proxy-user" autoComplete="off" {...register('proxyUser')} />
+          </Field>
+          <Field
+            label="Proxy password"
+            htmlFor="cx-proxy-password"
+            hint={
+              props.editing && mode !== 'none' && mode !== 'ask'
+                ? 'Leave empty to keep the stored password'
+                : undefined
+            }
+          >
+            <Input
+              id="cx-proxy-password"
+              type="password"
+              autoComplete="new-password"
+              disabled={mode === 'none'}
+              {...register('proxyPassword')}
+            />
+          </Field>
+          <div />
+          <Field label="Proxy password storage" htmlFor="cx-proxy-password-mode">
+            <SecretModeSelect
+              id="cx-proxy-password-mode"
+              canSave={props.canSave}
+              optional
+              {...register('proxyPasswordMode')}
+            />
+          </Field>
+        </>
+      )}
+    </fieldset>
+  );
+}
+
+/** Save / remember for this session / ask every time (and "none" for an optional secret). */
+function SecretModeSelect({
+  canSave,
+  optional,
+  ...props
+}: Parameters<typeof Select>[0] & { readonly canSave: boolean; readonly optional: boolean }) {
+  return (
+    <Select {...props}>
+      <option value="save" disabled={!canSave}>
+        Save in the OS keychain
+      </option>
+      <option value="session">Remember for this session</option>
+      <option value="ask">Ask every time</option>
+      {optional && <option value="none">No password</option>}
+    </Select>
   );
 }
 

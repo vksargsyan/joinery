@@ -229,3 +229,33 @@ export function proxyUrl(value: string): ProxyFlag {
     ...(password !== undefined ? { password } : {}),
   };
 }
+
+/** `--map file=column`: a file column and the table column it fills. */
+export function columnMap(value: string): readonly [string, string] {
+  const equals = value.indexOf('=');
+  const source = value.slice(0, Math.max(equals, 0)).trim();
+  const target = value.slice(equals + 1).trim();
+  if (equals <= 0 || source === '' || target === '') {
+    throw new InvalidArgumentError('Use file_column=table_column (e.g. "Full Name=name").');
+  }
+  return [source, target];
+}
+
+const DELIMITER_NAMES: Readonly<Record<string, string>> = {
+  tab: '\t',
+  '\\t': '\t',
+  comma: ',',
+  semicolon: ';',
+  pipe: '|',
+  space: ' ',
+};
+
+/** `--delimiter`: one character, or tab, comma, semicolon, pipe, space (`\\t` is a tab too). */
+export function delimiter(value: string): string {
+  const named = DELIMITER_NAMES[value.toLowerCase()];
+  if (named !== undefined) return named;
+  if (value.length !== 1) {
+    throw new InvalidArgumentError('Use one character, or tab, comma, semicolon, pipe or space.');
+  }
+  return value;
+}

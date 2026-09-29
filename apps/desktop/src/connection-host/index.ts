@@ -1,15 +1,25 @@
-import { JoineryError, toErrorData, type ResolvedProfile } from '@joinery/core';
+import { toErrorData, type ResolvedProfile } from '@joinery/core';
 import { fromElectronPort } from '@joinery/ipc';
+import {
+  TransportManager,
+  checkConnectionThroughTransport,
+  connectThroughTransport,
+} from '@joinery/tunnel';
 
 import { mainToHostSchema, type HostToMain } from '../shared/host-protocol';
 import { loadAdapter } from './adapters';
 import { ConnectionHost } from './host';
+import { HostKeyBridge } from './host-keys';
 
 /**
  * Connection host entry (spec §3): an Electron utilityProcess started by main for one open
  * connection, or briefly for Test Connection. Main talks to it over the parent port with the
  * validated control protocol in shared/host-protocol; renderer RPC arrives on transferred
  * MessagePorts. Nothing here logs profile data or secrets.
+ *
+ * Every session and every Test Connection goes through the process's TransportManager, which
+ * opens the profile's SSH tunnel or proxy (spec §4) and shares one SSH session between the
+ * sessions of this connection. Host keys are checked by main, through the HostKeyBridge.
  */
 
 const parent = process.parentPort;
@@ -20,10 +30,17 @@ function send(message: HostToMain): void {
   parent.postMessage(message);
 }
 
+const hostKeys = new HostKeyBridge(send);
+const transports = new TransportManager({ hostKeyVerifier: hostKeys.verifier });
+
 async function connect(resolved: ResolvedProfile): Promise<void> {
   try {
     const adapter = await loadAdapter(resolved.profile.engine);
-    const started = new ConnectionHost(adapter, resolved);
+    const started = new ConnectionHost(adapter, resolved, {
+      open: (profile) => connectThroughTransport(adapter, profile, transports),
+      // The tunnel dropped after `ready`: main restarts this host, which reopens it.
+      onTransportLost: (error) => send({ type: 'failed', error: toErrorData(error) }),
+    });
     const info = await started.start();
     host = started;
     send({ type: 'ready', info });
@@ -35,13 +52,7 @@ async function connect(resolved: ResolvedProfile): Promise<void> {
 async function check(resolved: ResolvedProfile): Promise<void> {
   try {
     const adapter = await loadAdapter(resolved.profile.engine);
-    if (!adapter.checkConnection) {
-      throw new JoineryError({
-        code: 'NOT_SUPPORTED',
-        message: 'Test Connection is not available for this engine yet',
-      });
-    }
-    for await (const result of adapter.checkConnection(resolved)) {
+    for await (const result of checkConnectionThroughTransport(adapter, resolved, transports)) {
       send({ type: 'check-step', result });
     }
     send({ type: 'check-done' });
@@ -52,6 +63,7 @@ async function check(resolved: ResolvedProfile): Promise<void> {
 
 async function shutdown(): Promise<void> {
   await host?.shutdown();
+  transports.closeAll();
   process.exit(0);
 }
 
@@ -76,6 +88,9 @@ parent.on('message', (event) => {
       host.attach(fromElectronPort(port));
       return;
     }
+    case 'host-key-decision':
+      hostKeys.settle(message);
+      return;
     case 'shutdown':
       void shutdown();
       return;
