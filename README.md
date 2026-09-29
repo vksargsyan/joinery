@@ -81,7 +81,7 @@ another store file).
 ## Tests
 
 - `pnpm test` runs the unit tests of every package.
-- `pnpm test:integration` runs the driver and CLI suites against real servers.
+- `pnpm test:integration` runs the driver, sync round-trip and CLI suites against real servers.
   Each engine's suite runs only when its URL is set, for example:
 
   ```sh

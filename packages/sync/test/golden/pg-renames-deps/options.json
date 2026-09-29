@@ -1,0 +1,12 @@
+{
+  "renames": [
+    { "objectKind": "table", "schema": "app", "from": "clients", "to": "customers" },
+    {
+      "objectKind": "column",
+      "schema": "app",
+      "table": "customers",
+      "from": "name",
+      "to": "full_name"
+    }
+  ]
+}

@@ -79,15 +79,47 @@ describe('compareSchemas', () => {
     expect(new Set(a.operations.map((op) => op.id)).size).toBe(a.operations.length);
   });
 
-  it('matches names case-insensitively on request', () => {
+  it('matches names case-insensitively on request (MySQL family)', () => {
+    const source = snapshot('mariadb', 'a', [
+      { name: 'a', tables: [{ name: 'Users', columns: [col('Id', 1, 'int')] }] },
+    ]);
+    const target = snapshot('mariadb', 'b', [
+      { name: 'b', tables: [{ name: 'users', columns: [col('id', 1, 'int')] }] },
+    ]);
+    expect(compareSchemas(source, target).summary.total).toBe(2);
+    expect(compareSchemas(source, target, { ignoreNameCase: true }).diff.identical).toBe(true);
+  });
+
+  it('warns that InnoDB will not lower AUTO_INCREMENT below existing values', () => {
+    const table = (autoIncrement: string) => ({
+      name: 't',
+      columns: [col('id', 1, 'int', { nullable: false, autoIncrement: true })],
+      primaryKey: { name: 'PRIMARY', columns: ['id'] },
+      options: { engine: 'InnoDB', autoIncrement },
+    });
+    const at = (value: string) => snapshot('mysql', 'a', [{ name: 'a', tables: [table(value)] }]);
+    const warningsOf = (from: string, to: string) =>
+      compareSchemas(at(to), at(from), { ignoreAutoIncrement: false }).diff.operations.flatMap(
+        (op) => op.warnings.map((w) => w.code),
+      );
+    expect(warningsOf('500', '1000')).toEqual([]);
+    expect(warningsOf('1000', '1')).toEqual(['may-fail']);
+  });
+
+  it('compares PostgreSQL name case even when asked not to, and says so', () => {
+    // A script cannot reach "Users" as users: the names are different objects there.
     const source = snapshot('postgres', 'a', [
       { name: 'public', tables: [{ name: 'Users', columns: [col('Id', 1, 'integer')] }] },
     ]);
     const target = snapshot('postgres', 'b', [
       { name: 'public', tables: [{ name: 'users', columns: [col('id', 1, 'integer')] }] },
     ]);
-    expect(compareSchemas(source, target).summary.total).toBe(2);
-    expect(compareSchemas(source, target, { ignoreNameCase: true }).diff.identical).toBe(true);
+    const { diff } = compareSchemas(source, target, { ignoreNameCase: true });
+    expect(diff.operations.map((op) => op.id).sort()).toEqual([
+      'table:public.Users:create',
+      'table:public.users:drop',
+    ]);
+    expect(diff.warnings.map((w) => w.message).join()).toMatch(/case-sensitive/);
   });
 
   it('writes owners and comments only when they are compared', () => {
@@ -214,6 +246,24 @@ describe('selection', () => {
     expect(generateScript(d, { include: 'all' }).statements).toContain(
       'DROP TABLE "public"."audit_log"',
     );
+  });
+
+  it('keeps the default selection deployable around unticked destructive changes', () => {
+    const selected = (name: string, id: string) =>
+      compareSchemas(golden(name, 'source'), golden(name, 'target')).diff.operations.find(
+        (op) => op.id === id,
+      )!;
+    // The new predicate `f > 0` only works once the text column f is an integer.
+    expect(selected('pg-column-types', 'index:public.t.t_f:alter')).toMatchObject({
+      dependsOn: ['column:public.t.f:alter'],
+      selected: false,
+    });
+    // MINVALUE..2024 overlaps the partition 2023..2024 until that one is dropped.
+    expect(selected('pg-partition-kinds', 'partition:public.r_min:create')).toMatchObject({
+      dependsOn: ['partition:public.r_2023:drop'],
+      selected: false,
+    });
+    expect(selected('pg-partition-kinds', 'partition:public.r_2024:create').dependsOn).toEqual([]);
   });
 });
 

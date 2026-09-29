@@ -1,0 +1,124 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "charsets_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "charsets_dev",
+      "tables": [
+        {
+          "name": "t1",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false,
+              "charset": "latin1",
+              "collation": "latin1_general_ci"
+            },
+            {
+              "name": "c",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false,
+              "collation": "utf8mb4_bin"
+            },
+            {
+              "name": "e",
+              "ordinal": 5,
+              "dataType": "enum('x','y')",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false,
+              "charset": "ascii",
+              "collation": "ascii_general_ci"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_unicode_ci"
+          }
+        },
+        {
+          "name": "t2",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb3",
+            "collation": "utf8mb3_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

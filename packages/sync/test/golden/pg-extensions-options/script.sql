@@ -45,7 +45,7 @@ CREATE OR REPLACE FUNCTION public.norm(t text)
  IMMUTABLE
 AS $function$ select lower(trim(t)) $function$;
 
--- Create index public.accounts.accounts_norm_email
+-- Create index public.accounts.accounts_norm_email [not selected by default]
 CREATE INDEX accounts_norm_email ON public.accounts USING btree (public.norm((email)::text));
 
 -- Create check public.accounts.accounts_region_check

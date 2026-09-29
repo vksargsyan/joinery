@@ -1,0 +1,11 @@
+create table h (id int not null, v text) partition by hash (id);
+create table h0 partition of h for values with (modulus 2, remainder 0);
+create table h1 partition of h for values with (modulus 2, remainder 1);
+create table l (region text not null, n int) partition by list (region);
+create table l_eu partition of l for values in ('de', 'fr', 'it''s');
+create table l_us partition of l for values in ('us');
+create table l_def partition of l default;
+create index l_n on l (n);
+create table r (d date not null, id int not null, primary key (d, id)) partition by range (d);
+create table r_2024 partition of r for values from ('2024-01-01') to ('2025-01-01');
+create table r_min partition of r for values from (minvalue) to ('2024-01-01');

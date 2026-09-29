@@ -1,0 +1,12 @@
+create schema util;
+create function util.add(a int, b int) returns int language sql immutable strict parallel safe as $$ select a + b $$;
+create function util.add(a numeric, b numeric) returns numeric language sql immutable as $$ select a + b $$;
+create function util.secret() returns text language sql security definer set search_path = pg_catalog, pg_temp as $$ select 'x'::text $$;
+create function util.cnt(variadic xs int[]) returns int language sql as $$ select cardinality(xs) $$;
+create function util.tbl(n int default 3, out i int, out sq int) returns setof record language sql rows 10 as $$ select g, g*g from generate_series(1, n) g $$;
+create procedure util.noop(inout x int) language plpgsql as $$ begin x := x + 1; end $$;
+create function util.sum_state(s int, v int) returns int language sql immutable as $$ select coalesce(s, 0) + coalesce(v, 0) $$;
+create aggregate util.my_sum(int) (sfunc = util.sum_state, stype = int, initcond = '0');
+create table t (id int primary key default util.add(1, 2), v int check (util.add(v, 1) > 0));
+create index t_v on t (util.add(v, v));
+comment on function util.add(int, int) is 'ints';

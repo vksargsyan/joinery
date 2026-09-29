@@ -42,7 +42,11 @@ export interface CompareOptions {
    * changed without rebuilding the table.
    */
   readonly ignoreColumnOrder?: boolean;
-  /** Match names case-insensitively and ignore case-only differences. */
+  /**
+   * Match names case-insensitively and ignore case-only differences (MySQL/MariaDB, where
+   * lower_case_table_names differs between servers). PostgreSQL names are case-sensitive and
+   * scripts address objects by name, so there the option is ignored with a warning.
+   */
   readonly ignoreNameCase?: boolean;
   /**
    * Ignore index and constraint names: match them by definition. Covers generated names

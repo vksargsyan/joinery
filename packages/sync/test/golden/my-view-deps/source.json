@@ -1,0 +1,104 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "view_deps_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "view_deps_dev",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "bigint(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "v0",
+          "materialized": false,
+          "definition": "select `v2`.`id` AS `id` from `v2`",
+          "columns": ["id"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v1",
+          "materialized": false,
+          "definition": "select `t`.`id` AS `id`,`t`.`b` AS `b` from `t`",
+          "columns": ["id", "b"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v2",
+          "materialized": false,
+          "definition": "select `v1`.`id` AS `id`,`v1`.`b` * 2 AS `b2` from `v1`",
+          "columns": ["id", "b2"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        }
+      ],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

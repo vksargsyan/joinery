@@ -1,0 +1,172 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "defaults_comments_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "defaults_comments_prod",
+      "tables": [
+        {
+          "name": "d",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": true
+            },
+            {
+              "name": "s",
+              "ordinal": 2,
+              "dataType": "varchar(50)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "e",
+              "ordinal": 3,
+              "dataType": "enum('a','b''c','d')",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "st",
+              "ordinal": 4,
+              "dataType": "set('x','y')",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 5,
+              "dataType": "bit(3)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "f",
+              "ordinal": 6,
+              "dataType": "float",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "dt",
+              "ordinal": 7,
+              "dataType": "datetime(3)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "ts",
+              "ordinal": 8,
+              "dataType": "timestamp",
+              "nullable": true,
+              "default": "CURRENT_TIMESTAMP",
+              "autoIncrement": false
+            },
+            {
+              "name": "u",
+              "ordinal": 9,
+              "dataType": "varchar(36)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "n",
+              "ordinal": 10,
+              "dataType": "decimal(10,3)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "bin",
+              "ordinal": 11,
+              "dataType": "varbinary(4)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "txt",
+              "ordinal": 12,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c",
+              "ordinal": 13,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "y",
+              "ordinal": 14,
+              "dataType": "year(4)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "dd",
+              "ordinal": 15,
+              "dataType": "date",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "expr",
+              "ordinal": 16,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci",
+            "autoIncrement": "1"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

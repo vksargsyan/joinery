@@ -200,6 +200,10 @@ export interface DiffState {
   readonly foldedPrimaryKeys: Set<TablePair>;
   /** PostgreSQL columns dropped and re-added (`schemaKey.table.column`), with the step doing it. */
   readonly readdedColumns: Map<string, { op: OpDraft; step: number }>;
+  /** Columns whose type, charset, collation or generation changes (`schemaKey.table.column`). */
+  readonly reshapedColumns: Map<string, OpDraft>;
+  /** MySQL/MariaDB columns changing type (target names): their foreign keys must step aside. */
+  readonly retypedColumns: { table: TablePair; column: string; op: OpDraft }[];
 }
 
 export function tableKey(schemaKey: string, name: string): string {

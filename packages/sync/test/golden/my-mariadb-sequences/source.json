@@ -1,0 +1,88 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "mariadb_sequences_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "mariadb_sequences_dev",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint(20)",
+              "nullable": false,
+              "default": "(nextval(`s1`))",
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [
+        {
+          "name": "s1",
+          "start": "10",
+          "increment": "5",
+          "minValue": "5",
+          "maxValue": "9223372036854775806",
+          "cache": "1000",
+          "cycle": false
+        },
+        {
+          "name": "s2",
+          "start": "250",
+          "increment": "1",
+          "minValue": "200",
+          "maxValue": "300",
+          "cache": "1000",
+          "cycle": false
+        },
+        {
+          "name": "s3",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2",
+          "cache": "0",
+          "cycle": false
+        },
+        {
+          "name": "s4",
+          "start": "-1",
+          "increment": "-1",
+          "minValue": "-1000",
+          "maxValue": "-1",
+          "cache": "1000",
+          "cycle": false
+        }
+      ],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

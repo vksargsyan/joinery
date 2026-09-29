@@ -76,8 +76,8 @@ const escapeRe = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '
  * script may leave it out (with ignoreNames) instead of risking a clash with the target's own
  * numbering. PostgreSQL: `<table>_pkey`, `<table>_<cols>_key`, `<table>_<cols>_fkey`,
  * `<table>_<col>_check`, `<table>_<cols>_idx` (plus the numeric suffix added on clashes).
- * MySQL/MariaDB: `PRIMARY`, `<table>_ibfk_<n>`, `<table>_chk_<n>`, and indexes named after
- * their first column or after the foreign key they back.
+ * MySQL/MariaDB: `PRIMARY`, `<table>_ibfk_<n>`, `<table>_chk_<n>` (MariaDB: `CONSTRAINT_<n>`),
+ * and indexes named after their first column or after the foreign key they back.
  */
 export function isGeneratedName(
   kind: 'primary-key' | 'unique' | 'foreign-key' | 'check' | 'index',
@@ -108,7 +108,7 @@ export function isGeneratedName(
     case 'foreign-key':
       return new RegExp(`^${t}_ibfk_\\d+$`).test(name);
     case 'check':
-      return new RegExp(`^${t}_chk_\\d+$`).test(name);
+      return new RegExp(`^${t}_chk_\\d+$`).test(name) || /^CONSTRAINT_\d+$/.test(name);
     case 'unique':
     case 'index': {
       const first = columns[0];
@@ -132,6 +132,21 @@ export interface ColumnRenderOptions {
   readonly omitAutoIncrement?: boolean;
   /** MySQL: leave out COLLATE (collations are ignored; the charset's default applies). */
   readonly omitCollation?: boolean;
+  /** MariaDB: the column-level CHECK condition (see `mariadbColumnCheck`), written last. */
+  readonly check?: string;
+}
+
+/**
+ * MariaDB keeps a CHECK written in a column definition with the column and names it after the
+ * column (the JSON alias adds one: `CHECK (json_valid(col))`). It cannot be dropped with DROP
+ * CONSTRAINT, disappears with the column, and MODIFY COLUMN without it removes it. Snapshots
+ * list it among the table's checks under the column's name, so on MariaDB the check named
+ * after a column is treated as that column's own: scripts write it inside the column
+ * definition (CREATE TABLE, ADD, MODIFY, CHANGE) and never as a table constraint.
+ */
+export function mariadbColumnCheck(table: TableDef, column: string): CheckDef | undefined {
+  const name = column.toLowerCase();
+  return table.checks.find((check) => check.name.toLowerCase() === name);
 }
 
 /** One column definition: `"name" type ...` as it appears in CREATE TABLE and ADD COLUMN. */
@@ -190,6 +205,7 @@ export function renderColumn(
   if (column.comment !== undefined && column.comment !== '') {
     parts.push(`COMMENT ${stringLiteral(column.comment, dialect)}`);
   }
+  if (options.check !== undefined) parts.push(`CHECK ${wrapParens(options.check, dialect)}`);
   return parts.join(' ');
 }
 
@@ -419,9 +435,15 @@ export function renderCreateTable(
 ): string {
   const pg = isPg(dialect);
   const omit = options.omitGeneratedNames === true;
-  const lines: string[] = table.columns.map((c) =>
-    renderColumn(c, dialect, options.omitCollation === true && !pg ? { omitCollation: true } : {}),
-  );
+  const columnChecks = new Set<CheckDef>();
+  const lines: string[] = table.columns.map((c) => {
+    const check = dialect === 'mariadb' ? mariadbColumnCheck(table, c.name) : undefined;
+    if (check !== undefined) columnChecks.add(check);
+    return renderColumn(c, dialect, {
+      ...(options.omitCollation === true && !pg ? { omitCollation: true } : {}),
+      ...(check !== undefined ? { check: check.expression } : {}),
+    });
+  });
   if (table.primaryKey !== undefined) {
     lines.push(
       renderPrimaryKey(
@@ -465,6 +487,7 @@ export function renderCreateTable(
     }
   }
   for (const check of table.checks) {
+    if (columnChecks.has(check)) continue;
     lines.push(
       renderCheck(check, dialect, omit && isGeneratedName('check', check.name, table, dialect)),
     );

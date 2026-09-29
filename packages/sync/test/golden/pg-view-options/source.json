@@ -1,0 +1,160 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c",
+              "ordinal": 4,
+              "dataType": "numeric",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "mv",
+          "materialized": true,
+          "definition": "SELECT a,\n    count(*) AS n\n   FROM public.t\n  GROUP BY a",
+          "columns": ["a", "n"],
+          "options": {},
+          "indexes": [
+            {
+              "name": "mv_a",
+              "columns": [
+                {
+                  "name": "a",
+                  "order": "asc"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE UNIQUE INDEX mv_a ON public.mv USING btree (a)"
+            },
+            {
+              "name": "mv_n",
+              "columns": [
+                {
+                  "name": "n",
+                  "order": "desc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX mv_n ON public.mv USING btree (n DESC)"
+            }
+          ],
+          "comment": "mat",
+          "owner": "postgres"
+        },
+        {
+          "name": "nums",
+          "materialized": false,
+          "definition": "WITH RECURSIVE nums(n) AS (\n         VALUES (1)\n        UNION ALL\n         SELECT (nums_1.n + 1)\n           FROM nums nums_1\n          WHERE (nums_1.n < 10)\n        )\n SELECT n\n   FROM nums",
+          "columns": ["n"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        },
+        {
+          "name": "v1",
+          "materialized": false,
+          "definition": "SELECT id,\n    a AS alpha,\n    b\n   FROM public.t\n  WHERE (a > 0)",
+          "columns": ["id", "alpha", "b"],
+          "checkOption": "CASCADED",
+          "options": {
+            "security_barrier": "true"
+          },
+          "indexes": [],
+          "owner": "postgres"
+        },
+        {
+          "name": "v2",
+          "materialized": false,
+          "definition": "SELECT id,\n    alpha,\n    length(b) AS len\n   FROM public.v1",
+          "columns": ["id", "alpha", "len"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        },
+        {
+          "name": "v3",
+          "materialized": false,
+          "definition": "SELECT id,\n    c\n   FROM public.t\n  ORDER BY c DESC NULLS LAST\n LIMIT 10",
+          "columns": ["id", "c"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

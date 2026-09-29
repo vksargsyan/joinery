@@ -1,0 +1,217 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "a",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "v",
+          "materialized": false,
+          "definition": "SELECT u.id,\n    u.v\n   FROM (\"b-2\".u\n     JOIN a.t ON ((t.id = u.t_id)))",
+          "columns": ["id", "v"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [],
+      "sequences": [],
+      "types": [
+        {
+          "name": "color",
+          "kind": "enum",
+          "values": ["r", "g"],
+          "definition": "CREATE TYPE \"a\".\"color\" AS ENUM ('r', 'g')",
+          "owner": "postgres"
+        }
+      ],
+      "events": [],
+      "comment": "first",
+      "owner": "postgres"
+    },
+    {
+      "name": "b-2",
+      "tables": [
+        {
+          "name": "u",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "t_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "u_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "u_f",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "\"b-2\".f(v)",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX u_f ON \"b-2\".u USING btree (\"b-2\".f(v))"
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "u_t_id_fkey",
+              "columns": ["t_id"],
+              "refSchema": "a",
+              "refTable": "t",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "w",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "c",
+              "ordinal": 1,
+              "dataType": "a.color",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "t_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [
+            {
+              "name": "w_t_id_fkey",
+              "columns": ["t_id"],
+              "refSchema": "a",
+              "refTable": "t",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "SET NULL",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [
+        {
+          "name": "f",
+          "kind": "function",
+          "signature": "integer",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION \"b-2\".f(x integer)\n RETURNS integer\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select x + 1 $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "owner": "postgres"
+    },
+    {
+      "name": "public",
+      "tables": [],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

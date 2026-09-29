@@ -1,0 +1,6 @@
+{
+  "renames": [
+    { "objectKind": "table", "from": "wallets", "to": "accounts" },
+    { "objectKind": "column", "table": "accounts", "from": "balance", "to": "balance_cents" }
+  ]
+}

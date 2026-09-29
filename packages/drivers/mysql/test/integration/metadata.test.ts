@@ -1,4 +1,5 @@
 import {
+  atLeast,
   schemaSnapshotSchema,
   type SchemaSnapshot,
   type Session,
@@ -318,6 +319,53 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s metadata', (engine, url) 
         );
       } finally {
         await copy.drop();
+      }
+    });
+
+    it('reads binary defaults, spatial keys and sequence defaults exactly', async () => {
+      const edgeName = `${DB}_edge`;
+      const edge = await withDatabase(t, edgeName);
+      try {
+        if (mariadb) await collect(edge.session, 'CREATE SEQUENCE seq');
+        await collect(
+          edge.session,
+          `CREATE TABLE edge (
+             id bigint NOT NULL${mariadb ? ' DEFAULT nextval(seq)' : ''},
+             bin varbinary(4) DEFAULT 0x00FF41,
+             g point NOT NULL,
+             PRIMARY KEY (id),
+             SPATIAL KEY edge_g (g)
+           ) ENGINE=InnoDB`,
+        );
+        const edgeTable = (await edge.session.introspect()).schemas[0]!.tables[0]!;
+        const col = (name: string) => edgeTable.columns.find((c) => c.name === name)!;
+        // MariaDB's information_schema turns the invalid UTF-8 byte into '?'.
+        expect(col('bin').default?.toLowerCase()).toBe('0x00ff41');
+        expect(edgeTable.indexes.find((i) => i.name === 'edge_g')?.columns).toEqual([
+          { name: 'g', order: 'asc' },
+        ]);
+        // MariaDB qualifies the sequence with the database name; snapshots never do.
+        if (mariadb) expect(col('id').default).toBe('(nextval(`seq`))');
+      } finally {
+        await edge.drop();
+      }
+    });
+
+    it.skipIf(!mariadb)('reads the character set of MariaDB UCA 14.0 collations', async () => {
+      const ucaName = `${DB}_uca`;
+      const uca = await withDatabase(t, ucaName);
+      try {
+        if (!atLeast(uca.session.serverVersion, '10.10.0')) return;
+        // information_schema.COLLATIONS lists them without a charset (uca1400_ai_ci).
+        await collect(
+          uca.session,
+          'CREATE TABLE u (a varchar(5)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci',
+        );
+        const u = (await uca.session.introspect()).schemas[0]!.tables[0]!;
+        expect(u.options).toMatchObject({ charset: 'utf8mb4', collation: 'utf8mb4_uca1400_ai_ci' });
+        expect(u.columns[0]!.charset).toBeUndefined();
+      } finally {
+        await uca.drop();
       }
     });
 

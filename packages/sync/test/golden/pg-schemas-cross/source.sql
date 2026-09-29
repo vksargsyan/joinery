@@ -1,0 +1,10 @@
+create schema a;
+create schema "b-2";
+create table a.t (id int primary key);
+create table "b-2".u (id int primary key, t_id int references a.t (id), v int);
+create view a.v as select u.id, u.v from "b-2".u join a.t on t.id = u.t_id;
+create function "b-2".f(x int) returns int language sql immutable as $$ select x + 1 $$;
+create index u_f on "b-2".u ("b-2".f(v));
+create type a.color as enum ('r', 'g');
+create table "b-2".w (c a.color, t_id int references a.t (id) on delete set null);
+comment on schema a is 'first';

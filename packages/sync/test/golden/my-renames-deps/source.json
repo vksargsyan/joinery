@@ -1,0 +1,174 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "renames_deps_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "renames_deps_dev",
+      "tables": [
+        {
+          "name": "customers",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": true
+            },
+            {
+              "name": "full_name",
+              "ordinal": 2,
+              "dataType": "varchar(80)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "email",
+              "ordinal": 3,
+              "dataType": "varchar(100)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "idx_full_name",
+              "columns": [
+                {
+                  "name": "full_name",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            },
+            {
+              "name": "uq_email",
+              "columns": [
+                {
+                  "name": "email",
+                  "order": "asc"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "customers_bi",
+              "timing": "BEFORE",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER customers_bi BEFORE INSERT ON customers FOR EACH ROW SET NEW.full_name = TRIM(NEW.full_name)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci",
+            "autoIncrement": "1"
+          }
+        },
+        {
+          "name": "orders",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "customer_id",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "k_c",
+              "columns": [
+                {
+                  "name": "customer_id",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "fk_orders_customer",
+              "columns": ["customer_id"],
+              "refTable": "customers",
+              "refColumns": ["id"],
+              "onUpdate": "RESTRICT",
+              "onDelete": "RESTRICT"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "v_names",
+          "materialized": false,
+          "definition": "select `customers`.`id` AS `id`,`customers`.`full_name` AS `full_name` from `customers`",
+          "columns": ["id", "full_name"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        }
+      ],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

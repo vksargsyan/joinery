@@ -43,6 +43,8 @@ CREATE TABLE "public"."wallets" (
 );
 
 -- Alter sequence public.counter
+--   info: A current value outside the new range is moved to its nearest end
+SELECT pg_catalog.setval('"public"."counter"', 1000000, false) FROM "public"."counter" WHERE last_value > 1000000;
 ALTER SEQUENCE "public"."counter" INCREMENT BY 5 MAXVALUE 1000000 CYCLE;
 
 -- Drop sequence public.unused_seq [destructive, not selected by default]

@@ -13,6 +13,7 @@ import {
   canonicalView,
   nameKey,
 } from '../normalize';
+import type { CanonicalSequence } from '../normalize';
 import {
   pgRoutineIdentity,
   renderDropRoutine,
@@ -33,6 +34,7 @@ import type { OpDraft, StepDraft } from './builder';
 import type { DiffContext } from './context';
 import { displayName, key, qualified, tableKey } from './context';
 import { pairByName, pairViews } from './pairs';
+import { alterTypeInPlace, rebuildRisk } from './pg-types';
 import type { SchemaPair, ViewPair } from './pairs';
 import { describeChanges } from './tables';
 
@@ -311,6 +313,17 @@ export function diffTypes(ctx: DiffContext, schema: SchemaPair): void {
     const warnings: SyncWarning[] = [];
     let destructive = false;
     let unsupported = false;
+    /** Comment and owner changes of a type altered in place. */
+    const typeAttributeStatements = (): string[] => {
+      const statements: string[] = [];
+      if (a.comment !== b.comment)
+        statements.push(renderPgComment(`${keyword} ${name}`, source!.comment));
+      if (a.owner !== b.owner && source!.owner !== undefined)
+        statements.push(
+          `ALTER ${keyword} ${name} OWNER TO ${quoteIdent(source!.owner, 'postgres')}`,
+        );
+      return statements;
+    };
 
     if (json(a.values) !== json(b.values) || a.definition !== b.definition || a.kind !== b.kind) {
       if (a.kind === 'enum' && b.kind === 'enum' && isSubsequence(a.values, b.values)) {
@@ -338,8 +351,13 @@ export function diffTypes(ctx: DiffContext, schema: SchemaPair): void {
           message:
             'Runs before the transaction: PostgreSQL cannot use a new enum label in the transaction that adds it',
         });
-      } else if (a.kind === 'enum' && b.kind === 'enum') {
-        const recreated = recreateEnum(ctx, schema, source!, target!);
+      } else if (
+        (a.kind === 'enum' && b.kind === 'enum') ||
+        (isTypeUsed(ctx, target!) &&
+          alterTypeInPlace(name, source!, target!, ctx.src, ctx.tgt) === undefined &&
+          rebuildRisk(source!, target!) !== undefined)
+      ) {
+        const recreated = recreateType(ctx, schema, source!, target!, render(source!));
         steps.push(recreated.step);
         warnings.push(...recreated.warnings);
         destructive = recreated.destructive;
@@ -363,11 +381,26 @@ export function diffTypes(ctx: DiffContext, schema: SchemaPair): void {
         }
         continue;
       } else if (isTypeUsed(ctx, target!)) {
-        unsupported = true;
-        warnings.push({
-          code: 'unsupported',
-          message: `Type ${display} is used by columns; change it manually`,
-        });
+        const inPlace = alterTypeInPlace(name, source!, target!, ctx.src, ctx.tgt);
+        if (inPlace !== undefined) {
+          steps.push(
+            step(PHASE.createType, [...inPlace.statements, ...typeAttributeStatements()], {
+              provides: [typeKey],
+              refs: ctx.refs.resolve(source!.definition, 'postgres').filter((k) => k !== typeKey),
+            }),
+          );
+          warnings.push(...inPlace.warnings);
+          destructive = inPlace.destructive;
+        } else {
+          unsupported = true;
+          warnings.push({
+            code: 'unsupported',
+            message:
+              type.kind === 'composite'
+                ? `Type ${display} is used by columns and its attributes are renamed or reordered; change it manually`
+                : `Type ${display} is used by columns; change it manually`,
+          });
+        }
       } else {
         steps.push(
           step(PHASE.createType, [`DROP ${keyword} ${name}`, ...render(source!)], {
@@ -378,14 +411,7 @@ export function diffTypes(ctx: DiffContext, schema: SchemaPair): void {
         );
       }
     } else {
-      const statements: string[] = [];
-      if (a.comment !== b.comment)
-        statements.push(renderPgComment(`${keyword} ${name}`, source!.comment));
-      if (a.owner !== b.owner && source!.owner !== undefined)
-        statements.push(
-          `ALTER ${keyword} ${name} OWNER TO ${quoteIdent(source!.owner, 'postgres')}`,
-        );
-      steps.push(step(PHASE.createType, statements, { refs: [typeKey] }));
+      steps.push(step(PHASE.createType, typeAttributeStatements(), { refs: [typeKey] }));
     }
     ctx.builder.add({
       ...base,
@@ -417,15 +443,24 @@ function isTypeUsed(ctx: DiffContext, type: TypeDef): boolean {
 }
 
 /**
- * Rebuilds an enum whose labels were removed or reordered: rename the old type, create the new
- * one, convert every column through text, drop the old type.
+ * Rebuilds a type that columns use: rename the old type, create the new one, convert every
+ * column through its text form, drop the old type. Used for enums whose labels were removed or
+ * reordered, domains with a new base type or collation, and composite types whose attribute
+ * types changed.
  */
-function recreateEnum(ctx: DiffContext, schema: SchemaPair, source: TypeDef, target: TypeDef) {
+function recreateType(
+  ctx: DiffContext,
+  schema: SchemaPair,
+  source: TypeDef,
+  target: TypeDef,
+  create: readonly string[],
+) {
+  const keyword = target.kind === 'domain' ? 'DOMAIN' : 'TYPE';
   const name = qualified(ctx, schema.name, target.name);
   const oldName = `${target.name}__joinery_old`;
   const statements = [
-    `ALTER TYPE ${name} RENAME TO ${quoteIdent(oldName, 'postgres')}`,
-    `CREATE TYPE ${name} AS ENUM (${source.values.map((v) => quoteString(v, 'postgres')).join(', ')})`,
+    `ALTER ${keyword} ${name} RENAME TO ${quoteIdent(oldName, 'postgres')}`,
+    ...create,
   ];
   const blockKeys: string[] = [];
   const refs: string[] = [];
@@ -456,28 +491,45 @@ function recreateEnum(ctx: DiffContext, schema: SchemaPair, source: TypeDef, tar
       key.col(table.schema.key, table.after, sourceColumn.name),
     );
   }
-  statements.push(`DROP TYPE ${qualified(ctx, schema.name, oldName)}`);
-  const removed = target.values.filter((v) => !source.values.includes(v));
+  statements.push(`DROP ${keyword} ${qualified(ctx, schema.name, oldName)}`);
   const warnings: SyncWarning[] = [
     {
       code: 'info',
-      message:
-        'The enum is recreated and its columns converted through text; functions using it must be recreated too',
+      message: `The ${target.kind === 'enum' ? 'enum' : target.kind === 'domain' ? 'domain' : 'type'} is recreated and its columns converted through text; functions using it must be recreated too`,
     },
   ];
-  if (removed.length > 0) {
+  let destructive = false;
+  if (target.kind === 'enum') {
+    const removed = target.values.filter((v) => !source.values.includes(v));
+    if (removed.length > 0) {
+      destructive = true;
+      warnings.push({
+        code: 'data-loss',
+        message: `Rows holding ${removed.map((v) => `'${v}'`).join(', ')} make the conversion fail`,
+      });
+    }
+  } else {
+    const risk = rebuildRisk(source, target);
+    destructive = risk?.lossy ?? false;
+    for (const message of risk?.messages ?? [])
+      warnings.push({ code: risk?.lossy ? 'data-loss' : 'may-fail', message });
     warnings.push({
-      code: 'data-loss',
-      message: `Rows holding ${removed.map((v) => `'${v}'`).join(', ')} make the conversion fail`,
+      code: 'may-fail',
+      message: 'The conversion fails on values the new definition rejects',
     });
   }
   return {
     step: step(PHASE.recreateType, statements, {
       provides: [key.type(schema.key, target.name), ...blockKeys],
-      refs,
+      refs: [
+        ...refs,
+        ...ctx.refs
+          .resolve(source.definition, 'postgres')
+          .filter((k) => k !== key.type(schema.key, target.name)),
+      ],
     }),
     warnings,
-    destructive: removed.length > 0,
+    destructive,
     blockKeys,
   };
 }
@@ -534,6 +586,92 @@ export function sequenceRenames(
     renames.set(target.name, source.name);
   }
   return renames;
+}
+
+/** Parses a sequence bound; undefined when it is not an integer literal. */
+function bound(value: string): bigint | undefined {
+  return /^-?\d+$/.test(value.trim()) ? BigInt(value.trim()) : undefined;
+}
+
+/**
+ * Narrowing MINVALUE/MAXVALUE fails (PostgreSQL: "RESTART value cannot be less than MINVALUE";
+ * MariaDB: "out of range value for options") when the sequence's current value lies outside
+ * the new range, and the snapshot does not hold the current value. So the script first moves
+ * an out-of-range current value to the nearest value both ranges allow; when the ranges do not
+ * overlap at all, the ALTER restarts the sequence at its new START instead.
+ */
+function sequenceRangeFix(
+  ctx: DiffContext,
+  name: string,
+  target: CanonicalSequence,
+  source: CanonicalSequence,
+): { statements: string[]; restart: boolean; warnings: SyncWarning[] } {
+  const none = { statements: [], restart: false, warnings: [] };
+  const oldMin = bound(target.minValue);
+  const oldMax = bound(target.maxValue);
+  const newMin = bound(source.minValue);
+  const newMax = bound(source.maxValue);
+  if (oldMin === undefined || oldMax === undefined || newMin === undefined || newMax === undefined)
+    return none;
+  const raisesMin = newMin > oldMin;
+  const lowersMax = newMax < oldMax;
+  if (!raisesMin && !lowersMax) return none;
+  const lo = raisesMin ? newMin : oldMin;
+  const hi = lowersMax ? newMax : oldMax;
+  if (lo > hi) {
+    return {
+      statements: [],
+      restart: true,
+      warnings: [
+        {
+          code: 'info',
+          message: 'The new range excludes every current value: the sequence restarts at START',
+        },
+      ],
+    };
+  }
+  const message = 'A current value outside the new range is moved to its nearest end';
+  if (ctx.pg) {
+    const value = !raisesMin
+      ? `${hi}`
+      : !lowersMax
+        ? `${lo}`
+        : `CASE WHEN last_value < ${lo} THEN ${lo} ELSE ${hi} END`;
+    const outside = [
+      ...(raisesMin ? [`last_value < ${lo}`] : []),
+      ...(lowersMax ? [`last_value > ${hi}`] : []),
+    ].join(' OR ');
+    return {
+      statements: [
+        `SELECT pg_catalog.setval(${quoteString(name, 'postgres')}, ${value}, false) FROM ${name} WHERE ${outside}`,
+      ],
+      restart: false,
+      warnings: [{ code: 'info', message }],
+    };
+  }
+  // MariaDB's SETVAL only moves a sequence forward; a value it has already passed makes the
+  // sequence run out (it does not fail the ALTER).
+  const ascending = !source.increment.trim().startsWith('-');
+  if (ascending ? !raisesMin : !lowersMax) {
+    return {
+      statements: [],
+      restart: false,
+      warnings: [
+        {
+          code: 'may-fail',
+          message: `A current value past the new ${ascending ? 'MAXVALUE' : 'MINVALUE'} leaves the sequence run out`,
+        },
+      ],
+    };
+  }
+  const edge = ascending ? lo : hi;
+  return {
+    statements: [
+      `SELECT SETVAL(${name}, ${edge}, 0) FROM ${name} WHERE next_not_cached_value ${ascending ? '<' : '>'} ${edge}`,
+    ],
+    restart: false,
+    warnings: [{ code: 'info', message }],
+  };
 }
 
 export function diffSequences(ctx: DiffContext, schema: SchemaPair): void {
@@ -671,7 +809,9 @@ export function diffSequences(ctx: DiffContext, schema: SchemaPair): void {
     if (a.start !== b.start) clauses.push(`START WITH ${s.start}`);
     if (a.cache !== b.cache) clauses.push(`CACHE ${b.cache}`);
     if (a.cycle !== b.cycle) clauses.push(s.cycle ? 'CYCLE' : ctx.pg ? 'NO CYCLE' : 'NOCYCLE');
-    const statements: string[] = [];
+    const rangeFix = sequenceRangeFix(ctx, name, a, b);
+    if (rangeFix.restart) clauses.push('RESTART');
+    const statements: string[] = [...rangeFix.statements];
     if (clauses.length > 0) statements.push(`ALTER SEQUENCE ${name} ${clauses.join(' ')}`);
     if (ctx.pg && a.ownedBy !== b.ownedBy)
       statements.push(
@@ -701,6 +841,7 @@ export function diffSequences(ctx: DiffContext, schema: SchemaPair): void {
       sourceDdl: statementsDdl(render(s)),
       targetDdl: statementsDdl(render(target!)),
       changes: describeChanges(a, b),
+      warnings: rangeFix.warnings,
     });
   }
 }
@@ -1164,6 +1305,19 @@ export function diffRoutines(ctx: DiffContext, schema: SchemaPair): void {
       sameArguments &&
       source.kind !== 'aggregate'
     ) {
+      // PostgreSQL does not rebuild indexes when a function they compute changes.
+      const indexes = ctx.state.tables.flatMap((pair) =>
+        (pair.target?.indexes ?? [])
+          .filter((i) =>
+            ctx.refs
+              .resolve(
+                i.definition ?? i.columns.map((c) => c.expression ?? '').join(' '),
+                'postgres',
+              )
+              .includes(fnKey),
+          )
+          .map((i) => i.name),
+      );
       ctx.builder.add({
         ...base,
         id: `routine:${display}:alter`,
@@ -1171,6 +1325,15 @@ export function diffRoutines(ctx: DiffContext, schema: SchemaPair): void {
         steps: [createStep(source, true)],
         ...ddl,
         changes,
+        warnings:
+          indexes.length > 0
+            ? [
+                {
+                  code: 'info',
+                  message: `Indexes ${indexes.join(', ')} keep entries computed by the old code; REINDEX them if its results change`,
+                },
+              ]
+            : [],
       });
       continue;
     }

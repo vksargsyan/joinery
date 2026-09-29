@@ -32,7 +32,9 @@ import {
   dropForeignKeysBetweenDroppedTables,
   dropTable,
   dropTriggerStep,
+  rebuildForeignKeysOfRetypedColumns,
   rebuildReferencingForeignKeys,
+  rebuildRoutineDependents,
 } from './tables';
 
 const MYSQL_FAMILY = new Set(['mysql', 'mariadb']);
@@ -96,7 +98,11 @@ export function diffSchemas(
       hint: 'Move data between engine families with data transfer instead.',
     });
   }
-  const resolved = resolveCompareOptions(options);
+  const requested = resolveCompareOptions(options);
+  // PostgreSQL names are case-sensitive and scripts address objects by name: a source "Users"
+  // cannot be reached as users, so name case is always compared there.
+  const caseIgnoredOnPg = pg && requested.ignoreNameCase;
+  const resolved = caseIgnoredOnPg ? { ...requested, ignoreNameCase: false } : requested;
   const crossFamily =
     source.engine !== target.engine &&
     MYSQL_FAMILY.has(source.engine) &&
@@ -117,6 +123,8 @@ export function diffSchemas(
     newOwnedSequences: new Map(),
     foldedPrimaryKeys: new Set(),
     readdedColumns: new Map(),
+    reshapedColumns: new Map(),
+    retypedColumns: [],
   };
   for (const pair of tables) {
     if (pair.target !== undefined)
@@ -180,6 +188,7 @@ export function diffSchemas(
   }
   dropForeignKeysBetweenDroppedTables(ctx, dropped);
   rebuildReferencingForeignKeys(ctx);
+  if (!pg) rebuildForeignKeysOfRetypedColumns(ctx);
   if (pg) rebuildDependents(ctx);
   // Dropping a schema needs everything in it dropped first.
   for (const op of ctx.builder.ops) {
@@ -192,6 +201,13 @@ export function diffSchemas(
 
   const { operations, order } = ctx.builder.finish();
   const warnings: SyncWarning[] = [];
+  if (caseIgnoredOnPg) {
+    warnings.push({
+      code: 'info',
+      message:
+        'PostgreSQL names are case-sensitive, so "ignore name case" does not apply: names that differ only in case are compared as different',
+    });
+  }
   if (crossFamily) {
     warnings.push({
       code: 'cross-family',
@@ -221,7 +237,8 @@ export function diffSchemas(
 /**
  * PostgreSQL refuses to change a column type, drop a column, or drop a routine while views or
  * triggers depend on it. Dependent views (transitively) and triggers are dropped before the
- * blocking step and re-created after it from the source definition.
+ * blocking step and re-created after it from the source definition; checks, indexes and
+ * defaults that use a dropped routine are handled by `rebuildRoutineDependents`.
  */
 function rebuildDependents(ctx: DiffContext): void {
   const queue = [...ctx.state.blockers];
@@ -292,6 +309,7 @@ function rebuildDependents(ctx: DiffContext): void {
       }
     }
     if (![...keys].some((k) => k.startsWith('fn:'))) continue;
+    rebuildRoutineDependents(ctx, blocker);
     for (const entry of ctx.state.triggers) {
       const trigger = entry.target;
       if (trigger === undefined || rebuiltTriggers.has(entry)) continue;

@@ -1,0 +1,107 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "m",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "amount",
+              "ordinal": 2,
+              "dataType": "bigint",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "label",
+              "ordinal": 3,
+              "dataType": "character varying(50)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "m_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "mv",
+          "materialized": true,
+          "definition": "SELECT label,\n    sum(amount) AS total\n   FROM public.m\n  GROUP BY label",
+          "columns": ["label", "total"],
+          "options": {},
+          "indexes": [
+            {
+              "name": "mv_label",
+              "columns": [
+                {
+                  "name": "label",
+                  "order": "asc"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE UNIQUE INDEX mv_label ON public.mv USING btree (label)"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "on_mv",
+          "materialized": false,
+          "definition": "SELECT label\n   FROM public.mv\n  WHERE (total > (0)::numeric)",
+          "columns": ["label"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

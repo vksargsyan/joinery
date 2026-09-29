@@ -1,0 +1,166 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "ch",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "pa",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "pb",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "pc",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "self",
+              "ordinal": 5,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "ch_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [
+            {
+              "name": "ch_c",
+              "columns": ["pc"],
+              "refTable": "p",
+              "refColumns": ["c"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "RESTRICT",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            },
+            {
+              "name": "ch_p",
+              "columns": ["pa", "pb"],
+              "refTable": "p",
+              "refColumns": ["a", "b"],
+              "onUpdate": "CASCADE",
+              "onDelete": "SET DEFAULT",
+              "match": "FULL",
+              "deferrable": "initially-deferred"
+            },
+            {
+              "name": "ch_self",
+              "columns": ["self"],
+              "refTable": "ch",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "CASCADE",
+              "match": "SIMPLE",
+              "deferrable": "initially-immediate"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "p",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "a",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "p_pkey",
+            "columns": ["a", "b"]
+          },
+          "uniques": [
+            {
+              "name": "p_c_key",
+              "columns": ["c"]
+            }
+          ],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

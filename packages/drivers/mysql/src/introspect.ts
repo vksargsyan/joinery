@@ -115,9 +115,12 @@ export async function introspectMysql(
     throw new JoineryError({ code: 'NOT_FOUND', message: `Database "${db}" does not exist` });
   }
 
+  // MariaDB 10.10+ lists UCA 14.0 collations without a character set (uca1400_ai_ci for
+  // utf8mb4_uca1400_ai_ci), so the join finds nothing; charset names hold no underscore.
   const relationRows = await query(
     `SELECT t.TABLE_NAME AS name, t.TABLE_TYPE AS type, t.ENGINE AS engine,
-       t.TABLE_COLLATION AS collation, c.CHARACTER_SET_NAME AS charset,
+       t.TABLE_COLLATION AS collation,
+       COALESCE(c.CHARACTER_SET_NAME, SUBSTRING_INDEX(t.TABLE_COLLATION, '_', 1)) AS charset,
        t.AUTO_INCREMENT AS auto_increment, t.CREATE_OPTIONS AS create_options, t.TABLE_COMMENT AS comment
      FROM information_schema.TABLES t
      LEFT JOIN information_schema.COLLATIONS c ON c.COLLATION_NAME = t.TABLE_COLLATION
@@ -230,7 +233,7 @@ export async function introspectMysql(
         name,
         kind: 'table',
         columns: (columnsByTable.get(name) ?? []).map((column) =>
-          columnDef(column, mariadb, tableCharset, tableCollation),
+          columnDef(column, db, mariadb, tableCharset, tableCollation),
         ),
         uniques: [],
         indexes: [],
@@ -255,9 +258,15 @@ export async function introspectMysql(
       const { primaryKey, indexes } = indexDefs(indexesByTable.get(name) ?? []);
       if (primaryKey) table.primaryKey = primaryKey;
       table.indexes = indexes;
+      if (mariadb) {
+        table.columns = await exactBinaryDefaults(query, db, name, table.columns);
+      }
       table.foreignKeys = foreignKeyDefs(fksByTable.get(name) ?? [], db);
       table.checks = (checksByTable.get(name) ?? [])
-        .map((check): CheckDef => ({ name: str(check, 'name'), expression: str(check, 'clause') }))
+        .map((check): CheckDef => ({
+          name: str(check, 'name'),
+          expression: removeDatabaseQualifier(str(check, 'clause'), db),
+        }))
         .sort(byName);
       table.triggers = (triggersByTable.get(name) ?? [])
         .map((trigger): TriggerDef => ({
@@ -410,8 +419,45 @@ export async function introspectMysql(
   });
 }
 
+const BINARY_TYPE = /^(?:binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/i;
+
+/**
+ * MariaDB's information_schema turns bytes of a binary column's default that are not valid
+ * UTF-8 into '?', so literal defaults of binary columns are read back exactly with DEFAULT()
+ * and written as hex literals (as MySQL reports them).
+ */
+async function exactBinaryDefaults(
+  query: QueryFn,
+  db: string,
+  table: string,
+  columns: ColumnDef[],
+): Promise<ColumnDef[]> {
+  const binary = columns.filter(
+    (c) => BINARY_TYPE.test(c.dataType) && c.default !== null && c.default.startsWith("'"),
+  );
+  if (binary.length === 0) return columns;
+  const list = binary
+    .map((c, i) => `HEX(DEFAULT(t.${quoteQualified([c.name], 'mariadb')})) AS d${i}`)
+    .join(', ');
+  const [row] = await query(
+    `SELECT ${list} FROM (SELECT 1) AS joinery_one LEFT JOIN ${quoteQualified([db, table], 'mariadb')} AS t ON FALSE`,
+  );
+  if (!row) return columns;
+  const exact = new Map(
+    binary.map((c, i) => {
+      const hex = opt(row, `d${i}`) ?? '';
+      return [c, hex === '' ? "''" : `0x${hex}`] as const;
+    }),
+  );
+  return columns.map((c) => {
+    const value = exact.get(c);
+    return value === undefined ? c : { ...c, default: value };
+  });
+}
+
 function columnDef(
   row: Row,
+  db: string,
   mariadb: boolean,
   tableCharset: string | undefined,
   tableCollation: string | undefined,
@@ -432,12 +478,15 @@ function columnDef(
   };
   if (generatedKind !== undefined && generation !== undefined) {
     column.generated = {
-      expression: mariadb ? generation : generation.replace(/\\'/g, "'"),
+      expression: removeDatabaseQualifier(
+        mariadb ? generation : generation.replace(/\\'/g, "'"),
+        db,
+      ),
       stored: generatedKind !== 'VIRTUAL',
     };
   } else {
     const rawDefault = row['column_default'];
-    column.default = normaliseColumnDefault(
+    const normalised = normaliseColumnDefault(
       typeof rawDefault === 'string'
         ? rawDefault
         : rawDefault === null || rawDefault === undefined
@@ -447,6 +496,8 @@ function columnDef(
       columnType,
       mariadb,
     );
+    // MariaDB qualifies sequences in defaults: DEFAULT nextval(`db`.`seq`).
+    column.default = normalised === null ? null : removeDatabaseQualifier(normalised, db);
   }
   const onUpdate = onUpdateOf(extra);
   if (onUpdate !== undefined) column.onUpdate = onUpdate;
@@ -473,6 +524,8 @@ function indexDefs(rows: Row[]): { primaryKey?: TableDef['primaryKey']; indexes:
       primaryKey = { name, columns: parts.map((p) => str(p, 'column_name')) };
       continue;
     }
+    // MariaDB reports SUB_PART 32 for SPATIAL keys, which take no prefix length.
+    const spatial = str(parts[0]!, 'index_type').toUpperCase() === 'SPATIAL';
     const columns = parts.map((part): IndexColumn => {
       const columnName = opt(part, 'column_name');
       const expression = opt(part, 'expression');
@@ -482,7 +535,7 @@ function indexDefs(rows: Row[]): { primaryKey?: TableDef['primaryKey']; indexes:
       };
       if (columnName === undefined && expression !== undefined) column.expression = expression;
       const subPart = part['sub_part'];
-      if (subPart !== null && subPart !== undefined) column.length = Number(subPart);
+      if (subPart !== null && subPart !== undefined && !spatial) column.length = Number(subPart);
       return column;
     });
     const first = parts[0]!;

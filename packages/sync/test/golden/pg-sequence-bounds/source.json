@@ -1,0 +1,147 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false,
+              "default": "nextval('public.t_id_seq'::regclass)",
+              "autoIncrement": false
+            },
+            {
+              "name": "n",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": "nextval('public.s1'::regclass)",
+              "autoIncrement": false
+            },
+            {
+              "name": "code",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "identity": {
+                "generation": "by-default",
+                "start": "100",
+                "increment": "10"
+              },
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [
+        {
+          "name": "owned_later",
+          "dataType": "bigint",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775807",
+          "cache": "1",
+          "cycle": false,
+          "ownedBy": "t.n",
+          "owner": "postgres"
+        },
+        {
+          "name": "s1",
+          "dataType": "integer",
+          "start": "10",
+          "increment": "5",
+          "minValue": "5",
+          "maxValue": "1000000",
+          "cache": "20",
+          "cycle": true,
+          "owner": "postgres"
+        },
+        {
+          "name": "s2",
+          "dataType": "bigint",
+          "start": "-1",
+          "increment": "-1",
+          "minValue": "-1000",
+          "maxValue": "-1",
+          "cache": "1",
+          "cycle": false,
+          "owner": "postgres"
+        },
+        {
+          "name": "s4",
+          "dataType": "bigint",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2",
+          "cache": "1",
+          "cycle": false,
+          "owner": "postgres"
+        },
+        {
+          "name": "s5",
+          "dataType": "bigint",
+          "start": "250",
+          "increment": "1",
+          "minValue": "200",
+          "maxValue": "300",
+          "cache": "1",
+          "cycle": false,
+          "owner": "postgres"
+        },
+        {
+          "name": "t_id_seq",
+          "dataType": "bigint",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775807",
+          "cache": "1",
+          "cycle": false,
+          "ownedBy": "t.id",
+          "owner": "postgres"
+        }
+      ],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

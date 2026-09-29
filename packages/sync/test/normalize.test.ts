@@ -245,6 +245,8 @@ describe('generated names', () => {
     ['index', 'orders_placed_at_idx', ['placed_at'], 'postgres', true],
     ['foreign-key', 'orders_ibfk_3', ['customer_id'], 'mysql', true],
     ['check', 'orders_chk_1', [], 'mariadb', true],
+    ['check', 'CONSTRAINT_2', [], 'mariadb', true],
+    ['check', 'qty_positive', [], 'mariadb', false],
     ['index', 'customer_id_2', ['customer_id'], 'mysql', true],
     ['index', 'fk_customer', ['customer_id'], 'mysql', true],
     ['index', 'idx_customer', ['customer_id'], 'mysql', false],

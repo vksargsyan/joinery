@@ -27,6 +27,7 @@ import {
 import type { CanonicalColumn, NormalizeContext } from '../normalize';
 import {
   isGeneratedName,
+  mariadbColumnCheck,
   pgStorageEntries,
   pgStorageParameters,
   renderCheck,
@@ -44,8 +45,8 @@ import {
   renderTrigger,
   renderUnique,
 } from '../render';
-import { referencedNames } from '../sql-text';
-import { isMysqlTextType, typeChangeRisk } from '../types';
+import { referencedNames, tokenizeSql } from '../sql-text';
+import { canonicalType, isMysqlTextType, typeChangeRisk } from '../types';
 import { PHASE, step } from './builder';
 import type { OpDraft, StepDraft } from './builder';
 import type { DiffContext } from './context';
@@ -451,9 +452,35 @@ function effectiveMysqlCharset(
 }
 
 /**
+ * A MariaDB target's column-level check of `column` (see `mariadbColumnCheck`); scripts treat
+ * it as part of the column. Under the cross-family compare the JSON alias check of a MariaDB
+ * side reads as the json type instead, and MariaDB adds it back for a json column by itself.
+ */
+function columnCheck(
+  ctx: DiffContext,
+  table: TableDef,
+  nctx: NormalizeContext,
+  column: ColumnDef,
+): CheckDef | undefined {
+  if (ctx.dialect !== 'mariadb') return undefined;
+  const check = mariadbColumnCheck(table, column.name);
+  if (
+    check !== undefined &&
+    nctx.crossFamily &&
+    nctx.dialect === 'mariadb' &&
+    isMariadbJsonCheck(check, column) &&
+    canonicalType(column.dataType, nctx.dialect) === 'longtext'
+  ) {
+    return undefined;
+  }
+  return check;
+}
+
+/**
  * A MySQL column for ADD/MODIFY/CHANGE with its charset and collation written out, so the
  * result does not depend on the table default at that moment. When collations are ignored, the
- * target table's collation is used for the same charset (none otherwise).
+ * target table's collation is used for the same charset (none otherwise). On MariaDB the
+ * column's own check is written too: MODIFY and CHANGE would otherwise drop it.
  */
 function mysqlColumnSql(
   ctx: DiffContext,
@@ -462,6 +489,8 @@ function mysqlColumnSql(
   omitAutoIncrement = false,
 ): string {
   const effective = effectiveMysqlCharset(column, pair.source!);
+  const check = columnCheck(ctx, pair.source!, ctx.src, column)?.expression;
+  const checkOption = check !== undefined ? { check } : {};
   if (ctx.options.ignoreCollation) {
     const target = pair.target;
     const sameCharset =
@@ -475,9 +504,10 @@ function mysqlColumnSql(
         ? { collation: target.options.collation }
         : { omitCollation: true }),
       omitAutoIncrement,
+      ...checkOption,
     });
   }
-  return renderColumn(column, ctx.dialect, { ...effective, omitAutoIncrement });
+  return renderColumn(column, ctx.dialect, { ...effective, omitAutoIncrement, ...checkOption });
 }
 
 /** Longest common subsequence of two name lists (the columns that keep their relative order). */
@@ -556,7 +586,13 @@ function diffColumns(ctx: DiffContext, pair: TablePair): void {
       op = addColumn(ctx, pair, column, positioned ? positionClause(column) : '');
     } else {
       const isMoved = moved.has(nameKey(column.name, ctx.options));
-      op = alterColumn(ctx, pair, match, isMoved ? positionClause(column) : '');
+      op = alterColumn(
+        ctx,
+        pair,
+        match,
+        isMoved ? positionClause(column) : '',
+        positioned ? positionClause(column) : '',
+      );
     }
     if (op !== undefined) positionOps.set(nameKey(column.name, ctx.options), op);
     // AFTER needs the previous column in place first.
@@ -660,23 +696,54 @@ function addColumn(
   });
 }
 
+/**
+ * MySQL and MariaDB cannot MODIFY a column between VIRTUAL and STORED or between VIRTUAL and
+ * not generated ("not supported for generated columns"); such a column is dropped and added.
+ */
+function mysqlNeedsReadd(target: ColumnDef, source: ColumnDef): boolean {
+  const kind = (c: ColumnDef): string =>
+    c.generated === undefined ? 'plain' : c.generated.stored ? 'stored' : 'virtual';
+  const a = kind(target);
+  const b = kind(source);
+  return a !== b && (a === 'virtual' || b === 'virtual');
+}
+
+/**
+ * `position` moves the column (MySQL AFTER/FIRST); `placement` is where the column belongs,
+ * used when it has to be dropped and added again.
+ */
 function alterColumn(
   ctx: DiffContext,
   pair: TablePair,
   match: ColumnMatch,
   position: string,
+  placement: string,
 ): OpDraft | undefined {
   const column = match.source!;
   const target = match.target!;
   const a = canonicalTargetColumn(ctx, pair, target);
   const b = canonicalSourceColumn(ctx, pair, column);
   const changes = describeChanges(a, b);
+  const targetCheck = columnCheck(ctx, pair.target!, ctx.tgt, target);
+  const sourceCheck = columnCheck(ctx, pair.source!, ctx.src, column);
+  const checkChanged =
+    (targetCheck && canonicalCheck(targetCheck, ctx.tgt).expression) !==
+    (sourceCheck && canonicalCheck(sourceCheck, ctx.src).expression);
+  if (checkChanged) {
+    changes.push(`check: ${show(targetCheck?.expression)} → ${show(sourceCheck?.expression)}`);
+  }
   if (match.renamedFrom !== undefined)
     changes.unshift(`name: ${match.renamedFrom} → ${column.name}`);
   if (position !== '') changes.push(`position:${position.toLowerCase()}`);
   if (changes.length === 0) return undefined;
 
   const warnings: SyncWarning[] = crossFamilyColumnWarnings(ctx, column);
+  if (checkChanged && sourceCheck !== undefined) {
+    warnings.push({
+      code: 'may-fail',
+      message: 'Adding the check fails if existing rows violate it',
+    });
+  }
   let destructive = false;
   const risk = a.type !== b.type ? typeChangeRisk(a.type, b.type, ctx.dialect) : null;
   if (risk !== null) {
@@ -696,6 +763,12 @@ function alterColumn(
   const keys = colKeys(pair, target.name, column.name);
   const refs = [...relKeys(pair).slice(-1), ...columnRefs(ctx, pair, column)];
   const targetRefs = columnRefs(ctx, pair, target);
+  const reshapes =
+    a.type !== b.type ||
+    a.charset !== b.charset ||
+    a.collation !== b.collation ||
+    json(a.generated) !== json(b.generated);
+  const reshapedKey = tableKey(pair.schema.key, `${pair.after}.${column.name}`);
   const base = {
     id: `column:${tableDisplay(ctx, pair, column.name)}:${match.renamedFrom !== undefined && changes.length === 1 ? 'rename' : 'alter'}`,
     kind: (match.renamedFrom !== undefined && changes.length === 1 ? 'rename' : 'alter') as
@@ -710,25 +783,129 @@ function alterColumn(
     changes,
   };
 
-  if (!ctx.pg) {
+  // Names equal but for case (ignoreNameCase) keep the target's spelling: MODIFY would change it.
+  const written: ColumnDef =
+    match.renamedFrom === undefined && column.name !== target.name
+      ? { ...column, name: target.name }
+      : column;
+  if (!ctx.pg && mysqlNeedsReadd(target, column)) {
     const table = tableStatementName(ctx, pair, PHASE.alterColumn);
-    const statement =
-      match.renamedFrom !== undefined
-        ? `ALTER TABLE ${table} CHANGE COLUMN ${quoteIdent(match.renamedFrom, ctx.dialect)} ${mysqlColumnSql(ctx, pair, column)}${position}`
-        : `ALTER TABLE ${table} MODIFY COLUMN ${mysqlColumnSql(ctx, pair, column)}${position}`;
-    return ctx.builder.add({
+    const phase = placement !== '' ? PHASE.addColumn : PHASE.alterColumn;
+    warnings.push({
+      code: 'info',
+      message:
+        'The column is dropped and re-added; indexes and checks on it are re-created after it',
+    });
+    if (target.generated === undefined || column.generated === undefined) {
+      destructive = true;
+      warnings.push({
+        code: 'data-loss',
+        message:
+          column.generated === undefined
+            ? 'The computed values are not kept: the column starts out with its default'
+            : 'Stored values are replaced by the generation expression',
+      });
+    }
+    const op = ctx.builder.add({
       ...base,
       steps: [
+        step(
+          phase,
+          [
+            `ALTER TABLE ${table} DROP COLUMN ${quoteIdent(target.name, ctx.dialect)}`,
+            `ALTER TABLE ${table} ADD COLUMN ${mysqlColumnSql(ctx, pair, written)}${placement}`,
+          ],
+          {
+            provides: keys,
+            refs,
+            targetRefs,
+            ...(match.renamedFrom !== undefined
+              ? { removes: colKeys(pair, match.renamedFrom) }
+              : {}),
+          },
+        ),
+      ],
+      destructive,
+      warnings,
+    });
+    ctx.state.readdedColumns.set(tableKey(pair.schema.key, `${pair.after}.${column.name}`), {
+      op,
+      step: 0,
+    });
+    ctx.state.retypedColumns.push({ table: pair, column: target.name, op });
+    return op;
+  }
+
+  if (!ctx.pg) {
+    // AUTO_INCREMENT needs a key on the column: it is removed before the target's keys are
+    // dropped and added after the source's keys exist.
+    const gains = !a.autoIncrement && b.autoIncrement;
+    const loses = a.autoIncrement && !b.autoIncrement;
+    /** Keys of a table that include the column named `name`: what AUTO_INCREMENT relies on. */
+    const autoKeys = (t: TableDef, name: string): string[] => {
+      const has = (c: string | null): boolean =>
+        c !== null && nameKey(c, ctx.options) === nameKey(name, ctx.options);
+      return [
+        ...(t.primaryKey?.columns.some(has)
+          ? [key.constraint(pair.schema.key, pair.after, t.primaryKey.name)]
+          : []),
+        ...t.indexes
+          .filter((i) => i.columns.some((c) => has(c.name)))
+          .map((i) => key.rel(pair.schema.key, i.name)),
+      ];
+    };
+    const onlyAutoIncrement =
+      json({ ...a, autoIncrement: false }) === json({ ...b, autoIncrement: false }) &&
+      !checkChanged &&
+      position === '' &&
+      match.renamedFrom === undefined;
+    const steps: StepDraft[] = [];
+    if (loses) {
+      const effective = effectiveMysqlCharset(target, pair.target!);
+      const check = columnCheck(ctx, pair.target!, ctx.tgt, target)?.expression;
+      steps.push(
+        step(
+          PHASE.dropForeignKey,
+          [
+            `ALTER TABLE ${tableStatementName(ctx, pair, PHASE.dropForeignKey)} MODIFY COLUMN ${renderColumn(target, ctx.dialect, { ...effective, omitAutoIncrement: true, ...(check !== undefined ? { check } : {}) })}`,
+          ],
+          { targetRefs: autoKeys(pair.target!, target.name) },
+        ),
+      );
+    }
+    if (!onlyAutoIncrement) {
+      const table = tableStatementName(ctx, pair, PHASE.alterColumn);
+      const definition = mysqlColumnSql(ctx, pair, written, gains);
+      const statement =
+        match.renamedFrom !== undefined
+          ? `ALTER TABLE ${table} CHANGE COLUMN ${quoteIdent(match.renamedFrom, ctx.dialect)} ${definition}${position}`
+          : `ALTER TABLE ${table} MODIFY COLUMN ${definition}${position}`;
+      steps.push(
         step(position !== '' ? PHASE.addColumn : PHASE.alterColumn, [statement], {
           provides: keys,
           refs,
           targetRefs,
           ...(match.renamedFrom !== undefined ? { removes: colKeys(pair, match.renamedFrom) } : {}),
         }),
-      ],
-      destructive,
-      warnings,
-    });
+      );
+    }
+    if (gains) {
+      steps.push(
+        step(
+          PHASE.alterTable,
+          [
+            `ALTER TABLE ${tableStatementName(ctx, pair, PHASE.alterTable)} MODIFY COLUMN ${mysqlColumnSql(ctx, pair, written)}`,
+          ],
+          { refs: [...refs, ...autoKeys(pair.source!, column.name)] },
+        ),
+      );
+    }
+    const op = ctx.builder.add({ ...base, steps, destructive, warnings });
+    if (reshapes) {
+      ctx.state.reshapedColumns.set(reshapedKey, op);
+      ctx.state.retypedColumns.push({ table: pair, column: target.name, op });
+    }
+    return op;
   }
 
   const steps: StepDraft[] = [];
@@ -745,11 +922,22 @@ function alterColumn(
   }
   const statements = pgColumnStatements(ctx, pair, target, column, a, b, warnings);
   if (statements.destructive) destructive = true;
+  if (statements.dropIdentity !== undefined) {
+    // The identity's implicit sequence (<table>_<column>_seq) goes with it, so a new sequence
+    // of the same name (identity → serial) is created after this step.
+    steps.push(
+      step(PHASE.alterColumn, [statements.dropIdentity], {
+        removes: [key.rel(pair.schema.key, `${pair.before}_${target.name}_seq`)],
+        refs: relKeys(pair).slice(-1),
+      }),
+    );
+  }
   if (statements.list.length > 0) {
     steps.push(step(PHASE.alterColumn, statements.list, { provides: keys, refs, targetRefs }));
   }
   if (steps.length === 0) return undefined;
   const op = ctx.builder.add({ ...base, steps, destructive, warnings });
+  if (reshapes) ctx.state.reshapedColumns.set(reshapedKey, op);
   if (statements.readded) {
     ctx.state.readdedColumns.set(tableKey(pair.schema.key, `${pair.after}.${column.name}`), {
       op,
@@ -776,7 +964,13 @@ function pgColumnStatements(
   a: CanonicalColumn,
   b: CanonicalColumn,
   warnings: SyncWarning[],
-): { list: string[]; blocking: boolean; destructive: boolean; readded?: boolean } {
+): {
+  list: string[];
+  blocking: boolean;
+  destructive: boolean;
+  readded?: boolean;
+  dropIdentity?: string;
+} {
   const table = tableStatementName(ctx, pair, PHASE.alterColumn);
   const col = quoteIdent(column.name, ctx.dialect);
   const alter = (clause: string): string => `ALTER TABLE ${table} ALTER COLUMN ${col} ${clause}`;
@@ -818,7 +1012,8 @@ function pgColumnStatements(
   const defaultChanged = a.default !== b.default;
   const identityChanged = json(a.identity) !== json(b.identity);
 
-  if (a.identity !== null && b.identity === null) list.push(alter('DROP IDENTITY'));
+  const dropIdentity =
+    a.identity !== null && b.identity === null ? alter('DROP IDENTITY') : undefined;
   const dropDefaultFirst =
     a.default !== null && (typeChanged || (b.identity !== null && a.identity === null));
   if (dropDefaultFirst) list.push(alter('DROP DEFAULT'));
@@ -875,7 +1070,7 @@ function pgColumnStatements(
   if (a.comment !== b.comment) {
     list.push(renderPgComment(`COLUMN ${table}.${col}`, column.comment));
   }
-  return { list, blocking, destructive };
+  return { list, blocking, destructive, ...(dropIdentity !== undefined ? { dropIdentity } : {}) };
 }
 
 function pgMajor(ctx: DiffContext): number {
@@ -912,7 +1107,40 @@ function readdedColumn(
   return undefined;
 }
 
-/** Re-creates an unchanged index or constraint that a re-added column took with it. */
+/**
+ * Column alters an expression (index expression or predicate, check condition) needs: its
+ * meaning depends on the column's type, e.g. `WHERE f > 0` only works once f is a number.
+ * Unticking such an alter unticks the index or check, so the default selection still deploys.
+ */
+function expressionNeeds(ctx: DiffContext, pair: TablePair, texts: readonly string[]): string[] {
+  if (ctx.state.reshapedColumns.size === 0) return [];
+  const words = new Set(
+    texts.flatMap((text) => referencedNames(text, ctx.dialect).map((r) => r.name.toLowerCase())),
+  );
+  const needs: string[] = [];
+  for (const column of pair.source!.columns) {
+    if (!words.has(column.name.toLowerCase())) continue;
+    const op = ctx.state.reshapedColumns.get(
+      tableKey(pair.schema.key, `${pair.after}.${column.name}`),
+    );
+    if (op !== undefined) needs.push(op.id);
+  }
+  return needs;
+}
+
+/** The expressions of an index: expression parts and the partial-index predicate. */
+function indexExpressions(index: IndexDef): string[] {
+  return [
+    ...index.columns.flatMap((c) => (c.expression !== undefined ? [c.expression] : [])),
+    ...(index.where !== undefined ? [index.where] : []),
+  ];
+}
+
+/**
+ * Re-creates an unchanged index or constraint that a re-added column took with it. PostgreSQL
+ * drops it together with the column. MySQL and MariaDB would keep a multi-column index without
+ * the column and refuse to drop a column a check uses, so `dropStatements` drop it first.
+ */
 function recreateAfterReadd(
   ctx: DiffContext,
   pair: TablePair,
@@ -921,21 +1149,18 @@ function recreateAfterReadd(
   readd: { op: OpDraft; step: number; column: string },
   statements: string[],
   refs: string[],
+  dropStatements: string[] = [],
 ): OpDraft {
-  const op = subOp(
-    ctx,
-    pair,
-    objectKind,
-    name,
-    'alter',
-    [step(PHASE.addConstraint, statements, { refs })],
-    {
-      reason: `Re-created because ${tableDisplay(ctx, pair, readd.column)} is re-added`,
-      warnings: [{ code: 'rebuild', message: 'Dropped with its column and created again' }],
-      requires: new Set([readd.op.id]),
-    },
-  );
-  ctx.builder.order(readd.op, readd.step, op, 0);
+  const steps: StepDraft[] = [];
+  if (dropStatements.length > 0) steps.push(step(PHASE.dropConstraint, dropStatements));
+  steps.push(step(PHASE.addConstraint, statements, { refs }));
+  const op = subOp(ctx, pair, objectKind, name, 'alter', steps, {
+    reason: `Re-created because ${tableDisplay(ctx, pair, readd.column)} is re-added`,
+    warnings: [{ code: 'rebuild', message: 'Dropped with its column and created again' }],
+    requires: new Set([readd.op.id]),
+  });
+  if (dropStatements.length > 0) ctx.builder.order(op, 0, readd.op, readd.step);
+  ctx.builder.order(readd.op, readd.step, op, steps.length - 1);
   return op;
 }
 
@@ -977,7 +1202,12 @@ function matchSubObjects<T extends { name: string }>(
       if (usedSources.has(source)) continue;
       const canon = canonSource(source);
       const target = targets.find((t) => !usedTargets.has(t) && canonTarget(t) === canon);
-      if (target !== undefined) take(source, target, renamed && target.name !== source.name);
+      if (target !== undefined)
+        take(
+          source,
+          target,
+          renamed && nameKey(target.name, ctx.options) !== nameKey(source.name, ctx.options),
+        );
     }
   };
   const byName = (): void => {
@@ -1114,6 +1344,7 @@ function diffPrimaryKey(ctx: DiffContext, pair: TablePair): void {
         readdPk,
         [`ALTER TABLE ${tableStatementName(ctx, pair, PHASE.addConstraint)} ADD ${addClause()}`],
         keyColumnsKeys(pair, source.columns),
+        ctx.pg ? [] : [dropSql(PHASE.dropConstraint)],
       );
       ctx.state.keyDrops.push({
         table: pair,
@@ -1124,7 +1355,11 @@ function diffPrimaryKey(ctx: DiffContext, pair: TablePair): void {
       return;
     }
     if (sameColumns) {
-      if (ctx.pg && !ctx.options.ignoreNames && source.name !== target.name) {
+      if (
+        ctx.pg &&
+        !ctx.options.ignoreNames &&
+        nameKey(source.name, ctx.options) !== nameKey(target.name, ctx.options)
+      ) {
         subOp(
           ctx,
           pair,
@@ -1289,6 +1524,7 @@ function diffUniques(ctx: DiffContext, pair: TablePair): void {
           readdUnique,
           [add(m.source)],
           keyColumnsKeys(pair, m.source.columns),
+          ctx.pg ? [] : [drop(m.target)],
         );
         ctx.state.keyDrops.push({
           table: pair,
@@ -1484,7 +1720,9 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
       const steps: StepDraft[] = [];
       const changes: string[] = [];
       const renamed =
-        !ctx.options.ignoreNames && source.name !== target.name && (same || sameShape);
+        !ctx.options.ignoreNames &&
+        nameKey(source.name, ctx.options) !== nameKey(target.name, ctx.options) &&
+        (same || sameShape);
       if (renamed) {
         steps.push(
           step(
@@ -1520,6 +1758,7 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
           readdIndex,
           createStatements(source),
           refsOf(source),
+          ctx.pg ? [] : [dropSql(target)],
         );
         if (target.unique) {
           ctx.state.keyDrops.push({
@@ -1572,8 +1811,10 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
       }
       changes.push('definition changed');
       const drop = dropSql(target);
+      const needs = { requires: new Set(expressionNeeds(ctx, pair, indexExpressions(source))) };
       const op =
-        backsRetainedForeignKey(ctx, pair, target) && source.name === target.name
+        backsRetainedForeignKey(ctx, pair, target) &&
+        nameKey(source.name, ctx.options) === nameKey(target.name, ctx.options)
           ? subOp(
               ctx,
               pair,
@@ -1590,7 +1831,7 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
                   },
                 ),
               ],
-              { ...ddl, changes },
+              { ...ddl, changes, ...needs },
             )
           : subOp(
               ctx,
@@ -1605,7 +1846,7 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
                   refs: refsOf(source),
                 }),
               ],
-              { ...ddl, changes },
+              { ...ddl, changes, ...needs },
             );
       if (target.unique)
         ctx.state.keyDrops.push({ table: pair, columns: indexColumns(target), op, step: 0 });
@@ -1622,7 +1863,10 @@ function diffIndexes(ctx: DiffContext, pair: TablePair): void {
             refs: refsOf(m.source),
           }),
         ],
-        ddl,
+        {
+          ...ddl,
+          requires: new Set(expressionNeeds(ctx, pair, indexExpressions(m.source))),
+        },
       );
     } else {
       const target = m.target!;
@@ -1657,8 +1901,17 @@ function diffChecks(ctx: DiffContext, pair: TablePair): void {
           )
         ),
     );
-  const sources = jsonChecks(pair.source!, ctx.src);
-  const targets = jsonChecks(pair.target!, ctx.tgt);
+  // MariaDB column-level checks change with their column (see columnCheck).
+  const tableChecks = (t: TableDef, nctx: NormalizeContext): CheckDef[] =>
+    jsonChecks(t, nctx).filter(
+      (check) =>
+        !(
+          ctx.dialect === 'mariadb' &&
+          t.columns.some((c) => mariadbColumnCheck(t, c.name) === check)
+        ),
+    );
+  const sources = tableChecks(pair.source!, ctx.src);
+  const targets = tableChecks(pair.target!, ctx.tgt);
   const canonSource = (c: CheckDef): string => json(canonicalCheck(c, ctx.src));
   const canonTarget = (c: CheckDef): string => json(canonicalCheck(c, ctx.tgt));
   const matches = matchSubObjects(
@@ -1701,10 +1954,13 @@ function diffChecks(ctx: DiffContext, pair: TablePair): void {
           readdCheck,
           [add(m.source)],
           refsOf(m.source),
+          ctx.pg ? [] : [drop(m.target)],
         );
         continue;
       }
-      const checkRenamed = !ctx.options.ignoreNames && m.source.name !== m.target.name;
+      const checkRenamed =
+        !ctx.options.ignoreNames &&
+        nameKey(m.source.name, ctx.options) !== nameKey(m.target.name, ctx.options);
       // MySQL cannot rename a check: a renamed one is dropped and added again below.
       if (canonSource(m.source) === canonTarget(m.target) && (ctx.pg || !checkRenamed)) {
         if (checkRenamed) {
@@ -1751,6 +2007,7 @@ function diffChecks(ctx: DiffContext, pair: TablePair): void {
           warnings: [
             { code: 'may-fail', message: 'Adding the check fails if existing rows violate it' },
           ],
+          requires: new Set(expressionNeeds(ctx, pair, [m.source.expression])),
         },
       );
     } else if (m.source !== undefined) {
@@ -1771,6 +2028,7 @@ function diffChecks(ctx: DiffContext, pair: TablePair): void {
           warnings: [
             { code: 'may-fail', message: 'Adding the check fails if existing rows violate it' },
           ],
+          requires: new Set(expressionNeeds(ctx, pair, [m.source.expression])),
         },
       );
     } else {
@@ -1906,7 +2164,9 @@ function diffForeignKeys(ctx: DiffContext, pair: TablePair): void {
         : {}),
     };
     if (m.source !== undefined && m.target !== undefined) {
-      const fkRenamed = !ctx.options.ignoreNames && m.source.name !== m.target.name;
+      const fkRenamed =
+        !ctx.options.ignoreNames &&
+        nameKey(m.source.name, ctx.options) !== nameKey(m.target.name, ctx.options);
       // MySQL cannot rename a foreign key: a renamed one is dropped and added again below.
       if (
         fkSourceCanon(ctx, pair, m.source) === fkTargetCanon(ctx, pair, m.target) &&
@@ -2073,6 +2333,59 @@ export function rebuildReferencingForeignKeys(ctx: DiffContext): void {
   }
 }
 
+/**
+ * MySQL and MariaDB refuse to change the type of a column a foreign key uses, on either end
+ * ("Cannot change column used in a foreign key constraint"), even with FOREIGN_KEY_CHECKS = 0.
+ * Such foreign keys are dropped before the column changes and added again after it.
+ */
+export function rebuildForeignKeysOfRetypedColumns(ctx: DiffContext): void {
+  const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+  for (const retype of ctx.state.retypedColumns) {
+    for (const entry of ctx.state.foreignKeys) {
+      const fk = entry.target;
+      if (fk === undefined) continue;
+      const referencing =
+        entry.table === retype.table && fk.columns.some((c) => same(c, retype.column));
+      const referenced =
+        fk.refSchema === undefined &&
+        same(fk.refTable, retype.table.before) &&
+        fk.refColumns.some((c) => same(c, retype.column));
+      if (!referencing && !referenced) continue;
+      if (entry.op !== undefined && entry.dropStep !== undefined) {
+        ctx.builder.order(entry.op, entry.dropStep, retype.op, 0);
+        if (entry.op !== retype.op) retype.op.requires.add(entry.op.id);
+        continue;
+      }
+      if (entry.source === undefined) continue;
+      const op = subOp(
+        ctx,
+        entry.table,
+        'foreign-key',
+        entry.source.name,
+        'alter',
+        [
+          dropForeignKeyStep(ctx, entry.table, fk),
+          addForeignKeyStep(ctx, entry.table, entry.source),
+        ],
+        {
+          sourceDdl: renderForeignKey(entry.source, ctx.dialect),
+          targetDdl: renderForeignKey(fk, ctx.dialect),
+          reason: `Rebuilt because ${displayName(ctx, retype.table.schema.name, retype.table.after, retype.column)} changes type`,
+          warnings: [
+            { code: 'rebuild', message: 'Dropped and re-added around the column type change' },
+          ],
+          requires: new Set([retype.op.id]),
+        },
+      );
+      entry.op = op;
+      entry.dropStep = 0;
+      ctx.builder.order(op, 0, retype.op, 0);
+      ctx.builder.order(retype.op, retype.op.steps.length - 1, op, 1);
+      retype.op.requires.add(op.id);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Triggers
 
@@ -2220,6 +2533,17 @@ function diffTableOptions(ctx: DiffContext, pair: TablePair): void {
   const warnings: SyncWarning[] = [];
   if (!ctx.pg && changed('engine'))
     warnings.push({ code: 'info', message: 'Changing the engine rebuilds the table' });
+  const counter = (value: string | undefined): bigint | undefined =>
+    value !== undefined && /^\d+$/.test(value) ? BigInt(value) : undefined;
+  const from = counter(target.options.autoIncrement);
+  const to = counter(source.options.autoIncrement);
+  if (!ctx.pg && changed('autoincrement') && from !== undefined && to !== undefined && to < from) {
+    // The server sets the counter to at least the highest existing value + 1.
+    warnings.push({
+      code: 'may-fail',
+      message: `AUTO_INCREMENT cannot go below the highest existing ${source.name} value + 1; with larger values in the table the counter stays there and the tables keep differing`,
+    });
+  }
   ctx.builder.add({
     id: `table:${tableDisplay(ctx, pair)}:alter`,
     kind: 'alter',
@@ -2233,6 +2557,96 @@ function diffTableOptions(ctx: DiffContext, pair: TablePair): void {
     changes,
     warnings,
   });
+}
+
+type BoundValue =
+  { readonly kind: 'min' | 'max' } | { readonly kind: 'value'; readonly value: string | number };
+
+/** The parenthesised value lists of a PostgreSQL partition bound, e.g. FROM (a) TO (b). */
+function boundLists(bound: string): BoundValue[][] | undefined {
+  const tokens = tokenizeSql(bound, 'postgres').filter(
+    (t) => t.kind !== 'ws' && t.kind !== 'comment',
+  );
+  const lists: BoundValue[][] = [];
+  let current: BoundValue[] | undefined;
+  let item: string[] = [];
+  const flush = (): boolean => {
+    const text = item.join('');
+    item = [];
+    if (text === '') return true;
+    if (/^minvalue$/i.test(text)) current!.push({ kind: 'min' });
+    else if (/^maxvalue$/i.test(text)) current!.push({ kind: 'max' });
+    else if (/^-?\d+(\.\d+)?$/.test(text)) current!.push({ kind: 'value', value: Number(text) });
+    else if (/^'(?:[^']|'')*'(::[\w ]+)?$/.test(text))
+      current!.push({
+        kind: 'value',
+        value: text.slice(1, text.lastIndexOf("'")).replaceAll("''", "'"),
+      });
+    else return false;
+    return true;
+  };
+  for (const t of tokens) {
+    if (t.text === '(') {
+      if (current !== undefined) return undefined;
+      current = [];
+    } else if (t.text === ')') {
+      if (current === undefined || !flush()) return undefined;
+      lists.push(current);
+      current = undefined;
+    } else if (current !== undefined) {
+      if (t.text === ',') {
+        if (!flush()) return undefined;
+      } else {
+        item.push(t.text);
+      }
+    }
+  }
+  return lists;
+}
+
+function compareBound(a: BoundValue, b: BoundValue): number {
+  const rank = (v: BoundValue): number => (v.kind === 'min' ? -1 : v.kind === 'max' ? 1 : 0);
+  if (a.kind !== 'value' || b.kind !== 'value') return rank(a) - rank(b);
+  if (typeof a.value === 'number' && typeof b.value === 'number') return a.value - b.value;
+  const x = String(a.value);
+  const y = String(b.value);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/**
+ * Whether two PostgreSQL partitions of one table could claim the same rows, so creating one
+ * needs the other dropped first. Single-column range and list bounds with literal values and
+ * hash bounds are compared; anything else counts as overlapping.
+ */
+export function partitionsOverlap(a: string | undefined, b: string | undefined): boolean {
+  const isDefault = (x: string | undefined): boolean =>
+    x === undefined || /^\s*default\s*$/i.test(x);
+  if (isDefault(a) || isDefault(b)) return isDefault(a) && isDefault(b);
+  const hash = (x: string): [number, number] | undefined => {
+    const m = /modulus\s+(\d+)\s*,\s*remainder\s+(\d+)/i.exec(x);
+    return m ? [Number(m[1]), Number(m[2])] : undefined;
+  };
+  const ha = hash(a!);
+  const hb = hash(b!);
+  if (ha !== undefined && hb !== undefined) {
+    const gcd = (x: number, y: number): number => (y === 0 ? x : gcd(y, x % y));
+    const g = gcd(ha[0], hb[0]);
+    return ha[1] % g === hb[1] % g;
+  }
+  const la = boundLists(a!);
+  const lb = boundLists(b!);
+  if (la === undefined || lb === undefined) return true;
+  const range = (x: string): boolean => /\bfrom\b/i.test(x) && /\bto\b/i.test(x);
+  if (range(a!) && range(b!) && la.length === 2 && lb.length === 2) {
+    if ([...la, ...lb].some((list) => list.length !== 1)) return true;
+    const [fromA, toA] = [la[0]![0]!, la[1]![0]!];
+    const [fromB, toB] = [lb[0]![0]!, lb[1]![0]!];
+    return compareBound(fromA, toB) < 0 && compareBound(fromB, toA) < 0;
+  }
+  if (/\bin\b/i.test(a!) && /\bin\b/i.test(b!) && la.length === 1 && lb.length === 1) {
+    return la[0]!.some((x) => lb[0]!.some((y) => compareBound(x, y) === 0));
+  }
+  return true;
 }
 
 function diffPartitions(ctx: DiffContext, pair: TablePair): void {
@@ -2273,11 +2687,17 @@ function diffPartitions(ctx: DiffContext, pair: TablePair): void {
         sourceDdl: renderPgPartition(pair.after, partition, pair.schema.name),
       };
       if (existing === undefined) {
+        // A new partition cannot overlap one that stays: it needs those drops.
+        const overlapping = target.partitioning.partitions
+          .filter((p) => !sourceParts.has(nameKey(p.name, ctx.options)))
+          .filter((p) => partitionsOverlap(p.bound, partition.bound))
+          .map((p) => `partition:${displayName(ctx, pair.schema.name, p.name)}:drop`);
         ctx.builder.add({
           ...base,
           id: `partition:${display}:create`,
           kind: 'create',
           steps: [create],
+          requires: new Set(overlapping),
         });
       } else if (bound(existing.bound) !== bound(partition.bound)) {
         ctx.builder.add({
@@ -2372,4 +2792,156 @@ function diffPartitions(ctx: DiffContext, pair: TablePair): void {
       },
     ],
   });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Objects that use a routine the script drops or re-creates (PostgreSQL)
+
+/** A step that must run before a routine can be dropped, and why. */
+export interface RoutineBlocker {
+  readonly op: OpDraft;
+  readonly step: number;
+  readonly keys: readonly string[];
+  readonly reason: string;
+}
+
+/**
+ * PostgreSQL refuses to drop a routine that a check, an index or a column default uses. For a
+ * routine dropped or re-created by `blocker`, those objects are dropped before it: an operation
+ * that already changes or drops one just runs its drop first; an unchanged one gets a rebuild
+ * operation that drops it and creates it again from the source after the routine exists.
+ */
+export function rebuildRoutineDependents(ctx: DiffContext, blocker: RoutineBlocker): void {
+  const keys = new Set(blocker.keys.filter((k) => k.startsWith('fn:')));
+  if (keys.size === 0) return;
+  const uses = (text: string | undefined): boolean =>
+    text !== undefined && ctx.refs.resolve(text, 'postgres').some((k) => keys.has(k));
+  const first = (op: OpDraft): void => {
+    ctx.builder.order(op, 0, blocker.op, blocker.step);
+    blocker.op.requires.add(op.id);
+  };
+  for (const pair of ctx.state.tables) {
+    const source = pair.source;
+    const target = pair.target;
+    if (source === undefined || target === undefined) continue;
+    const existing = (objectKind: string, names: readonly string[]): OpDraft | undefined => {
+      for (const name of names) {
+        for (const action of ['alter', 'drop', 'rebuild']) {
+          const op = ctx.builder.get(`${objectKind}:${tableDisplay(ctx, pair, name)}:${action}`);
+          if (op !== undefined) return op;
+        }
+      }
+      return undefined;
+    };
+    const rebuild = (
+      objectKind: 'check' | 'index' | 'column',
+      name: string,
+      drop: string[],
+      create: string[],
+      provides: string[],
+    ): void => {
+      const display = tableDisplay(ctx, pair, name);
+      const op = ctx.builder.add({
+        id: `${objectKind}:${display}:rebuild`,
+        kind: 'alter',
+        objectKind,
+        name,
+        qualifiedName: display,
+        parent: tableDisplay(ctx, pair),
+        schema: pair.schema.name,
+        steps: [
+          step(PHASE.dropConstraint, drop, { removes: provides }),
+          step(PHASE.addConstraint, create, {
+            provides,
+            refs: [...keys, ...relKeys(pair).slice(-1)],
+          }),
+        ],
+        reason: `Rebuilt because ${blocker.reason}`,
+        warnings: [
+          { code: 'rebuild', message: `Dropped and re-created because ${blocker.reason}` },
+        ],
+        requires: new Set([blocker.op.id]),
+      });
+      first(op);
+    };
+    const table = (phase: number): string => tableStatementName(ctx, pair, phase);
+
+    for (const check of target.checks) {
+      if (!uses(check.expression)) continue;
+      const canon = json(canonicalCheck(check, ctx.tgt));
+      const match =
+        source.checks.find(
+          (c) =>
+            nameKey(c.name, ctx.options) === nameKey(check.name, ctx.options) &&
+            json(canonicalCheck(c, ctx.src)) === canon,
+        ) ?? source.checks.find((c) => json(canonicalCheck(c, ctx.src)) === canon);
+      const op = existing('check', match !== undefined ? [match.name, check.name] : [check.name]);
+      if (op !== undefined) {
+        if (op.steps[0]?.removes.length) first(op);
+        continue;
+      }
+      if (match === undefined) continue;
+      rebuild(
+        'check',
+        match.name,
+        [
+          `ALTER TABLE ${table(PHASE.dropConstraint)} DROP CONSTRAINT ${quoteIdent(check.name, 'postgres')}`,
+        ],
+        [`ALTER TABLE ${table(PHASE.addConstraint)} ADD ${renderCheck(match, 'postgres')}`],
+        [key.constraint(pair.schema.key, pair.after, match.name)],
+      );
+    }
+
+    for (const index of target.indexes) {
+      if (!uses(index.definition ?? indexExpressions(index).join(' '))) continue;
+      const match = source.indexes.find(
+        (i) => nameKey(i.name, ctx.options) === nameKey(index.name, ctx.options),
+      );
+      const op = existing('index', [index.name]);
+      if (op !== undefined) {
+        if (op.steps[0]?.removes.length) first(op);
+        continue;
+      }
+      if (match === undefined) continue;
+      const create = [renderPgCreateIndex(match, pair.after, pair.schema.name)];
+      if (match.comment !== undefined && match.comment !== '' && !ctx.options.ignoreComments) {
+        create.push(
+          renderPgComment(`INDEX ${qualified(ctx, pair.schema.name, match.name)}`, match.comment),
+        );
+      }
+      rebuild(
+        'index',
+        match.name,
+        [`DROP INDEX ${qualified(ctx, pair.schema.name, index.name)}`],
+        create,
+        [key.rel(pair.schema.key, match.name)],
+      );
+    }
+
+    for (const column of target.columns) {
+      if (column.generated !== undefined || !uses(column.default ?? undefined)) continue;
+      const match = source.columns.find(
+        (c) =>
+          nameKey(c.name, ctx.options) ===
+          nameKey(pair.columnRenames.get(column.name) ?? column.name, ctx.options),
+      );
+      if (match === undefined || match.default === null) continue;
+      const a = canonicalColumn(column, target, ctx.tgt, pair.schema.name);
+      const b = canonicalColumn(match, source, ctx.src, pair.schema.name);
+      // A changed default is replaced by the column's own operation before the routine drops.
+      if (a.default !== b.default) continue;
+      const col = quoteIdent(match.name, 'postgres');
+      rebuild(
+        'column',
+        match.name,
+        [
+          `ALTER TABLE ${table(PHASE.dropConstraint)} ALTER COLUMN ${quoteIdent(column.name, 'postgres')} DROP DEFAULT`,
+        ],
+        [
+          `ALTER TABLE ${table(PHASE.addConstraint)} ALTER COLUMN ${col} SET DEFAULT ${match.default}`,
+        ],
+        [],
+      );
+    }
+  }
 }

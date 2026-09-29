@@ -1,0 +1,21 @@
+CREATE TABLE d (
+  id int NOT NULL AUTO_INCREMENT,
+  s varchar(50) NOT NULL DEFAULT 'it''s a \\ test',
+  e enum('a','b''c','d') DEFAULT 'b''c',
+  st set('x','y') DEFAULT 'x,y',
+  b bit(3) DEFAULT b'101',
+  f float DEFAULT 1.5,
+  dt datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  ts timestamp NULL DEFAULT NULL,
+  u varchar(36) DEFAULT (uuid()),
+  n decimal(10,3) DEFAULT -0.500,
+  bin varbinary(4) DEFAULT 0x0A0B,
+  txt text DEFAULT ('abc'),
+  c varchar(20) COMMENT 'ëmoji and ''quote'' \\ back',
+  y year DEFAULT 2024,
+  dd date DEFAULT '2024-02-29',
+  expr int DEFAULT (1 + 2),
+  PRIMARY KEY (id),
+  KEY k_s (s(10)) COMMENT 'prefix ''idx''',
+  UNIQUE KEY uq (c, y)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='table ''comment'' ü';

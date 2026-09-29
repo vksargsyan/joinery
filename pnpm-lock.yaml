@@ -389,6 +389,15 @@ importers:
         specifier: workspace:*
         version: link:../sql-tools
     devDependencies:
+      '@joinery/driver-mysql':
+        specifier: workspace:*
+        version: link:../drivers/mysql
+      '@joinery/driver-postgres':
+        specifier: workspace:*
+        version: link:../drivers/postgres
+      '@joinery/driver-sql-base':
+        specifier: workspace:*
+        version: link:../drivers/sql-base
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.4

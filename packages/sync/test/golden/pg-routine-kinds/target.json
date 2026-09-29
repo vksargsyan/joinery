@@ -1,0 +1,103 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    },
+    {
+      "name": "util",
+      "tables": [],
+      "views": [],
+      "routines": [
+        {
+          "name": "add",
+          "kind": "function",
+          "signature": "integer, integer",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.add(a integer, b integer)\n RETURNS integer\n LANGUAGE sql\nAS $function$ select a + b + 0 $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "gone",
+          "kind": "function",
+          "signature": "text",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.gone(x text)\n RETURNS text\n LANGUAGE sql\nAS $function$ select x $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "secret",
+          "kind": "function",
+          "signature": "",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.secret()\n RETURNS text\n LANGUAGE sql\nAS $function$ select 'y'::text $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "owner": "postgres"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

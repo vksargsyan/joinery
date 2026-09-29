@@ -29,8 +29,8 @@ function makeChunk(rows = 1000, columns = 50): RowsChunk {
 }
 
 /** Median milliseconds per call of `fn`, after a warm-up. */
-function median(fn: () => void, runs = 30): number {
-  for (let i = 0; i < 5; i++) fn();
+function median(fn: () => void, runs = 9): number {
+  for (let i = 0; i < 2; i++) fn();
   const times: number[] = [];
   for (let i = 0; i < runs; i++) {
     const start = performance.now();
@@ -137,5 +137,6 @@ describe('rows chunk validation', () => {
     // Generous bounds so a loaded CI machine does not flake; typical figures are in results.ts.
     expect(fast).toBeLessThan(15);
     expect(fast).toBeLessThan(slow);
-  });
+    // A benchmark: under a fully parallel workspace test run it can take seconds.
+  }, 60_000);
 });
