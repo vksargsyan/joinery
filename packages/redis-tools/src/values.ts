@@ -100,7 +100,11 @@ function fromJsonValue(value: unknown): unknown {
       return new ExtData(record['$ext'], hexToBytes(record['data']));
     }
     const out: Record<string, unknown> = {};
-    for (const k of keys) out[k] = fromJsonValue(record[k]);
+    for (const k of keys) {
+      // An assignment would set the prototype and drop the key; the decoder refuses it anyway.
+      if (k === '__proto__') throw new Error('A MessagePack map key cannot be "__proto__"');
+      out[k] = fromJsonValue(record[k]);
+    }
     return out;
   }
   return value;

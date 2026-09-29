@@ -53,12 +53,20 @@ describe('MessagePack', () => {
 
   it('round-trips JSON-compatible values', () => {
     fc.assert(
-      fc.property(fc.jsonValue({ maxDepth: 3 }), (value) => {
+      fc.property(fc.jsonValue({ maxDepth: 3 }).filter(withoutProtoKeys), (value) => {
         const normalised: unknown = JSON.parse(JSON.stringify(value));
         expect(decodeMessagePack(encodeMessagePack(normalised))).toEqual(normalised);
       }),
       { numRuns: 300 },
     );
+  });
+
+  it('refuses a "__proto__" key both ways instead of dropping it', () => {
+    expect(() => encodeMessagePack(JSON.parse('{"a":{"__proto__":[]}}'))).toThrow('__proto__');
+    // 81 a9 "__proto__" 90: a one-entry map whose key is "__proto__".
+    const bytes = Uint8Array.of(0x81, 0xa9, ...enc('__proto__'), 0x90);
+    expect(() => decodeMessagePack(bytes)).toThrow();
+    expect(looksLikeMessagePack(bytes)).toBe(false);
   });
 
   it('claims only complete maps and arrays', () => {
@@ -134,3 +142,14 @@ describe('geo', () => {
     expect(() => encodeGeoScore(0, 89)).toThrow(RangeError);
   });
 });
+
+/** True when no object in the value has a "__proto__" key, which MessagePack maps refuse. */
+function withoutProtoKeys(value: unknown): boolean {
+  if (Array.isArray(value)) return value.every(withoutProtoKeys);
+  if (value !== null && typeof value === 'object') {
+    return Object.entries(value).every(
+      ([key, item]) => key !== '__proto__' && withoutProtoKeys(item),
+    );
+  }
+  return true;
+}
