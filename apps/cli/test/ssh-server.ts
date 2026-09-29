@@ -21,11 +21,18 @@ export interface TestSshServer {
   close(): Promise<void>;
 }
 
-/** A fresh Ed25519 host key (OpenSSH text), skipping the rare keys ssh2 encodes wrongly. */
-export function ed25519Key(): string {
+/**
+ * A fresh Ed25519 key (OpenSSH text), encrypted when a passphrase is given. About one key in 256
+ * has a public key starting with a zero byte, which ssh2's generator encodes wrongly; those are
+ * skipped.
+ */
+export function ed25519Key(passphrase?: string): string {
   for (;;) {
-    const pair = ssh2.utils.generateKeyPairSync('ed25519');
-    if (!(ssh2.utils.parseKey(pair.private) instanceof Error)) return pair.private;
+    const pair = ssh2.utils.generateKeyPairSync(
+      'ed25519',
+      passphrase ? { passphrase, cipher: 'aes256-ctr', rounds: 2 } : {},
+    );
+    if (!(ssh2.utils.parseKey(pair.private, passphrase) instanceof Error)) return pair.private;
   }
 }
 

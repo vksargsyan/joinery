@@ -4,7 +4,6 @@ import { inspect } from 'node:util';
 
 import { connectionProfileSchema } from '@joinery/core';
 import { openStore } from '@joinery/storage';
-import ssh2 from 'ssh2';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { proxyUrl, sshHop } from '../src/options';
@@ -177,14 +176,7 @@ describe('URI targets with --ssh and --proxy', () => {
     expect(withKey.profile.ssh?.hops[1]?.auth).toEqual({ method: 'privateKey', keyPath: plain });
 
     const locked = join(dir, 'id_locked');
-    writeFileSync(
-      locked,
-      ssh2.utils.generateKeyPairSync('ed25519', {
-        passphrase: 'k3y',
-        cipher: 'aes256-ctr',
-        rounds: 2,
-      }).private,
-    );
+    writeFileSync(locked, ed25519Key('k3y'));
     const env = { JOINERY_SSH_KEY_PASSPHRASE: 'k3y' };
     const unlocked = resolvedProfile(
       await resolveTarget(URI, { tunnel: { ssh: hops, sshKey: locked } }, deps(store, env)),
