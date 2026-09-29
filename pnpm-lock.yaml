@@ -74,6 +74,15 @@ importers:
 
   apps/cli:
     dependencies:
+      bson:
+        specifier: ^7.3.3
+        version: 7.3.3
+      ioredis:
+        specifier: ^6.0.0
+        version: 6.0.0
+      mongodb:
+        specifier: ^7.7.0
+        version: 7.7.0(socks@2.8.10)
       mysql2:
         specifier: ^3.24.4
         version: 3.24.4(@types/node@22.20.4)
@@ -93,12 +102,24 @@ importers:
       '@joinery/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@joinery/driver-mongodb':
+        specifier: workspace:*
+        version: link:../../packages/drivers/mongodb
       '@joinery/driver-mysql':
         specifier: workspace:*
         version: link:../../packages/drivers/mysql
       '@joinery/driver-postgres':
         specifier: workspace:*
         version: link:../../packages/drivers/postgres
+      '@joinery/driver-redis':
+        specifier: workspace:*
+        version: link:../../packages/drivers/redis
+      '@joinery/mongo-tools':
+        specifier: workspace:*
+        version: link:../../packages/mongo-tools
+      '@joinery/redis-tools':
+        specifier: workspace:*
+        version: link:../../packages/redis-tools
       '@joinery/sql-tools':
         specifier: workspace:*
         version: link:../../packages/sql-tools
@@ -144,18 +165,30 @@ importers:
       '@joinery/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@joinery/driver-mongodb':
+        specifier: workspace:*
+        version: link:../../packages/drivers/mongodb
       '@joinery/driver-mysql':
         specifier: workspace:*
         version: link:../../packages/drivers/mysql
       '@joinery/driver-postgres':
         specifier: workspace:*
         version: link:../../packages/drivers/postgres
+      '@joinery/driver-redis':
+        specifier: workspace:*
+        version: link:../../packages/drivers/redis
       '@joinery/driver-sql-base':
         specifier: workspace:*
         version: link:../../packages/drivers/sql-base
       '@joinery/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
+      '@joinery/mongo-tools':
+        specifier: workspace:*
+        version: link:../../packages/mongo-tools
+      '@joinery/redis-tools':
+        specifier: workspace:*
+        version: link:../../packages/redis-tools
       '@joinery/sql-tools':
         specifier: workspace:*
         version: link:../../packages/sql-tools
@@ -414,6 +447,15 @@ importers:
       '@joinery/core':
         specifier: workspace:*
         version: link:../core
+      '@joinery/driver-redis':
+        specifier: workspace:*
+        version: link:../drivers/redis
+      '@joinery/mongo-tools':
+        specifier: workspace:*
+        version: link:../mongo-tools
+      '@joinery/redis-tools':
+        specifier: workspace:*
+        version: link:../redis-tools
       zod:
         specifier: 'catalog:'
         version: 4.6.5

@@ -1,9 +1,16 @@
 import { EventEmitter } from 'node:events';
 import { MessageChannel, type MessagePort } from 'node:worker_threads';
 
+import { JoineryError } from '@joinery/core';
 import { afterEach } from 'vitest';
 
-import { fromNodePort, type ElectronMessagePortLike, type PortLike } from '../src';
+import {
+  fromNodePort,
+  type ContractShape,
+  type ElectronMessagePortLike,
+  type HandlersOf,
+  type PortLike,
+} from '../src';
 
 const open: MessagePort[] = [];
 
@@ -64,4 +71,32 @@ export function deferred<T = void>(): { promise: Promise<T>; resolve: (value: T)
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => (resolve = r));
   return { promise, resolve };
+}
+
+/**
+ * Handlers for every method of a contract namespace that fail with NOT_SUPPORTED, for tests that
+ * serve a whole contract but exercise only part of it.
+ */
+export function unusedHandlers<S extends ContractShape>(shape: S): HandlersOf<S> {
+  const refuse = (path: string): never => {
+    throw new JoineryError({ code: 'NOT_SUPPORTED', message: `${path} is not used here` });
+  };
+  const build = (node: ContractShape, prefix: string): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(node).map(([name, def]) => {
+        const path = prefix === '' ? name : `${prefix}.${name}`;
+        if ('item' in def && def.item !== undefined) {
+          return [
+            name,
+            // eslint-disable-next-line require-yield
+            async function* () {
+              refuse(path);
+            },
+          ];
+        }
+        if ('output' in def && def.output !== undefined) return [name, () => refuse(path)];
+        return [name, build(def as ContractShape, path)];
+      }),
+    );
+  return build(shape, '') as HandlersOf<S>;
 }

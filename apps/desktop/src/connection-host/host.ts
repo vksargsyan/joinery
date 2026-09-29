@@ -15,6 +15,13 @@ import {
 import { applyChanges } from '@joinery/table-data';
 import type { TransportSession } from '@joinery/tunnel';
 
+import { redisWritePolicy } from '../shared/redis-safety';
+import { executeRedisGuarded, isRedisSession, redisHandlers } from './redis';
+
+import type { HostRequest } from '../shared/host-protocol';
+import { mongoHandlers } from './mongo';
+import { runHostRequest, type HostRequestOptions } from './mongo-files';
+
 /** Opens a driver session, through the profile's SSH tunnel or proxy when it has one. */
 export type SessionOpener = (resolved: ResolvedProfile) => Promise<TransportSession>;
 
@@ -109,6 +116,11 @@ export class ConnectionHost {
     return this.#sessions.size;
   }
 
+  /** Runs file work main hands over (GridFS uploads and downloads by path) on the metadata session. */
+  request(request: HostRequest, options: HostRequestOptions): Promise<unknown> {
+    return runHostRequest(this.#metaSession(), request, options);
+  }
+
   async #closeOwnedBy(owner: symbol): Promise<void> {
     const owned = [...this.#sessions].filter(([, entry]) => entry.owner === owner);
     for (const [id] of owned) this.#sessions.delete(id);
@@ -129,6 +141,28 @@ export class ConnectionHost {
       this.#onTransportLost?.(error);
     });
     return { session: opened.session, close: () => opened.close() };
+  }
+
+  /**
+   * Replaces a session's connection with a new one under the same id, in `database` (a Redis
+   * CLI command is cancelled by dropping its connection). The session is forgotten when the new
+   * connection cannot open, so the next call reopens one.
+   */
+  async #resetSession(sessionId: string, database: number): Promise<void> {
+    const entry = this.#sessions.get(sessionId);
+    if (!entry) return;
+    await entry.close().catch(() => undefined);
+    try {
+      const opened = await this.#connect(this.#profileFor(String(database)));
+      if (this.#sessions.get(sessionId) === entry) {
+        this.#sessions.set(sessionId, { ...opened, owner: entry.owner });
+      } else {
+        await opened.close();
+      }
+    } catch (error) {
+      if (this.#sessions.get(sessionId) === entry) this.#sessions.delete(sessionId);
+      throw error;
+    }
   }
 
   #session(sessionId: string): Session {
@@ -177,13 +211,18 @@ export class ConnectionHost {
         this.#sessions.delete(sessionId);
         await entry.close();
       },
-      execute: ({ sessionId, text, executionId, params, pageSize }, { signal }) =>
-        this.#session(sessionId).execute(text, {
+      execute: ({ sessionId, text, executionId, params, pageSize }, { signal }) => {
+        const session = this.#session(sessionId);
+        const options = {
           executionId,
           signal,
           ...(params === undefined ? {} : { params }),
           ...(pageSize === undefined ? {} : { pageSize }),
-        }),
+        };
+        return isRedisSession(session)
+          ? executeRedisGuarded(session, text, options, redisWritePolicy(this.#resolved.profile))
+          : session.execute(text, options);
+      },
       cancel: ({ sessionId, executionId }) => this.#session(sessionId).cancel(executionId),
       introspect: ({ sessionId, scope }) => this.#session(sessionId).introspect(scope),
       browse: ({ sessionId, path }) => this.#session(sessionId).browse(path),
@@ -229,6 +268,15 @@ export class ConnectionHost {
           throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
         return this.#info;
       },
+      redis: redisHandlers({
+        policy: redisWritePolicy(this.#resolved.profile),
+        session: (sessionId) => this.#session(sessionId),
+        resetSession: (sessionId, database) => this.#resetSession(sessionId, database),
+      }),
+      mongo: mongoHandlers({
+        session: (sessionId) => this.#session(sessionId),
+        profile: this.#resolved.profile,
+      }),
     };
   }
 }

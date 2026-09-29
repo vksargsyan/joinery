@@ -1,11 +1,11 @@
-import { connectionOptionsSchema, type ConnectionOptions } from '@joinery/core';
+import { connectionOptionsSchema } from '@joinery/core';
 
 /**
  * Small readers of connection URI text for the connection dialog. Main owns URI parsing (the
  * profile comes from @joinery/storage's parser over IPC); these only answer what the page needs
- * on its own side: the pasted password, which never travels back from main, how many hosts a URI
- * names, and the MongoDB options the profile keeps outside the URI. They read a URI the way that
- * parser does, so both sides agree on where the user info and the hosts are.
+ * on its own side: the pasted password, which never travels back from main, and how many hosts a
+ * URI names. They read a URI the way that parser does, so both sides agree on where the user info
+ * and the hosts are.
  */
 
 /** Read preferences a MongoDB profile can hold, in the driver's spelling. */
@@ -103,53 +103,4 @@ export function passwordFromUri(uri: string): string | undefined {
     }
   }
   return param !== undefined && param !== '' ? param : inUserinfo;
-}
-
-/** MongoDB options a profile holds in its own fields rather than in a URI. */
-export type MongoUriOptions = Pick<
-  ConnectionOptions,
-  'authSource' | 'readPreference' | 'directConnection'
->;
-
-/**
- * Takes `authSource`, `readPreference` and `directConnection` out of a MongoDB URI's query
- * string. The profile has fields for them, so a URI whose only unusual parameters are these can
- * still become a host, host list or SRV endpoint instead of a whole-URI endpoint. Undefined when
- * the URI has none of them (or only values the profile cannot hold, which stay in the URI).
- */
-export function liftMongoUriOptions(
-  uri: string,
-): { readonly uri: string; readonly options: MongoUriOptions } | undefined {
-  const text = uri.trim();
-  const hash = text.indexOf('#');
-  const base = hash >= 0 ? text.slice(0, hash) : text;
-  const question = base.indexOf('?');
-  if (question < 0) return undefined;
-  const kept: string[] = [];
-  const options: { -readonly [K in keyof MongoUriOptions]: MongoUriOptions[K] } = {};
-  for (const piece of base.slice(question + 1).split('&')) {
-    if (piece === '') continue;
-    const equals = piece.indexOf('=');
-    const name = safeDecode(equals >= 0 ? piece.slice(0, equals) : piece).toLowerCase();
-    const value = safeDecode(equals >= 0 ? piece.slice(equals + 1) : '');
-    if (name === 'authsource' && value !== '') {
-      options.authSource = value;
-      continue;
-    }
-    if (name === 'readpreference') {
-      const mode = READ_PREFERENCES.find((known) => known.toLowerCase() === value.toLowerCase());
-      if (mode) {
-        options.readPreference = mode;
-        continue;
-      }
-    }
-    if (name === 'directconnection' && /^(true|false)$/i.test(value)) {
-      options.directConnection = value.toLowerCase() === 'true';
-      continue;
-    }
-    kept.push(piece);
-  }
-  if (Object.keys(options).length === 0) return undefined;
-  const head = base.slice(0, question);
-  return { uri: kept.length > 0 ? `${head}?${kept.join('&')}` : head, options };
 }

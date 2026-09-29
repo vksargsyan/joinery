@@ -2,6 +2,9 @@ export {
   checkConnectionThroughTransport,
   connectThroughTransport,
   runSshStep,
+  withSshStepCheck,
+  type SshStepCheck,
+  type SshStepCheckAdapter,
   type SshStepOutcome,
   type TransportSession,
 } from './check';

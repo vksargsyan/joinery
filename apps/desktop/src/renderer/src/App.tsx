@@ -10,6 +10,7 @@ import { HostKeyPrompts } from './components/HostKeyPrompt';
 import { JobsPanel } from './components/jobs/JobsPanel';
 import { TransferDialogs } from './components/jobs/TransferDialogs';
 import { Prompts } from './components/Prompts';
+import { openRedisTool } from './components/redis/RedisTree';
 import { Sidebar } from './components/Sidebar';
 import { useTheme } from './components/theme';
 import { Button, Icon } from './components/ui';
@@ -67,7 +68,8 @@ export function App() {
   const newQuery = (): void => {
     const profileId = activeProfileId ?? readyProfiles[0];
     const profile = profiles.data?.find((p) => p.id === profileId);
-    if (profile) openQueryTab({ profileId: profile.id, title: `${profile.name} query` });
+    if (profile?.engine === 'redis') openRedisTool(profile, 'cli');
+    else if (profile) openQueryTab({ profileId: profile.id, title: `${profile.name} query` });
   };
 
   return (

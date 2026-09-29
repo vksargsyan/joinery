@@ -67,10 +67,44 @@ export async function runSshStep(
 }
 
 /**
+ * A driver's own Test Connection that opens its `ssh` step through the hook it is given: the
+ * MongoDB and Redis drivers' `checkConnection(resolved, { runSshStep })`. DNS and TCP check the
+ * first server on the way, the hook opens the tunnel or proxy, and the later steps run through
+ * it. This package never imports those drivers (they depend on it); the app attaches the check
+ * to its adapter with `withSshStepCheck`.
+ */
+export type SshStepCheck = (
+  resolved: ResolvedProfile,
+  deps: { readonly runSshStep: (resolved: ResolvedProfile) => Promise<SshStepOutcome> },
+) => AsyncIterable<ConnectionCheckResult>;
+
+/** An adapter that can run its own Test Connection through a tunnel (see SshStepCheck). */
+export interface SshStepCheckAdapter extends DriverAdapter {
+  readonly checkWithSshStep: SshStepCheck;
+}
+
+/**
+ * Attaches `check` to `adapter` (a fresh instance: the adapter is changed in place), so
+ * `checkConnectionThroughTransport` can test its profiles through an SSH tunnel or proxy.
+ */
+export function withSshStepCheck<A extends DriverAdapter>(
+  adapter: A,
+  check: SshStepCheck,
+): A & SshStepCheckAdapter {
+  return Object.assign(adapter, { checkWithSshStep: check });
+}
+
+function sshStepCheckOf(adapter: DriverAdapter): SshStepCheck | undefined {
+  const check: unknown = (adapter as Partial<SshStepCheckAdapter>).checkWithSshStep;
+  return typeof check === 'function' ? (check as SshStepCheck) : undefined;
+}
+
+/**
  * Test Connection for any profile, tunnel or not: what the connection host and joinery-cli call
  * instead of `adapter.checkConnection`. Without a tunnel or proxy it is the adapter's own check;
- * with one, a SQL engine runs the shared stepwise check with the SSH step opened through
- * `manager` and the later steps through the tunnel.
+ * with one, an adapter given an SshStepCheck (MongoDB, Redis) runs it with the SSH step opened
+ * through `manager`, and a SQL engine runs the shared stepwise check the same way; the later
+ * steps go through the tunnel.
  */
 export async function* checkConnectionThroughTransport(
   adapter: DriverAdapter,
@@ -87,6 +121,13 @@ export async function* checkConnectionThroughTransport(
       });
     }
     yield* adapter.checkConnection(resolved);
+    return;
+  }
+  const engineCheck = sshStepCheckOf(adapter);
+  if (engineCheck) {
+    yield* engineCheck(resolved, {
+      runSshStep: (profile) => runSshStep(profile, manager, options),
+    });
     return;
   }
   if (!isSqlEngine(engine)) {

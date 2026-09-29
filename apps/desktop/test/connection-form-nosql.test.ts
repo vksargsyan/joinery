@@ -20,11 +20,7 @@ import {
   type ConnectionFormValues,
   type ParseUri,
 } from '../src/renderer/src/state/connection-form';
-import {
-  liftMongoUriOptions,
-  passwordFromUri,
-  uriHosts,
-} from '../src/renderer/src/state/connection-uri';
+import { passwordFromUri, uriHosts } from '../src/renderer/src/state/connection-uri';
 import { profileInput } from './helpers';
 
 /** The connection dialog for MongoDB and Redis (spec §4, §9, §10). */
@@ -800,7 +796,7 @@ describe('Fill from URI', () => {
   });
 
   it('reads the fields it keeps only once every parse is back', async () => {
-    // The user types a name while main parses (twice here: the MongoDB options are lifted).
+    // The user types a name while main parses.
     let typed = '';
     const typing: ParseUri = async (input) => {
       const result = await parse(input);
@@ -813,8 +809,8 @@ describe('Fill from URI', () => {
       current: () => ({ ...defaultFormValues(), name: typed }),
       canSave: true,
     });
-    expect(typed).toBe('xx');
-    expect(values).toMatchObject({ name: 'xx', endpointKind: 'hosts', authSource: 'admin' });
+    expect(typed).toBe('x');
+    expect(values).toMatchObject({ name: 'x', endpointKind: 'hosts', authSource: 'admin' });
   });
 
   it('reports what the profile could not hold, never a value', async () => {
@@ -840,22 +836,5 @@ describe('URI text helpers', () => {
     expect(uriHosts('redis://cache')).toEqual(['cache']);
     expect(uriHosts('redis://')).toEqual([]);
     expect(uriHosts('not a uri')).toEqual([]);
-  });
-
-  it('lifts only the MongoDB options a profile holds', () => {
-    expect(
-      liftMongoUriOptions(
-        'mongodb://h/db?authSource=admin&readpreference=SECONDARY&appName=x&directConnection=true#f',
-      ),
-    ).toEqual({
-      uri: 'mongodb://h/db?appName=x',
-      options: { authSource: 'admin', readPreference: 'secondary', directConnection: true },
-    });
-    expect(liftMongoUriOptions('mongodb://h/?authSource=%24external')).toEqual({
-      uri: 'mongodb://h/',
-      options: { authSource: '$external' },
-    });
-    expect(liftMongoUriOptions('mongodb://h/?readPreference=fastest&appName=x')).toBeUndefined();
-    expect(liftMongoUriOptions('mongodb://h/db')).toBeUndefined();
   });
 });

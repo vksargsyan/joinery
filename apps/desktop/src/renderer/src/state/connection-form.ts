@@ -20,13 +20,7 @@ import {
 import { uriCarriesSecret, type ParsedConnectionUriResult } from '@joinery/ipc';
 import { z } from 'zod';
 
-import {
-  READ_PREFERENCES,
-  liftMongoUriOptions,
-  passwordFromUri,
-  uriHosts,
-  uriScheme,
-} from './connection-uri';
+import { READ_PREFERENCES, passwordFromUri, uriHosts, uriScheme } from './connection-uri';
 
 export { passwordFromUri, READ_PREFERENCES, type ReadPreference } from './connection-uri';
 
@@ -1035,11 +1029,6 @@ export interface FillFromUriOptions {
  * The form after "Fill from URI". Main parses the URI into a draft profile and says whether it
  * held a password, which is then taken from the pasted text here (main never sends one back).
  * The name (unless empty) and the presentation fields stay as the user set them.
- *
- * A MongoDB URI whose options the structured endpoints cannot express comes back as a whole-URI
- * endpoint. When the only such options are authSource, readPreference and directConnection,
- * which the profile holds in its own fields, they are moved there and the rest is parsed again,
- * so the form shows the host, host list or SRV record instead.
  */
 export async function formFromUri(
   text: string,
@@ -1048,25 +1037,8 @@ export async function formFromUri(
   const { parse, canSave } = options;
   const uri = text.trim();
   const engine = options.engine === 'mariadb' && /^mysql:/i.test(uri) ? 'mariadb' : undefined;
-  let parsed = await parse({ uri, ...(engine ? { engine } : {}) });
-  let profile = parsed.profile;
-  const lifted =
-    profile.engine === 'mongodb' && profile.endpoint.kind === 'uri'
-      ? liftMongoUriOptions(uri)
-      : undefined;
-  if (lifted) {
-    const retry = await parse({ uri: lifted.uri }).catch(() => undefined);
-    const kind = retry?.profile.endpoint.kind;
-    // directConnection only applies to a single host; elsewhere it stays in the URI.
-    if (
-      retry &&
-      kind !== 'uri' &&
-      (lifted.options.directConnection === undefined || kind === 'host')
-    ) {
-      parsed = retry;
-      profile = { ...retry.profile, options: { ...retry.profile.options, ...lifted.options } };
-    }
-  }
+  const parsed = await parse({ uri, ...(engine ? { engine } : {}) });
+  const profile = parsed.profile;
   // Read the fields to keep only now: the user may have typed a name while main parsed.
   const current = options.current();
   const next = profileToForm(profile);

@@ -27,6 +27,7 @@ import type { JobManager } from './jobs';
 import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
 import { resolveProfile } from './secrets';
 import { metadataHandlers, snippetHandlers } from './metadata';
+import { mongoMainHandlers } from './mongo-api';
 import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
 
@@ -282,6 +283,7 @@ export function createMainHandlers<P>(
     metadata: metadataHandlers(store),
     snippets: snippetHandlers(store),
     ...jobHandlers(services, files),
+    mongo: mongoMainHandlers(services, files),
   };
 }
 

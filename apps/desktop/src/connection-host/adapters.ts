@@ -15,6 +15,23 @@ export async function loadAdapter(engine: EngineId): Promise<DriverAdapter> {
       const { createMysqlAdapter } = await import('@joinery/driver-mysql');
       return createMysqlAdapter({ engine });
     }
+    case 'mongodb': {
+      const [{ checkConnection, createMongoAdapter }, { withSshStepCheck }] = await Promise.all([
+        import('@joinery/driver-mongodb'),
+        import('@joinery/tunnel'),
+      ]);
+      return withSshStepCheck(createMongoAdapter(), (resolved, deps) =>
+        checkConnection(resolved, deps),
+      );
+    }
+    case 'redis': {
+      const [{ createRedisAdapter }, { withSshStepCheck }] = await Promise.all([
+        import('@joinery/driver-redis'),
+        import('@joinery/tunnel'),
+      ]);
+      const adapter = createRedisAdapter();
+      return withSshStepCheck(adapter, (resolved, deps) => adapter.checkConnection(resolved, deps));
+    }
     default:
       throw new JoineryError({
         code: 'NOT_SUPPORTED',

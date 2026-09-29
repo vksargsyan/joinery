@@ -30,7 +30,9 @@ import {
   formatError,
   type ExitCode,
 } from '../errors';
+import { engineOf, mongoQueryCommand } from '../mongo';
 import { createResultWriter, type OutputFormat, type ResultWriter } from '../output/formats';
+import { isRedisTarget, redisQueryCommand } from '../redis';
 import { formatDuration, openTarget, plural, type Runtime } from '../runtime';
 import { confirmStatement, type ConfirmState } from '../safety';
 import type { TargetOverrides } from '../target';
@@ -84,6 +86,8 @@ export async function queryCommand(
   spec: string,
   options: QueryOptions,
 ): Promise<ExitCode> {
+  if (engineOf(runtime, spec) === 'mongodb') return mongoQueryCommand(runtime, spec, options);
+  if (isRedisTarget(runtime, spec)) return redisQueryCommand(runtime, spec, options);
   const input = scriptInput(runtime, options);
   const { reporter, interrupts, ctx } = runtime;
   const connection = await openTarget(runtime, spec, options);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { defineContract } from '../contract';
+import { mongoMainContractShape } from './mongo';
 import {
   appInfoSchema,
   appSettingsPatchSchema,
@@ -257,6 +258,8 @@ export const mainContract = defineContract({
     /** The snippet library (spec §6), ordered by name; with `engine`, those that apply to it. */
     list: { input: snippetListInputSchema, output: z.array(snippetSchema) },
   },
+  /** MongoDB GridFS files moved by path through the window's file grants (spec §9). */
+  mongo: mongoMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

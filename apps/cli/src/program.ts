@@ -366,7 +366,12 @@ Examples:
   joinery query "postgres://app@localhost/app" -f migrate.sql --continue --error-log errors.log
   joinery query dev -f dump.sql --yes --quiet
   cat report.sql | joinery query dev --format csv > report.csv
-  joinery query "mysql://app@db.internal/app" --ssh ops@jump:22 --ssh ops@bastion --ssh-key ~/.ssh/id_ed25519 -e "select 1"`,
+  joinery query "mysql://app@db.internal/app" --ssh ops@jump:22 --ssh ops@bastion --ssh-key ~/.ssh/id_ed25519 -e "select 1"
+
+Redis targets (redis://, rediss:// or a Redis profile) run redis-cli command lines, one per
+line, and print redis-cli's output (--format json or jsonl: the replies as JSON); DEL, FLUSHDB
+and other destructive commands ask for confirmation (or need --yes):
+  joinery query "redis://localhost:6379/0" -e 'SET greeting "hello world"'`,
     )
     .action((target: string, options: QueryCliOptions) => {
       schedule((runtime) => queryCommand(runtime, target, queryOptions(options)));

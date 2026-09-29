@@ -2,12 +2,13 @@ import {
   JoineryError,
   fromErrorData,
   newId,
+  type ConnectionProfile,
   type ErrorData,
   type ResolvedProfile,
 } from '@joinery/core';
 import type { ConnectionEvent, ConnectionState, ServerInfo } from '@joinery/ipc';
 
-import { hostToMainSchema, type HostToMain } from '../shared/host-protocol';
+import { hostToMainSchema, type HostRequest, type HostToMain } from '../shared/host-protocol';
 import type { HostProcess, HostProcessFactory } from './host-process';
 import { answerHostKeyRequest, isPermanentFailure, type HostKeyVerification } from './host-keys';
 
@@ -53,6 +54,15 @@ interface Waiter {
   reject(error: JoineryError): void;
 }
 
+/** A HostRequest waiting for the host's `response`. */
+interface PendingRequest {
+  readonly connectionId: string;
+  readonly process: unknown;
+  resolve(value: unknown): void;
+  reject(error: JoineryError): void;
+  progress?(progress: { readonly bytes: number; readonly total?: number | undefined }): void;
+}
+
 interface Connection<P> {
   readonly connectionId: string;
   readonly profileId: string;
@@ -83,6 +93,7 @@ export class ConnectionSupervisor<P> {
   readonly #connections = new Map<string, Connection<P>>();
   readonly #listeners = new Set<(event: ConnectionEvent) => void>();
   readonly #starting = new Map<string, Promise<OpenedConnection>>();
+  readonly #requests = new Map<string, PendingRequest>();
 
   constructor(options: SupervisorOptions<P>) {
     this.#spawn = options.spawn;
@@ -170,6 +181,81 @@ export class ConnectionSupervisor<P> {
       });
     }
     connection.process.send({ type: 'attach' }, [port]);
+  }
+
+  /** The profile a connection's host runs with (its write rules), if the connection is live. */
+  profileOf(connectionId: string): ConnectionProfile | undefined {
+    return this.#connections.get(connectionId)?.resolved.profile;
+  }
+
+  /**
+   * Hands a connection's host work that does not go through the renderer's port (GridFS files
+   * moved by path) and resolves with its result. Aborting `signal` cancels it on the host; a host
+   * that exits or restarts meanwhile fails it with CONNECTION_FAILED.
+   */
+  request(
+    connectionId: string,
+    request: HostRequest,
+    options: {
+      readonly signal?: AbortSignal;
+      readonly onProgress?: PendingRequest['progress'];
+    } = {},
+  ): Promise<unknown> {
+    const connection = this.#connections.get(connectionId);
+    const process = connection?.process;
+    if (!connection || connection.state !== 'ready' || !process) {
+      return Promise.reject(
+        new JoineryError({
+          code: 'CONNECTION_FAILED',
+          message: 'The connection is not ready',
+          hint: 'Reconnect and try again.',
+        }),
+      );
+    }
+    return new Promise((resolve, reject) => {
+      const requestId = newId();
+      const { signal } = options;
+      const onAbort = (): void => {
+        try {
+          process.send({ type: 'cancel-request', requestId });
+        } catch {
+          // Gone already: the exit fails the request.
+        }
+      };
+      const settle = (): void => {
+        this.#requests.delete(requestId);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      this.#requests.set(requestId, {
+        connectionId,
+        process,
+        resolve: (value) => {
+          settle();
+          resolve(value);
+        },
+        reject: (error) => {
+          settle();
+          reject(error);
+        },
+        ...(options.onProgress ? { progress: options.onProgress } : {}),
+      });
+      signal?.addEventListener('abort', onAbort, { once: true });
+      try {
+        process.send({ type: 'request', requestId, request });
+      } catch (error) {
+        this.#requests.get(requestId)?.reject(asError(error, 'The connection host is gone'));
+        return;
+      }
+      if (signal?.aborted) onAbort();
+    });
+  }
+
+  /** Fails the requests a host process was running (it exited or was replaced). */
+  #failRequests(process: unknown, message: string): void {
+    for (const pending of [...this.#requests.values()]) {
+      if (pending.process !== process) continue;
+      pending.reject(new JoineryError({ code: 'CONNECTION_FAILED', message }));
+    }
   }
 
   /** Shuts the host down for good. Unknown ids are ignored. */
@@ -310,10 +396,19 @@ export class ConnectionSupervisor<P> {
       this.#startFailed(connection, fromErrorData(message.error));
     } else if (message.type === 'host-key') {
       void this.#answerHostKey(connection, process, message);
+    } else if (message.type === 'request-progress') {
+      const pending = this.#requests.get(message.requestId);
+      if (pending?.process === process) pending.progress?.(message.progress);
+    } else if (message.type === 'response') {
+      const pending = this.#requests.get(message.requestId);
+      if (pending?.process !== process) return;
+      if (message.error) pending.reject(fromErrorData(message.error));
+      else pending.resolve(message.result);
     }
   }
 
   #onExit(connection: Connection<P>, process: HostProcess<P>, code: number | null): void {
+    this.#failRequests(process, 'The connection host stopped before the transfer finished');
     if (connection.process !== process) return;
     connection.process = undefined;
     const reason = new JoineryError({

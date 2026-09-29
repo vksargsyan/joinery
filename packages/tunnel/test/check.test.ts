@@ -15,6 +15,8 @@ import {
   connectThroughTransport,
   knownHostsVerifier,
   runSshStep,
+  withSshStepCheck,
+  type SshStepCheck,
 } from '../src';
 import { echo, hop, resolvedWith, until } from './helpers/profiles';
 import {
@@ -206,6 +208,65 @@ describe('checkConnectionThroughTransport', () => {
     await expect(
       collect(checkConnectionThroughTransport(echoAdapter(), redis, manager)),
     ).rejects.toMatchObject({ code: 'NOT_SUPPORTED' });
+  });
+});
+
+describe("an engine's own check through a tunnel", () => {
+  /** Stands in for the MongoDB and Redis drivers' `checkConnection(resolved, { runSshStep })`. */
+  const ownCheck: SshStepCheck = async function* (resolved, { runSshStep: sshStep }) {
+    yield { step: 'dns', status: 'skipped', durationMs: 0 };
+    const outcome = await sshStep(resolved);
+    yield outcome.result;
+    if (!outcome.transport) return;
+    try {
+      const reply = await echo(outcome.transport.endpointOverride, 'hello');
+      yield { step: 'auth', status: reply === 'hello' ? 'ok' : 'failed', durationMs: 0 };
+    } finally {
+      await outcome.transport.close();
+    }
+  };
+
+  function hooked(): DriverAdapter {
+    return withSshStepCheck({ ...echoAdapter(), engine: 'mongodb' }, ownCheck);
+  }
+
+  it('runs the SSH step through the manager, the later steps through the tunnel', async () => {
+    const mongo = resolvedWith(
+      {
+        engine: 'mongodb',
+        endpoint: { kind: 'host', host: '127.0.0.1', port: target.port },
+        ssh: { hops: [hop(server.port, { method: 'password', password: { id: 'pw' } })] },
+      },
+      { pw: PASSWORD },
+    );
+    const results = await collect(checkConnectionThroughTransport(hooked(), mongo, manager));
+    expect(statuses(results)).toEqual(['dns:skipped', 'ssh:ok', 'auth:ok']);
+    expect(manager.sessionCount).toBe(0);
+  });
+
+  it('reports a failing SSH step and opens nothing', async () => {
+    const results = await collect(
+      checkConnectionThroughTransport(hooked(), tunnelled(strict.port), manager),
+    );
+    expect(statuses(results)).toEqual(['dns:skipped', 'ssh:failed']);
+    expect(manager.sessionCount).toBe(0);
+  });
+
+  it("uses the adapter's own check when there is no tunnel", async () => {
+    const own: ConnectionCheckResult[] = [{ step: 'ping', status: 'ok', durationMs: 0 }];
+    const adapter = withSshStepCheck(
+      {
+        ...echoAdapter(),
+        engine: 'redis' as const,
+        checkConnection: async function* () {
+          yield* own;
+        },
+      },
+      ownCheck,
+    );
+    expect(
+      await collect(checkConnectionThroughTransport(adapter, resolvedWith({}), manager)),
+    ).toEqual(own);
   });
 });
 

@@ -108,7 +108,7 @@ jobs:
       - run: pnpm test:integration --continue
 
   e2e:
-    name: Desktop end-to-end (PostgreSQL 16)
+    name: Desktop end-to-end (PostgreSQL 16, MongoDB 8.0, Redis 7.4)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -123,11 +123,14 @@ jobs:
           --health-retries 20
     env:
       JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
+      JOINERY_TEST_MONGODB_URL: mongodb://joinery:joinery@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
+      JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
       # Ubuntu runners restrict the unprivileged user namespaces Chromium's sandbox needs. Only
       # the e2e launcher honours this; the app itself always keeps the renderer sandbox on.
       JOINERY_E2E_NO_SANDBOX: '1'
     steps:
       - uses: actions/checkout@v7
+      - run: .github/scripts/start-nosql.sh 8.0 redis:7.4
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:

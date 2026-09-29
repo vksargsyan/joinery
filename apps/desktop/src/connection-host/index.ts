@@ -1,4 +1,4 @@
-import { toErrorData, type ResolvedProfile } from '@joinery/core';
+import { JoineryError, toErrorData, type ResolvedProfile } from '@joinery/core';
 import { fromElectronPort } from '@joinery/ipc';
 import {
   TransportManager,
@@ -6,7 +6,7 @@ import {
   connectThroughTransport,
 } from '@joinery/tunnel';
 
-import { mainToHostSchema, type HostToMain } from '../shared/host-protocol';
+import { mainToHostSchema, type HostRequest, type HostToMain } from '../shared/host-protocol';
 import { loadAdapter } from './adapters';
 import { ConnectionHost } from './host';
 import { HostKeyBridge } from './host-keys';
@@ -31,6 +31,25 @@ function send(message: HostToMain): void {
 }
 
 const hostKeys = new HostKeyBridge(send);
+/** Requests from main in flight, to cancel them. */
+const requests = new Map<string, AbortController>();
+
+async function runRequest(requestId: string, request: HostRequest): Promise<void> {
+  const controller = new AbortController();
+  requests.set(requestId, controller);
+  try {
+    if (!host) throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
+    const result = await host.request(request, {
+      signal: controller.signal,
+      progress: (progress) => send({ type: 'request-progress', requestId, progress }),
+    });
+    send({ type: 'response', requestId, result });
+  } catch (error) {
+    send({ type: 'response', requestId, error: toErrorData(error) });
+  } finally {
+    requests.delete(requestId);
+  }
+}
 const transports = new TransportManager({ hostKeyVerifier: hostKeys.verifier });
 
 async function connect(resolved: ResolvedProfile): Promise<void> {
@@ -93,6 +112,12 @@ parent.on('message', (event) => {
       return;
     case 'shutdown':
       void shutdown();
+      return;
+    case 'request':
+      void runRequest(message.requestId, message.request);
+      return;
+    case 'cancel-request':
+      requests.get(message.requestId)?.abort();
       return;
   }
 });

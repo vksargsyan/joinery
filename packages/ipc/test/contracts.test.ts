@@ -20,6 +20,9 @@ import {
   connectionHostContract,
   createClient,
   mainContract,
+  mongoHostContractShape,
+  redisHostContractShape,
+  mongoMainContractShape,
   parseRequest,
   safeProfileSchema,
   serve,
@@ -27,7 +30,7 @@ import {
   type Snippet,
   type HandlersOf,
 } from '../src';
-import { portPair } from './helpers';
+import { portPair, unusedHandlers } from './helpers';
 
 const now = '2026-09-29T10:00:00.000Z';
 
@@ -127,6 +130,8 @@ describe('connectionHostContract', () => {
         serverVersion: '16.4',
         capabilities: capabilitiesFor('postgres', '16.4'),
       }),
+      mongo: unusedHandlers(mongoHostContractShape),
+      redis: unusedHandlers(redisHostContractShape),
     };
     serve(ports.server, connectionHostContract, handlers);
     return { host: createClient(ports.client, connectionHostContract), closed };
@@ -433,6 +438,7 @@ describe('mainContract never hands a secret to the renderer', () => {
         planTable: notUsed,
         profiles: { list: () => [], save: notUsed, delete: notUsed },
       },
+      mongo: unusedHandlers(mongoMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -596,6 +602,7 @@ describe('desktop additions', () => {
         planTable: notUsed,
         profiles: { list: () => [], save: notUsed, delete: notUsed },
       },
+      mongo: unusedHandlers(mongoMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);
@@ -610,9 +617,7 @@ describe('desktop additions', () => {
       }),
     };
     serve(ports.server, connectionHostContract, {
-      ...(Object.fromEntries(
-        [...connectionHostContract.methods.keys()].map((path) => [path, () => undefined]),
-      ) as unknown as HandlersOf<typeof connectionHostContract>),
+      ...unusedHandlers(connectionHostContract.shape),
       ...handlers,
     });
     const host = createClient(ports.client, connectionHostContract);

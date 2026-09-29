@@ -109,9 +109,22 @@ describe('URI targets', () => {
   });
 
   it('refuses engines the CLI does not drive', async () => {
-    await expect(resolveTarget('redis://h:6379', {}, deps(store))).rejects.toMatchObject({
+    await expect(
+      resolveTarget('https://es.example.com:9200', {}, deps(store)),
+    ).rejects.toMatchObject({
       code: 'NOT_SUPPORTED',
     });
+  });
+
+  it('reads Redis URIs with their database and password', async () => {
+    const target = await resolveTarget('redis://app:s3cret@cache:6380/2', {}, deps(store));
+    expect(target.profile).toMatchObject({
+      engine: 'redis',
+      endpoint: { kind: 'host', host: 'cache', port: 6380 },
+      options: { defaultDatabase: '2' },
+    });
+    expect(target.passwordKnown).toBe(true);
+    expect(JSON.stringify(target)).not.toContain('s3cret');
   });
 
   it('applies --read-only to the safety policy', async () => {

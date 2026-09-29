@@ -2,6 +2,8 @@ import { engineIdSchema, schemaSnapshotSchema } from '@joinery/core';
 import { z } from 'zod';
 
 import { defineContract } from '../contract';
+import { mongoHostContractShape } from './mongo';
+import { redisHostContractShape } from './redis';
 import { idSchema, stringListSchema, taskProgressSchema } from '../schemas/common';
 import {
   browseNodeSchema,
@@ -105,6 +107,10 @@ export const connectionHostContract = defineContract({
     output: z.void(),
   },
   serverInfo: { input: z.void(), output: serverInfoSchema },
+  /** MongoDB document, index, collection, GridFS, user and admin services (spec §9). */
+  mongo: mongoHostContractShape,
+  /** Redis key browser, value editors and server tools (spec §10, §15). */
+  redis: redisHostContractShape,
 });
 
 export type ConnectionHostContract = typeof connectionHostContract;

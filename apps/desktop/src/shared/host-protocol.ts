@@ -1,5 +1,11 @@
 import { connectionProfileSchema, errorDataSchema, type ResolvedProfile } from '@joinery/core';
-import { connectionCheckResultSchema, hostKeyInfoSchema, serverInfoSchema } from '@joinery/ipc';
+import {
+  connectionCheckResultSchema,
+  hostKeyInfoSchema,
+  mongoGridFsBucketSchema,
+  mongoGridFsTransferProgressSchema,
+  serverInfoSchema,
+} from '@joinery/ipc';
 import { z } from 'zod';
 
 /**
@@ -22,6 +28,32 @@ export const resolvedProfileSchema: z.ZodType<ResolvedProfile> = z.object({
     .optional(),
 });
 
+/**
+ * Work main hands a connection host outside the renderer's RPC: files that move by path, which
+ * main checked against the window's file grants (spec §9, GridFS). The host runs it on its
+ * metadata session and answers with `response`.
+ */
+export const hostRequestSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('gridfs-upload'),
+    bucket: mongoGridFsBucketSchema,
+    path: z.string().min(1).max(4096),
+    filename: z.string().min(1).max(1024),
+    contentType: z.string().min(1).max(255).optional(),
+    metadata: z.string().min(1).optional(),
+    chunkSizeBytes: z.number().int().positive().optional(),
+  }),
+  z.object({
+    kind: z.literal('gridfs-download'),
+    bucket: mongoGridFsBucketSchema,
+    id: z.string().min(1),
+    path: z.string().min(1).max(4096),
+  }),
+]);
+export type HostRequest = z.infer<typeof hostRequestSchema>;
+
+const requestIdSchema = z.string().min(1).max(128);
+
 export const mainToHostSchema = z.discriminatedUnion('type', [
   /** Serve mode: connect with this profile, then answer `ready` or `failed`. */
   z.object({ type: z.literal('connect'), resolved: resolvedProfileSchema }),
@@ -31,6 +63,10 @@ export const mainToHostSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('check'), resolved: resolvedProfileSchema }),
   /** Close every session and exit. */
   z.object({ type: z.literal('shutdown') }),
+  /** Run a HostRequest; the answer is `response`, with `request-progress` on the way. */
+  z.object({ type: z.literal('request'), requestId: requestIdSchema, request: hostRequestSchema }),
+  /** Stop a running request (its answer is then a CANCELLED error). */
+  z.object({ type: z.literal('cancel-request'), requestId: requestIdSchema }),
   /**
    * Main's answer to a `host-key` request: trust the key, or refuse it (with `error` when main
    * has a more precise reason, such as a changed host key).
@@ -53,6 +89,19 @@ export const hostToMainSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('failed'), error: errorDataSchema }),
   z.object({ type: z.literal('check-step'), result: connectionCheckResultSchema }),
   z.object({ type: z.literal('check-done') }),
+  /** How far a request got, in bytes. */
+  z.object({
+    type: z.literal('request-progress'),
+    requestId: requestIdSchema,
+    progress: mongoGridFsTransferProgressSchema,
+  }),
+  /** The answer to a `request`: `result` (checked by main against the method's schema) or `error`. */
+  z.object({
+    type: z.literal('response'),
+    requestId: requestIdSchema,
+    result: z.unknown().optional(),
+    error: errorDataSchema.optional(),
+  }),
   /** An SSH server presented this host key: may the tunnel trust it? */
   z.object({
     type: z.literal('host-key'),

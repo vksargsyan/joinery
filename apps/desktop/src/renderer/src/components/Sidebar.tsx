@@ -27,6 +27,8 @@ import { refreshObjects } from '../state/metadata';
 import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
 import { DropTableDialog } from './designer/ReviewDialogs';
+import { MongoTree } from './mongo/MongoTree';
+import { RedisTree, openRedisTool } from './redis/RedisTree';
 import { openQueryTab, openTableData, openTableDesigner } from './dock';
 import type { ConnectionDialogMode } from './ConnectionDialog';
 import { Button, EnvironmentBadge, Icon, cx } from './ui';
@@ -271,6 +273,10 @@ function ProfileItem(props: {
     await disconnect(profile.id).catch(() => undefined);
   };
   const newQuery = async (): Promise<void> => {
+    if (profile.engine === 'redis') {
+      openRedisTool(profile, 'cli');
+      return;
+    }
     openQueryTab({ profileId: profile.id, title: `${profile.name} query` });
   };
   const remove = async (): Promise<void> => {
@@ -363,8 +369,12 @@ function ProfileItem(props: {
           <>
             {connected ? (
               <>
-                <MenuItem onSelect={() => void newQuery()}>New query tab</MenuItem>
-                <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
+                <MenuItem onSelect={() => void newQuery()}>
+                  {profile.engine === 'redis' ? 'Open CLI' : 'New query tab'}
+                </MenuItem>
+                {isSqlEngine(profile.engine) && (
+                  <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
+                )}
                 <MenuItem onSelect={() => refreshObjects(profile.id, [])}>Refresh objects</MenuItem>
                 <MenuItem onSelect={() => void close()}>Disconnect</MenuItem>
               </>
@@ -390,6 +400,16 @@ function ProfileItem(props: {
       {expanded && connected && isSqlEngine(profile.engine) && (
         <div role="group">
           <NodeChildren profile={profile} dialect={profile.engine} path={[]} depth={depth + 1} />
+        </div>
+      )}
+      {expanded && connected && profile.engine === 'mongodb' && (
+        <div role="group">
+          <MongoTree profile={profile} depth={depth + 1} onError={props.onError} />
+        </div>
+      )}
+      {expanded && connected && profile.engine === 'redis' && (
+        <div role="group">
+          <RedisTree profile={profile} depth={depth + 1} />
         </div>
       )}
     </div>
@@ -593,7 +613,7 @@ function ObjectNode(props: {
 }
 
 /** One tree row: indent, disclosure chevron, label, and an actions menu. */
-function Row(props: {
+export function Row(props: {
   readonly depth: number;
   readonly label: ReactNode;
   readonly expandable: boolean;
@@ -681,7 +701,7 @@ function Row(props: {
   );
 }
 
-function MenuItem(props: {
+export function MenuItem(props: {
   readonly children: ReactNode;
   readonly onSelect: () => void;
   readonly danger?: boolean;

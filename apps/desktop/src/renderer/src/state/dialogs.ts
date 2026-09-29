@@ -40,6 +40,8 @@ export type Prompt =
       readonly kind: 'confirm';
       readonly title: string;
       readonly message: string;
+      /** Shown in a monospace block under the message: the exact command or statement. */
+      readonly detail?: string;
       readonly confirmLabel: string;
       readonly danger: boolean;
       readonly resolve: (ok: boolean) => void;
@@ -98,6 +100,7 @@ export function askSecrets(
 export function confirm(options: {
   readonly title: string;
   readonly message: string;
+  readonly detail?: string;
   readonly confirmLabel?: string;
   readonly danger?: boolean;
 }): Promise<boolean> {
@@ -105,6 +108,7 @@ export function confirm(options: {
     kind: 'confirm',
     title: options.title,
     message: options.message,
+    ...(options.detail === undefined ? {} : { detail: options.detail }),
     confirmLabel: options.confirmLabel ?? 'OK',
     danger: options.danger ?? false,
   });

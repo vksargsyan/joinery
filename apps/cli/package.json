@@ -20,6 +20,9 @@
     "test:integration": "tsup && vitest run test/integration --testTimeout=120000 --hookTimeout=120000"
   },
   "dependencies": {
+    "bson": "^7.3.3",
+    "ioredis": "^6.0.0",
+    "mongodb": "^7.7.0",
     "mysql2": "^3.24.4",
     "pg": "^8.23.0",
     "pg-cursor": "^2.22.0",
@@ -28,8 +31,12 @@
   },
   "devDependencies": {
     "@joinery/core": "workspace:*",
+    "@joinery/driver-mongodb": "workspace:*",
     "@joinery/driver-mysql": "workspace:*",
     "@joinery/driver-postgres": "workspace:*",
+    "@joinery/driver-redis": "workspace:*",
+    "@joinery/mongo-tools": "workspace:*",
+    "@joinery/redis-tools": "workspace:*",
     "@joinery/sql-tools": "workspace:*",
     "@joinery/storage": "workspace:*",
     "@joinery/sync": "workspace:*",

@@ -84,4 +84,7 @@ export {
 } from './pipeline';
 export type { StageInfo, StagePreviewOptions, StagePreviewPlan } from './pipeline';
 
+export { commandSafety } from './commands';
+export type { CommandSafety } from './commands';
+
 export type * from './wire';

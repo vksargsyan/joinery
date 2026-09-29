@@ -74,6 +74,15 @@ export interface TargetDeps {
 
 const URI_RE = /^(?:jdbc:)?[a-z][a-z0-9+.-]*:\/\//i;
 const SQL_SCHEMES = new Set(['postgres', 'postgresql', 'mysql', 'mariadb']);
+/** MongoDB URIs work with `test` and `query` (the SQL commands refuse them when they connect). */
+const MONGO_SCHEMES = new Set(['mongodb', 'mongodb+srv']);
+/** Redis URIs work with `test` and `query` too (as @joinery/storage parses them). */
+export const REDIS_SCHEMES: ReadonlySet<string> = new Set([
+  'redis',
+  'rediss',
+  'redis+sentinel',
+  'rediss+sentinel',
+]);
 /** SecretRef id for a password the CLI adds to a profile or URI that had none. */
 export const CLI_PASSWORD_REF = 'joinery-cli-password';
 
@@ -158,6 +167,14 @@ export function describeEndpoint(profile: ConnectionProfile): string {
       return endpoint.path;
     case 'uri':
       return redactUri(endpoint.uri);
+    case 'hosts':
+      return `${endpoint.hosts.map((h) => `${h.host}:${h.port}`).join(',')}${endpoint.replicaSet ? ` (replica set ${endpoint.replicaSet})` : ''}`;
+    case 'srv':
+      return `${endpoint.host} (SRV)`;
+    case 'sentinel':
+      return `${endpoint.sentinels.map((h) => `${h.host}:${h.port}`).join(',')} (Sentinel master ${endpoint.masterName})`;
+    case 'cluster':
+      return `${endpoint.seeds.map((h) => `${h.host}:${h.port}`).join(',')} (Cluster)`;
     default:
       return endpoint.kind;
   }
@@ -171,10 +188,10 @@ async function resolveUri(
   deps: TargetDeps,
 ): Promise<Target> {
   const scheme = /^(?:jdbc:)?([a-z][a-z0-9+.-]*):/i.exec(spec.trim())?.[1]?.toLowerCase() ?? '';
-  if (!SQL_SCHEMES.has(scheme)) {
+  if (!SQL_SCHEMES.has(scheme) && !MONGO_SCHEMES.has(scheme) && !REDIS_SCHEMES.has(scheme)) {
     throw new CliError(`joinery-cli does not support "${scheme}://" URIs`, {
       code: 'NOT_SUPPORTED',
-      hint: 'Use a postgres://, postgresql://, mysql:// or mariadb:// URI, or a saved profile name',
+      hint: 'Use a postgres://, postgresql://, mysql://, mariadb://, mongodb://, mongodb+srv://, redis:// or rediss:// URI, or a saved profile name',
     });
   }
   const parsed = parseConnectionUri(spec);
@@ -229,9 +246,9 @@ async function resolveProfile(
       `--ssh, --ssh-key, --ssh-agent, --ssh-password-env and --proxy apply to URI targets; "${profile.name}" uses its saved SSH and proxy settings`,
     );
   }
-  if (!isSqlEngine(profile.engine)) {
+  if (!isSqlEngine(profile.engine) && profile.engine !== 'mongodb' && profile.engine !== 'redis') {
     throw new CliError(
-      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL and MariaDB`,
+      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL, MariaDB, MongoDB and Redis`,
       { code: 'NOT_SUPPORTED' },
     );
   }

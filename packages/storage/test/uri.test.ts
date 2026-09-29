@@ -311,7 +311,8 @@ const CASES: readonly Case[] = [
       replicaSet: 'rs0',
     },
     auth: { method: 'password', user: 'user', password: REF },
-    profileOptions: { defaultDatabase: 'app' },
+    // A login without authSource authenticates against the database the URI names.
+    profileOptions: { authSource: 'app', defaultDatabase: 'app' },
     password: 'pass',
   },
   {
@@ -329,12 +330,61 @@ const CASES: readonly Case[] = [
     password: 'pass',
   },
   {
-    // A non-default authSource has no structured field: keep the URI.
+    // Users in admin, data in app: the profile's own default is admin.
     uri: 'mongodb://user:pass@mongo1:27017/app?authSource=admin',
-    endpoint: { kind: 'uri', uri: 'mongodb://user@mongo1:27017/app?authSource=admin' },
+    endpoint: { kind: 'host', host: 'mongo1', port: 27017 },
     auth: { method: 'password', user: 'user', password: REF },
-    profileOptions: { defaultDatabase: 'app' },
+    profileOptions: { authSource: 'admin', defaultDatabase: 'app' },
     password: 'pass',
+  },
+  {
+    uri: 'mongodb://user:pass@mongo1/?authSource=accounts&readPreference=secondaryPreferred',
+    endpoint: { kind: 'host', host: 'mongo1', port: 27017 },
+    auth: { method: 'password', user: 'user', password: REF },
+    profileOptions: { authSource: 'accounts', readPreference: 'secondaryPreferred' },
+    password: 'pass',
+  },
+  {
+    // An SRV record's TXT entry names the auth database; an explicit one still wins.
+    uri: 'mongodb+srv://user:pass@cluster0.abcde.mongodb.net/shop?authSource=users',
+    endpoint: { kind: 'srv', host: 'cluster0.abcde.mongodb.net' },
+    auth: { method: 'password', user: 'user', password: REF },
+    profileOptions: { authSource: 'users', defaultDatabase: 'shop' },
+    password: 'pass',
+  },
+  {
+    // A read preference the profile cannot hold stays in the URI.
+    uri: 'mongodb://h/?readPreference=fastest',
+    endpoint: { kind: 'uri', uri: 'mongodb://h/?readPreference=fastest' },
+  },
+  {
+    // directConnection applies to one host; with a replica set it stays in the URI.
+    uri: 'mongodb://a:1/?replicaSet=rs0&directConnection=false',
+    endpoint: {
+      kind: 'uri',
+      uri: 'mongodb://a:1/?replicaSet=rs0&directConnection=false',
+    },
+  },
+  {
+    uri: 'mongodb://AKIDEXAMPLE:wJalrXUtnFEMI@db.example.com/?authMechanism=MONGODB-AWS&authSource=$external&authMechanismProperties=AWS_SESSION_TOKEN:FwoGZXIvY',
+    endpoint: { kind: 'host', host: 'db.example.com', port: 27017 },
+    auth: { method: 'awsIam', user: 'AKIDEXAMPLE', region: 'us-east-1' },
+    ignored: ['AWS_SESSION_TOKEN'],
+  },
+  {
+    // Only the token is taken out of authMechanismProperties; the rest is kept.
+    uri: 'mongodb://h/?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN%3Ax%2CSERVICE_NAME%3Amongo',
+    endpoint: {
+      kind: 'uri',
+      uri: 'mongodb://h/?authMechanism=MONGODB-AWS&authMechanismProperties=SERVICE_NAME%3Amongo',
+    },
+    auth: { method: 'awsIam', region: 'us-east-1' },
+    ignored: ['AWS_SESSION_TOKEN'],
+  },
+  {
+    uri: 'mongodb://h/?proxyHost=p&proxyPort=1080&proxyUsername=me&proxyPassword=hunter2',
+    endpoint: { kind: 'uri', uri: 'mongodb://h/?proxyHost=p&proxyPort=1080&proxyUsername=me' },
+    ignored: ['proxyPassword'],
   },
   {
     uri: 'mongodb+srv://user:pass@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
@@ -346,7 +396,8 @@ const CASES: readonly Case[] = [
   },
   {
     uri: 'mongodb://[::1]:27017/?directConnection=true',
-    endpoint: { kind: 'uri', uri: 'mongodb://[::1]:27017/?directConnection=true' },
+    endpoint: { kind: 'host', host: '::1', port: 27017 },
+    profileOptions: { directConnection: true },
   },
   {
     uri: 'mongodb://u:p@h/?tls=true&tlsCAFile=/ca.pem&tlsAllowInvalidHostnames=true',
@@ -371,7 +422,7 @@ const CASES: readonly Case[] = [
     uri: 'mongodb://u:p@h/db?authMechanism=SCRAM-SHA-256',
     endpoint: { kind: 'host', host: 'h', port: 27017 },
     auth: { method: 'password', user: 'u', password: REF, mechanism: 'SCRAM-SHA-256' },
-    profileOptions: { defaultDatabase: 'db' },
+    profileOptions: { authSource: 'db', defaultDatabase: 'db' },
     password: 'p',
   },
   {

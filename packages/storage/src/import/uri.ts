@@ -1,6 +1,7 @@
 import {
   ENGINES,
   JoineryError,
+  connectionOptionsSchema,
   connectionProfileSchema,
   newId,
   type ConnectionProfileInput,
@@ -261,6 +262,7 @@ const SECRET_PARAMS = new Set([
   'access_token',
   'auth_token',
   'secret',
+  'proxypassword',
 ]);
 
 function isSecretParam(name: string): boolean {
@@ -269,11 +271,38 @@ function isSecretParam(name: string): boolean {
 
 /** Query parameters, matched case-insensitively, remembering which ones were used. */
 class Params {
-  readonly #entries: readonly (readonly [string, string])[];
+  #entries: readonly (readonly [string, string])[];
   readonly #used = new Set<number>();
+  /** Secrets taken out of a parameter's value (see `removeSecret`), reported as ignored. */
+  readonly #removed = new Set<string>();
+  /** Entries left empty by `removeSecret`, dropped from a rebuilt URI. */
+  readonly #dropped = new Set<number>();
 
   constructor(entries: readonly (readonly [string, string])[]) {
     this.#entries = entries;
+  }
+
+  /**
+   * Takes a secret out of the value of parameter `name` (e.g. AWS_SESSION_TOKEN inside
+   * authMechanismProperties): `clean` returns the value without it, '' when nothing is left
+   * (the parameter is then dropped), or undefined when the value holds no secret. The secret is
+   * reported as `reported` among the ignored parameters.
+   */
+  removeSecret(name: string, reported: string, clean: (value: string) => string | undefined): void {
+    const wanted = name.toLowerCase();
+    let removed = false;
+    this.#entries = this.#entries.flatMap(([entry, value], index) => {
+      if (entry.toLowerCase() !== wanted) return [[entry, value] as const];
+      const cleaned = clean(value);
+      if (cleaned === undefined) return [[entry, value] as const];
+      removed = true;
+      if (cleaned === '') {
+        this.#used.add(index);
+        this.#dropped.add(index);
+      }
+      return [[entry, cleaned] as const];
+    });
+    if (removed) this.#removed.add(reported);
   }
 
   /** The last value of any of `names`, marking them used. */
@@ -292,12 +321,14 @@ class Params {
   }
 
   unusedSecretNames(): string[] {
-    return this.#unused().filter(isSecretParam);
+    return [...this.#unused().filter(isSecretParam), ...this.#removed];
   }
 
   /** Every non-secret parameter, for rebuilding a URI. */
   publicEntries(): (readonly [string, string])[] {
-    return this.#entries.filter(([name]) => !isSecretParam(name));
+    return this.#entries.filter(
+      ([name], index) => !isSecretParam(name) && !this.#dropped.has(index),
+    );
   }
 
   #find(names: string[], mark: boolean): string | undefined {
@@ -515,7 +546,20 @@ const EXTERNAL_MECHANISMS = new Set([
   'MONGODB-OIDC',
 ]);
 /** Mechanisms the profile's auth can express. */
-const MAPPED_MECHANISMS = new Set(['SCRAM-SHA-1', 'SCRAM-SHA-256', 'PLAIN', 'MONGODB-X509']);
+const MAPPED_MECHANISMS = new Set([
+  'SCRAM-SHA-1',
+  'SCRAM-SHA-256',
+  'PLAIN',
+  'MONGODB-X509',
+  'MONGODB-AWS',
+]);
+/** Read preference modes a profile holds, in the driver's spelling. */
+const READ_PREFERENCES = connectionOptionsSchema.shape.readPreference.unwrap().options;
+/**
+ * The region an AWS IAM profile made from a URI records. MONGODB-AWS takes its credentials and
+ * STS endpoint from the AWS SDK's chain, not from the profile, so this only fills the field.
+ */
+const AWS_DEFAULT_REGION = 'us-east-1';
 
 function buildMongo(parts: UriParts, params: Params): BuiltProfile {
   const srv = parts.scheme === 'mongodb+srv';
@@ -544,12 +588,34 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
 
   const mechanism = params.peek('authMechanism')?.toUpperCase();
   if (mechanism === undefined || MAPPED_MECHANISMS.has(mechanism)) params.take('authMechanism');
-  const authSource = params.peek('authSource');
-  const defaultAuthSource =
-    mechanism !== undefined && EXTERNAL_MECHANISMS.has(mechanism)
-      ? '$external'
-      : (database ?? 'admin');
-  if (authSource === undefined || authSource === defaultAuthSource) params.take('authSource');
+  const external = mechanism !== undefined && EXTERNAL_MECHANISMS.has(mechanism);
+  // Where the URI authenticates: its authSource, else (for a login with a user name) the
+  // database it names, as MongoDB connection strings define it. An SRV record's TXT entry may
+  // name one, so a mongodb+srv:// URI without authSource leaves it to the record.
+  const statedAuthSource = params.take('authSource');
+  const authSource =
+    statedAuthSource ?? (external || srv || user === undefined ? undefined : database);
+  // A TXT record's (or the driver's) AWS session token lives inside another option's value.
+  params.removeSecret('authMechanismProperties', 'AWS_SESSION_TOKEN', (value) => {
+    const properties = value.split(',');
+    const kept = properties.filter((property) => !/^\s*AWS_SESSION_TOKEN\s*:/i.test(property));
+    return kept.length === properties.length ? undefined : kept.join(',');
+  });
+
+  // Options the profile holds in its own fields; a URI kept whole carries them itself.
+  const lifted: Pick<OptionsDraft, 'authSource' | 'readPreference' | 'directConnection'> = {};
+  // The profile's default is $external for certificate, LDAP and AWS logins, admin otherwise;
+  // stating it where the URI names no database (or for an external login) changes nothing.
+  const profileAuthSource = external ? '$external' : 'admin';
+  if (authSource && !(authSource === profileAuthSource && (external || database === undefined))) {
+    lifted.authSource = authSource;
+  }
+  const readPreference = params.peek('readPreference')?.toLowerCase();
+  const preference = READ_PREFERENCES.find((mode) => mode.toLowerCase() === readPreference);
+  if (preference) {
+    params.take('readPreference');
+    lifted.readPreference = preference;
+  }
 
   const options: OptionsDraft = {};
   const appName = params.take('appName');
@@ -567,7 +633,9 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
   const auth: AuthDraft | undefined =
     mechanism === 'MONGODB-X509'
       ? { method: 'clientCertificate', ...(user ? { user } : {}) }
-      : passwordAuth(user, password, mechanism);
+      : mechanism === 'MONGODB-AWS'
+        ? { method: 'awsIam', region: AWS_DEFAULT_REGION, ...(user ? { user } : {}) }
+        : passwordAuth(user, password, mechanism);
 
   const hosts = parts.hosts;
   const [first] = hosts;
@@ -580,6 +648,12 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
     endpoint = { kind: 'srv', host: first.host };
   } else if (hosts.length === 1 && replicaSet === undefined) {
     endpoint = { kind: 'host', host: first.host, port: first.port ?? ENGINES.mongodb.defaultPort };
+    // Only a single host can be connected to directly; elsewhere the option stays in the URI.
+    const direct = params.peek('directConnection')?.toLowerCase();
+    if (direct === 'true' || direct === 'false') {
+      params.take('directConnection');
+      lifted.directConnection = direct === 'true';
+    }
   } else {
     endpoint = {
       kind: 'hosts',
@@ -590,16 +664,18 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
       ...(replicaSet ? { replicaSet } : {}),
     };
   }
+  const keepsUri =
+    params.unusedNames().length > 0 ||
+    hosts.some((host) => host.host.startsWith('/') || host.host.endsWith('.sock'));
   return {
     name: profileName(first.host, first.port, 'mongodb', database),
     endpoint,
-    keepsUri:
-      params.unusedNames().length > 0 ||
-      hosts.some((host) => host.host.startsWith('/') || host.host.endsWith('.sock')),
+    keepsUri,
     auth,
     tls,
-    options,
-    // X.509 authenticates with the certificate; a password in the URI would be meaningless.
+    options: keepsUri ? options : { ...lifted, ...options },
+    // X.509 authenticates with the certificate and MONGODB-AWS with the AWS SDK's credentials
+    // (a URI's password is then an AWS secret key, which a profile never keeps).
     password: auth?.method === 'password' ? password : undefined,
   };
 }

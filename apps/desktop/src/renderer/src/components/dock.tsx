@@ -11,6 +11,7 @@ import type { FilterGroup } from '@joinery/table-data';
 import { useEffect } from 'react';
 
 import { createDesigner, disposeDesigner, type DesignerTarget } from '../state/designer';
+import { cachedProfile } from '../state/data';
 import { confirm } from '../state/dialogs';
 import {
   panelInfo,
@@ -21,11 +22,16 @@ import {
   usePanels,
   type PanelKind,
 } from '../state/panels';
+import { disposeRedisPanel } from '../state/redis/panels';
+import { disposeMongoPanel } from '../state/mongo/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
 import { TableDesignerPanel } from './designer/TableDesignerPanel';
 import { QueryPanel } from './QueryPanel';
+import { RedisPanel } from './redis/RedisPanel';
+import { MongoPanel } from './mongo/MongoPanel';
+import { openMongoConsole } from './mongo/open';
 import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
 
@@ -57,6 +63,11 @@ function addPanel(kind: PanelKind, id: string, title: string): void {
     params: { panelId: id },
     renderer: 'always',
   });
+}
+
+/** The dock, for modules that add their own panels (the Redis tools); undefined before it is ready. */
+export function currentDock(): DockviewApi | undefined {
+  return dockApi;
 }
 
 function focusPanel(key: string): string | undefined {
@@ -123,7 +134,9 @@ export async function requestClosePanel(id: string): Promise<void> {
       message:
         info.kind === 'table-data'
           ? 'The staged changes were not applied and will be lost.'
-          : 'The design was not saved and will be lost.',
+          : info.kind === 'redis'
+            ? 'The edited value was not saved and will be lost.'
+            : 'The design was not saved and will be lost.',
       confirmLabel: 'Close without saving',
       danger: true,
     });
@@ -137,6 +150,8 @@ function disposePanel(id: string): void {
   if (!info) return;
   unregisterPanel(id);
   if (info.kind === 'table-data') void disposeTableView(id);
+  else if (info.kind === 'redis') disposeRedisPanel(id);
+  else if (info.kind === 'mongo') disposeMongoPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -147,6 +162,8 @@ export function openQueryTab(options: {
   readonly text?: string;
   readonly run?: boolean;
 }): string {
+  // A MongoDB connection's "query tab" is its command console (spec §9).
+  if (cachedProfile(options.profileId)?.engine === 'mongodb') return openMongoConsole(options);
   const tabId = createTab({
     profileId: options.profileId,
     title: options.title,
@@ -226,6 +243,14 @@ function TableDesignerHost(props: IDockviewPanelProps<PanelParams>) {
   return <TableDesignerPanel panelId={props.params.panelId} />;
 }
 
+function RedisPanelHost(props: IDockviewPanelProps<PanelParams>) {
+  return <RedisPanel panelId={props.params.panelId} />;
+}
+
+function MongoPanelHost(props: IDockviewPanelProps<PanelParams>) {
+  return <MongoPanel panelId={props.params.panelId} />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -286,6 +311,8 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         query: QueryPanelHost,
         tableData: TableDataHost,
         tableDesigner: TableDesignerHost,
+        redis: RedisPanelHost,
+        mongo: MongoPanelHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}

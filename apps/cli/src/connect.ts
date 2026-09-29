@@ -6,11 +6,17 @@ import {
   type Session,
   type SqlDialect,
 } from '@joinery/core';
+import {
+  checkConnection as checkMongoConnection,
+  createMongoAdapter,
+} from '@joinery/driver-mongodb';
 import { createMysqlAdapter } from '@joinery/driver-mysql';
 import { createPostgresAdapter } from '@joinery/driver-postgres';
+import { createRedisAdapter } from '@joinery/driver-redis';
 import {
   connectThroughTransport,
   needsTransport,
+  withSshStepCheck,
   type TransportManager,
   type TransportSession,
 } from '@joinery/tunnel';
@@ -18,6 +24,7 @@ import {
 import type { AdapterFactory, Prompter } from './context';
 import { CliError } from './errors';
 import type { Interrupts } from './interrupt';
+import { sqlOnlyError } from './mongo';
 import type { Reporter } from './reporter';
 import { passwordEnvName, resolvedProfile, withPassword, type Target } from './target';
 
@@ -29,6 +36,14 @@ export const defaultAdapters: AdapterFactory = (engine: EngineId): DriverAdapter
     case 'mysql':
     case 'mariadb':
       return createMysqlAdapter({ engine });
+    case 'mongodb':
+      return withSshStepCheck(createMongoAdapter(), (resolved, deps) =>
+        checkMongoConnection(resolved, deps),
+      );
+    case 'redis': {
+      const redis = createRedisAdapter();
+      return withSshStepCheck(redis, (resolved, deps) => redis.checkConnection(resolved, deps));
+    }
     default:
       throw new CliError(`joinery-cli cannot connect to ${engine} yet`, { code: 'NOT_SUPPORTED' });
   }
@@ -71,6 +86,9 @@ function openSession(
  * use MariaDB rules. A target with an SSH tunnel or a proxy connects through it.
  */
 export async function connect(target: Target, deps: ConnectDeps): Promise<Connection> {
+  // SQL commands only: MongoDB targets go through `joinery test` and `joinery query`.
+  const notSql = sqlOnlyError(target);
+  if (notSql) throw notSql;
   const adapter = deps.adapters(target.profile.engine);
   let current = target;
   let opened: TransportSession;

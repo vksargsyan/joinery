@@ -6,7 +6,7 @@ import { create } from 'zustand';
  * which connection the active panel belongs to (the production frame follows it, spec §4).
  */
 
-export type PanelKind = 'table-data' | 'table-designer';
+export type PanelKind = 'table-data' | 'table-designer' | 'redis' | 'mongo';
 
 export interface PanelInfo {
   readonly id: string;

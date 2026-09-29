@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { formatDuration, formatRows } from '../lib/format';
-import { useHistory, useProfiles } from '../state/data';
+import { cachedProfile, useHistory, useProfiles } from '../state/data';
+import { openRedisPanel } from '../state/redis/panels';
 import { useWorkspace } from '../state/workspace';
 import { openQueryTab } from './dock';
 import { Button, Icon, Input, cx } from './ui';
@@ -9,7 +10,7 @@ import { Button, Icon, Input, cx } from './ui';
 /**
  * Query history (spec §6): every run with its connection, duration, rows and status, newest
  * first, searchable across all connections or the active tab's one. Opening an entry puts its
- * text in a new query tab.
+ * text in a new query tab (a Redis command in a new CLI).
  */
 export function HistoryPanel(props: { readonly onClose: () => void }) {
   const [query, setQuery] = useState('');
@@ -93,11 +94,18 @@ export function HistoryPanel(props: { readonly onClose: () => void }) {
                 variant="ghost"
                 className="opacity-0 group-hover:opacity-100 focus:opacity-100"
                 onClick={() =>
-                  openQueryTab({
-                    profileId: entry.profileId,
-                    title: `${nameOf(entry.profileId)} query`,
-                    text: entry.text,
-                  })
+                  cachedProfile(entry.profileId)?.engine === 'redis'
+                    ? openRedisPanel({
+                        profileId: entry.profileId,
+                        profileName: nameOf(entry.profileId),
+                        tool: 'cli',
+                        line: entry.text,
+                      })
+                    : openQueryTab({
+                        profileId: entry.profileId,
+                        title: `${nameOf(entry.profileId)} query`,
+                        text: entry.text,
+                      })
                 }
               >
                 Open

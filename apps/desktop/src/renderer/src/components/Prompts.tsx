@@ -206,6 +206,14 @@ function Confirm({ prompt }: { readonly prompt: Extract<Prompt, { kind: 'confirm
       }
     >
       <p className="text-[13px]">{prompt.message}</p>
+      {prompt.detail !== undefined && (
+        <pre
+          data-testid="confirm-detail"
+          className="mt-3 max-h-48 overflow-auto rounded border border-border bg-panel-2 p-2 font-mono text-xs whitespace-pre-wrap select-text"
+        >
+          {prompt.detail}
+        </pre>
+      )}
     </Modal>
   );
 }
