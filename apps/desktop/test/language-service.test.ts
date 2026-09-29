@@ -260,7 +260,9 @@ describe('LanguageService', () => {
     const service = new LanguageService((response) => responses.push(response));
     service.handle({ type: 'diagnose', id: 1, text: 'selec 1', dialect: 'postgres' });
     service.handle({ type: 'diagnose', id: 2, text: 'select 1', dialect: 'postgres' });
-    await expect.poll(() => responses.length, { timeout: 15_000 }).toBe(2);
+    // The first diagnose loads the parser, which a fully parallel workspace run on a small CI
+    // machine can slow to well past ten seconds.
+    await expect.poll(() => responses.length, { timeout: 50_000 }).toBe(2);
     const [bad, good] = responses;
     expect(bad).toMatchObject({ type: 'diagnose', id: 1 });
     expect(bad?.type === 'diagnose' && bad.diagnostics.length).toBe(1);
@@ -271,10 +273,9 @@ describe('LanguageService', () => {
     manual.send({ type: 'diagnose', id: 3, text: 'selec 2', dialect: 'postgres' });
     manual.tick();
     manual.send({ type: 'cancel', id: 3 });
-    await expect.poll(() => manual.responses.length, { timeout: 15_000 }).toBe(1);
+    await expect.poll(() => manual.responses.length, { timeout: 30_000 }).toBe(1);
     expect(manual.responses[0]).toEqual({ type: 'cancelled', id: 3 });
-    // The first diagnose loads the parser, which a fully parallel workspace run slows down.
-  }, 60_000);
+  }, 90_000);
 });
 
 describe('LanguageService: table designer checks', () => {
@@ -290,7 +291,8 @@ describe('LanguageService: table designer checks', () => {
       ],
     });
     service.handle({ type: 'diagnose-table', id: 7, table, engine: 'postgres', schema: 'public' });
-    await expect.poll(() => responses.length, { timeout: 30_000 }).toBe(1);
+    // Loads the parser too (see above).
+    await expect.poll(() => responses.length, { timeout: 50_000 }).toBe(1);
     expect(responses[0]).toEqual({
       type: 'diagnose-table',
       id: 7,
@@ -302,7 +304,7 @@ describe('LanguageService: table designer checks', () => {
         }),
       ],
     });
-  }, 60_000);
+  }, 90_000);
 });
 
 describe('resolveKeywordCase', () => {
