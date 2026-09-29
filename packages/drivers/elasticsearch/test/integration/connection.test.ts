@@ -129,7 +129,9 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine connection', (serve
     const session = await connect(server, { options: { sniff: true } });
     try {
       await session.ping();
-      expect(await session.count('*')).toBeGreaterThanOrEqual(0);
+      // Requests go to the sniffed nodes. Not a count over `*`: other test files create and
+      // delete indices meanwhile, and a search over an index being deleted fails.
+      expect((await session.nodes()).length).toBeGreaterThan(0);
     } finally {
       await session.close();
     }
