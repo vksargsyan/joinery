@@ -173,13 +173,16 @@ export function ConnectionDialog(props: {
     const text = uri.trim();
     if (text === '') return;
     try {
-      const current = getValues();
       const engine =
-        current.engine === 'mariadb' && /^mysql:/i.test(text) ? ('mariadb' as const) : undefined;
+        getValues().engine === 'mariadb' && /^mysql:/i.test(text)
+          ? ('mariadb' as const)
+          : undefined;
       const parsed = await mainApi().profiles.parseUri({
         uri: text,
         ...(engine ? { engine } : {}),
       });
+      // Read the fields to keep only now: the user may have typed a name while main parsed.
+      const current = getValues();
       const next = profileToForm(parsed.profile);
       const password = parsed.passwordFound ? passwordFromUri(text) : undefined;
       form.reset({
