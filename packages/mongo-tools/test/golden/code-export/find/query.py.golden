@@ -1,0 +1,26 @@
+# pip install pymongo
+# Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+import os
+
+from bson import Int64, Regex
+from pymongo import MongoClient
+
+with MongoClient(os.environ["MONGODB_URI"]) as client:
+    collection = client["shop"]["orders"]
+    query_filter = {
+        "status": {"$in": ["A", "D"]},
+        "qty": {"$gte": 5, "$lt": Int64(100)},
+        "item.sku": Regex("^ab", "i"),
+    }
+    projection = {"status": 1, "qty": 1, "_id": 0}
+    for document in collection.find(
+        query_filter,
+        projection,
+        sort=[("qty", -1), ("status", 1)],
+        skip=10,
+        limit=20,
+        collation={"locale": "en", "strength": 2, "numericOrdering": True},
+        hint=[("status", 1)],
+        max_time_ms=5000,
+    ):
+        print(document)

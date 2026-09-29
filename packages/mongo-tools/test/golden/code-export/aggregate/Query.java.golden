@@ -1,0 +1,42 @@
+// Maven: org.mongodb:mongodb-driver-sync
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
+import org.bson.types.Decimal128;
+
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+public class Query {
+    public static void main(String[] args) {
+        String uri = System.getenv("MONGODB_URI");
+        if (uri == null) {
+            throw new IllegalStateException("Set the MONGODB_URI environment variable");
+        }
+        try (MongoClient client = MongoClients.create(uri)) {
+            MongoCollection<Document> collection = client.getDatabase("shop").getCollection("order items");
+            List<Document> pipeline = Arrays.asList(
+                new Document("$match", new Document("status", "A")
+                        .append("at", new Document("$gte", Date.from(Instant.parse("2024-01-01T00:00:00.000Z"))))
+                        .append("price", new Document("$gt", Decimal128.parse("9.99")))),
+                new Document("$group", new Document("_id", "$cust")
+                        .append("total", new Document("$sum", "$amount"))
+                        .append("n", new Document("$sum", 1))
+                        .append("avg", new Document("$avg", 1.0))),
+                new Document("$match", new Document()),
+                new Document("$sort", new Document("total", -1)),
+                new Document("$limit", 5)
+            );
+            AggregateIterable<Document> results = collection.aggregate(pipeline);
+            for (Document document : results) {
+                // The collection's codecs also cover DBRef, which Document.toJson() alone lacks.
+                System.out.println(document.toJson(collection.getCodecRegistry().get(Document.class)));
+            }
+        }
+    }
+}

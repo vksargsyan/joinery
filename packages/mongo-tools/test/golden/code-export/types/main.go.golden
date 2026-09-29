@@ -1,0 +1,114 @@
+// go get go.mongodb.org/mongo-driver/v2/mongo
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+
+package main
+
+import (
+	"context"
+	"encoding/hex"
+	"fmt"
+	"log"
+	"math"
+	"os"
+	"strings"
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
+
+func main() {
+	uri := os.Getenv("MONGODB_URI")
+	if uri == "" {
+		log.Fatal("Set the MONGODB_URI environment variable")
+	}
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := client.Disconnect(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	ctx := context.Background()
+	collection := client.Database("shop").Collection("types")
+	filter := bson.D{
+		{"oid", objectID("65a1b2c3d4e5f60718293a4b")},
+		{"date", time.Date(2024, time.January, 2, 3, 4, 5, 678000000, time.UTC)},
+		{"far", time.Date(10000, time.January, 1, 0, 0, 0, 0, time.UTC)},
+		{"dec", decimal128("1234.5600")},
+		{"long", int64(9007199254740993)},
+		{"smallLong", int64(5)},
+		{"int", 42},
+		{"double", 1.0},
+		{"frac", 2.5},
+		{"nan", math.NaN()},
+		{"inf", math.Inf(1)},
+		{"nzero", math.Copysign(0, -1)},
+		{"bin", bson.Binary{Subtype: 0x00, Data: []byte{0x01, 0x02, 0x03, 0x04}}},
+		{"userBin", bson.Binary{Subtype: 0x80, Data: []byte{0x00}}},
+		{"uuid", uuidBinary("a8098c1a-f86e-11da-bd1a-00112444be1e")},
+		{"re", bson.Regex{Pattern: "^ab+c", Options: "i"}},
+		{"reX", bson.Regex{Pattern: "a b # comment", Options: "sx"}},
+		{"ts", bson.Timestamp{T: 1700000000, I: 7}},
+		{"tsBig", bson.Timestamp{T: 4294967295, I: 4294967295}},
+		{"min", bson.MinKey{}},
+		{"max", bson.MaxKey{}},
+		{"nul", nil},
+		{"t", true},
+		{"s", "it's \"quoted\" \\ $var\n\ttab \u0001 é 😀"},
+		{"nested", bson.D{{"a", bson.A{1, "x", bson.D{{"b", nil}}}}, {"a.b", 1}}},
+		{"list", bson.D{{"0", "a"}, {"1", "b"}}},
+		{"emptyDoc", bson.D{}},
+		{"emptyArr", bson.A{}},
+		{"single", bson.A{nil}},
+		{"code", bson.JavaScript("function() { return 1; }")},
+		{"ref", bson.D{{"$ref", "things"}, {"$id", objectID("65a1b2c3d4e5f60718293a4c")}}},
+	}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var document bson.D
+		if err := cursor.Decode(&document); err != nil {
+			log.Fatal(err)
+		}
+		text, err := bson.MarshalExtJSON(document, false, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(text))
+	}
+	if err := cursor.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func decimal128(s string) bson.Decimal128 {
+	d, err := bson.ParseDecimal128(s)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return d
+}
+
+func objectID(s string) bson.ObjectID {
+	id, err := bson.ObjectIDFromHex(s)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return id
+}
+
+func uuidBinary(s string) bson.Binary {
+	data, err := hex.DecodeString(strings.ReplaceAll(s, "-", ""))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return bson.Binary{Subtype: 0x04, Data: data}
+}

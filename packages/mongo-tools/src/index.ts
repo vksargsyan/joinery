@@ -95,6 +95,10 @@ export type {
   SqlTranslation,
 } from './sql/translate';
 
+export { CODE_EXPORT_LANGUAGES, exportQueryCode } from './codegen/export';
+export type { CodeExportLanguage } from './codegen/export';
+export type { CodeExportOptions, CodeLanguage, ExportTarget } from './codegen/common';
+
 export { commandSafety } from './commands';
 export type { CommandSafety } from './commands';
 

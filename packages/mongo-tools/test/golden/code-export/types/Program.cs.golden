@@ -1,0 +1,58 @@
+// dotnet add package MongoDB.Driver
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+using System;
+using MongoDB.Bson;
+using MongoDB.Driver;
+
+var uri = Environment.GetEnvironmentVariable("MONGODB_URI")
+    ?? throw new InvalidOperationException("Set the MONGODB_URI environment variable");
+var client = new MongoClient(uri);
+var collection = client.GetDatabase("shop").GetCollection<BsonDocument>("types");
+
+var filter = new BsonDocument
+{
+    { "oid", new ObjectId("65a1b2c3d4e5f60718293a4b") },
+    { "date", new DateTime(2024, 1, 2, 3, 4, 5, 678, DateTimeKind.Utc) },
+    { "far", new BsonDateTime(253402300800000) },
+    { "dec", new BsonDecimal128(Decimal128.Parse("1234.5600")) },
+    { "long", 9007199254740993L },
+    { "smallLong", 5L },
+    { "int", 42 },
+    { "double", 1.0 },
+    { "frac", 2.5 },
+    { "nan", double.NaN },
+    { "inf", double.PositiveInfinity },
+    { "nzero", new BsonDouble(-0.0) },
+    { "bin", new BsonBinaryData(Convert.FromBase64String("AQIDBA=="), BsonBinarySubType.Binary) },
+    { "userBin", new BsonBinaryData(Convert.FromBase64String("AA=="), (BsonBinarySubType)0x80) },
+    { "uuid", new BsonBinaryData(Guid.Parse("a8098c1a-f86e-11da-bd1a-00112444be1e"), GuidRepresentation.Standard) },
+    { "re", new BsonRegularExpression("^ab+c", "i") },
+    { "reX", new BsonRegularExpression("a b # comment", "sx") },
+    { "ts", new BsonTimestamp(1700000000, 7) },
+    { "tsBig", new BsonTimestamp(-1L) },
+    { "min", BsonMinKey.Value },
+    { "max", BsonMaxKey.Value },
+    { "nul", BsonNull.Value },
+    { "t", true },
+    { "s", "it's \"quoted\" \\ $var\n\ttab \u0001 é 😀" },
+    { "nested", new BsonDocument
+    {
+        { "a", new BsonArray { 1, "x", new BsonDocument("b", BsonNull.Value) } },
+        { "a.b", 1 },
+    } },
+    { "list", new BsonDocument { { "0", "a" }, { "1", "b" } } },
+    { "emptyDoc", new BsonDocument() },
+    { "emptyArr", new BsonArray() },
+    { "single", new BsonArray { BsonNull.Value } },
+    { "code", new BsonJavaScript("function() { return 1; }") },
+    { "ref", new BsonDocument
+    {
+        { "$ref", "things" },
+        { "$id", new ObjectId("65a1b2c3d4e5f60718293a4c") },
+    } },
+};
+var cursor = collection.Find(filter);
+foreach (var document in cursor.ToEnumerable())
+{
+    Console.WriteLine(document);
+}
