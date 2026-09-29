@@ -7,7 +7,7 @@ import {
   type FileReader,
   type TlsSettings,
 } from '@joinery/driver-sql-base';
-import { tunnelTarget } from '@joinery/tunnel';
+import { nodeRouteOf, tunnelReach } from '@joinery/tunnel';
 import type { AuthMechanism, MongoClientOptions } from 'mongodb';
 
 /** Everything needed to open a MongoClient for a profile. */
@@ -23,8 +23,13 @@ export interface MongoClientPlan {
   readonly where: string;
   /** The session's initial database: the profile's default, the URI's, else "test". */
   readonly defaultDatabase: string;
-  /** Through an SSH tunnel or proxy (endpointOverride): one forwarded host, direct connection. */
+  /** Through an SSH tunnel or proxy (endpointOverride, and `routed` for several servers). */
   readonly tunnelled: boolean;
+  /**
+   * Every server reached through the tunnel's SOCKS5 endpoint (a host list, SRV name or replica
+   * set URI behind a tunnel or proxy); otherwise a tunnel reaches one host, connected directly.
+   */
+  readonly routed: boolean;
   /** The replica set name the profile asks for, if any. */
   readonly replicaSet?: string;
   /** Secret values that must never appear in messages. */
@@ -134,10 +139,13 @@ const PASSWORD_MECHANISMS: Readonly<Record<string, AuthMechanism>> = {
  * Builds the MongoClient connection string and options for a resolved profile (spec §4):
  *
  * - Endpoints: `host`, `hosts` (+ replica set), `srv` (mongodb+srv) and `uri` (credentials are
- *   taken out of the string and passed as options). With `endpointOverride` (an SSH tunnel or
- *   proxy forwarding one target) the client connects there with `directConnection: true`,
- *   since replica set discovery would try member names only the far side can reach; host
- *   lists, SRV and multi-host URIs cannot be tunnelled (NOT_SUPPORTED from the tunnel layer).
+ *   taken out of the string and passed as options).
+ * - Tunnels (ADR 0008): a single host behind an SSH tunnel or proxy (`endpointOverride` alone)
+ *   is connected to through the forward with `directConnection: true`. A host list, SRV name
+ *   or replica set URI behind one comes with a node route (`nodeRouteOf`): the client keeps the
+ *   profile's own seeds and sends every connection through the route's SOCKS5 endpoint
+ *   (`proxyHost`...), so it discovers the members and reaches them by the names they
+ *   announce, resolved on the far side. SRV and TXT records are still looked up locally.
  * - Auth: `none`; `password` with SCRAM-SHA-1/256 (or LDAP as PLAIN in `$external`) from
  *   `mechanism`; `clientCertificate` as MONGODB-X509 from the TLS certificate.
  * - TLS: disable → no TLS; require → tlsAllowInvalidCertificates; verify-ca →
@@ -160,9 +168,19 @@ export function buildMongoClientPlan(
     });
   }
   assertSupportedNetwork(resolved);
-  const override = resolved.endpointOverride;
-  // The tunnel layer only forwards single hosts; surface its NOT_SUPPORTED for anything else.
-  const tunnelledTo = override ? tunnelTarget(profile) : undefined;
+  // Behind a tunnel: one forwarded host, or every member through the node route.
+  const reach = resolved.endpointOverride ? tunnelReach(profile) : undefined;
+  const route = reach?.kind === 'nodes' ? nodeRouteOf(resolved) : undefined;
+  if (reach?.kind === 'nodes' && !route) {
+    throw new JoineryError({
+      code: 'NOT_SUPPORTED',
+      message:
+        'This profile reaches several MongoDB servers through its tunnel, but only one forwarded host was given',
+      hint: 'Open it through the connection host, which reaches every member through the tunnel (see connectThroughTransport)',
+    });
+  }
+  const override = reach?.kind === 'host' ? resolved.endpointOverride : undefined;
+  const tunnelledTo = reach?.kind === 'host' ? reach.target : undefined;
   const options = profile.options;
   const endpoint = profile.endpoint;
   const secrets = Object.values(resolved.secrets).filter((value) => value.length > 0);
@@ -224,6 +242,15 @@ export function buildMongoClientPlan(
   if (override) client.directConnection = true;
   else if (options.directConnection !== undefined)
     client.directConnection = options.directConnection;
+  if (route) {
+    // The driver opens every connection (monitoring and pool, to each member) through here.
+    const socks = route.socks5;
+    client.proxyHost = socks.host;
+    client.proxyPort = socks.port;
+    client.proxyUsername = socks.user;
+    client.proxyPassword = socks.password;
+    secrets.push(socks.password);
+  }
   if (options.readPreference !== undefined) client.readPreference = options.readPreference;
 
   const tlsHost = tunnelledTo?.host ?? seeds[0]!.host;
@@ -243,11 +270,14 @@ export function buildMongoClientPlan(
   );
   Object.assign(client, authOptions(resolved, uriParts));
 
+  const named = srv
+    ? `${uriParts?.hosts ?? seeds[0]!.host} (SRV)`
+    : seeds.map(hostPortText).join(', ');
   const where = override
     ? `${hostPortText(override)} (tunnel to ${hostPortText(tunnelledTo!)})`
-    : srv
-      ? `${uriParts?.hosts ?? seeds[0]!.host} (SRV)`
-      : seeds.map(hostPortText).join(', ');
+    : route
+      ? `${named} through the tunnel`
+      : named;
   return {
     url,
     options: client,
@@ -256,7 +286,8 @@ export function buildMongoClientPlan(
     srv,
     where,
     defaultDatabase: database,
-    tunnelled: override !== undefined,
+    tunnelled: override !== undefined || route !== undefined,
+    routed: route !== undefined,
     ...(replicaSet !== undefined ? { replicaSet } : {}),
     secrets,
   };

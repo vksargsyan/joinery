@@ -1,4 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
+import { resolveSrv as dnsResolveSrv } from 'node:dns/promises';
 import type { Duplex } from 'node:stream';
 
 import {
@@ -10,8 +11,9 @@ import {
 } from '@joinery/core';
 import type { Client } from 'ssh2';
 
-import { tunnelTarget } from './endpoint';
-import { errorMessage, hostLabel, tunnelError } from './errors';
+import { tunnelReach, type TunnelReach } from './endpoint';
+import { errorMessage, errorProp, hostLabel, tunnelError } from './errors';
+import { NodeTransport } from './nodes';
 import { connectThroughProxy, describeProxy } from './proxy';
 import { agentSocket, connectHop, defaultKeyFileReader, forwardOut, hopLabel } from './ssh';
 import {
@@ -82,6 +84,11 @@ export class TransportManager {
    * previous one; the last hop forwarding to the endpoint), a SOCKS5 or HTTP CONNECT proxy when
    * only `profile.proxy` is set, and nothing (undefined) otherwise.
    *
+   * A profile that reaches several servers (a MongoDB host list, SRV name or replica set URI,
+   * Redis Sentinel or Cluster; see `tunnelReach`) gets a transport with `nodes`, which reaches
+   * each server by the name it announces over the same SSH session or proxy. Its SRV record is
+   * looked up on this computer first: a name that does not resolve here fails the open.
+   *
    * SSH sessions are shared: profiles whose chains start with the same hops (host, port, user
    * and credentials) reuse one session, which closes when its last transport closes. A session
    * that fails is dropped, and the next connection through any of its transports reconnects.
@@ -94,41 +101,55 @@ export class TransportManager {
     if (!profile.ssh && !profile.proxy) return undefined;
     const options = { ...this.defaults, ...overrides };
     const timeoutMs = options.connectTimeoutMs ?? profile.options.connectTimeoutMs;
-    const target = tunnelTarget(profile);
-    const targetLabel = hostLabel(target.host, target.port);
+    const reach = tunnelReach(profile);
 
+    let route: Route;
+    let via: string;
     if (!profile.ssh) {
       const proxy = profile.proxy!;
-      const route: Route = {
-        open: () => connectThroughProxy(proxy, resolved.secrets, target, timeoutMs),
+      route = {
+        open: (target) => connectThroughProxy(proxy, resolved.secrets, target, timeoutMs),
         release: async () => undefined,
       };
-      return LocalForwarder.listen(route, `${describeProxy(proxy)} → ${targetLabel}`);
+      via = describeProxy(proxy);
+    } else {
+      const ssh = profile.ssh;
+      const chain: ChainSpec = {
+        hops: ssh.hops,
+        proxy: profile.proxy,
+        secrets: resolved.secrets,
+        keepAliveIntervalMs: ssh.keepAliveIntervalMs,
+        timeoutMs,
+        options,
+      };
+      const sshRoute = new SshRoute(this, chain);
+      // Connect now, so a bad password or an untrusted host key fails the open, not a later query.
+      await sshRoute.links();
+      route = sshRoute;
+      const proxied = profile.proxy ? `${describeProxy(profile.proxy)} → ` : '';
+      via = `SSH ${proxied}${ssh.hops.map(hopLabel).join(' → ')}`;
     }
 
-    const ssh = profile.ssh;
-    const chain: ChainSpec = {
-      hops: ssh.hops,
-      proxy: profile.proxy,
-      secrets: resolved.secrets,
-      keepAliveIntervalMs: ssh.keepAliveIntervalMs,
-      timeoutMs,
-      options,
-    };
-    const hopsLabel = ssh.hops.map(hopLabel).join(' → ');
-    const via = profile.proxy ? `${describeProxy(profile.proxy)} → ` : '';
-    const route = new SshRoute(this, chain, target);
-    // Connect now, so a bad password or an untrusted host key fails the open, not a later query.
-    await route.links();
-    const forwarder = await LocalForwarder.listen(
-      route,
-      `SSH ${via}${hopsLabel} → ${targetLabel}`,
-    ).catch(async (error: unknown) => {
+    let transport: LocalForwarder | NodeTransport;
+    try {
+      if (reach.kind === 'host') {
+        const label = hostLabel(reach.target.host, reach.target.port);
+        transport = await LocalForwarder.listen(route, reach.target, `${via} → ${label}`);
+      } else {
+        const servers = await serversOf(reach, options, timeoutMs);
+        transport = await NodeTransport.open(
+          route,
+          servers,
+          `${via} → ${describeServers(reach, servers)}`,
+          { timeoutMs },
+        );
+      }
+    } catch (error) {
       await route.release();
       throw error;
-    });
-    route.report = (error) => forwarder.emitError(error);
-    return forwarder;
+    }
+    if (route instanceof SshRoute) route.report = (error) => transport.emitError(error);
+    return transport;
   }
 
   /** Live SSH sessions (one per distinct hop path), for diagnostics and tests. */
@@ -270,7 +291,10 @@ function sessionLost(label: string, reason: string): JoineryError {
   );
 }
 
-/** A transport's route over a shared SSH chain; reconnects when the chain has dropped. */
+/**
+ * A transport's route over a shared SSH chain: each stream is a direct-tcpip channel from the
+ * last hop, so the SSH server resolves the target's name. Reconnects when the chain has dropped.
+ */
 class SshRoute implements Route {
   private current: SshLink[] | undefined;
   private acquiring: Promise<SshLink[]> | undefined;
@@ -282,7 +306,6 @@ class SshRoute implements Route {
   constructor(
     private readonly manager: TransportManager,
     private readonly chain: ChainSpec,
-    private readonly target: HostPort,
   ) {}
 
   /** The chain's sessions, reacquiring them when one has dropped. */
@@ -294,18 +317,12 @@ class SshRoute implements Route {
     return this.acquiring;
   }
 
-  async open(srcPort: number): Promise<Duplex> {
+  async open(target: HostPort, srcPort: number): Promise<Duplex> {
     for (let attempt = 1; ; attempt++) {
       const links = await this.links();
       const last = links.at(-1)!;
       try {
-        return await forwardOut(
-          last.client!,
-          srcPort,
-          this.target,
-          this.chain.timeoutMs,
-          last.label,
-        );
+        return await forwardOut(last.client!, srcPort, target, this.chain.timeoutMs, last.label);
       } catch (error) {
         // The session dropped between checking and forwarding: reconnect once.
         if (attempt === 1 && !last.alive && !this.released) continue;
@@ -358,6 +375,73 @@ class SshRoute implements Route {
     const current = this.detach();
     if (current) this.manager.release(current);
   }
+}
+
+/** The servers a `nodes` reach starts from: its seeds, or its SRV record looked up here. */
+async function serversOf(
+  reach: Extract<TunnelReach, { kind: 'nodes' }>,
+  options: TransportOptions,
+  timeoutMs: number,
+): Promise<readonly HostPort[]> {
+  if (reach.srvRecord === undefined) return reach.seeds;
+  const lookup = options.resolveSrv ?? defaultResolveSrv;
+  let servers: HostPort[];
+  try {
+    servers = await withTimeout(lookup(reach.srvRecord), timeoutMs);
+  } catch (error) {
+    const code = errorProp(error, 'code');
+    throw tunnelError(
+      'CONNECTION_FAILED',
+      `The SRV record ${reach.srvRecord} could not be looked up on this computer${code ? ` (${code})` : ''}`,
+      'SRV and TXT records are looked up here, not through the SSH tunnel or proxy: make the name resolvable on this computer, or connect with a host list of the members as the SSH server sees them',
+      error,
+      'SRV_NOT_RESOLVED',
+    );
+  }
+  if (servers.length === 0) {
+    throw tunnelError(
+      'CONNECTION_FAILED',
+      `The SRV record ${reach.srvRecord} lists no servers`,
+      'Check the cluster host name, or connect with a host list',
+      undefined,
+      'SRV_NOT_RESOLVED',
+    );
+  }
+  return servers;
+}
+
+async function defaultResolveSrv(record: string): Promise<HostPort[]> {
+  const records = await dnsResolveSrv(record);
+  return records.map((r) => ({ host: r.name, port: r.port }));
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(Object.assign(new Error('The DNS lookup timed out'), { code: 'ETIMEOUT' })),
+      timeoutMs,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/** "a:27017, b:27017, every server through the tunnel", or the SRV record and what it lists. */
+function describeServers(
+  reach: Extract<TunnelReach, { kind: 'nodes' }>,
+  servers: readonly HostPort[],
+): string {
+  const list = servers.map((s) => hostLabel(s.host, s.port)).join(', ');
+  const named = reach.srvRecord === undefined ? list : `${reach.srvRecord} (${list})`;
+  return `${named}, every server through the tunnel`;
 }
 
 /**

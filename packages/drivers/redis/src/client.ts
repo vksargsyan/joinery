@@ -5,6 +5,7 @@ import { Cluster, Command, Redis, type ClusterOptions, type RedisOptions } from 
 
 import type { RedisConnectionPlan } from './config';
 import { isReplyError, mapRedisError, pickConnectError, type RedisErrorContext } from './errors';
+import { NodeRouting, announcedAddress } from './routing';
 
 /** A command argument as ioredis takes it; byte arrays are sent as they are. */
 export type Arg = string | Uint8Array | number;
@@ -22,11 +23,25 @@ function toIoArg(arg: Arg): IoArg {
   return Buffer.isBuffer(arg) ? arg : Buffer.from(arg.buffer, arg.byteOffset, arg.byteLength);
 }
 
-/** "host:port" of an ioredis node connection. */
+/**
+ * "host:port" of an ioredis node connection: the address the node announced, also when it is
+ * reached through a tunnel's forward (see NodeRouting).
+ */
 export function addressOf(node: Redis): string {
   const host = node.options.host ?? 'localhost';
   const port = node.options.port ?? 6379;
-  return host.includes(':') ? `[${host}]:${port}` : `${host}:${port}`;
+  const address = host.includes(':') ? `[${host}]:${port}` : `${host}:${port}`;
+  return announcedAddress(address) ?? address;
+}
+
+/** The host and port of `addressOf`. */
+export function hostPortOf(node: Redis): { host: string; port: number } {
+  const address = addressOf(node);
+  const colon = address.lastIndexOf(':');
+  return {
+    host: address.slice(0, colon).replace(/^\[(.*)\]$/, '$1'),
+    port: Number(address.slice(colon + 1)),
+  };
 }
 
 const MAX_RECONNECTS = 10;
@@ -38,6 +53,9 @@ const MAX_RECONNECTS = 10;
  * as soon as the connection drops. Once connected, a dropped connection is re-established a few
  * times before the session gives up; while connecting, nothing is retried, so the first error
  * is reported.
+ *
+ * Sentinel and Cluster behind a tunnel reach every node through its forwards (NodeRouting);
+ * `plan.seeds` are then the forwarded seeds or Sentinels.
  */
 export class RedisConnection {
   private established = false;
@@ -50,21 +68,31 @@ export class RedisConnection {
   private constructor(
     readonly plan: RedisConnectionPlan,
     readonly client: Redis | Cluster,
+    private readonly routing: NodeRouting | undefined,
   ) {}
 
   /** Opens and authenticates the connection; maps failures to JoineryErrors with hints. */
   static async open(plan: RedisConnectionPlan): Promise<RedisConnection> {
+    const routing = plan.nodeRoute ? await NodeRouting.open(plan, plan.nodeRoute) : undefined;
+    const routed: RedisConnectionPlan = routing
+      ? { ...plan, seeds: routing.seeds, target: routing.seeds[0] ?? plan.target }
+      : plan;
     const box: { conn?: RedisConnection } = {};
     const live = (): boolean => box.conn !== undefined && box.conn.established && !box.conn.closed;
     const retry = (times: number): number | null =>
       live() && times <= MAX_RECONNECTS ? Math.min(times * 200, 2000) : null;
-    const client = createClient(plan, retry, live);
-    const conn = new RedisConnection(plan, client);
+    const client = createClient(routed, retry, live, routing);
+    const conn = new RedisConnection(routed, client, routing);
     box.conn = conn;
     // Errors also reach the pending commands; the listeners keep ioredis from logging them.
     client.on('error', () => undefined);
     if (client instanceof Cluster) client.on('node error', () => undefined);
-    await connectClient(client, conn.context('connect'));
+    try {
+      await connectClient(client, conn.context('connect'));
+    } catch (error) {
+      routing?.release();
+      throw error;
+    }
     conn.established = true;
     return conn;
   }
@@ -123,8 +151,10 @@ export class RedisConnection {
       return undefined;
     }
     if (slot === null || slot === undefined) return undefined;
-    const owner = this.client.slots[slot]?.[0];
-    return owner === undefined ? undefined : this.primaries().find((n) => addressOf(n) === owner);
+    const key = this.client.slots[slot]?.[0];
+    if (key === undefined) return undefined;
+    const owner = announcedAddress(key) ?? key;
+    return this.primaries().find((n) => addressOf(n) === owner);
   }
 
   /** Runs a command; with `node`, on that node connection (following MOVED / ASK in Cluster mode). */
@@ -265,6 +295,7 @@ export class RedisConnection {
     for (const c of this.extra) c.disconnect();
     this.extra.clear();
     this.client.disconnect();
+    this.routing?.release();
   }
 }
 
@@ -325,10 +356,15 @@ function createClient(
   plan: RedisConnectionPlan,
   retry: (times: number) => number | null,
   established: () => boolean,
+  routing: NodeRouting | undefined,
 ): Redis | Cluster {
   const common = commonOptions(plan);
   if (plan.topology === 'cluster') {
-    const seeds = plan.seeds.map((s) => (s.kind === 'tcp' ? { host: s.host, port: s.port } : {}));
+    const seeds = plan.seeds.map((s) => {
+      if (s.kind !== 'tcp') return {};
+      const tls = routing?.nodeTls(s.tlsHost);
+      return { host: s.host, port: s.port, ...(tls ? { tls } : {}) };
+    });
     const options: ClusterOptions = {
       lazyConnect: true,
       enableOfflineQueue: true,
@@ -337,6 +373,7 @@ function createClient(
       slotsRefreshTimeout: Math.max(1000, plan.connectTimeoutMs),
       clusterRetryStrategy: (times) => retry(times) ?? null,
       redisOptions: common,
+      ...(routing ? { natMap: routing.natMap } : {}),
     };
     const cluster = new Cluster(seeds, options);
     if (!plan.keepAlive) cluster.on('+node', (node: Redis) => withoutKeepAlive(node));
@@ -354,10 +391,16 @@ function createClient(
       ...(plan.password !== undefined
         ? { sentinelUsername: plan.user ?? 'default', sentinelPassword: plan.password }
         : {}),
-      ...(plan.tlsOptions ? { enableTLSForSentinelMode: true, sentinelTLS: plan.tlsOptions } : {}),
+      ...(plan.tlsOptions
+        ? {
+            enableTLSForSentinelMode: true,
+            sentinelTLS: routing?.sentinelTls() ?? plan.tlsOptions,
+          }
+        : {}),
       sentinelCommandTimeout: plan.connectTimeoutMs,
       sentinelRetryStrategy: (times) => (established() && times <= 3 ? 200 : null),
       failoverDetector: false,
+      ...(routing ? { natMap: routing.natMap } : {}),
     });
   } else if (plan.target.kind === 'socket') {
     redis = new Redis({ ...base, path: plan.target.path });

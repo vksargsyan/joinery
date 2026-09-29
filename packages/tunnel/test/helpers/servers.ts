@@ -122,6 +122,8 @@ export interface SshServerOptions {
   readonly forwarding?: 'allow' | 'prohibit' | ((host: string, port: number) => boolean);
   /** The host key (OpenSSH private key text); a fresh Ed25519 key by default. */
   readonly hostKey?: string;
+  /** Names only this server resolves (like a private DNS zone behind a bastion), to addresses. */
+  readonly hosts?: Readonly<Record<string, string>>;
 }
 
 export interface TestSshServer {
@@ -134,8 +136,16 @@ export interface TestSshServer {
     active: number;
     authenticated: number;
     keepalives: number;
+    /** Every direct-tcpip request, as the client named its destination. */
     forwards: { host: string; port: number }[];
+    /**
+     * The local ports of the server's own connections to forwarded destinations: a database
+     * that reports a client from one of these ports was reached through this server.
+     */
+    upstreamPorts: Set<number>;
   };
+  /** Forwarded channels open right now. */
+  readonly openChannels: number;
   /** Drops every client connection (simulates a network failure or a server restart). */
   dropAll(): void;
   close(): Promise<void>;
@@ -179,6 +189,7 @@ export async function startSshServer(options: SshServerOptions): Promise<TestSsh
     authenticated: 0,
     keepalives: 0,
     forwards: [],
+    upstreamPorts: new Set(),
   };
   const clients = new Set<Connection>();
   const upstreams = new Set<Socket>();
@@ -235,7 +246,8 @@ export async function startSshServer(options: SshServerOptions): Promise<TestSsh
             reject();
             return;
           }
-          const upstream = netConnect({ host: info.destIP, port: info.destPort });
+          const host = options.hosts?.[info.destIP] ?? info.destIP;
+          const upstream = netConnect({ host, port: info.destPort });
           upstreams.add(upstream);
           upstream.once('close', () => upstreams.delete(upstream));
           upstream.once('error', () => {
@@ -243,6 +255,7 @@ export async function startSshServer(options: SshServerOptions): Promise<TestSsh
             reject();
           });
           upstream.once('connect', () => {
+            if (upstream.localPort !== undefined) stats.upstreamPorts.add(upstream.localPort);
             const channel = accept();
             channel.on('error', () => undefined);
             upstream.pipe(channel).pipe(upstream);
@@ -260,6 +273,9 @@ export async function startSshServer(options: SshServerOptions): Promise<TestSsh
     hostKeyFingerprint: fingerprintOf(parsedHostKey.getPublicSSH()),
     hostKeyAlgorithm: parsedHostKey.type,
     stats,
+    get openChannels() {
+      return upstreams.size;
+    },
     dropAll: () => {
       for (const client of clients) client.end();
       for (const upstream of upstreams) upstream.destroy();
@@ -303,10 +319,13 @@ export interface ProxyServer {
   close(): Promise<void>;
 }
 
-/** A minimal SOCKS5 CONNECT server, optionally requiring user name and password (RFC 1929). */
+/**
+ * A minimal SOCKS5 CONNECT server, optionally requiring user name and password (RFC 1929).
+ * `hosts` maps names only the proxy resolves to addresses.
+ */
 export async function startSocks5Server(
   credentials?: { user: string; password: string },
-  options: { refuse?: boolean } = {},
+  options: { refuse?: boolean; hosts?: Readonly<Record<string, string>> } = {},
 ): Promise<ProxyServer> {
   const stats = { connections: 0, destinations: [] as string[] };
   const server = createNetServer(async (socket) => {
@@ -346,7 +365,7 @@ export async function startSocks5Server(
       return;
     }
     socket.removeAllListeners('data');
-    const upstream = netConnect({ host, port });
+    const upstream = netConnect({ host: options.hosts?.[host] ?? host, port });
     upstream.once('error', () => socket.end(reply(5)));
     upstream.once('connect', () => {
       socket.write(reply(0));
@@ -367,11 +386,14 @@ export async function startSocks5Server(
   };
 }
 
-/** A minimal HTTP CONNECT proxy, optionally requiring Basic proxy authentication. */
-export async function startHttpProxy(credentials?: {
-  user: string;
-  password: string;
-}): Promise<ProxyServer> {
+/**
+ * A minimal HTTP CONNECT proxy, optionally requiring Basic proxy authentication. `hosts` maps
+ * names only the proxy resolves to addresses.
+ */
+export async function startHttpProxy(
+  credentials?: { user: string; password: string },
+  options: { hosts?: Readonly<Record<string, string>> } = {},
+): Promise<ProxyServer> {
   const stats = { connections: 0, destinations: [] as string[] };
   const server = createHttpServer((_req, res) => {
     res.writeHead(405).end();
@@ -390,7 +412,8 @@ export async function startHttpProxy(credentials?: {
     }
     const [host, port] = (req.url ?? '').split(/:(?=\d+$)/);
     stats.destinations.push(`${host}:${port}`);
-    const upstream = netConnect({ host: host!.replace(/^\[(.*)\]$/, '$1'), port: Number(port) });
+    const name = host!.replace(/^\[(.*)\]$/, '$1');
+    const upstream = netConnect({ host: options.hosts?.[name] ?? name, port: Number(port) });
     upstream.once('error', () => socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n'));
     upstream.once('connect', () => {
       socket.write('HTTP/1.1 200 Connection Established\r\n\r\n');

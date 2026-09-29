@@ -152,7 +152,7 @@ describe('checkRedisConnection', () => {
     ]);
   });
 
-  it('fails the SSH step for tunnelled Sentinel and Cluster profiles', async () => {
+  it('checks tunnelled Sentinel and Cluster profiles through the tunnel’s node route', async () => {
     const ssh = {
       hops: [{ host: '10.0.0.5', port: 22, user: 'u', auth: { method: 'agent' as const } }],
       keepAliveIntervalMs: 15000,
@@ -161,18 +161,57 @@ describe('checkRedisConnection', () => {
       ssh,
       endpoint: { kind: 'cluster', seeds: [{ host: 'n1', port: 7000 }] },
     });
+    const nodes = {
+      socks5: { host: '127.0.0.1', port: 1, user: 'u', password: 'p' },
+      forward: async () => ({ host: '127.0.0.1', port: 2 }),
+      forwardNow: () => undefined,
+      reserve: async () => undefined,
+      forwardCount: 0,
+      channelCount: 0,
+    };
+    const seen: ResolvedProfile[] = [];
+    const adapter = fakeAdapter('ok');
+    const closed: string[] = [];
     const steps = await collect(
-      checkRedisConnection(resolved, fakeAdapter('ok'), {
-        ...deps(['10.0.0.5:22']),
-        runSshStep: async () => {
-          throw new Error('should not be called');
+      checkRedisConnection(
+        resolved,
+        {
+          ...adapter,
+          connect: async (through) => {
+            seen.push(through);
+            return adapter.connect(through);
+          },
         },
-      }),
+        {
+          ...deps(['10.0.0.5:22']),
+          runSshStep: async () => ({
+            result: {
+              step: 'ssh',
+              status: 'ok',
+              durationMs: 1,
+              message: 'SSH u@10.0.0.5:22 → n1:7000',
+            },
+            transport: {
+              endpointOverride: { host: '127.0.0.1', port: 3 },
+              nodes,
+              close: async () => void closed.push('closed'),
+            },
+          }),
+        },
+      ),
     );
-    expect(steps.find((s) => s.status === 'failed')).toMatchObject({
-      step: 'ssh',
-      hint: expect.stringMatching(/single host/),
-    });
+    expect(steps.map((s) => `${s.step}:${s.status}`)).toEqual([
+      'dns:skipped',
+      'tcp:ok',
+      'ssh:ok',
+      'tls:skipped',
+      'auth:ok',
+      'ping:ok',
+      'version:ok',
+    ]);
+    expect(steps[6]!.message).toBe('Valkey 8.0.1 (cluster of 3 primaries)');
+    expect(seen[0]).toHaveProperty('nodeRoute', nodes);
+    expect(closed).toEqual(['closed']);
     const noRunner = await collect(
       checkRedisConnection(profile({ ssh }), fakeAdapter('ok'), deps(['10.0.0.5:22'])),
     );

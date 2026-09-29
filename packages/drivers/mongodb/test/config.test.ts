@@ -285,7 +285,7 @@ describe('buildMongoClientPlan', () => {
     const plan = buildMongoClientPlan(
       resolved(
         {
-          endpoint: { kind: 'uri', uri: 'mongodb://db.internal:27018/app?replicaSet=rs0' },
+          endpoint: { kind: 'uri', uri: 'mongodb://db.internal:27018/app?w=majority' },
           auth: { method: 'none' },
           tls: { mode: 'verify-full' },
           ssh: {
@@ -297,9 +297,11 @@ describe('buildMongoClientPlan', () => {
         { host: '127.0.0.1', port: 40000 },
       ),
     );
-    expect(plan.url).toBe('mongodb://127.0.0.1:40000/app?replicaSet=rs0');
+    expect(plan.url).toBe('mongodb://127.0.0.1:40000/app?w=majority');
     expect(plan.options).toMatchObject({ directConnection: true, servername: 'db.internal' });
+    expect(plan.options.proxyHost).toBeUndefined();
     expect(plan.tunnelled).toBe(true);
+    expect(plan.routed).toBe(false);
     expect(plan.where).toBe('127.0.0.1:40000 (tunnel to db.internal:27018)');
     const identity = plan.options.checkServerIdentity!;
     expect(
@@ -308,6 +310,66 @@ describe('buildMongoClientPlan', () => {
         subjectaltname: 'DNS:db.internal',
       } as never),
     ).toBeUndefined();
+  });
+
+  it('sends a replica set behind a tunnel through its SOCKS5 endpoint, by the members’ names', () => {
+    const socks5 = { host: '127.0.0.1', port: 41000, user: 'joinery-ab', password: 'route-pw' };
+    const nodeRoute = {
+      socks5,
+      forward: async () => ({ host: '127.0.0.1', port: 1 }),
+      forwardNow: () => undefined,
+      reserve: async () => undefined,
+      forwardCount: 0,
+      channelCount: 0,
+    };
+    const ssh = {
+      hops: [{ host: 'bastion', port: 22, user: 'me', auth: { method: 'agent' as const } }],
+      keepAliveIntervalMs: 0,
+    };
+    const override = { host: '127.0.0.1', port: 40000 };
+    const routed = (input: Partial<ConnectionProfileInput>) =>
+      buildMongoClientPlan({
+        ...resolved({ ssh, auth: { method: 'none' }, ...input }, {}, override),
+        nodeRoute,
+      } as ResolvedProfile);
+
+    const list = routed({
+      endpoint: {
+        kind: 'hosts',
+        hosts: [
+          { host: 'db1.internal', port: 27017 },
+          { host: 'db2.internal', port: 27018 },
+        ],
+        replicaSet: 'rs0',
+      },
+      tls: { mode: 'verify-full' },
+    });
+    expect(list.url).toBe('mongodb://db1.internal:27017,db2.internal:27018/');
+    expect(list.options).toMatchObject({
+      replicaSet: 'rs0',
+      proxyHost: '127.0.0.1',
+      proxyPort: 41000,
+      proxyUsername: 'joinery-ab',
+      proxyPassword: 'route-pw',
+      tls: true,
+    });
+    // Discovery stays on, and each member's certificate is checked against its own name.
+    expect(list.options.directConnection).toBeUndefined();
+    expect(list.options.servername).toBeUndefined();
+    expect(list.options.checkServerIdentity).toBeUndefined();
+    expect(list).toMatchObject({ tunnelled: true, routed: true });
+    expect(list.where).toBe('db1.internal:27017, db2.internal:27018 through the tunnel');
+    expect(list.secrets).toContain('route-pw');
+
+    const srv = routed({ endpoint: { kind: 'srv', host: 'cluster0.example.net' } });
+    expect(srv.url).toBe('mongodb+srv://cluster0.example.net/');
+    expect(srv.options.proxyPort).toBe(41000);
+    const uri = routed({
+      endpoint: { kind: 'uri', uri: 'mongodb://a.internal:1/app?replicaSet=rs0' },
+      options: { directConnection: false },
+    });
+    expect(uri.url).toBe('mongodb://a.internal:1/app?replicaSet=rs0');
+    expect(uri.options).toMatchObject({ directConnection: false, proxyHost: '127.0.0.1' });
   });
 
   it('refuses tunnels it cannot use and proxies without a route', () => {

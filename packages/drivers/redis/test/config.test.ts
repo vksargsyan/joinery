@@ -293,8 +293,9 @@ describe('buildRedisConnectionPlan', () => {
         ),
       ),
     );
+    // Sentinel behind a tunnel needs the tunnel's node route, not only one forwarded host.
     expect(sentinel.code).toBe('NOT_SUPPORTED');
-    expect(sentinel.hint).toMatch(/single host/);
+    expect(sentinel.hint).toMatch(/connection host/);
     const socket = thrown(() =>
       buildRedisConnectionPlan(
         profile(
@@ -305,6 +306,43 @@ describe('buildRedisConnectionPlan', () => {
       ),
     );
     expect(socket.message).toMatch(/Unix socket/);
+  });
+
+  it('keeps the Sentinels and cluster seeds behind a tunnel, reached through its node route', () => {
+    const ssh = {
+      hops: [{ host: 'bastion', port: 22, user: 'u', auth: { method: 'agent' as const } }],
+      keepAliveIntervalMs: 15000,
+    };
+    const nodeRoute = {
+      socks5: { host: '127.0.0.1', port: 1, user: 'u', password: 'p' },
+      forward: async () => ({ host: '127.0.0.1', port: 2 }),
+      forwardNow: () => undefined,
+      reserve: async () => undefined,
+      forwardCount: 0,
+      channelCount: 0,
+    };
+    const routed = (endpoint: ConnectionProfileInput['endpoint']) =>
+      buildRedisConnectionPlan({
+        ...profile({ ssh, endpoint }, { pw: 'x' }, { host: '127.0.0.1', port: 1 }),
+        nodeRoute,
+      } as ResolvedProfile);
+    const sentinel = routed({
+      kind: 'sentinel',
+      sentinels: [{ host: 's1.internal', port: 26379 }],
+      masterName: 'm',
+    });
+    expect(sentinel).toMatchObject({
+      topology: 'sentinel',
+      tunnelled: true,
+      nodeRoute,
+      seeds: [{ kind: 'tcp', host: 's1.internal', port: 26379 }],
+      where: 'master "m" via Sentinel s1.internal:26379 (through the tunnel)',
+    });
+    const cluster = routed({ kind: 'cluster', seeds: [{ host: 'c1.internal', port: 7000 }] });
+    expect(cluster).toMatchObject({ topology: 'cluster', tunnelled: true, nodeRoute });
+    expect(cluster.seeds).toEqual([
+      { kind: 'tcp', host: 'c1.internal', port: 7000, tlsHost: 'c1.internal' },
+    ]);
   });
 
   it('refuses other engines and auth methods', () => {

@@ -8,7 +8,7 @@ export {
   type SshStepOutcome,
   type TransportSession,
 } from './check';
-export { needsTransport, tunnelTarget } from './endpoint';
+export { needsTransport, tunnelReach, tunnelTarget, type TunnelReach } from './endpoint';
 export {
   FileKnownHosts,
   MemoryKnownHosts,
@@ -28,6 +28,16 @@ export {
   type PrivateKeyInfo,
 } from './keys';
 export { TransportManager, openTransport } from './manager';
+export { MAX_NODE_FORWARDS } from './nodes';
 export { describeProxy } from './proxy';
+export { MAX_SOCKS_CHANNELS } from './socks';
 export { expandHome, type KeyFileReader } from './ssh';
-export { tunnelledProfile, type Transport, type TransportOptions } from './transport';
+export {
+  nodeRouteOf,
+  tunnelledProfile,
+  type NodeRoute,
+  type RoutedProfile,
+  type SocksEndpoint,
+  type Transport,
+  type TransportOptions,
+} from './transport';

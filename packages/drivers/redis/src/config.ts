@@ -8,7 +8,7 @@ import {
   type NetworkTarget,
   type TlsSettings,
 } from '@joinery/driver-sql-base';
-import { needsTransport, tunnelTarget } from '@joinery/tunnel';
+import { needsTransport, nodeRouteOf, tunnelReach, type NodeRoute } from '@joinery/tunnel';
 import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
 
 import type { RedisTopology } from './types';
@@ -130,6 +130,11 @@ export interface RedisConnectionPlan {
   readonly where: string;
   /** An SSH tunnel or proxy replaced the endpoint. */
   readonly tunnelled: boolean;
+  /**
+   * Sentinel or Cluster behind an SSH tunnel or proxy: reaches every node by the address it
+   * announces (see RedisConnection, which maps them onto forwards with ioredis's NAT map).
+   */
+  readonly nodeRoute?: NodeRoute;
 }
 
 /** CLIENT SETNAME refuses spaces, newlines and other special characters. */
@@ -152,8 +157,9 @@ function hostPorts(list: readonly HostPort[]): string {
  * the logical database and session options.
  *
  * - Passwords come only from `resolved.secrets`, never from a URI.
- * - SSH tunnels and proxies reach one host: Sentinel and Cluster endpoints fail NOT_SUPPORTED
- *   (the nodes they announce would bypass the tunnel).
+ * - Behind an SSH tunnel or proxy, a host or URI connects to the tunnel's local end; Sentinel
+ *   and Cluster need the tunnel's node route (`nodeRoute`), through which every node the
+ *   servers announce is reached (ADR 0008).
  * - Sentinels get the same credentials and TLS settings as the master.
  * - `rediss://` turns TLS on; a profile TLS mode of `disable` then becomes `verify-full`.
  * - With several hosts and verify-full, each node's certificate is checked against the host
@@ -171,21 +177,26 @@ export function buildRedisConnectionPlan(
     });
   }
   const endpoint = profile.endpoint;
-  const transport = needsTransport(profile);
-  if (transport) {
-    // Throws NOT_SUPPORTED with a hint for sockets, Sentinel lists and cluster seeds.
-    tunnelTarget(profile);
-    if (!resolved.endpointOverride) {
-      throw new JoineryError({
-        code: 'NOT_SUPPORTED',
-        message: profile.ssh
-          ? 'This profile uses an SSH tunnel, but no tunnel is open for it'
-          : 'This profile uses a proxy, but no proxy route is open for it',
-        hint: 'Tunnels and proxies are opened by the connection host; connect through it rather than calling the driver directly',
-      });
-    }
+  // Opened by the tunnel layer, which also drops the proxy it went through from the profile.
+  const opened = resolved.endpointOverride !== undefined;
+  let nodeRoute: NodeRoute | undefined;
+  let missingRoute = needsTransport(profile) && !opened;
+  if (opened && endpoint.kind !== 'socket') {
+    const reach = tunnelReach(profile);
+    nodeRoute = reach.kind === 'nodes' ? nodeRouteOf(resolved) : undefined;
+    if (reach.kind === 'nodes' && !nodeRoute) missingRoute = true;
   }
-  const override = transport ? resolved.endpointOverride : undefined;
+  if (missingRoute) {
+    throw new JoineryError({
+      code: 'NOT_SUPPORTED',
+      message: profile.ssh
+        ? 'This profile uses an SSH tunnel, but no tunnel is open for it'
+        : 'This profile uses a proxy, but no proxy route is open for it',
+      hint: 'Tunnels and proxies are opened by the connection host; connect through it rather than calling the driver directly',
+    });
+  }
+  // A host or URI goes to the tunnel's local end; Sentinel and Cluster nodes through the route.
+  const override = opened && !nodeRoute ? resolved.endpointOverride : undefined;
 
   let topology: RedisTopology = 'standalone';
   let target: NetworkTarget;
@@ -331,7 +342,8 @@ export function buildRedisConnectionPlan(
     ...(opts.queryTimeoutMs !== undefined ? { commandTimeoutMs: opts.queryTimeoutMs } : {}),
     keepAlive: opts.keepAlive,
     connectionName: connectionNameFor(opts.applicationName),
-    where: override ? `${where} (through the tunnel)` : where,
-    tunnelled: override !== undefined,
+    where: override || nodeRoute ? `${where} (through the tunnel)` : where,
+    tunnelled: override !== undefined || nodeRoute !== undefined,
+    ...(nodeRoute ? { nodeRoute } : {}),
   };
 }

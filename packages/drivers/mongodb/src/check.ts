@@ -17,6 +17,7 @@ import {
   type CheckConnectionDeps,
   type NetworkTarget,
 } from '@joinery/driver-sql-base';
+import { tunnelledProfile, type Transport } from '@joinery/tunnel';
 import { MongoClient } from 'mongodb';
 
 import { buildMongoClientPlan, hostPortText, redactSecrets, type MongoClientPlan } from './config';
@@ -33,6 +34,14 @@ import type { MongoDbSession } from './session';
 
 /** Network primitives, injectable for tests (the SQL check's deps plus SRV and TLS probes). */
 export interface MongoCheckDeps extends CheckConnectionDeps {
+  /**
+   * @joinery/tunnel's `runSshStep`; for a replica set its transport also has `nodes`, which
+   * reach every member.
+   */
+  runSshStep?(resolved: ResolvedProfile): Promise<{
+    readonly result: ConnectionCheckResult;
+    readonly transport?: Pick<Transport, 'endpointOverride' | 'nodes' | 'close'>;
+  }>;
   resolveSrv(name: string): Promise<HostPort[]>;
   /** Completes a TLS handshake with `target` and closes it. */
   tlsHandshake(target: HostPort, options: ConnectionOptions, timeoutMs: number): Promise<void>;
@@ -104,6 +113,7 @@ const defaultDeps: Omit<MongoCheckDeps, 'connect'> = {
   async hello(plan, target) {
     const client = new MongoClient(`mongodb://${hostPortText(target)}/`, {
       ...tlsOnly(plan),
+      ...proxyOnly(plan),
       directConnection: true,
       serverSelectionTimeoutMS: plan.options.connectTimeoutMS ?? 10_000,
       connectTimeoutMS: plan.options.connectTimeoutMS ?? 10_000,
@@ -133,6 +143,22 @@ function tlsOnly(plan: MongoClientPlan): Record<string, unknown> {
   const options = plan.options as Record<string, unknown>;
   for (const key of keys) if (options[key] !== undefined) out[key] = options[key];
   return out;
+}
+
+/** The SOCKS5 options of a plan whose servers are reached through a tunnel's node route. */
+function proxyOnly(plan: MongoClientPlan): Record<string, unknown> {
+  const { proxyHost, proxyPort, proxyUsername, proxyPassword } = plan.options;
+  return plan.routed ? { proxyHost, proxyPort, proxyUsername, proxyPassword } : {};
+}
+
+/** Where the TLS step and the topology diagnostics of Test Connection go. */
+interface CheckTarget {
+  /** Where the TLS handshake connects: the server itself, or a tunnel's local forward to it. */
+  readonly socket: HostPort;
+  /** The name its certificate must match (unless the profile overrides the TLS server name). */
+  readonly tlsHost: string;
+  /** The server as the driver names it, for messages and the diagnostic `hello`. */
+  readonly server: HostPort;
 }
 
 class StepLog {
@@ -323,33 +349,44 @@ export async function* checkMongoConnection(
   } else {
     yield log.skipped('ssh', 'No SSH tunnel');
   }
-  yield* driverSteps(resolved, plan, reachable[0]!, d, log);
+  const first = reachable[0]!;
+  yield* driverSteps(
+    resolved,
+    plan,
+    {
+      socket: first,
+      tlsHost: resolved.endpointOverride ? (plan.tls.expectedHostname ?? first.host) : first.host,
+      server: first,
+    },
+    d,
+    log,
+  );
 }
 
-/** TLS handshake, login, ping and version against `first` (a reachable host). */
+/** TLS handshake with `target`, then login, ping and version through the driver. */
 async function* driverSteps(
   resolved: ResolvedProfile,
   plan: MongoClientPlan,
-  first: HostPort,
+  target: CheckTarget,
   d: MongoCheckDeps,
   log: StepLog,
 ): AsyncGenerator<ConnectionCheckResult> {
   const { profile } = resolved;
-  const where = hostPortText(first);
+  const where = hostPortText(target.server);
   const timeoutMs = profile.options.connectTimeoutMs;
   let started = d.now();
   if (plan.tls.mode === 'disable') {
     yield log.skipped('tls', 'TLS is disabled');
   } else {
     try {
-      const tlsHost = plan.tunnelled ? (plan.tls.expectedHostname ?? first.host) : first.host;
+      const { socket, tlsHost } = target;
       const settings = buildTlsSettings(resolved, {
         kind: 'tcp',
-        host: first.host,
-        port: first.port,
+        host: socket.host,
+        port: socket.port,
         tlsHost,
       });
-      await d.tlsHandshake(first, settings.options ?? {}, timeoutMs);
+      await d.tlsHandshake(socket, settings.options ?? {}, timeoutMs);
       yield log.ok('tls', started, tlsMessage(plan.tls.mode));
     } catch (error) {
       const mapped = asJoinery(error, where, plan.secrets);
@@ -374,7 +411,7 @@ async function* driverSteps(
   } catch (error) {
     let failure = asJoinery(error, plan.where, plan.secrets);
     if (failure.code !== 'AUTH_FAILED' && failure.code !== 'TLS_FAILED') {
-      failure = await diagnoseTopology(plan, first, d, failure);
+      failure = await diagnoseTopology(plan, target.server, d, failure);
     }
     yield log.failure(failure.code === 'TLS_FAILED' ? 'tls' : 'auth', started, failure);
     yield* log.skipRest();
@@ -460,7 +497,7 @@ async function* throughTransport(
   resolved: ResolvedProfile,
   d: MongoCheckDeps,
   log: StepLog,
-  runSshStep: NonNullable<CheckConnectionDeps['runSshStep']>,
+  runSshStep: NonNullable<MongoCheckDeps['runSshStep']>,
 ): AsyncGenerator<ConnectionCheckResult> {
   const { profile } = resolved;
   const secrets = Object.values(resolved.secrets);
@@ -508,24 +545,41 @@ async function* throughTransport(
       yield* log.skipRest();
       return;
     }
-    const { proxy: _proxy, ...direct } = profile;
-    const through: ResolvedProfile = {
-      ...resolved,
-      profile: direct,
-      endpointOverride: transport.endpointOverride,
-    };
+    const through = tunnelledProfile(resolved, transport);
     let plan: MongoClientPlan;
+    let target: CheckTarget;
     try {
       plan = buildMongoClientPlan(through);
+      target = await targetThroughTunnel(plan, transport, d);
     } catch (error) {
       yield log.failure('tls', d.now(), asJoinery(error, profile.name, secrets));
       yield* log.skipRest();
       return;
     }
-    yield* driverSteps(through, plan, transport.endpointOverride, d, log);
+    yield* driverSteps(through, plan, target, d, log);
   } finally {
     await transport?.close().catch(() => undefined);
   }
+}
+
+/**
+ * The server the steps after `ssh` check through a tunnel: the one forwarded host, or for a
+ * replica set the first server the profile names (or its SRV record lists), through a forward
+ * of the node route.
+ */
+async function targetThroughTunnel(
+  plan: MongoClientPlan,
+  transport: Pick<Transport, 'endpointOverride' | 'nodes'>,
+  d: MongoCheckDeps,
+): Promise<CheckTarget> {
+  const local = transport.endpointOverride;
+  if (!plan.routed || !transport.nodes) {
+    return { socket: local, tlsHost: plan.tls.expectedHostname ?? local.host, server: local };
+  }
+  const servers = plan.srv ? await d.resolveSrv(plan.seeds[0]!.host) : plan.seeds;
+  const server = servers[0]!;
+  const socket = await transport.nodes.forward(server);
+  return { socket, tlsHost: server.host, server };
 }
 
 function tlsMessage(mode: string): string {

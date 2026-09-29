@@ -285,9 +285,76 @@ describe('MongoDB Test Connection', () => {
         }),
       },
     );
+    // A host list needs the transport's node route, not only one forwarded host.
     expect(list.find((r) => r.status === 'failed')).toMatchObject({
       step: 'tls',
-      hint: expect.stringContaining('single host'),
+      hint: expect.stringContaining('every member through the tunnel'),
     });
+  });
+
+  it('checks a replica set behind a tunnel through its node route', async () => {
+    const ssh = {
+      hops: [{ host: '10.1.1.1', port: 22, user: 'me', auth: { method: 'agent' as const } }],
+      keepAliveIntervalMs: 0,
+    };
+    const forwarded: string[] = [];
+    const handshakes: { host: string; port: number; servername?: string }[] = [];
+    const connected: ResolvedProfile[] = [];
+    const nodes = {
+      socks5: { host: '127.0.0.1', port: 41000, user: 'joinery-x', password: 'route-secret' },
+      forward: async (target: { host: string; port: number }) => {
+        forwarded.push(`${target.host}:${target.port}`);
+        return { host: '127.0.0.1', port: 42000 };
+      },
+      forwardNow: () => undefined,
+      reserve: async () => undefined,
+      forwardCount: 0,
+      channelCount: 0,
+    };
+    const results = await run(
+      resolved({
+        ssh,
+        tls: { mode: 'verify-full' },
+        endpoint: { kind: 'srv', host: 'cluster0.example.net' },
+      }),
+      {
+        runSshStep: async () => ({
+          result: { step: 'ssh', status: 'ok', durationMs: 1, message: 'SSH me@10.1.1.1:22 → …' },
+          transport: {
+            endpointOverride: { host: '127.0.0.1', port: 40000 },
+            nodes,
+            close: async () => undefined,
+          },
+        }),
+        tlsHandshake: async (target, options) => {
+          handshakes.push({
+            ...target,
+            ...(options.servername ? { servername: options.servername } : {}),
+          });
+        },
+        connect: async (profile) => {
+          connected.push(profile);
+          return fakeSession();
+        },
+      },
+    );
+    expect(statuses(results)).toEqual([
+      'dns:skipped',
+      'tcp:ok',
+      'ssh:ok',
+      'tls:ok',
+      'auth:ok',
+      'ping:ok',
+      'version:ok',
+    ]);
+    // The TLS step went to the first server the SRV record lists, through a forward, by its name.
+    expect(forwarded).toEqual(['shard-00.example.net:27017']);
+    expect(handshakes).toEqual([
+      { host: '127.0.0.1', port: 42000, servername: 'shard-00.example.net' },
+    ]);
+    // The session was opened with the route, so the driver goes through its SOCKS endpoint.
+    expect(connected[0]).toHaveProperty('nodeRoute', nodes);
+    expect(results[6]!.message).toContain('replica set rs0 (3 members)');
+    expect(JSON.stringify(results)).not.toContain('route-secret');
   });
 });

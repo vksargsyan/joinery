@@ -16,10 +16,22 @@ import {
   type CheckConnectionDeps,
   type NetworkTarget,
 } from '@joinery/driver-sql-base';
-import { needsTransport, tunnelTarget } from '@joinery/tunnel';
+import { needsTransport, tunnelReach, tunnelledProfile, type Transport } from '@joinery/tunnel';
 
 import { buildRedisConnectionPlan, type RedisConnectionPlan } from './config';
 import type { RedisSession } from './types';
+
+/** The network primitives of Test Connection, and the `ssh` step that opens a tunnel. */
+export interface RedisCheckDeps extends CheckConnectionDeps {
+  /**
+   * @joinery/tunnel's `runSshStep`; for Sentinel and Cluster its transport also has `nodes`,
+   * which reach every node.
+   */
+  runSshStep?(resolved: ResolvedProfile): Promise<{
+    readonly result: ConnectionCheckResult;
+    readonly transport?: Pick<Transport, 'endpointOverride' | 'nodes' | 'close'>;
+  }>;
+}
 
 const defaultDeps: CheckConnectionDeps = {
   async lookup(host) {
@@ -254,14 +266,14 @@ async function* driverSteps(
  * a fix hint on the failing step. Sentinel and Cluster profiles check every sentinel / seed and
  * pass DNS and TCP when at least one answers. With an SSH tunnel or proxy and
  * `deps.runSshStep`, DNS and TCP check the first server on the way and the later steps run
- * through the tunnel; Sentinel and Cluster cannot be tunnelled and fail the SSH step.
+ * through the tunnel, Sentinel and Cluster nodes each through the tunnel's node route.
  */
 export async function* checkRedisConnection(
   resolved: ResolvedProfile,
   adapter: DriverAdapter,
-  deps: Partial<CheckConnectionDeps> = {},
+  deps: Partial<RedisCheckDeps> = {},
 ): AsyncGenerator<ConnectionCheckResult> {
-  const d: CheckConnectionDeps = { ...defaultDeps, ...deps };
+  const d: RedisCheckDeps = { ...defaultDeps, ...deps };
   const log = new StepLog(d.now);
   const { profile } = resolved;
   const timeoutMs = profile.options.connectTimeoutMs;
@@ -281,7 +293,7 @@ export async function* checkRedisConnection(
     }
     const started = d.now();
     try {
-      tunnelTarget(profile);
+      tunnelReach(profile);
     } catch (error) {
       yield log.failure('ssh', started, asJoineryError(error, profile.name));
       yield* log.skipRest();
@@ -298,7 +310,7 @@ export async function* checkRedisConnection(
       yield* log.skipRest();
       return;
     }
-    let outcome: Awaited<ReturnType<NonNullable<CheckConnectionDeps['runSshStep']>>>;
+    let outcome: Awaited<ReturnType<NonNullable<RedisCheckDeps['runSshStep']>>>;
     try {
       outcome = await d.runSshStep(resolved);
     } catch (error) {
@@ -313,13 +325,7 @@ export async function* checkRedisConnection(
         yield* log.skipRest();
         return;
       }
-      const { proxy: _proxy, ...direct } = profile;
-      yield* driverSteps(
-        { ...resolved, profile: direct, endpointOverride: transport.endpointOverride },
-        adapter,
-        d,
-        log,
-      );
+      yield* driverSteps(tunnelledProfile(resolved, transport), adapter, d, log);
     } finally {
       await transport?.close().catch(() => undefined);
     }

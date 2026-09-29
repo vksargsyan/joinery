@@ -32,7 +32,7 @@ import {
 import { Cluster, type Redis } from 'ioredis';
 
 import { browseRedis } from './browse';
-import { addressOf, RedisConnection, type Arg } from './client';
+import { addressOf, hostPortOf, RedisConnection, type Arg } from './client';
 import { buildRedisConnectionPlan } from './config';
 import * as config from './config-service';
 import type { RedisContext } from './context';
@@ -283,8 +283,7 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
     }
     const describe = (node: Redis, role: RedisNode['role']): RedisNode => ({
       address: addressOf(node),
-      host: node.options.host ?? 'localhost',
-      port: node.options.port ?? 6379,
+      ...hostPortOf(node),
       role,
     });
     const primaries = this.conn.primaries().map((n) => describe(n, 'primary'));

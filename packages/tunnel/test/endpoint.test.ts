@@ -1,7 +1,7 @@
 import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
 import { describe, expect, it } from 'vitest';
 
-import { needsTransport, tunnelTarget } from '../src';
+import { needsTransport, tunnelReach, tunnelTarget } from '../src';
 
 function profile(input: Partial<ConnectionProfileInput>) {
   return connectionProfileSchema.parse({
@@ -35,7 +35,7 @@ describe('tunnelTarget', () => {
     });
   });
 
-  it('refuses sockets and host lists with NOT_SUPPORTED, never echoing the URI', () => {
+  it('refuses sockets and SQL host lists with NOT_SUPPORTED, never echoing the URI', () => {
     expect(() =>
       tunnelTarget(profile({ endpoint: { kind: 'socket', path: '/var/run/postgresql/.s.PGSQL' } })),
     ).toThrow(
@@ -53,14 +53,123 @@ describe('tunnelTarget', () => {
     }
     expect(error).toMatchObject({ code: 'NOT_SUPPORTED' });
     expect(JSON.stringify(error)).not.toContain('topsecret');
-    expect(() =>
+    const multiHost = 'postgres://u:topsecret@a:5432,b:5432/app';
+    expect(() => tunnelTarget(profile({ endpoint: { kind: 'uri', uri: multiHost } }))).toThrow(
+      expect.objectContaining({ code: 'NOT_SUPPORTED', hint: expect.stringMatching(/one host/) }),
+    );
+  });
+
+  it('names the first server of a topology, and none for an SRV name', () => {
+    expect(
       tunnelTarget(
         profile({
           engine: 'mongodb',
-          endpoint: { kind: 'hosts', hosts: [{ host: 'a', port: 27017 }] },
+          endpoint: { kind: 'hosts', hosts: [{ host: 'a', port: 27018 }] },
         }),
       ),
+    ).toEqual({ host: 'a', port: 27018 });
+    expect(() =>
+      tunnelTarget(profile({ engine: 'mongodb', endpoint: { kind: 'srv', host: 'c.example' } })),
     ).toThrow(expect.objectContaining({ code: 'NOT_SUPPORTED' }));
+  });
+});
+
+describe('tunnelReach', () => {
+  const mongo = (uri: string) =>
+    tunnelReach(profile({ engine: 'mongodb', endpoint: { kind: 'uri', uri } }));
+
+  it('reaches one server for a host endpoint or a single-host URI', () => {
+    expect(tunnelReach(profile({}))).toEqual({
+      kind: 'host',
+      target: { host: 'db.internal', port: 5432 },
+    });
+    expect(mongo('mongodb://app:pw@db1.lan:27018/sales?authSource=admin')).toEqual({
+      kind: 'host',
+      target: { host: 'db1.lan', port: 27018 },
+    });
+    expect(mongo('mongodb://[fd00::5]/')).toEqual({
+      kind: 'host',
+      target: { host: 'fd00::5', port: 27017 },
+    });
+  });
+
+  it('reaches every server of a replica set, an SRV name, Sentinel and Cluster', () => {
+    expect(
+      tunnelReach(
+        profile({
+          engine: 'mongodb',
+          endpoint: {
+            kind: 'hosts',
+            hosts: [
+              { host: 'a', port: 27017 },
+              { host: 'b', port: 27018 },
+            ],
+            replicaSet: 'rs0',
+          },
+        }),
+      ),
+    ).toEqual({
+      kind: 'nodes',
+      seeds: [
+        { host: 'a', port: 27017 },
+        { host: 'b', port: 27018 },
+      ],
+    });
+    expect(
+      tunnelReach(profile({ engine: 'mongodb', endpoint: { kind: 'srv', host: 'c0.example' } })),
+    ).toEqual({ kind: 'nodes', seeds: [], srvRecord: '_mongodb._tcp.c0.example' });
+    expect(mongo('mongodb+srv://u:topsecret@c0.example/app')).toEqual({
+      kind: 'nodes',
+      seeds: [],
+      srvRecord: '_mongodb._tcp.c0.example',
+    });
+    expect(mongo('mongodb://u:p@a:1,[::1]:2,b/app?replicaSet=rs0')).toEqual({
+      kind: 'nodes',
+      seeds: [
+        { host: 'a', port: 1 },
+        { host: '::1', port: 2 },
+        { host: 'b', port: 27017 },
+      ],
+    });
+    // One host that names its replica set is discovered too.
+    expect(mongo('mongodb://a:1/?replicaSet=rs0')).toEqual({
+      kind: 'nodes',
+      seeds: [{ host: 'a', port: 1 }],
+    });
+    expect(
+      tunnelReach(
+        profile({
+          engine: 'redis',
+          endpoint: {
+            kind: 'sentinel',
+            sentinels: [{ host: 's1', port: 26379 }],
+            masterName: 'm',
+          },
+        }),
+      ),
+    ).toEqual({ kind: 'nodes', seeds: [{ host: 's1', port: 26379 }] });
+    expect(
+      tunnelReach(
+        profile({
+          engine: 'redis',
+          endpoint: { kind: 'cluster', seeds: [{ host: 'c', port: 7000 }] },
+        }),
+      ),
+    ).toEqual({ kind: 'nodes', seeds: [{ host: 'c', port: 7000 }] });
+  });
+
+  it('refuses a MongoDB socket URI and never echoes a URI it cannot parse', () => {
+    expect(() => mongo('mongodb://%2Ftmp%2Fmongodb-27017.sock/app')).toThrow(
+      expect.objectContaining({ code: 'NOT_SUPPORTED', message: expect.stringMatching(/socket/) }),
+    );
+    let error: unknown;
+    try {
+      mongo('mongodb://u:topsecret@a:99999/app');
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(JSON.stringify(error)).not.toContain('topsecret');
   });
 
   it('knows when a profile needs a transport', () => {

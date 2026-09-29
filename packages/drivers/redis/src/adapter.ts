@@ -6,9 +6,8 @@ import {
   type ResolvedProfile,
   type Session,
 } from '@joinery/core';
-import type { CheckConnectionDeps } from '@joinery/driver-sql-base';
 
-import { checkRedisConnection } from './check';
+import { checkRedisConnection, type RedisCheckDeps } from './check';
 import { RedisSessionImpl } from './session';
 import type { RedisSession } from './types';
 
@@ -27,7 +26,7 @@ export class RedisAdapter implements DriverAdapter {
 
   checkConnection(
     resolved: ResolvedProfile,
-    deps: Partial<CheckConnectionDeps> = {},
+    deps: Partial<RedisCheckDeps> = {},
   ): AsyncIterable<ConnectionCheckResult> {
     return checkRedisConnection(resolved, this, deps);
   }

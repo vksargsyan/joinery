@@ -1,5 +1,5 @@
 export { RedisAdapter, createRedisAdapter, isRedisSession, redisAdapter } from './adapter';
-export { checkRedisConnection } from './check';
+export { checkRedisConnection, type RedisCheckDeps } from './check';
 export {
   buildRedisConnectionPlan,
   connectionNameFor,

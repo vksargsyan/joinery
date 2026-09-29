@@ -10,58 +10,171 @@ function notTunnellable(message: string, hint: string): JoineryError {
 }
 
 /**
- * The host and port the last SSH hop (or the proxy) connects to: the profile's host endpoint, or
- * the single host of a URI endpoint (the engine's default port when the URI names none; an empty
- * host is `localhost`, as seen from the SSH server). A Unix socket, a host list or an SRV name
- * cannot be tunnelled and throws NOT_SUPPORTED. The URI is never echoed: it may hold a password.
+ * What a profile's SSH tunnel or proxy has to reach (see `tunnelReach`): one server, or a
+ * topology of several whose members the driver discovers and reaches by the addresses they
+ * announce (a MongoDB replica set, Redis Sentinel or Cluster).
  */
-export function tunnelTarget(profile: ConnectionProfile): HostPort {
+export type TunnelReach =
+  | { readonly kind: 'host'; readonly target: HostPort }
+  | {
+      readonly kind: 'nodes';
+      /** The servers the profile names: host list members, Sentinels or cluster seeds. */
+      readonly seeds: readonly HostPort[];
+      /**
+       * The DNS SRV record that lists the servers instead (mongodb+srv), looked up on this
+       * computer: the drivers resolve SRV and TXT records locally, not through the tunnel.
+       */
+      readonly srvRecord?: string;
+    };
+
+const UNIX_SOCKET = (hint: string): JoineryError =>
+  notTunnellable('A Unix socket endpoint cannot be reached through an SSH tunnel or a proxy', hint);
+
+/**
+ * The servers a profile's tunnel or proxy reaches (spec §4):
+ *
+ * - `host`: a host endpoint or a single-host URI (the engine's default port when the URI names
+ *   none; an empty host is `localhost`, as seen from the SSH server). MongoDB then talks to that
+ *   one server (directConnection).
+ * - `nodes`: a MongoDB host list, SRV name, or a URI with several hosts, `+srv` or a
+ *   `replicaSet` option; Redis Sentinel and Cluster. Every server is reached through the tunnel
+ *   by the name it announces, resolved on the far side.
+ *
+ * A Unix socket, and a host list in a SQL URI, cannot be tunnelled and throw NOT_SUPPORTED. The
+ * URI is never echoed: it may hold a password.
+ */
+export function tunnelReach(profile: ConnectionProfile): TunnelReach {
   const endpoint = profile.endpoint;
   switch (endpoint.kind) {
     case 'host':
-      return { host: endpoint.host, port: endpoint.port };
+      return { kind: 'host', target: { host: endpoint.host, port: endpoint.port } };
     case 'socket':
-      throw notTunnellable(
-        'A Unix socket endpoint cannot be reached through an SSH tunnel or a proxy',
+      throw UNIX_SOCKET(
         'Use the host and TCP port of the database as seen from the SSH server (often 127.0.0.1), or remove the tunnel',
       );
-    case 'uri': {
-      const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(endpoint.uri.trim())?.[1]?.toLowerCase();
-      if (scheme?.endsWith('+srv')) {
-        throw notTunnellable(
-          'An SRV connection string cannot be reached through an SSH tunnel or a proxy',
-          'Use the host and port of one server instead of the +srv form',
-        );
-      }
-      let url: URL;
-      try {
-        url = new URL(endpoint.uri.trim());
-      } catch {
-        throw notTunnellable(
-          'Only a single-host connection URI can be reached through an SSH tunnel or a proxy',
-          'Use one host and port in the URI, or a host endpoint',
-        );
-      }
-      const hostParam = url.searchParams.get('host') ?? undefined;
-      const host = decodeURIComponent(url.hostname.replace(/^\[(.*)\]$/, '$1')) || hostParam;
-      if (url.searchParams.has('socket') || host?.startsWith('/')) {
-        throw notTunnellable(
-          'A Unix socket endpoint cannot be reached through an SSH tunnel or a proxy',
-          'Use the host and TCP port of the database as seen from the SSH server, or remove the tunnel',
-        );
-      }
-      const portParam = Number(url.searchParams.get('port'));
-      const port = url.port
-        ? Number(url.port)
-        : Number.isInteger(portParam) && portParam > 0
-          ? portParam
-          : ENGINES[profile.engine].defaultPort;
-      return { host: host || 'localhost', port };
-    }
+    case 'hosts':
+      return { kind: 'nodes', seeds: endpoint.hosts.map(({ host, port }) => ({ host, port })) };
+    case 'srv':
+      return { kind: 'nodes', seeds: [], srvRecord: `_mongodb._tcp.${endpoint.host}` };
+    case 'sentinel':
+      return { kind: 'nodes', seeds: endpoint.sentinels.map(({ host, port }) => ({ host, port })) };
+    case 'cluster':
+      return { kind: 'nodes', seeds: endpoint.seeds.map(({ host, port }) => ({ host, port })) };
+    case 'uri':
+      return profile.engine === 'mongodb'
+        ? mongoUriReach(endpoint.uri)
+        : {
+            kind: 'host',
+            target: singleHostUri(endpoint.uri, ENGINES[profile.engine].defaultPort),
+          };
     default:
       throw notTunnellable(
         `A "${endpoint.kind}" endpoint cannot be reached through an SSH tunnel or a proxy yet`,
         'Use a single host and port endpoint, or connect without the tunnel',
       );
   }
+}
+
+/**
+ * The one host and port the last SSH hop (or the proxy) connects to for a profile that reaches
+ * a single server (see `tunnelReach`); for a topology of several servers, the first one it
+ * names. An SRV name names none and throws NOT_SUPPORTED, as do the endpoints `tunnelReach`
+ * refuses.
+ */
+export function tunnelTarget(profile: ConnectionProfile): HostPort {
+  const reach = tunnelReach(profile);
+  if (reach.kind === 'host') return reach.target;
+  const first = reach.seeds[0];
+  if (!first) {
+    throw notTunnellable(
+      'An SRV connection string names no single server',
+      'Its servers are found by looking up the SRV record; connect with a host list to name them',
+    );
+  }
+  return first;
+}
+
+function singleHostUri(uri: string, defaultPort: number): HostPort {
+  const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(uri.trim())?.[1]?.toLowerCase();
+  if (scheme?.endsWith('+srv')) {
+    throw notTunnellable(
+      'An SRV connection string cannot be reached through an SSH tunnel or a proxy',
+      'Use the host and port of one server instead of the +srv form',
+    );
+  }
+  let url: URL;
+  try {
+    url = new URL(uri.trim());
+  } catch {
+    throw notTunnellable(
+      'Only a single-host connection URI can be reached through an SSH tunnel or a proxy',
+      'Use one host and port in the URI, or a host endpoint',
+    );
+  }
+  const hostParam = url.searchParams.get('host') ?? undefined;
+  const host = decodeURIComponent(url.hostname.replace(/^\[(.*)\]$/, '$1')) || hostParam;
+  if (url.searchParams.has('socket') || host?.startsWith('/')) {
+    throw UNIX_SOCKET(
+      'Use the host and TCP port of the database as seen from the SSH server, or remove the tunnel',
+    );
+  }
+  const portParam = Number(url.searchParams.get('port'));
+  const port = url.port
+    ? Number(url.port)
+    : Number.isInteger(portParam) && portParam > 0
+      ? portParam
+      : defaultPort;
+  return { host: host || 'localhost', port };
+}
+
+function invalidMongoUri(): JoineryError {
+  return new JoineryError({
+    code: 'VALIDATION_FAILED',
+    message: 'The MongoDB connection string is not valid',
+    hint: 'Use the form mongodb://host:port,host:port/database?options or mongodb+srv://cluster.example.net',
+  });
+}
+
+/** A mongodb:// or mongodb+srv:// URI: one server, or the replica set its hosts or SRV name list. */
+function mongoUriReach(uri: string): TunnelReach {
+  const text = uri.trim();
+  const scheme = /^(mongodb(?:\+srv)?):\/\//i.exec(text);
+  if (!scheme) throw invalidMongoUri();
+  const rest = text.slice(scheme[0].length);
+  const authorityEnd = rest.search(/[/?]/);
+  const authority = authorityEnd === -1 ? rest : rest.slice(0, authorityEnd);
+  const hostList = authority.slice(authority.lastIndexOf('@') + 1);
+  const query = rest.includes('?') ? rest.slice(rest.indexOf('?') + 1) : '';
+  if (hostList === '') throw invalidMongoUri();
+  const decode = (part: string): string => {
+    try {
+      return decodeURIComponent(part);
+    } catch {
+      throw invalidMongoUri();
+    }
+  };
+  if (scheme[1]!.toLowerCase() === 'mongodb+srv') {
+    return { kind: 'nodes', seeds: [], srvRecord: `_mongodb._tcp.${decode(hostList)}` };
+  }
+  const defaultPort = ENGINES.mongodb.defaultPort;
+  const seeds = hostList.split(',').map((entry): HostPort => {
+    const bracketed = /^\[([^\]]+)\](?::(\d+))?$/.exec(entry);
+    if (bracketed) {
+      return { host: bracketed[1]!, port: bracketed[2] ? Number(bracketed[2]) : defaultPort };
+    }
+    const colon = entry.lastIndexOf(':');
+    const host = decode(colon === -1 ? entry : entry.slice(0, colon));
+    const port = colon === -1 ? defaultPort : Number(entry.slice(colon + 1));
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw invalidMongoUri();
+    if (host.startsWith('/')) {
+      throw UNIX_SOCKET(
+        'Use the host and TCP port of MongoDB as seen from the SSH server, or remove the tunnel',
+      );
+    }
+    return { host, port };
+  });
+  const replicaSet = new URLSearchParams(query).has('replicaSet');
+  return seeds.length === 1 && !replicaSet
+    ? { kind: 'host', target: seeds[0]! }
+    : { kind: 'nodes', seeds };
 }
