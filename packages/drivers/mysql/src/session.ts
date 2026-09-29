@@ -1,0 +1,576 @@
+import {
+  DEFAULT_PAGE_SIZE,
+  JoineryError,
+  cancelledError,
+  capabilitiesFor,
+  toColumnChunk,
+  type BrowseNode,
+  type Capabilities,
+  type CellValue,
+  type EngineId,
+  type ExecOptions,
+  type ExplainOptions,
+  type IntrospectScope,
+  type LargeValueHandle,
+  type NoticeSeverity,
+  type PlanNode,
+  type ResolvedProfile,
+  type ResultChunk,
+  type SchemaSnapshot,
+  type Session,
+} from '@joinery/core';
+import {
+  SessionGate,
+  positionalParams,
+  str,
+  type GateLease,
+  type Row,
+} from '@joinery/driver-sql-base';
+import { quoteIdent } from '@joinery/sql-tools';
+import { createConnection, type Connection, type ResultSetHeader } from 'mysql2';
+
+import { browseMysql } from './browse';
+import {
+  buildMysqlConnectionPlan,
+  invalidCharset,
+  queryTimeoutStatement,
+  type MysqlConnectionPlan,
+} from './config';
+import { commandOf } from './dialect';
+import { isFatal, mapMysqlError } from './errors';
+import { normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from './explain';
+import { introspectMysql } from './introspect';
+import { ResultStream, type CommandEvents } from './stream';
+import { columnMeta } from './types';
+
+type MysqlParam = string | number | boolean | Buffer | null;
+
+/** CellValues as mysql2 binds them: bigint as text, bytes as a Buffer. */
+export function toMysqlParams(
+  values: readonly Exclude<CellValue, LargeValueHandle>[],
+): MysqlParam[] {
+  return values.map((value) => {
+    if (typeof value === 'bigint') return value.toString();
+    if (value instanceof Uint8Array)
+      return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+    return value;
+  });
+}
+
+const SERVER_STATUS_IN_TRANS = 1;
+/** How long an abandoned result may drain before the server is asked to stop sending it. */
+const DRAIN_GRACE_MS = 250;
+
+const SEVERITIES: Readonly<Record<string, NoticeSeverity>> = {
+  Note: 'notice',
+  Warning: 'warning',
+  Error: 'warning',
+};
+
+/** mysql2 internals the session relies on (EOF packets carry warning counts and status). */
+interface PacketLike {
+  isEOF(): boolean;
+  eofWarningCount(): number;
+  eofStatusFlags(): number;
+}
+interface PacketHook {
+  handlePacket(packet?: PacketLike | null): void;
+}
+
+class MysqlExecution {
+  cancelRequested = false;
+  /** Count EOF warnings for this statement (off during internal queries like SHOW WARNINGS). */
+  capturing = false;
+  warnings = 0;
+  closeReason: JoineryError | undefined;
+  finished = false;
+  killSent: Promise<void> = Promise.resolve();
+  stream: ResultStream | undefined;
+  private draining: Promise<void> | undefined;
+  private pending: Promise<unknown> | undefined;
+
+  constructor(
+    readonly id: string,
+    readonly lease: GateLease,
+  ) {}
+
+  async track<T>(work: Promise<T>): Promise<T> {
+    this.pending = work;
+    try {
+      return await work;
+    } finally {
+      this.pending = undefined;
+    }
+  }
+
+  get inFlight(): boolean {
+    return this.pending !== undefined;
+  }
+
+  async idle(): Promise<void> {
+    if (this.pending) await this.pending.catch(() => undefined);
+  }
+
+  /** Lets an unfinished command run out, killing it if it does not end quickly. */
+  finishStream(kill: () => Promise<void>): Promise<void> {
+    const stream = this.stream;
+    if (!stream || stream.ended) return Promise.resolve();
+    this.draining ??= (async () => {
+      const drained = stream.discardRest();
+      const timer = new Promise<'slow'>((resolve) =>
+        setTimeout(() => resolve('slow'), DRAIN_GRACE_MS).unref(),
+      );
+      if ((await Promise.race([drained, timer])) === 'slow') await kill().catch(() => undefined);
+      await drained;
+    })();
+    return this.draining;
+  }
+}
+
+/**
+ * One MySQL or MariaDB connection behind the Session contract. Results stream from the text
+ * protocol (or the binary protocol when there are parameters) with socket back-pressure;
+ * cancel sends KILL QUERY from a control connection; `inTransaction` follows the server status
+ * flags of every OK and EOF packet. One thing runs at a time: a new operation closes a paused
+ * result, draining it or killing it if it does not end quickly.
+ */
+export class MysqlSession implements Session {
+  private readonly gate = new SessionGate();
+  private active: MysqlExecution | null = null;
+  private broken: JoineryError | null = null;
+  private closed = false;
+  private serverStatus = 0;
+
+  private constructor(
+    readonly engine: EngineId,
+    private readonly flavor: 'mysql' | 'mariadb',
+    private readonly resolved: ResolvedProfile,
+    private readonly plan: MysqlConnectionPlan,
+    private readonly connection: Connection,
+    readonly serverVersion: string,
+    private database: string | null,
+  ) {
+    connection.on('error', (error: unknown) => {
+      this.broken = mapMysqlError(error, { where: plan.where });
+    });
+    connection.on('end', () => {
+      this.broken ??= new JoineryError({
+        code: 'CONNECTION_FAILED',
+        message: 'The connection to the server was closed',
+      });
+    });
+    // EOF packets end every result set and carry the warning count and transaction status.
+    const hook = connection as unknown as PacketHook;
+    const handlePacket = hook.handlePacket.bind(connection);
+    hook.handlePacket = (packet) => {
+      if (packet && packet.isEOF()) {
+        this.serverStatus = packet.eofStatusFlags();
+        const exec = this.active;
+        if (exec?.capturing) exec.warnings = Math.max(exec.warnings, packet.eofWarningCount());
+      }
+      handlePacket(packet);
+    };
+  }
+
+  /** Connects, detects MySQL or MariaDB from the version banner and runs the session setup. */
+  static async open(resolved: ResolvedProfile, engine: 'mysql' | 'mariadb'): Promise<MysqlSession> {
+    const plan = buildMysqlConnectionPlan(resolved);
+    let connection: Connection;
+    try {
+      connection = createConnection(plan.options);
+    } catch (error) {
+      const charset = resolved.profile.options.charset;
+      if (charset !== undefined && /charset/i.test(String(error)))
+        throw invalidCharset(charset, error);
+      throw mapMysqlError(error, { where: plan.where, connecting: true });
+    }
+    connection.on('error', () => undefined);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        connection.connect((error: unknown) => (error ? reject(error) : resolve()));
+      });
+    } catch (error) {
+      connection.destroy();
+      throw mapMysqlError(error, { where: plan.where, connecting: true });
+    }
+    const run = (sql: string): Promise<Row[]> =>
+      new Promise((resolve, reject) => {
+        connection.query({ sql, rowsAsArray: false }, (error: unknown, result: unknown) => {
+          if (error) reject(error);
+          else resolve(Array.isArray(result) ? (result as Row[]) : []);
+        });
+      });
+    try {
+      const [info] = await run('SELECT VERSION() AS version, DATABASE() AS db');
+      const version = str(info ?? {}, 'version');
+      const flavor = /mariadb/i.test(version) ? 'mariadb' : 'mysql';
+      if (plan.queryTimeoutMs !== undefined)
+        await run(queryTimeoutStatement(flavor === 'mariadb', plan.queryTimeoutMs));
+      for (const statement of plan.setup) await run(statement);
+      const db = info?.['db'];
+      return new MysqlSession(
+        engine,
+        flavor,
+        resolved,
+        plan,
+        connection,
+        version,
+        typeof db === 'string' ? db : null,
+      );
+    } catch (error) {
+      connection.destroy();
+      throw mapMysqlError(error, { where: plan.where, connecting: true });
+    }
+  }
+
+  get inTransaction(): boolean {
+    return (this.serverStatus & SERVER_STATUS_IN_TRANS) !== 0;
+  }
+
+  /** Capabilities of the server actually connected (MariaDB is detected from its banner). */
+  capabilities(): Capabilities {
+    return capabilitiesFor(this.flavor, this.serverVersion);
+  }
+
+  private assertUsable(): void {
+    if (this.closed)
+      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+    if (this.broken) throw this.broken;
+  }
+
+  private noteFatal(error: unknown): void {
+    if (isFatal(error)) this.broken ??= mapMysqlError(error, { where: this.plan.where });
+  }
+
+  /** Runs an internal query with object rows. Callers hold the gate. */
+  private query(sql: string, values: unknown[] = []): Promise<Row[]> {
+    this.assertUsable();
+    return new Promise((resolve, reject) => {
+      this.connection.query(
+        { sql, values, rowsAsArray: false },
+        (error: unknown, result: unknown) => {
+          if (error) {
+            this.noteFatal(error);
+            reject(mapMysqlError(error, { where: this.plan.where, statement: sql }));
+            return;
+          }
+          if (Array.isArray(result)) {
+            resolve(result as Row[]);
+          } else {
+            const header = result as ResultSetHeader;
+            if (typeof header.serverStatus === 'number') this.serverStatus = header.serverStatus;
+            resolve([]);
+          }
+        },
+      );
+    });
+  }
+
+  execute(text: string, opts: ExecOptions): AsyncIterable<ResultChunk> {
+    return this.run(text, opts);
+  }
+
+  private async *run(text: string, opts: ExecOptions): AsyncGenerator<ResultChunk> {
+    const started = performance.now();
+    const pageSize = Math.max(1, Math.floor(opts.pageSize ?? DEFAULT_PAGE_SIZE));
+    const params = toMysqlParams(positionalParams(opts.params));
+    if (opts.signal?.aborted) throw cancelledError();
+
+    const lease = await this.gate.acquire();
+    const exec = new MysqlExecution(opts.executionId, lease);
+    const kill = (): Promise<void> => this.killQuery();
+    lease.setPreemptHandler(async () => {
+      exec.closeReason ??= new JoineryError({
+        code: 'CANCELLED',
+        message: 'The result was closed because another statement ran on this session',
+      });
+      await exec.idle();
+      await exec.finishStream(kill);
+      if (this.active === exec) this.active = null;
+    });
+    this.active = exec;
+    const onAbort = (): void => void this.cancel(opts.executionId).catch(() => undefined);
+    opts.signal?.addEventListener('abort', onAbort, { once: true });
+    const prepared = params.length > 0;
+
+    try {
+      this.assertUsable();
+      if (opts.signal?.aborted) throw cancelledError();
+      exec.capturing = true;
+      const command = (prepared
+        ? this.connection.execute(text, params)
+        : this.connection.query(text)) as unknown as CommandEvents;
+      const stream = new ResultStream(this.connection, command, pageSize);
+      exec.stream = stream;
+      const tag = commandOf(text);
+      let resultIndex = -1;
+      let columnCount = 0;
+      let rowCount = 0;
+      let sawHeader = false;
+
+      for (;;) {
+        if (exec.closeReason) throw exec.closeReason;
+        let chunk: Awaited<ReturnType<ResultStream['next']>>;
+        try {
+          chunk = await exec.track(stream.next());
+        } catch (error) {
+          this.noteFatal(error);
+          if (exec.cancelRequested) {
+            await exec.killSent;
+            throw cancelledError('Query cancelled');
+          }
+          throw mapMysqlError(error, { where: this.plan.where, statement: text });
+        }
+        if (exec.cancelRequested) {
+          await exec.killSent;
+          await exec.finishStream(kill);
+          throw cancelledError('Query cancelled');
+        }
+        if (chunk === null) break;
+        if (chunk.kind === 'fields') {
+          resultIndex += 1;
+          columnCount = chunk.fields.length;
+          yield { type: 'columns', resultIndex, columns: chunk.fields.map(columnMeta) };
+        } else if (chunk.kind === 'rows') {
+          rowCount += chunk.rows.length;
+          yield toColumnChunk(Math.max(resultIndex, 0), columnCount, chunk.rows);
+        } else {
+          sawHeader = true;
+          const header = chunk.header;
+          this.serverStatus = header.serverStatus;
+          exec.warnings = Math.max(exec.warnings, header.warningStatus);
+          yield {
+            type: 'status',
+            command: tag,
+            rowsAffected: header.affectedRows,
+            ...(header.insertId > 0 ? { lastInsertId: String(header.insertId) } : {}),
+          };
+        }
+      }
+      exec.capturing = false;
+      if (!sawHeader) yield { type: 'status', command: tag, rowsAffected: null };
+      // Only while the session is still ours: a paused consumer may have been preempted.
+      if (exec.warnings > 0 && !exec.closeReason) yield* await this.showWarnings();
+      yield { type: 'end', durationMs: Math.round(performance.now() - started), rowCount };
+    } finally {
+      exec.capturing = false;
+      opts.signal?.removeEventListener('abort', onAbort);
+      exec.finished = true;
+      if (this.active === exec) this.active = null;
+      await exec.idle();
+      await exec.finishStream(kill);
+      if (prepared) {
+        try {
+          this.connection.unprepare(text);
+        } catch {
+          // The statement may never have been prepared.
+        }
+      }
+      lease.release();
+    }
+  }
+
+  private async showWarnings(): Promise<ResultChunk[]> {
+    const rows = await this.query('SHOW WARNINGS').catch(() => [] as Row[]);
+    return rows.map((row) => ({
+      type: 'notice',
+      severity: SEVERITIES[str(row, 'Level')] ?? 'warning',
+      message: str(row, 'Message'),
+      code: str(row, 'Code'),
+    }));
+  }
+
+  async cancel(executionId: string): Promise<void> {
+    const exec = this.active;
+    if (!exec || exec.id !== executionId || exec.finished || exec.cancelRequested) return;
+    exec.cancelRequested = true;
+    const wasInFlight = exec.inFlight;
+    if (exec.stream && !exec.stream.ended) {
+      const sent = this.killQuery();
+      exec.killSent = sent.catch(() => undefined);
+      await sent;
+    }
+    if (!wasInFlight && !exec.inFlight) {
+      // Paused between pages: close the result here, the consumer may never pull again.
+      exec.closeReason = cancelledError('Query cancelled');
+      exec.lease.requestPreempt();
+    }
+  }
+
+  /** KILL QUERY over a short-lived control connection (spec §6). */
+  private async killQuery(): Promise<void> {
+    const plan = buildMysqlConnectionPlan(this.resolved, { control: true });
+    const control = createConnection(plan.options);
+    control.on('error', () => undefined);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        control.query(`KILL QUERY ${Number(this.connection.threadId)}`, (error: unknown) =>
+          error ? reject(error) : resolve(),
+        );
+      });
+    } catch (error) {
+      throw mapMysqlError(error, { where: plan.where, connecting: true });
+    } finally {
+      control.destroy();
+    }
+  }
+
+  async introspect(scope: IntrospectScope = {}): Promise<SchemaSnapshot> {
+    const database = scope.database ?? this.database;
+    if (!database) {
+      throw new JoineryError({
+        code: 'VALIDATION_FAILED',
+        message: 'No database selected to introspect',
+        hint: 'Pass a database, or set a default database in the profile',
+      });
+    }
+    return this.gate.run(async () => {
+      let restoreExpiry: string | undefined;
+      if (this.flavor === 'mysql') {
+        // MySQL 8 caches information_schema statistics (AUTO_INCREMENT...) for a day by default.
+        const [row] = await this.query(
+          'SELECT @@SESSION.information_schema_stats_expiry AS expiry',
+        ).catch(() => [] as Row[]);
+        if (row) {
+          restoreExpiry = str(row, 'expiry');
+          await this.query('SET SESSION information_schema_stats_expiry = 0');
+        }
+      }
+      try {
+        return await introspectMysql(
+          (sql, values) => this.query(sql, values),
+          {
+            database,
+            mariadb: this.flavor === 'mariadb',
+            engine: this.engine,
+            serverVersion: this.serverVersion,
+          },
+          scope,
+        );
+      } finally {
+        if (restoreExpiry !== undefined) {
+          await this.query(
+            `SET SESSION information_schema_stats_expiry = ${Number(restoreExpiry)}`,
+          ).catch(() => undefined);
+        }
+      }
+    });
+  }
+
+  async browse(path: readonly string[]): Promise<BrowseNode[]> {
+    return this.gate.run(() =>
+      browseMysql(
+        (sql, values) => this.query(sql, values),
+        this.flavor === 'mariadb',
+        this.serverVersion,
+        path,
+      ),
+    );
+  }
+
+  /**
+   * EXPLAIN FORMAT=JSON normalised to a PlanNode tree. With `analyze`, MySQL runs EXPLAIN
+   * ANALYZE (tree text) and MariaDB ANALYZE FORMAT=JSON, inside a transaction (or savepoint)
+   * that is rolled back.
+   */
+  async explain(text: string, opts: ExplainOptions = {}): Promise<PlanNode> {
+    const mariadb = this.flavor === 'mariadb';
+    const analyze = opts.analyze === true;
+    const prefix = analyze
+      ? mariadb
+        ? 'ANALYZE FORMAT=JSON '
+        : 'EXPLAIN ANALYZE '
+      : 'EXPLAIN FORMAT=JSON ';
+    const params = toMysqlParams(positionalParams(opts.params));
+    return this.gate.run(async () => {
+      this.assertUsable();
+      const run = (): Promise<unknown> =>
+        new Promise((resolve, reject) => {
+          const callback = (error: unknown, result: unknown): void => {
+            if (error) {
+              this.noteFatal(error);
+              const mapped = mapMysqlError(error, {
+                where: this.plan.where,
+                statement: prefix + text,
+              });
+              reject(
+                mapped.position === undefined
+                  ? mapped
+                  : new JoineryError({
+                      ...mapped.toJSON(),
+                      position: Math.max(0, mapped.position - prefix.length),
+                    }),
+              );
+              return;
+            }
+            const first = Array.isArray(result) ? (result[0] as unknown) : undefined;
+            resolve(Array.isArray(first) ? first[0] : undefined);
+          };
+          if (params.length > 0)
+            this.connection.execute(
+              { sql: prefix + text, values: params, rowsAsArray: true },
+              callback,
+            );
+          else this.connection.query({ sql: prefix + text, rowsAsArray: true }, callback);
+        });
+      const toPlan = (output: unknown): PlanNode => {
+        const textOutput = typeof output === 'string' ? output : String(output ?? '');
+        if (analyze && !mariadb) return normaliseMysqlTreePlan(textOutput);
+        return normaliseMysqlJsonPlan(JSON.parse(textOutput));
+      };
+      if (!analyze) return toPlan(await run());
+      // ANALYZE executes the statement: keep its effects out of the database.
+      const nested = this.inTransaction;
+      await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
+      try {
+        return toPlan(await run());
+      } finally {
+        await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(
+          () => undefined,
+        );
+        if (params.length > 0) {
+          try {
+            this.connection.unprepare(prefix + text);
+          } catch {
+            // not prepared
+          }
+        }
+      }
+    });
+  }
+
+  async begin(): Promise<void> {
+    await this.gate.run(() => this.query('START TRANSACTION'));
+  }
+
+  async commit(): Promise<void> {
+    await this.gate.run(() => this.query('COMMIT'));
+  }
+
+  async rollback(): Promise<void> {
+    await this.gate.run(() => this.query('ROLLBACK'));
+  }
+
+  async useDatabase(name: string): Promise<void> {
+    await this.gate.run(async () => {
+      await this.query(`USE ${quoteIdent(name, this.flavor)}`);
+      this.database = name;
+    });
+  }
+
+  async ping(): Promise<void> {
+    this.assertUsable();
+    if (this.gate.holdsOpenResult) return;
+    await this.gate.run(() => this.query('SELECT 1'));
+  }
+
+  async close(): Promise<void> {
+    if (this.closed) return;
+    this.closed = true;
+    const ended = new Promise<void>((resolve) => this.connection.end(() => resolve()));
+    const timeout = new Promise<'timeout'>((resolve) =>
+      setTimeout(() => resolve('timeout'), 2000).unref(),
+    );
+    if ((await Promise.race([ended, timeout])) === 'timeout') this.connection.destroy();
+  }
+}

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
   },
   "dependencies": {
     "@joinery/core": "workspace:*",

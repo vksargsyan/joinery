@@ -1,0 +1,62 @@
+{
+  "query_optimization": {
+    "r_total_time_ms": 0.14326423
+  },
+  "query_block": {
+    "select_id": 1,
+    "r_loops": 1,
+    "r_total_time_ms": 0.291400515,
+    "filesort": {
+      "sort_key": "count(0) desc",
+      "r_loops": 1,
+      "r_total_time_ms": 0.007114157,
+      "r_used_priority_queue": false,
+      "r_output_rows": 9,
+      "r_buffer_size": "456",
+      "r_sort_mode": "sort_key,rowid",
+      "temporary_table": {
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "c2",
+              "access_type": "ALL",
+              "possible_keys": ["PRIMARY"],
+              "r_loops": 1,
+              "rows": 10,
+              "r_rows": 10,
+              "r_table_time_ms": 0.019209274,
+              "r_other_time_ms": 0.010573316,
+              "r_engine_stats": {
+                "pages_accessed": 1
+              },
+              "filtered": 100,
+              "r_filtered": 100
+            }
+          },
+          {
+            "table": {
+              "table_name": "o2",
+              "access_type": "ref",
+              "possible_keys": ["cid"],
+              "key": "cid",
+              "key_length": "5",
+              "used_key_parts": ["cid"],
+              "ref": ["probe.c2.id"],
+              "r_loops": 10,
+              "rows": 10,
+              "r_rows": 18,
+              "r_table_time_ms": 0.136735675,
+              "r_other_time_ms": 0.097545242,
+              "r_engine_stats": {
+                "pages_accessed": 190
+              },
+              "filtered": 100,
+              "r_filtered": 97.22222222,
+              "attached_condition": "o2.v > 5"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

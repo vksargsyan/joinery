@@ -75,7 +75,10 @@ export interface ExplainOptions {
   readonly params?: QueryParams;
 }
 
-/** A normalised plan node for the visual explain tree (spec §6). */
+/**
+ * A normalised plan node for the visual explain tree (spec §6). Row counts and times are per
+ * loop, as PostgreSQL reports them; multiply by `loops` for the node's total.
+ */
 export interface PlanNode {
   readonly id: string;
   /** e.g. "Seq Scan", "Hash Join", "table scan". */
@@ -128,6 +131,8 @@ export interface DriverAdapter {
   /** Capabilities for a server version, before connecting. Sessions refine them. */
   capabilities(serverVersion?: string): Capabilities;
   connect(profile: ResolvedProfile): Promise<Session>;
+  /** Test Connection (spec §4): runs the steps in order and stops at the first failure. */
+  checkConnection?(profile: ResolvedProfile): AsyncIterable<ConnectionCheckResult>;
 }
 
 /** Test Connection steps, in order (spec §4). */

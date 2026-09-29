@@ -1,0 +1,61 @@
+{
+  "query_block": {
+    "union_result": {
+      "table_name": "<union1,3>",
+      "access_type": "ALL",
+      "query_specifications": [
+        {
+          "query_block": {
+            "select_id": 1,
+            "nested_loop": [
+              {
+                "table": {
+                  "table_name": "c2",
+                  "access_type": "ALL",
+                  "possible_keys": ["PRIMARY"],
+                  "rows": 10,
+                  "filtered": 100,
+                  "attached_condition": "c2.`name` like 'n1%'"
+                }
+              },
+              {
+                "table": {
+                  "table_name": "o2",
+                  "access_type": "ref",
+                  "possible_keys": ["cid"],
+                  "key": "cid",
+                  "key_length": "5",
+                  "used_key_parts": ["cid"],
+                  "ref": ["probe.c2.id"],
+                  "rows": 10,
+                  "filtered": 100
+                }
+              }
+            ]
+          }
+        },
+        {
+          "query_block": {
+            "select_id": 3,
+            "operation": "UNION",
+            "nested_loop": [
+              {
+                "table": {
+                  "table_name": "o2",
+                  "access_type": "range",
+                  "possible_keys": ["PRIMARY"],
+                  "key": "PRIMARY",
+                  "key_length": "4",
+                  "used_key_parts": ["id"],
+                  "rows": 2,
+                  "filtered": 100,
+                  "attached_condition": "o2.`id` < 3"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
