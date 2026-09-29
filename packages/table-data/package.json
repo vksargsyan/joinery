@@ -1,0 +1,28 @@
+{
+  "name": "@joinery/table-data",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Table data browsing and editing: row identity, filters, paging queries, pending changes, cell parsing, copy and paste.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --passWithNoTests --testTimeout=120000 --hookTimeout=120000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/sql-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@joinery/driver-mysql": "workspace:*",
+    "@joinery/driver-postgres": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
