@@ -10,6 +10,8 @@ export const ERROR_CODES = [
   'SQL_ERROR',
   'NOT_SUPPORTED',
   'NOT_FOUND',
+  /** Optimistic concurrency: the item changed since the caller read it. */
+  'CONFLICT',
   'READ_ONLY',
   'CONFIRMATION_REQUIRED',
   'VALIDATION_FAILED',

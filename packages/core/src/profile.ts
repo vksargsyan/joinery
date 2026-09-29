@@ -21,6 +21,7 @@ export const secretRefSchema = z.object({
   policy: secretPolicySchema.default('save'),
 });
 export type SecretRef = z.infer<typeof secretRefSchema>;
+export type SecretRefInput = z.input<typeof secretRefSchema>;
 
 const hostSchema = z.string().min(1);
 const portSchema = z.number().int().min(1).max(65535);
