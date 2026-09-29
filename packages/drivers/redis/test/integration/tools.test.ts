@@ -213,6 +213,26 @@ describe.skipIf(!REDIS_URL)('server tools (standalone)', () => {
     }
   });
 
+  it('starts MONITOR while the server is busy', async () => {
+    // Monitor lines can arrive in the same read as MONITOR's OK; that must neither fail the
+    // start nor surface as an unhandled error. Keep another connection busy and start often.
+    const busy = await connect(standaloneProfile());
+    let running = true;
+    const traffic = (async () => {
+      while (running) await busy.command(['EXISTS', `${p}busy`]);
+    })();
+    try {
+      for (let i = 0; i < 20; i += 1) {
+        const stream = await session.monitor();
+        await stream.close();
+      }
+    } finally {
+      running = false;
+      await traffic;
+      await busy.close();
+    }
+  });
+
   it('reads ACL users, categories and the log', async () => {
     expect(await session.aclWhoAmI()).toBe('default');
     expect(await session.aclUsers()).toEqual(expect.arrayContaining(['default', 'app']));

@@ -165,6 +165,43 @@ export async function subscribe(
 }
 
 /**
+ * ioredis switches a connection to monitoring only once MONITOR's OK has been handled, a
+ * microtask later. Monitor lines the server sends in the same read as that OK are taken for
+ * command replies and reported as this error: those few lines are lost, which MONITOR can afford.
+ */
+const MONITOR_START_RACE = /^Command queue state error/;
+
+/**
+ * A MONITOR connection to `node`. Built like ioredis's own `monitor()` (a duplicate with
+ * `monitor: true`), but with the listeners in place before it connects, so the start-up race
+ * above neither rejects the start nor escapes as an unhandled error.
+ */
+async function startMonitor(
+  node: Redis,
+  onLine: (time: string, args: string[], source: string, database: string) => void,
+): Promise<Redis> {
+  const m = node.duplicate({ monitor: true, lazyConnect: true });
+  let failure: unknown;
+  m.on('error', (error: unknown) => {
+    if (error instanceof Error && MONITOR_START_RACE.test(error.message)) return;
+    failure ??= error;
+  });
+  m.on('monitor', onLine);
+  const monitoring = new Promise<void>((resolve, reject) => {
+    m.once('monitoring', () => resolve());
+    m.once('end', () => reject(failure ?? new Error('The MONITOR connection closed')));
+  });
+  try {
+    await m.connect();
+    await monitoring;
+  } catch (error) {
+    m.disconnect();
+    throw failure ?? error;
+  }
+  return m;
+}
+
+/**
  * MONITOR on dedicated connections (one per node in Cluster mode). MONITOR slows the server
  * down; the UI shows a performance warning before starting it.
  */
@@ -185,11 +222,7 @@ export async function monitor(
   try {
     for (const node of nodes) {
       const address = addressOf(node);
-      const m = await node.monitor();
-      m.on('error', () => undefined);
-      conn.adopt(m);
-      monitors.push(m);
-      m.on('monitor', (time: string, args: string[], source: string, database: string) => {
+      const m = await startMonitor(node, (time, args, source, database) => {
         queue.push({
           timestamp: Number(time),
           db: Number(database),
@@ -198,6 +231,8 @@ export async function monitor(
           node: address,
         });
       });
+      conn.adopt(m);
+      monitors.push(m);
       m.on('end', () => void close());
     }
   } catch (error) {
