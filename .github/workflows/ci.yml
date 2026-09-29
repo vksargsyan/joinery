@@ -39,10 +39,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
+      # No pnpm cache: this job never installs, so the cache directory would not exist and
+      # setup-node's post step fails the job.
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       # Not --prod: the desktop app bundles its dependencies, so they are all devDependencies.
       - run: pnpm audit --audit-level high
 
