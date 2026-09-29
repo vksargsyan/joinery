@@ -54,7 +54,7 @@ export class MemoryStream extends EventEmitter implements OutputStream {
   }
 }
 
-export function memoryInput(chunks: readonly string[], isTTY = false): InputStream {
+export function memoryInput(chunks: readonly (string | Buffer)[], isTTY = false): InputStream {
   return {
     isTTY,
     async *[Symbol.asyncIterator]() {

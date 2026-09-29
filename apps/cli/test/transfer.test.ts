@@ -5,6 +5,15 @@ import { JoineryError, schemaSnapshotSchema, type CellValue } from '@joinery/cor
 import { InvalidArgumentError } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import {
+  XlsxWorkbookWriter,
+  ZipReader,
+  fileSource,
+  memorySink,
+  openFileReader,
+  readRows,
+} from '@joinery/transfer';
+
 import { describeRowError, exportFileName } from '../src/commands/transfer';
 import { columnMap, delimiter } from '../src/options';
 import { exportOptions, importOptions } from '../src/program';
@@ -170,7 +179,11 @@ describe('option parsing', () => {
       ['export', URI, '--table', 't', '--out', 'x'],
       "required option '--format <format>' not specified",
     ],
-    [['export', URI, '--table', 't', '--format', 'xml', '--out', 'x'], "argument 'xml' is invalid"],
+    [['export', URI, '--table', 't', '--format', 'pdf', '--out', 'x'], "argument 'pdf' is invalid"],
+    [
+      ['import', URI, '--table', 't', '--file', 'x', '--header-row', '-1'],
+      'Expected a whole number',
+    ],
     [['run-file', URI], "missing required argument 'file'"],
   ])('%j exits 2', async (argv, message) => {
     const result = await run(argv);
@@ -356,7 +369,14 @@ describe('export', () => {
       [['--query', 'select 1', '--format', 'sql-ddl', '--out', 'x'], 'exports tables'],
       [
         ['--table', 'a', '--table', 'b', '--format', 'csv', '--one-file', '--out', 'x'],
-        'sql, sql-ddl and json',
+        'every format but csv, tsv and jsonl',
+      ],
+      [['--table', 'a', '--format', 'xlsx', '--out', '-'], 'An Excel workbook writes a file'],
+      [['--table', 'a', '--format', 'csv', '--zip', '--out', '-'], '--zip writes a file'],
+      [['--table', 'a', '--format', 'csv', '--zip', '--gzip', '--out', 'x'], 'not both'],
+      [
+        ['--table', 'a', '--table', 'b', '--format', 'csv', '--zip', '--one-file', '--out', 'x'],
+        'leave out --one-file',
       ],
       [['--table', 'a', '--table', 'b', '--format', 'csv', '--out', '-'], 'need a folder'],
       [['--table', 'a', '--format', 'csv', '--gzip', '--out', '-'], '--gzip writes a file'],
@@ -365,6 +385,155 @@ describe('export', () => {
       expect(result.code, argv.join(' ')).toBe(2);
       expect(result.stderr).toContain(message);
     }
+  });
+});
+
+/** A workbook with a title row above the header, on its second worksheet. */
+async function workbook(): Promise<Buffer> {
+  const sink = memorySink();
+  const book = new XlsxWorkbookWriter(sink);
+  const cover = book.sheet('Cover', { header: false });
+  cover.begin([{ name: 'x', nativeType: 'text', kind: 'string' }]);
+  await cover.page([['nothing here']], 1);
+  await cover.end();
+  const data = book.sheet('People', { header: false });
+  data.begin([
+    { name: 'a', nativeType: 'text', kind: 'string' },
+    { name: 'b', nativeType: 'text', kind: 'string' },
+  ]);
+  await data.page(
+    [
+      ['Staff list', 'ID', '1', '2'],
+      [null, 'Full Name', 'Ada', 'Grace'],
+    ],
+    4,
+  );
+  await data.end();
+  await book.close();
+  return Buffer.from(sink.bytes());
+}
+
+describe('Excel, XML and ZIP', () => {
+  it('imports a worksheet by name and header row, from a file or from stdin', async () => {
+    const book = await workbook();
+    writeFileSync(join(dir, 'people.xlsx'), book);
+    const argv = ['import', URI, '--table', 'people', '--sheet', 'People', '--header-row', '2'];
+    const s = session();
+    const fromFile = await run([...argv, '--file', 'people.xlsx'], { session: s, cwd: dir });
+    expect(fromFile.stderr).toContain('Imported 2 rows into public.people');
+    expect(fromFile.code).toBe(0);
+    expect(inserted(s)).toEqual([1, 'Ada', 2, 'Grace']);
+
+    const piped = session();
+    const fromStdin = await run([...argv, '--file', '-'], {
+      session: piped,
+      stdin: memoryInput([book.subarray(0, 100), book.subarray(100)], false),
+    });
+    expect(fromStdin.code).toBe(0);
+    expect(inserted(piped)).toEqual([1, 'Ada', 2, 'Grace']);
+  });
+
+  it('imports the XML rows at --row-path', async () => {
+    writeFileSync(
+      join(dir, 'people.xml'),
+      '<export><table name="people"><row><id>7</id><full_name>Linus</full_name></row></table><meta><id>0</id></meta></export>',
+    );
+    const s = session();
+    const result = await run(
+      [
+        'import',
+        URI,
+        '--table',
+        'people',
+        '--file',
+        'people.xml',
+        '--row-path',
+        '/export/table/row',
+      ],
+      { session: s, cwd: dir },
+    );
+    expect(result.code).toBe(0);
+    expect(inserted(s)).toEqual([7, 'Linus']);
+  });
+
+  it('exports Excel, XML, HTML and Markdown; several tables combined or zipped', async () => {
+    const xlsx = await run(
+      ['export', URI, '--table', 'people', '--format', 'xlsx', '--out', 'people.xlsx'],
+      { session: session(), cwd: dir },
+    );
+    expect(xlsx.code).toBe(0);
+    const rows: unknown[] = [];
+    for await (const batch of readRows(fileSource(join(dir, 'people.xlsx')), { format: 'xlsx' })) {
+      rows.push(...batch.rows);
+    }
+    expect(rows).toEqual([
+      [1, 'Ada'],
+      [2, 'Hopper, Grace'],
+      [3, null],
+    ]);
+
+    const markdown = await run(
+      ['export', URI, '--table', 'people', '--format', 'markdown', '--out', '-'],
+      { session: session() },
+    );
+    expect(markdown.stdout).toBe(
+      '| id | full_name |\n| ---: | --- |\n| 1 | Ada |\n| 2 | Hopper, Grace |\n| 3 | NULL |\n',
+    );
+    const xml = await run(['export', URI, '--query', 'select 1', '--format', 'xml', '--out', '-'], {
+      session: session(),
+    });
+    expect(xml.stdout).toContain('<table name="query_result">');
+    expect(xml.stdout).toContain('<full_name xsi:nil="true"/>');
+
+    const html = await run(
+      [
+        'export',
+        URI,
+        '--table',
+        'a',
+        '--table',
+        'b',
+        '--format',
+        'html',
+        '--one-file',
+        '--out',
+        'ab.html',
+      ],
+      { session: session(), cwd: dir },
+    );
+    expect(html.code).toBe(0);
+    expect(readFileSync(join(dir, 'ab.html'), 'utf8')).toContain('<h2>b</h2>');
+
+    const zipped = await run(
+      [
+        'export',
+        URI,
+        '--table',
+        'a',
+        '--table',
+        'b',
+        '--format',
+        'csv',
+        '--zip',
+        '--out',
+        'ab.zip',
+      ],
+      { session: session(), cwd: dir },
+    );
+    expect(zipped.code).toBe(0);
+    expect(zipped.stderr).toContain('from 2 tables to ab.zip');
+    const zip = await ZipReader.open(await openFileReader(join(dir, 'ab.zip')));
+    expect(zip.entries.map((entry) => entry.name)).toEqual(['a.csv', 'b.csv']);
+    await zip.close();
+
+    const query = await run(
+      ['export', URI, '--query', 'select 1', '--format', 'json', '--zip', '--out', 'q.zip'],
+      { session: session(), cwd: dir },
+    );
+    expect(query.code).toBe(0);
+    const single = await ZipReader.open(await openFileReader(join(dir, 'q.zip')));
+    expect(single.entries.map((entry) => entry.name)).toEqual(['query_result.json']);
+    await single.close();
   });
 });
 

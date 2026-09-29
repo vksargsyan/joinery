@@ -8,7 +8,7 @@
  * in five modes; streaming exports to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL INSERTs, SQL
  * with DDL, HTML and Markdown; and "run SQL file". Never imports Electron: it runs in the job
  * runner utility process and in the CLI. ZIP, XML and xlsx are written here on node:zlib
- * (ADR 0008), with no third-party dependency.
+ * (ADR 0012), with no third-party dependency.
  */
 
 export { EXPORT_FORMATS, FILE_FORMATS, isJsonText, jsonText } from './types';

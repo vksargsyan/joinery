@@ -43,12 +43,14 @@ What works today:
 - **Structure sync**: compare two databases, review create / alter / drop operations with
   destructive ones unselected, generate a dependency-ordered script, apply it, and re-compare
   to zero differences. Data compare with server-side range checksums and sync scripts.
-- **Import and export**: wizards for CSV, TSV, JSON, JSON Lines (gzip too) into an existing or a
-  new table, with format, delimiter, header and encoding detection, a live preview, auto-matched
-  columns, inferred types for new tables, and append, update, upsert, delete and replace modes;
-  exports of tables or query results to CSV, TSV, JSON, JSON Lines, SQL INSERTs or SQL with DDL,
-  one file per table or combined; Run SQL File with stop or continue and an error log. Saved
-  wizard settings.
+- **Import and export**: wizards for CSV, TSV, JSON, JSON Lines (gzip too), Excel (.xlsx, streamed,
+  with a worksheet picker and header row) and XML (rows at a detected or chosen path) into an
+  existing or a new table, with format, delimiter, header and encoding detection, a live
+  preview, auto-matched columns, inferred types for new tables, and append, update, upsert,
+  delete and replace modes; exports of tables or query results to CSV, TSV, JSON, JSON Lines,
+  Excel (typed cells, real dates, a worksheet per table), XML, SQL INSERTs, SQL with DDL, HTML
+  or Markdown, one file per table or combined, gzip-compressed or zipped; Run SQL File with stop
+  or continue and an error log. Saved wizard settings.
 - **Job runner**: imports, exports and SQL files run in their own utility process, several at
   once, with progress, cancel (which rolls back), failed rows by row, line and column, a job
   history and a desktop notification when a long job ends.
@@ -80,10 +82,9 @@ What works today:
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file and profile management; test and query for MongoDB and Redis too.
 
-Not built yet: the scheduler, backup and restore, database-to-database data transfer, Excel and
-XML import and export, the visual query builder and ER modelling, explain plan views for SQL,
-server tools, cloud sync and the AI assistant; for MongoDB SQL to MQL, code export and the
-embedded mongosh shell; RediSearch and offline RDB analysis; the
+Not built yet: the scheduler, backup and restore, database-to-database data transfer, Parquet,
+the visual query builder and ER modelling for SQL, cloud sync and the AI assistant; for MongoDB
+the embedded mongosh shell; RediSearch and offline RDB analysis; the
 Elasticsearch and OpenSearch module. The product specification lists the full scope.
 
 ## Repository layout
@@ -108,7 +109,7 @@ pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-pac
 | `packages/drivers/redis`    | `@joinery/driver-redis`    | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools |
 | `packages/redis-tools`      | `@joinery/redis-tools`     | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs     |
 | `packages/tunnel`           | `@joinery/tunnel`          | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks     |
-| `packages/transfer`         | `@joinery/transfer`        | Streaming CSV/TSV/JSON/JSON Lines/SQL import and export, mapping, Run SQL File      |
+| `packages/transfer`         | `@joinery/transfer`        | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping |
 
 Packages under `packages/` never import Electron, so the CLI and the tests use them directly.
 
@@ -142,6 +143,8 @@ node apps/cli/dist/joinery.mjs compare postgres://app@db1/shop postgres://app@db
 node apps/cli/dist/joinery.mjs query "postgres://app@10.0.3.7/shop" --ssh ops@bastion.example.com --ssh-agent -e "select 1"
 node apps/cli/dist/joinery.mjs import dev --table public.people --file people.csv --mode upsert --key id
 node apps/cli/dist/joinery.mjs export dev --table orders --table items --format sql-ddl --one-file --out shop.sql.gz --gzip
+node apps/cli/dist/joinery.mjs import dev --table sales --file q3.xlsx --sheet July --create --key id
+node apps/cli/dist/joinery.mjs export dev --table orders --table items --format xlsx --one-file --out shop.xlsx
 node apps/cli/dist/joinery.mjs run-file dev migrate.sql --continue
 ```
 

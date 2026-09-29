@@ -5,26 +5,34 @@ import { JoineryError, newId, type Session, type SqlDialect, type TableDef } fro
 import { analyzeStatement, decideSafety, quoteIdent, quoteQualified } from '@joinery/sql-tools';
 import {
   autoMatch,
+  combinableFormat,
   createTable,
+  exportFileName,
   exportRows,
   exportTables,
   fileSink,
   fileSource,
   importRows,
+  isCompoundFile,
+  isZip,
   loadTable,
   previewSource,
   readRows,
   runSqlFile,
+  spoolToFile,
   tableFromColumns,
   type ByteSource,
   type ColumnMapping,
   type CsvReadOptions,
   type ExportCommonOptions,
   type ExportFormat,
+  type ExportSummary,
   type ExportTable,
   type ImportMode,
   type RowError,
+  type RowFormat,
   type Sink,
+  type SpooledSource,
   type SqlStatementError,
   type TransferProgress,
 } from '@joinery/transfer';
@@ -46,8 +54,6 @@ import type { TargetOverrides } from '../target';
  * imports) need --yes or a confirmation in a terminal.
  */
 
-type RowFormat = 'csv' | 'tsv' | 'json' | 'jsonl';
-
 /** Errors printed on stderr; the rest only go to --error-log. */
 const SHOWN_ERRORS = 10;
 
@@ -63,6 +69,12 @@ export interface ImportDataOptions extends TargetOverrides {
   readonly encoding?: string;
   /** Unquoted text that means NULL (default: an empty field). */
   readonly nullMarker?: string;
+  /** Excel: the worksheet (default the first visible one). */
+  readonly sheet?: string;
+  /** Excel: the row holding the column names, 0 for none (default detected). */
+  readonly headerRow?: number;
+  /** XML: the path of the row elements (default detected). */
+  readonly rowPath?: string;
   readonly mode: ImportMode;
   readonly key?: readonly string[];
   /** Create the table from the file's columns and inferred types. */
@@ -84,7 +96,9 @@ export interface ExportDataOptions extends TargetOverrides {
   /** A file, a folder (several tables, one file each), or '-' for stdout. */
   readonly out: string;
   readonly gzip: boolean;
-  /** Several tables into one file (SQL formats and JSON). */
+  /** A file per table (or the query's file) inside one ZIP archive at `out`. */
+  readonly zip: boolean;
+  /** Several tables into one file (every format but CSV, TSV and JSON Lines). */
   readonly oneFile: boolean;
   readonly header: boolean;
   readonly delimiter?: string;
@@ -92,6 +106,8 @@ export interface ExportDataOptions extends TargetOverrides {
   readonly pretty: boolean;
   readonly rowsPerInsert?: number;
   readonly dropTable: boolean;
+  /** Excel: decimals as exact text (default) or as numbers where a double holds them. */
+  readonly decimals?: 'text' | 'number';
   readonly bom: boolean;
   /** --yes: run a --query that needs confirmation without asking. */
   readonly yes: boolean;
@@ -211,12 +227,13 @@ async function* stdinBytes(stdin: InputStream): AsyncGenerator<Uint8Array> {
 
 /**
  * A source that can be read twice: the first `limit` bytes are kept, so the preview reads them
- * and the import reads them again before the rest (stdin cannot be reopened).
+ * and the import reads them again before the rest (stdin cannot be reopened). `start` holds
+ * the first bytes, to recognise a workbook.
  */
 async function replayable(
   source: ByteSource,
   limit: number,
-): Promise<{ head: ByteSource; all: ByteSource }> {
+): Promise<{ head: ByteSource; all: ByteSource; start: Uint8Array }> {
   const iterator = source[Symbol.asyncIterator]();
   const chunks: Uint8Array[] = [];
   let length = 0;
@@ -231,6 +248,7 @@ async function replayable(
     length += next.value.length;
   }
   return {
+    start: Buffer.concat(chunks.slice(0, 1)).subarray(0, 8),
     head: {
       async *[Symbol.asyncIterator]() {
         yield* chunks;
@@ -254,9 +272,10 @@ async function replayable(
 // import
 
 /**
- * `joinery import <target> --table <name> --file <path>`: reads CSV, TSV, JSON or JSON Lines
- * (gzip too), detecting what the flags leave open, matches the file's columns to the table's
- * (or creates the table from the file with --create) and loads it in batches.
+ * `joinery import <target> --table <name> --file <path>`: reads CSV, TSV, JSON, JSON Lines
+ * (gzip too), Excel or XML, detecting what the flags leave open, matches the file's columns to
+ * the table's (or creates the table from the file with --create) and loads it in batches. A
+ * workbook on stdin is spooled to a temporary file first: a ZIP is read from its end.
  */
 export async function importDataCommand(
   runtime: Runtime,
@@ -275,6 +294,7 @@ export async function importDataCommand(
     throw new CliError('A new table (--create) is imported with --mode append');
   }
   const connection = await openTarget(runtime, spec, options);
+  let spooled: SpooledSource | undefined;
   try {
     const { session, target, dialect } = connection;
     if (target.policy.readOnly) {
@@ -309,15 +329,30 @@ export async function importDataCommand(
       ...(options.delimiter !== undefined ? { delimiter: options.delimiter } : {}),
       ...(options.nullMarker !== undefined ? { nullMarker: options.nullMarker } : {}),
     };
-    const input = fromStdin
-      ? await replayable(stdinBytes(ctx.stdin), 1024 * 1024)
-      : { head: fileSource(path!), all: fileSource(path!) };
+    let input: { head: ByteSource; all: ByteSource };
+    if (fromStdin) {
+      const stdin = await replayable(stdinBytes(ctx.stdin), 1024 * 1024);
+      input = stdin;
+      if (options.format === 'xlsx' || isZip(stdin.start) || isCompoundFile(stdin.start)) {
+        reporter.progress(`Reading ${name}…`, true);
+        spooled = await spoolToFile(stdin.all);
+        input = { head: spooled.source, all: spooled.source };
+      }
+    } else {
+      input = { head: fileSource(path!), all: fileSource(path!) };
+    }
+    const headerRow = options.headerRow ?? (options.header ? undefined : 0);
     reporter.progress(`Reading ${name}…`, true);
     const preview = await previewSource(input.head, {
       ...(path !== undefined ? { fileName: path } : {}),
       ...(options.format !== undefined ? { format: options.format } : {}),
       ...(options.encoding !== undefined ? { encoding: options.encoding } : {}),
       csv,
+      xlsx: {
+        ...(options.sheet !== undefined ? { sheet: options.sheet } : {}),
+        ...(headerRow !== undefined ? { headerRow } : {}),
+      },
+      ...(options.rowPath !== undefined ? { xml: { rowPath: options.rowPath } } : {}),
     });
     reporter.clearProgress();
     if (preview.read === null) {
@@ -325,9 +360,12 @@ export async function importDataCommand(
     }
     const read = preview.read;
     const columns = preview.columns.map((c) => c.name);
-    reporter.debug(
-      `${name}: ${read.format}, ${preview.encoding}${read.csv ? `, delimiter ${JSON.stringify(read.csv.delimiter)}, header ${read.csv.header === false ? 'no' : 'yes'}` : ''}; columns ${columns.join(', ')}`,
-    );
+    const details = read.xlsx
+      ? `sheet ${JSON.stringify(read.xlsx.sheet)}, header row ${read.xlsx.headerRow ?? 1}`
+      : read.xml
+        ? `${preview.encoding}, rows at ${read.xml.rowPath}`
+        : `${preview.encoding}${read.csv ? `, delimiter ${JSON.stringify(read.csv.delimiter)}, header ${read.csv.header === false ? 'no' : 'yes'}` : ''}`;
+    reporter.debug(`${name}: ${read.format}, ${details}; columns ${columns.join(', ')}`);
 
     let table: TableDef;
     let mapping: ColumnMapping[];
@@ -430,6 +468,7 @@ export async function importDataCommand(
     return summary.rowsSkipped > 0 ? EXIT.partial : EXIT.ok;
   } finally {
     reporter.clearProgress();
+    await spooled?.close().catch(() => undefined);
     await closeQuietly(connection);
   }
 }
@@ -456,15 +495,6 @@ function writeErrorLog(runtime: Runtime, file: string | undefined, lines: readon
 // ---------------------------------------------------------------------------------------------
 // export
 
-const EXTENSIONS: Readonly<Record<ExportFormat, string>> = {
-  csv: 'csv',
-  tsv: 'tsv',
-  json: 'json',
-  jsonl: 'jsonl',
-  sql: 'sql',
-  'sql-ddl': 'sql',
-};
-
 /** stdout as an export sink: UTF-8 text through the CLI's backpressure-aware writer. */
 function stdoutSink(runtime: Runtime): Sink {
   const decoder = new TextDecoder('utf-8');
@@ -475,17 +505,13 @@ function stdoutSink(runtime: Runtime): Sink {
   };
 }
 
-/** A per-table file name: characters file systems refuse become `_`. */
-export function exportFileName(table: string, format: ExportFormat, gzip: boolean): string {
-  // eslint-disable-next-line no-control-regex
-  const base = table.replace(/[\u0000-\u001f<>:"/\\|?*]/g, '_').replace(/^\.+/, '_') || 'table';
-  return `${base}.${EXTENSIONS[format]}${gzip ? '.gz' : ''}`;
-}
+export { exportFileName } from '@joinery/transfer';
 
 /**
  * `joinery export <target> (--table <name>... | --query <sql>) --format <f> --out <path|->`:
- * tables or a query result to CSV, TSV, JSON, JSON Lines, SQL INSERTs or SQL with DDL. Several
- * tables go one file per table into the --out folder, or into one file with --one-file.
+ * tables or a query result to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL INSERTs, SQL with
+ * DDL, HTML or Markdown. Several tables go one file per table into the --out folder, into one
+ * file with --one-file, or into one ZIP archive with --zip.
  */
 export async function exportDataCommand(
   runtime: Runtime,
@@ -503,13 +529,24 @@ export async function exportDataCommand(
   if (toStdout && options.gzip) {
     throw new CliError('--gzip writes a file', { hint: 'Pipe stdout through gzip instead' });
   }
-  const several = options.tables.length > 1;
-  const combined = several && options.oneFile;
-  if (combined && !['sql', 'sql-ddl', 'json'].includes(options.format)) {
-    throw new CliError(`--one-file is available for sql, sql-ddl and json, not ${options.format}`);
+  if (options.gzip && options.zip) throw new CliError('Choose --gzip or --zip, not both');
+  if (toStdout && (options.zip || options.format === 'xlsx')) {
+    throw new CliError(`${options.zip ? '--zip' : 'An Excel workbook'} writes a file`, {
+      hint: 'Give --out a file name',
+    });
   }
-  if (several && !combined && toStdout) {
-    throw new CliError('Several tables need a folder for --out, or --one-file');
+  const several = options.tables.length > 1;
+  if (options.zip && options.oneFile) {
+    throw new CliError('--zip holds a file per table; leave out --one-file');
+  }
+  const combined = several && options.oneFile;
+  if (combined && !combinableFormat(options.format)) {
+    throw new CliError(
+      `--one-file is available for every format but csv, tsv and jsonl, not ${options.format}`,
+    );
+  }
+  if (several && !combined && !options.zip && toStdout) {
+    throw new CliError('Several tables need a folder for --out, --one-file or --zip');
   }
   const connection = await openTarget(runtime, spec, options);
   try {
@@ -536,6 +573,10 @@ export async function exportDataCommand(
         ...(options.rowsPerInsert !== undefined ? { rowsPerStatement: options.rowsPerInsert } : {}),
         ...(options.dropTable ? { dropTable: true } : {}),
       },
+      xlsx: {
+        header: options.header,
+        ...(options.decimals !== undefined ? { decimals: options.decimals } : {}),
+      },
       ...(options.bom ? { bom: true } : {}),
       onProgress: (progress) =>
         reporter.progress(
@@ -551,9 +592,18 @@ export async function exportDataCommand(
       tables.push({ name: ref.name, ...(ref.schema !== undefined ? { schema: ref.schema } : {}) });
     }
     const written: string[] = [];
-    const summary = await withAbort(runtime, async (signal) => {
+    const summary = await withAbort(runtime, async (signal): Promise<ExportSummary> => {
+      if (options.zip && options.query === undefined) {
+        return exportTables({ ...common, signal, tables, output: { kind: 'zip', sink: sink() } });
+      }
       if (options.query !== undefined) {
-        return exportRows({ ...common, signal, query: options.query, sink: sink() });
+        return exportRows({
+          ...common,
+          signal,
+          query: options.query,
+          sink: sink(),
+          ...(options.zip ? { zipEntry: exportFileName('query_result', options.format) } : {}),
+        });
       }
       if (!several) return exportRows({ ...common, signal, table: tables[0]!, sink: sink() });
       if (combined) {
@@ -593,7 +643,7 @@ export async function exportDataCommand(
     }
     const where = toStdout
       ? 'stdout'
-      : several && !combined
+      : several && !combined && !options.zip
         ? `${plural(written.length, 'file')} in ${options.out}`
         : options.out;
     reporter.info(

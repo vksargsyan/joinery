@@ -42,7 +42,7 @@ interface Result {
   readonly stderr: string;
 }
 
-function joinery(args: readonly string[], stdin?: string): Promise<Result> {
+function joinery(args: readonly string[], stdin?: string | Uint8Array): Promise<Result> {
   const env: Record<string, string> = {
     PATH: process.env['PATH'] ?? '',
     HOME: workDir,
@@ -383,6 +383,109 @@ break')`,
       'SELECT o.id, c.name, o.total, o.note FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id';
     expect(await rows(engine, target, query)).toEqual(await rows(engine, source, query));
     expect(await rows(engine, target, query)).toHaveLength(3);
+  });
+
+  it('exports to Excel, XML, HTML, Markdown and a ZIP, and imports Excel and XML back', async () => {
+    const db = await createDatabase('xlsx');
+    const url = urlFor(engine, db);
+    await admin(
+      engine,
+      `CREATE TABLE items (id INT PRIMARY KEY, label VARCHAR(40), price DECIMAL(10,2), added DATE);
+       INSERT INTO items VALUES (1, 'Anvil & <co>', 19.99, '2024-01-02'), (2, 'Bucket', NULL, NULL);
+       CREATE TABLE xml_items (id INT PRIMARY KEY, label VARCHAR(40), price DECIMAL(10,2), added DATE)`,
+      db,
+    );
+    const book = `items-${engine.name}.xlsx`;
+    const exported = await joinery([
+      'export',
+      url,
+      '--table',
+      'items',
+      '--format',
+      'xlsx',
+      '--decimals',
+      'number',
+      '--out',
+      book,
+    ]);
+    expect(exported.code, exported.stderr).toBe(0);
+    expect(readFileSync(join(workDir, book)).subarray(0, 2).toString('latin1')).toBe('PK');
+
+    // Into a new table, from the file and again from stdin.
+    for (const [table, args, stdin] of [
+      ['from_file', ['--file', book], undefined],
+      ['from_stdin', ['--file', '-'], readFileSync(join(workDir, book))],
+    ] as const) {
+      const imported = await joinery(
+        ['import', url, '--table', table, ...args, '--create', '--key', 'id'],
+        stdin,
+      );
+      expect(imported.code, imported.stderr).toBe(0);
+      expect(imported.stderr).toContain(`Imported 2 rows into`);
+      expect(
+        await rows(engine, db, `SELECT id, label, price, added FROM ${table} ORDER BY id`),
+      ).toEqual(await rows(engine, db, 'SELECT id, label, price, added FROM items ORDER BY id'));
+    }
+
+    const xml = await joinery(['export', url, '--table', 'items', '--format', 'xml', '--out', '-']);
+    expect(xml.code, xml.stderr).toBe(0);
+    expect(xml.stdout).toContain('<label>Anvil &amp; &lt;co&gt;</label>');
+    file(`items-${engine.name}.xml`, xml.stdout);
+    const loaded = await joinery([
+      'import',
+      url,
+      '--table',
+      'xml_items',
+      '--file',
+      `items-${engine.name}.xml`,
+    ]);
+    expect(loaded.code, loaded.stderr).toBe(0);
+    expect(
+      await rows(engine, db, 'SELECT id, label, price, added FROM xml_items ORDER BY id'),
+    ).toEqual(await rows(engine, db, 'SELECT id, label, price, added FROM items ORDER BY id'));
+
+    const page = await joinery([
+      'export',
+      url,
+      '--table',
+      'items',
+      '--format',
+      'html',
+      '--out',
+      '-',
+    ]);
+    expect(page.stdout).toContain('<td>Anvil &amp; &lt;co&gt;</td>');
+    const markdown = await joinery([
+      'export',
+      url,
+      '--table',
+      'items',
+      '--format',
+      'markdown',
+      '--out',
+      '-',
+    ]);
+    expect(markdown.stdout.split('\n')[2]).toBe('| 1 | Anvil \\& \\<co\\> | 19.99 | 2024-01-02 |');
+
+    const zip = `items-${engine.name}.zip`;
+    const zipped = await joinery([
+      'export',
+      url,
+      '--table',
+      'items',
+      '--table',
+      'xml_items',
+      '--format',
+      'csv',
+      '--zip',
+      '--out',
+      zip,
+    ]);
+    expect(zipped.code, zipped.stderr).toBe(0);
+    expect(zipped.stderr).toContain(`from 2 tables to ${zip}`);
+    const names = readFileSync(join(workDir, zip)).toString('latin1');
+    expect(names).toContain('items.csv');
+    expect(names).toContain('xml_items.csv');
   });
 
   it('runs a SQL file past a failing statement with --continue', async () => {

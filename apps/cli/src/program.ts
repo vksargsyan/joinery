@@ -562,7 +562,7 @@ Examples:
   // import -----------------------------------------------------------------------------------
   program
     .command('import')
-    .description('import a CSV, TSV, JSON or JSON Lines file into a table')
+    .description('import a CSV, TSV, JSON, JSON Lines, Excel or XML file into a table')
     .argument('<target>', 'profile name or id, or connection URI')
     .requiredOption('--table <name>', 'table to import into (schema.table on PostgreSQL)')
     .requiredOption('--file <path>', 'file to read, gzip allowed ("-" for stdin)')
@@ -572,6 +572,8 @@ Examples:
         'tsv',
         'json',
         'jsonl',
+        'xlsx',
+        'xml',
       ]),
     )
     .option(
@@ -580,6 +582,16 @@ Examples:
       delimiter,
     )
     .option('--no-header', 'the first row is data, not column names')
+    .option('--sheet <name>', 'Excel: the worksheet to read (default: the first visible one)')
+    .option(
+      '--header-row <n>',
+      'Excel: the row with the column names, 0 for none (default: detected)',
+      nonNegativeInteger,
+    )
+    .option(
+      '--row-path <path>',
+      'XML: path of the row elements, e.g. /orders/order (default: detected)',
+    )
     .option('--encoding <name>', 'text encoding, e.g. windows-1252 (default: detected)')
     .option('--null <text>', 'unquoted text that means NULL (default: an empty field)')
     .addOption(
@@ -621,8 +633,11 @@ Examples:
     .addHelpText(
       'after',
       `
-The format, encoding, CSV delimiter, quote and header are detected from the file unless
-given. Columns are matched to the table's by name (case, spaces, _ and - do not count);
+The format, encoding, CSV delimiter, quote and header, the Excel header row and the XML
+row path are detected from the file unless given. Excel cells keep their types (numbers,
+booleans, dates as ISO text); XML rows are the elements at --row-path, with their attributes
+and child elements as columns. Columns are matched to the table's by name (case, spaces, _
+and - do not count);
 unmatched table columns get their defaults. Rows load in batches of parameterised INSERT
 (or UPDATE, upsert, DELETE) statements in one transaction by default: with --on-error stop
 the first bad row rolls everything back; with skip, bad rows are reported (row, line,
@@ -636,6 +651,8 @@ Examples:
   joinery import dev --table public.people --file people.csv
   joinery import dev --table people --file export.json.gz --mode upsert --key id
   joinery import dev --table staging.raw --file data.tsv --create --on-error skip
+  joinery import dev --table sales --file q3.xlsx --sheet "July" --header-row 3
+  joinery import dev --table orders --file orders.xml --row-path /export/table/row
   cat rows.csv | joinery import "mysql://app@db/shop" --table orders --file - --map "Order No=id"`,
     )
     .action((target: string, options: ImportCliOptions) => {
@@ -645,7 +662,9 @@ Examples:
   // export -----------------------------------------------------------------------------------
   program
     .command('export')
-    .description('export tables or a query result to CSV, TSV, JSON, JSON Lines or SQL')
+    .description(
+      'export tables or a query result to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL, HTML or Markdown',
+    )
     .argument('<target>', 'profile name or id, or connection URI')
     .option(
       '--table <name>',
@@ -655,7 +674,18 @@ Examples:
     .option('--query <sql>', 'export the result of this query instead')
     .addOption(
       new Option('--format <format>', 'output format')
-        .choices(['csv', 'tsv', 'json', 'jsonl', 'sql', 'sql-ddl'])
+        .choices([
+          'csv',
+          'tsv',
+          'json',
+          'jsonl',
+          'xlsx',
+          'xml',
+          'sql',
+          'sql-ddl',
+          'html',
+          'markdown',
+        ])
         .makeOptionMandatory(),
     )
     .requiredOption(
@@ -663,8 +693,9 @@ Examples:
       'file to write ("-" for stdout); a folder for several tables without --one-file',
     )
     .option('--gzip', 'compress the output with gzip')
-    .option('--one-file', 'several tables into one file (sql, sql-ddl and json)')
-    .option('--no-header', 'CSV and TSV: no header line')
+    .option('--zip', 'a file per table inside one ZIP archive (--out is the .zip file)')
+    .option('--one-file', 'several tables into one file (all formats but csv, tsv and jsonl)')
+    .option('--no-header', 'CSV, TSV and Excel: no header row')
     .option('--delimiter <char>', 'CSV delimiter (default ,)', delimiter)
     .option('--null <text>', 'CSV and TSV: text written for NULL (default: an empty field)')
     .option('--pretty', 'JSON: indent each object')
@@ -674,6 +705,12 @@ Examples:
       positiveInteger,
     )
     .option('--drop-table', 'sql-ddl: DROP TABLE IF EXISTS before each CREATE TABLE')
+    .addOption(
+      new Option(
+        '--decimals <as>',
+        'xlsx: decimals as exact text, or as numbers where a double holds them exactly',
+      ).choices(['text', 'number']),
+    )
     .option('--bom', 'start with a UTF-8 byte order mark (for Excel)')
     .option('--database <name>', 'database to connect to')
     .addOption(
@@ -685,14 +722,19 @@ Examples:
       `
 Rows stream from a server-side cursor to the file page by page, so memory stays flat. JSON
 keeps bigints and decimals exact and embeds JSON columns; SQL writes multi-row INSERTs (with
-the CREATE TABLE, indexes and foreign keys for sql-ddl). Several tables go to <out>/<table>
-files, or with --one-file into one SQL file (foreign keys last) or one JSON object keyed by
-table name. A failed or cancelled export removes the partial file.
+the CREATE TABLE, indexes and foreign keys for sql-ddl). Excel writes typed cells (dates as
+Excel dates; bigints and decimals as text unless --decimals number); XML writes <export>,
+<table name="…"> and a <row> per row; HTML a self-contained page; Markdown pipe tables.
+Several tables go to <out>/<table> files, into one ZIP archive with --zip, or with --one-file
+into one file (a SQL file with foreign keys last, a JSON object keyed by table name, a
+worksheet or section per table). A failed or cancelled export removes the partial file.
 
 Examples:
   joinery export prod --table public.orders --format csv --out orders.csv
   joinery export prod --table orders --table items --format sql-ddl --one-file --out shop.sql --gzip
   joinery export prod --table orders --table items --format jsonl --out exports/
+  joinery export prod --table orders --table items --format xlsx --one-file --out shop.xlsx
+  joinery export prod --table orders --table items --format csv --zip --out shop.zip
   joinery export dev --query "select id, email from users where active" --format json --out - | jq .`,
     )
     .action((target: string, options: ExportCliOptions) => {
@@ -905,9 +947,12 @@ function queryOptions(options: QueryCliOptions): Parameters<typeof queryCommand>
 interface ImportCliOptions extends TunnelCliOptions {
   table: string;
   file: string;
-  format?: 'csv' | 'tsv' | 'json' | 'jsonl';
+  format?: 'csv' | 'tsv' | 'json' | 'jsonl' | 'xlsx' | 'xml';
   delimiter?: string;
   header: boolean;
+  sheet?: string;
+  headerRow?: number;
+  rowPath?: string;
   encoding?: string;
   null?: string;
   mode: ImportDataOptions['mode'];
@@ -942,6 +987,9 @@ export function importOptions(options: ImportCliOptions): ImportDataOptions {
     ...(options.delimiter !== undefined ? { delimiter: options.delimiter } : {}),
     ...(options.encoding !== undefined ? { encoding: options.encoding } : {}),
     ...(options.null !== undefined ? { nullMarker: options.null } : {}),
+    ...(options.sheet !== undefined ? { sheet: options.sheet } : {}),
+    ...(options.headerRow !== undefined ? { headerRow: options.headerRow } : {}),
+    ...(options.rowPath !== undefined ? { rowPath: options.rowPath } : {}),
     ...(options.key !== undefined ? { key: options.key } : {}),
     ...(options.batchSize !== undefined ? { batchSize: options.batchSize } : {}),
     ...(options.errorLog !== undefined ? { errorLog: options.errorLog } : {}),
@@ -958,6 +1006,7 @@ interface ExportCliOptions extends TunnelCliOptions {
   format: ExportDataOptions['format'];
   out: string;
   gzip?: boolean;
+  zip?: boolean;
   oneFile?: boolean;
   header: boolean;
   delimiter?: string;
@@ -965,6 +1014,7 @@ interface ExportCliOptions extends TunnelCliOptions {
   pretty?: boolean;
   rowsPerInsert?: number;
   dropTable?: boolean;
+  decimals?: 'text' | 'number';
   bom?: boolean;
   database?: string;
   yes?: boolean;
@@ -978,6 +1028,7 @@ export function exportOptions(options: ExportCliOptions): ExportDataOptions {
     format: options.format,
     out: options.out,
     gzip: options.gzip === true,
+    zip: options.zip === true,
     oneFile: options.oneFile === true,
     header: options.header !== false,
     pretty: options.pretty === true,
@@ -988,6 +1039,7 @@ export function exportOptions(options: ExportCliOptions): ExportDataOptions {
     ...(options.delimiter !== undefined ? { delimiter: options.delimiter } : {}),
     ...(options.null !== undefined ? { nullMarker: options.null } : {}),
     ...(options.rowsPerInsert !== undefined ? { rowsPerInsert: options.rowsPerInsert } : {}),
+    ...(options.decimals !== undefined ? { decimals: options.decimals } : {}),
     ...(options.database !== undefined ? { database: options.database } : {}),
     ...(options.tls !== undefined ? { tls: options.tls } : {}),
     ...tunnelFlags(options),
