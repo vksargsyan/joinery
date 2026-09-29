@@ -178,3 +178,46 @@ export type {
 } from './export';
 
 export { createTable, loadTable } from './session';
+
+// Data transfer between databases (spec §12): SQL ↔ SQL, SQL ↔ MongoDB, Redis → Redis.
+export { planDbTransfer, runDbTransfer, transferSupport } from './db/transfer';
+export type { PlanDbTransferOptions, RunDbTransferOptions } from './db/transfer';
+export {
+  DB_TABLE_MODES,
+  DEFAULT_DB_TRANSFER_OPTIONS,
+  FIELD_SHAPES,
+  resolveOptions as resolveDbTransferOptions,
+} from './db/spec';
+export type {
+  ColumnOverride,
+  DbTableMode,
+  DbTransferError,
+  DbTransferOptions,
+  DbTransferProgress,
+  DbTransferSpec,
+  DbTransferSummary,
+  DbTransferTableSummary,
+  EmbedSpec,
+  FieldShape,
+  OpenedSession,
+  PlannedAction,
+  PlannedColumn,
+  PlannedTable,
+  SessionOpener,
+  TransferObjectSpec,
+  TransferPlan,
+} from './db/spec';
+export { isIntegerType, mapSqlType } from './db/type-map';
+export type { ReadForm, TypeMapping, TypeMappingContext } from './db/type-map';
+export {
+  MONGO_FIELD_TYPES,
+  bsonCell,
+  flattenCollection,
+  mongoFieldType,
+  sqlTypeForBson,
+  toBsonValue,
+} from './db/mongo-map';
+export type { FlatColumn, FlatTable, FlattenOptions, MongoFieldType } from './db/mongo-map';
+export { isSafeDataType, safeColumnName } from './db/names';
+export { globMatch } from './db/redis-transfer';
+export type { MongoTransferSession, RedisTransferSession } from './db/sessions';

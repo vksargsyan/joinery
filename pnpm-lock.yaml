@@ -631,6 +631,9 @@ importers:
       '@joinery/core':
         specifier: workspace:*
         version: link:../core
+      '@joinery/mongo-tools':
+        specifier: workspace:*
+        version: link:../mongo-tools
       '@joinery/sql-tools':
         specifier: workspace:*
         version: link:../sql-tools
@@ -638,12 +641,18 @@ importers:
         specifier: workspace:*
         version: link:../sync
     devDependencies:
+      '@joinery/driver-mongodb':
+        specifier: workspace:*
+        version: link:../drivers/mongodb
       '@joinery/driver-mysql':
         specifier: workspace:*
         version: link:../drivers/mysql
       '@joinery/driver-postgres':
         specifier: workspace:*
         version: link:../drivers/postgres
+      '@joinery/driver-redis':
+        specifier: workspace:*
+        version: link:../drivers/redis
       '@joinery/driver-sql-base':
         specifier: workspace:*
         version: link:../drivers/sql-base

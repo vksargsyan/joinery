@@ -2,7 +2,7 @@
   "name": "@joinery/transfer",
   "version": "0.0.0",
   "private": true,
-  "description": "Streaming import and export: CSV, TSV, JSON, JSON Lines, Excel, XML, HTML, Markdown and SQL readers and writers, ZIP, column mapping and batched loads.",
+  "description": "Streaming import and export (CSV, TSV, JSON, JSON Lines, Excel, XML, HTML, Markdown, SQL, ZIP), column mapping and batched loads, and data transfer between databases.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -14,12 +14,15 @@
   },
   "dependencies": {
     "@joinery/core": "workspace:*",
+    "@joinery/mongo-tools": "workspace:*",
     "@joinery/sql-tools": "workspace:*",
     "@joinery/sync": "workspace:*"
   },
   "devDependencies": {
+    "@joinery/driver-mongodb": "workspace:*",
     "@joinery/driver-mysql": "workspace:*",
     "@joinery/driver-postgres": "workspace:*",
+    "@joinery/driver-redis": "workspace:*",
     "@joinery/driver-sql-base": "workspace:*",
     "@types/node": "catalog:",
     "fast-check": "catalog:",
