@@ -20,6 +20,7 @@
   "devDependencies": {
     "@glideapps/glide-data-grid": "^6.0.3",
     "@hookform/resolvers": "^5.9.1",
+    "@joinery/backup": "workspace:*",
     "@joinery/core": "workspace:*",
     "@joinery/driver-mongodb": "workspace:*",
     "@joinery/driver-mysql": "workspace:*",

@@ -94,7 +94,7 @@ export {
   type SqlRestorePlanOptions,
   type SqlScriptRestoreOptions,
 } from './sql/restore';
-export { type SnapshotMode } from './sql/session';
+export { createDatabase, currentDatabase, type SnapshotMode } from './sql/session';
 
 export {
   backupMongo,

@@ -13,6 +13,11 @@ import {
 } from '@joinery/ipc';
 import { z } from 'zod';
 
+import {
+  backupInspectRequestSchema,
+  nativeToolsRequestSchema,
+  restorePlanRequestSchema,
+} from './backup-protocol';
 import { resolvedProfileSchema } from './host-protocol';
 import { syncJobSpecSchema, syncRunnerRequestSchemas } from './sync-jobs';
 
@@ -52,6 +57,9 @@ export const runnerRequestSchema = z.discriminatedUnion('kind', [
     resolved: resolvedProfileSchema,
     resolvedTarget: resolvedProfileSchema,
   }),
+  backupInspectRequestSchema,
+  restorePlanRequestSchema,
+  nativeToolsRequestSchema,
 ]);
 export type RunnerRequest = z.infer<typeof runnerRequestSchema>;
 

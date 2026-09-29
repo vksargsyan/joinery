@@ -162,6 +162,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.9.1
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.89.0(@types/react@19.3.0)(react@19.3.0))(zod@4.6.5)
+      '@joinery/backup':
+        specifier: workspace:*
+        version: link:../../packages/backup
       '@joinery/core':
         specifier: workspace:*
         version: link:../../packages/core

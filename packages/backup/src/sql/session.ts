@@ -1,5 +1,5 @@
 import { JoineryError, type Session, type SqlDialect, type TableDef } from '@joinery/core';
-import { quoteQualified } from '@joinery/sql-tools';
+import { quoteIdent, quoteQualified } from '@joinery/sql-tools';
 
 import { drain, queryRows, text } from '../util';
 
@@ -177,4 +177,51 @@ export async function currentDatabase(session: Session): Promise<string> {
     });
   }
   return name;
+}
+
+/**
+ * Creates the database a restore goes into ("restore into a new database"): refuses one that
+ * exists. MySQL and MariaDB get the source's character set and collation when the backup names
+ * them (and the server knows them), utf8mb4 otherwise.
+ */
+export async function createDatabase(
+  session: Session,
+  name: string,
+  options: Readonly<Record<string, string>> = {},
+): Promise<void> {
+  const dialect = dialectOf(session);
+  const pg = dialect === 'postgres';
+  const exists = await queryRows(
+    session,
+    pg
+      ? 'SELECT 1 FROM pg_catalog.pg_database WHERE datname = $1'
+      : 'SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?',
+    [name],
+  );
+  if (exists.length > 0) {
+    throw new JoineryError({
+      code: 'VALIDATION_FAILED',
+      message: `The database "${name}" exists already`,
+      hint: 'Restore into it without creating it, or choose a new name',
+    });
+  }
+  const ident = quoteIdent(name, dialect);
+  if (pg) {
+    await drain(session, `CREATE DATABASE ${ident}`);
+    return;
+  }
+  const word = /^[A-Za-z0-9_]+$/;
+  const charset = options['charset'] !== undefined && word.test(options['charset']) ? options['charset'] : 'utf8mb4';
+  const known = async (sql: string, value: string): Promise<boolean> =>
+    (await queryRows(session, sql, [value])).length > 0;
+  const collation = options['collation'];
+  const useCollation =
+    collation !== undefined &&
+    word.test(collation) &&
+    collation.startsWith(`${charset}_`) &&
+    (await known('SELECT 1 FROM information_schema.COLLATIONS WHERE COLLATION_NAME = ?', collation));
+  await drain(
+    session,
+    `CREATE DATABASE ${ident} CHARACTER SET ${charset}${useCollation ? ` COLLATE ${collation}` : ''}`,
+  );
 }

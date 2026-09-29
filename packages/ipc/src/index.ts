@@ -55,6 +55,7 @@ export * from './schemas/redis';
 export * from './schemas/sync';
 export * from './schemas/server-tools';
 export * from './schemas/workspace';
+export * from './schemas/backup';
 
 export {
   connectionHostContract,
@@ -65,6 +66,7 @@ export {
 export { mainContract, type MainContract } from './contracts/main';
 export { mongoHostContractShape, mongoMainContractShape } from './contracts/mongo';
 export { transferDbMainContractShape } from './contracts/transfer-db';
+export { backupMainContractShape } from './contracts/backup';
 export { redisHostContractShape } from './contracts/redis';
 export { syncMainContractShape } from './contracts/sync';
 export { serverToolsHostContractShape } from './contracts/server-tools';

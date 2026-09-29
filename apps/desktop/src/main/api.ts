@@ -34,6 +34,7 @@ import { resolveProfile } from './secrets';
 import { metadataHandlers, snippetHandlers } from './metadata';
 import { mongoMainHandlers } from './mongo-api';
 import { transferDbHandlers } from './transfer-db-api';
+import { backupMainHandlers } from './backup-api';
 import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
 import type { SyncService } from './sync';
@@ -301,6 +302,7 @@ export function createMainHandlers<P>(
     gridViews: gridViewHandlers(store),
     autosave: autosaveHandlers(store, services.previousRun ?? 'none'),
     transferDb: transferDbHandlers(services),
+    backup: backupMainHandlers(services, files),
   };
 }
 

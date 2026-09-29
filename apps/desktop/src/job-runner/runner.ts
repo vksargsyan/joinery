@@ -28,6 +28,7 @@ import {
   type JobOutcome,
 } from './tasks';
 import { inspectConnection, planTransferJob, runTransferJob, type Connector } from './transfer-db';
+import { answerBackupRequest, connectDatabase, isBackupRequest, runBackupTask } from './backup';
 
 /**
  * The job runner's core (spec §3): runs jobs side by side, each on its own driver session,
@@ -39,6 +40,8 @@ import { inspectConnection, planTransferJob, runTransferJob, type Connector } fr
 /** A driver session opened for one job, and how to close it (and its tunnel). */
 export interface JobSession {
   readonly session: Session;
+  /** The profile the session connected with, a tunnel's local end included (native tools). */
+  readonly resolved?: ResolvedProfile;
   close(): Promise<void>;
 }
 
@@ -148,6 +151,11 @@ export class JobRunner {
     // The transfer wizard's requests connect; host key questions carry the request's id.
     const connect: Connector = (resolved) => this.#deps.connect(resolved, requestId);
     try {
+      if (isBackupRequest(request)) {
+        const result = await answerBackupRequest(request, { connect });
+        this.#post({ type: 'response', requestId, result });
+        return;
+      }
       const result = isSyncRequest(request)
         ? await answerSyncRequest(request)
         : request.kind === 'preview'
@@ -353,7 +361,7 @@ export class JobRunner {
         jobId,
         progress: { phase: 'Connecting', elapsedMs: 0 },
       });
-      opened = await this.#deps.connect(withDatabase(resolved, job.database), jobId);
+      opened = await this.#deps.connect(withDatabase(resolved, connectDatabase(job)), jobId);
       if (signal.aborted) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
       const { session } = opened;
       this.#post({
@@ -364,11 +372,17 @@ export class JobRunner {
       });
       const run = context(session);
       result =
-        job.kind === 'import'
-          ? await runImport(job, run)
-          : job.kind === 'export'
-            ? await runExport(job, run)
-            : await runSqlFileJob(job, run);
+        job.kind === 'backup' || job.kind === 'restore'
+          ? await runBackupTask(job, {
+              ...run,
+              resolved: opened.resolved ?? withDatabase(resolved, job.database),
+              connect: (database) => this.#deps.connect(withDatabase(resolved, database), jobId),
+            })
+          : job.kind === 'import'
+            ? await runImport(job, run)
+            : job.kind === 'export'
+              ? await runExport(job, run)
+              : await runSqlFileJob(job, run);
     } catch (error) {
       const data: ErrorData =
         signal.aborted || cancelled(error)

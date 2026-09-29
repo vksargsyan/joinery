@@ -24,6 +24,12 @@ import {
 import type { Store } from '@joinery/storage';
 import { z } from 'zod';
 
+import {
+  backupNotification,
+  checkBackupJobSafety,
+  checkBackupPaths,
+  describeBackupJob,
+} from './backup-api';
 import { jobEvents, type JobDescription, type JobHistoryStore, type JobManager } from './jobs';
 import { resolveProfile } from './secrets';
 import { describeTransfer, startTransferJob } from './transfer-db-api';
@@ -148,11 +154,15 @@ export function describeJob(spec: JobSpec): JobDescription {
       };
     case 'transfer':
       return describeTransfer(spec);
+    case 'backup':
+    case 'restore':
+      return describeBackupJob(spec);
   }
 }
 
 /** The write rules for a job (spec §4, §6, §12), checked before it starts. */
 export function checkJobSafety(spec: JobSpec, profile: ConnectionProfile): void {
+  if (spec.kind === 'backup' || spec.kind === 'restore') checkBackupJobSafety(spec, profile);
   const confirmWrites = requiresWriteConfirmation(profile);
   const production = profile.presentation.environment === 'production';
   if (spec.kind === 'import') {
@@ -192,6 +202,10 @@ function checkPaths(spec: JobSpec, grants: FileGrants): void {
       if (spec.output.kind === 'file') grants.checkWrite(spec.output.path);
       else grants.checkDirectory(spec.output.path);
       return;
+    case 'backup':
+    case 'restore':
+      checkBackupPaths(spec, grants);
+      return;
   }
 }
 
@@ -219,7 +233,8 @@ export function jobHandlers(
         if (!profile) {
           throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
         }
-        if (!isSqlEngine(profile.engine)) {
+        // Backups and restores cover MongoDB and Redis too.
+        if (!isSqlEngine(profile.engine) && job.kind !== 'backup' && job.kind !== 'restore') {
           throw new JoineryError({
             code: 'NOT_SUPPORTED',
             message: 'Import and export work with SQL connections for now',
@@ -315,6 +330,7 @@ const SYNC_JOB_TITLES: Readonly<Record<SyncJobKind, string>> = {
 
 /** The finished job's one-line summary, for the desktop notification. */
 export function notificationFor(job: JobInfo): { title: string; body: string } {
+  if (job.kind === 'backup' || job.kind === 'restore') return backupNotification(job);
   const summary = job.summary;
   if (isSyncJobKind(job.kind)) {
     const what = SYNC_JOB_TITLES[job.kind];

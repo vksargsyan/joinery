@@ -1,5 +1,10 @@
 import type { ResolvedProfile } from '@joinery/core';
-import { TransportManager, connectThroughTransport, needsTransport } from '@joinery/tunnel';
+import {
+  TransportManager,
+  connectThroughTransport,
+  needsTransport,
+  tunnelledProfile,
+} from '@joinery/tunnel';
 
 import { loadAdapter } from '../connection-host/adapters';
 import { HostKeyBridge } from '../connection-host/host-keys';
@@ -28,7 +33,7 @@ async function connect(resolved: ResolvedProfile, jobId: string): Promise<JobSes
   const adapter = await loadAdapter(resolved.profile.engine);
   if (!needsTransport(resolved.profile)) {
     const session = await adapter.connect(resolved);
-    return { session, close: () => session.close() };
+    return { session, resolved, close: () => session.close() };
   }
   const bridge = new HostKeyBridge((message) => {
     if (message.type === 'host-key') send({ ...message, jobId });
@@ -42,6 +47,8 @@ async function connect(resolved: ResolvedProfile, jobId: string): Promise<JobSes
   try {
     const opened = await connectThroughTransport(adapter, resolved, transports);
     return {
+      // Native tools reach the server through the same local end of the tunnel.
+      resolved: opened.transport ? tunnelledProfile(resolved, opened.transport) : resolved,
       session: opened.session,
       close: async () => {
         try {

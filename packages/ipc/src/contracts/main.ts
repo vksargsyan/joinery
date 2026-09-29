@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { defineContract } from '../contract';
+import { backupMainContractShape } from './backup';
 import { mongoMainContractShape } from './mongo';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
@@ -271,6 +272,8 @@ export const mainContract = defineContract({
   autosave: autosaveMainContractShape,
   /** The data transfer wizard's questions before a transfer job starts (spec §12). */
   transferDb: transferDbMainContractShape,
+  /** Backup file inspection, restore plans and the native tools (spec §14). */
+  backup: backupMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

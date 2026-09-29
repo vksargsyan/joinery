@@ -27,6 +27,7 @@ import {
   mongoMainContractShape,
   serverToolsHostContractShape,
   transferDbMainContractShape,
+  backupMainContractShape,
   parseRequest,
   syncMainContractShape,
   safeProfileSchema,
@@ -463,6 +464,7 @@ describe('mainContract never hands a secret to the renderer', () => {
       gridViews: unusedHandlers(gridViewsMainContractShape),
       autosave: unusedHandlers(autosaveMainContractShape),
       transferDb: unusedHandlers(transferDbMainContractShape),
+      backup: unusedHandlers(backupMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -631,6 +633,7 @@ describe('desktop additions', () => {
       gridViews: unusedHandlers(gridViewsMainContractShape),
       autosave: unusedHandlers(autosaveMainContractShape),
       transferDb: unusedHandlers(transferDbMainContractShape),
+      backup: unusedHandlers(backupMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

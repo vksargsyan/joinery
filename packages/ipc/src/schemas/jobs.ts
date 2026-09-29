@@ -2,6 +2,7 @@ import { SQL_ENGINE_IDS, errorDataSchema } from '@joinery/core';
 import { z } from 'zod';
 
 import { openFileInputSchema } from './app';
+import { backupJobSchema, restoreJobSchema } from './backup';
 import { idSchema } from './common';
 import { cellValueSchema } from './results';
 import { SYNC_JOB_KINDS } from './sync';
@@ -365,6 +366,8 @@ export const jobSpecSchema = z.discriminatedUnion('kind', [
   exportJobSchema,
   runSqlFileJobSchema,
   transferJobSchema,
+  backupJobSchema,
+  restoreJobSchema,
 ]);
 export type JobSpec = z.infer<typeof jobSpecSchema>;
 export type JobKind = JobSpec['kind'];
@@ -454,7 +457,15 @@ export type JobLogEntry = z.infer<typeof jobLogEntrySchema>;
 /** A job as the job list shows it; finished ones come from the job history. */
 export const jobInfoSchema = z.object({
   id: idSchema,
-  kind: z.enum(['import', 'export', 'run-sql-file', 'transfer', ...SYNC_JOB_KINDS]),
+  kind: z.enum([
+    'import',
+    'export',
+    'run-sql-file',
+    'transfer',
+    'backup',
+    'restore',
+    ...SYNC_JOB_KINDS,
+  ]),
   title: z.string(),
   profileId: idSchema,
   profileName: z.string(),
