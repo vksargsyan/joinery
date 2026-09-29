@@ -69,6 +69,8 @@ export interface JobDescription {
 export interface JobStartExtras {
   /** A comparison's source connection; its secrets travel to the runner only. */
   readonly source?: ResolvedProfile;
+  /** A transfer between databases: the target's profile; its secrets travel to the runner only. */
+  readonly resolvedTarget?: ResolvedProfile;
   /**
    * Called once when the job ends, however it ends, with the result the runner sent with
    * `done` (sync jobs), unchecked.
@@ -153,8 +155,8 @@ export class JobManager {
   }
 
   /**
-   * Starts a job in the runner with the resolved profile (its secrets travel to the runner
-   * only). Returns the job's record.
+   * Starts a job in the runner with the resolved profile, and a transfer's target profile (their
+   * secrets travel to the runner only). Returns the job's record.
    */
   start(
     spec: RunnerJobSpec,
@@ -189,6 +191,7 @@ export class JobManager {
         job: spec,
         resolved,
         ...(extras.source ? { source: extras.source } : {}),
+        ...(extras.resolvedTarget ? { resolvedTarget: extras.resolvedTarget } : {}),
       });
     } catch (error) {
       this.#finish(job, {

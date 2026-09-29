@@ -18,6 +18,7 @@ import {
 } from '../../state/mongo/explorer';
 import { openCreateCollection, openCreateView } from '../../state/mongo/create-dialogs';
 import { openServerTools } from '../../state/server-tools/panels';
+import { openTransferFrom } from '../../state/transfer-db/api';
 import { MenuItem, Row } from '../Sidebar';
 import { Icon } from '../ui';
 import { MongoCreateDialogs } from './CreateDialogs';
@@ -225,6 +226,11 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
             Create view on it…
           </MenuItem>
         )}
+        <MenuItem
+          onSelect={() => openTransferFrom(profile, { database: db, objects: [object.name] })}
+        >
+          Transfer data to…
+        </MenuItem>
       </>
     );
   }
@@ -265,6 +271,9 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
           onSelect={() => openServerTools(profile, { tab: 'topQueries', focus: { container: db } })}
         >
           Profiler…
+        </MenuItem>
+        <MenuItem onSelect={() => openTransferFrom(profile, { database: db })}>
+          Transfer data to…
         </MenuItem>
       </>
     );

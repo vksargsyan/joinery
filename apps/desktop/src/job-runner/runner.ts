@@ -27,6 +27,7 @@ import {
   type JobContext,
   type JobOutcome,
 } from './tasks';
+import { inspectConnection, planTransferJob, runTransferJob, type Connector } from './transfer-db';
 
 /**
  * The job runner's core (spec §3): runs jobs side by side, each on its own driver session,
@@ -102,7 +103,13 @@ export class JobRunner {
     const message = parsed.data;
     switch (message.type) {
       case 'start':
-        this.#start(message.jobId, message.job, message.resolved, message.source);
+        this.#start(
+          message.jobId,
+          message.job,
+          message.resolved,
+          message.source,
+          message.resolvedTarget,
+        );
         return;
       case 'cancel':
         this.#jobs.get(message.jobId)?.controller.abort();
@@ -138,6 +145,8 @@ export class JobRunner {
   }
 
   async #answer(requestId: string, request: RunnerRequest): Promise<void> {
+    // The transfer wizard's requests connect; host key questions carry the request's id.
+    const connect: Connector = (resolved) => this.#deps.connect(resolved, requestId);
     try {
       const result = isSyncRequest(request)
         ? await answerSyncRequest(request)
@@ -145,7 +154,16 @@ export class JobRunner {
           ? await previewFile(request.input)
           : request.kind === 'auto-match'
             ? matchColumns(request.input.sources, request.input.targets)
-            : planNewTable(request.input);
+            : request.kind === 'plan-table'
+              ? planNewTable(request.input)
+              : request.kind === 'transfer-inspect'
+                ? await inspectConnection(connect, request.resolved, request.input)
+                : await planTransferJob(
+                    connect,
+                    request.job,
+                    request.resolved,
+                    request.resolvedTarget,
+                  );
       this.#post({ type: 'response', requestId, result });
     } catch (error) {
       this.#post({ type: 'response', requestId, error: toErrorData(error) });
@@ -157,12 +175,15 @@ export class JobRunner {
     job: RunnerJobSpec,
     resolved: ResolvedProfile,
     source: ResolvedProfile | undefined,
+    resolvedTarget: ResolvedProfile | undefined,
   ): void {
     if (this.#jobs.has(jobId)) return;
     const controller = new AbortController();
     const run = isSyncJob(job)
       ? this.#runSync(jobId, job, resolved, source, controller.signal)
-      : this.#run(jobId, job, resolved, controller.signal);
+      : job.kind === 'transfer'
+        ? this.#runTransfer(jobId, job, resolved, resolvedTarget, controller.signal)
+        : this.#run(jobId, job, resolved, controller.signal);
     const done = run.finally(() => {
       this.#jobs.delete(jobId);
     });
@@ -249,9 +270,58 @@ export class JobRunner {
     );
   }
 
+  /**
+   * A transfer between databases (spec §12): its sessions are opened by the pipeline, one pair
+   * per table running at once, each through its profile's tunnel.
+   */
+  async #runTransfer(
+    jobId: string,
+    job: Extract<JobSpec, { kind: 'transfer' }>,
+    resolved: ResolvedProfile,
+    resolvedTarget: ResolvedProfile | undefined,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const started = performance.now();
+    let result: JobOutcome | { error: ErrorData };
+    try {
+      if (resolvedTarget === undefined) {
+        throw new JoineryError({
+          code: 'VALIDATION_FAILED',
+          message: 'The transfer has no target',
+        });
+      }
+      this.#post({ type: 'progress', jobId, progress: { phase: 'Connecting', elapsedMs: 0 } });
+      result = await runTransferJob(job, resolved, resolvedTarget, {
+        connect: (profile) => this.#deps.connect(profile, jobId),
+        signal,
+        progress: (progress) =>
+          this.#post({
+            type: 'progress',
+            jobId,
+            progress: { ...progress, elapsedMs: Math.round(performance.now() - started) },
+          }),
+        log: (level, message) => this.#post({ type: 'log', jobId, level, message }),
+      });
+    } catch (error) {
+      const data: ErrorData =
+        signal.aborted || cancelled(error)
+          ? { code: 'CANCELLED', message: 'Cancelled' }
+          : toErrorData(error);
+      if (data.code !== 'CANCELLED') {
+        this.#post({ type: 'log', jobId, level: 'error', message: data.message });
+      }
+      result = { error: data };
+    }
+    this.#post(
+      'error' in result
+        ? { type: 'done', jobId, errors: [], error: result.error }
+        : { type: 'done', jobId, summary: result.summary, errors: [...result.errors] },
+    );
+  }
+
   async #run(
     jobId: string,
-    job: JobSpec,
+    job: Exclude<JobSpec, { kind: 'transfer' }>,
     resolved: ResolvedProfile,
     signal: AbortSignal,
   ): Promise<void> {

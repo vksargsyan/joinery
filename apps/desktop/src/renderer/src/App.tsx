@@ -9,6 +9,7 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { HostKeyPrompts } from './components/HostKeyPrompt';
 import { JobsPanel } from './components/jobs/JobsPanel';
 import { TransferDialogs } from './components/jobs/TransferDialogs';
+import { TransferDbHost } from './components/transfer-db/TransferDbDialog';
 import { Prompts } from './components/Prompts';
 import { openRedisTool } from './components/redis/RedisTree';
 import { Sidebar } from './components/Sidebar';
@@ -159,6 +160,7 @@ export function App() {
       <Prompts />
       <HostKeyPrompts />
       <TransferDialogs />
+      <TransferDbHost />
       {dialog && <ConnectionDialog mode={dialog} onClose={() => setDialog(undefined)} />}
     </div>
   );

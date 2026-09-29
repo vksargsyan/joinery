@@ -28,6 +28,7 @@ import { hasServerTools, openServerTools } from '../state/server-tools/panels';
 import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
 import { openDataCompare, openStructureCompare } from '../state/sync/panels';
+import { openTransferFrom } from '../state/transfer-db/api';
 import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
 import { RedisTree, openRedisTool } from './redis/RedisTree';
@@ -380,6 +381,11 @@ function ProfileItem(props: {
                 {hasServerTools(profile.engine) && (
                   <MenuItem onSelect={() => openServerTools(profile)}>Server tools</MenuItem>
                 )}
+                {(isSqlEngine(profile.engine) ||
+                  profile.engine === 'mongodb' ||
+                  profile.engine === 'redis') && (
+                  <MenuItem onSelect={() => openTransferFrom(profile)}>Transfer data to…</MenuItem>
+                )}
                 <MenuItem onSelect={() => refreshObjects(profile.id, [])}>Refresh objects</MenuItem>
                 <MenuItem onSelect={() => void close()}>Disconnect</MenuItem>
               </>
@@ -572,6 +578,17 @@ function ObjectNode(props: {
                   >
                     Maintenance…
                   </MenuItem>
+                  <MenuItem
+                    onSelect={() =>
+                      openTransferFrom(profile, {
+                        database: table.database,
+                        schema: table.schema,
+                        objects: [table.name],
+                      })
+                    }
+                  >
+                    Transfer data to…
+                  </MenuItem>
                 </>
               ) : (
                 opensData(node) && <MenuItem onSelect={openData}>Open rows</MenuItem>
@@ -595,6 +612,16 @@ function ObjectNode(props: {
                     }
                   >
                     Export tables…
+                  </MenuItem>
+                  <MenuItem
+                    onSelect={() =>
+                      openTransferFrom(profile, {
+                        database: newTable.database,
+                        schema: newTable.schema,
+                      })
+                    }
+                  >
+                    Transfer data to…
                   </MenuItem>
                 </>
               )}

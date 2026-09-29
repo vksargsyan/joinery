@@ -7,6 +7,7 @@ import { formatCount } from '../../lib/format';
 import { destructive } from '../../../../shared/redis-safety';
 import { loadChildren, pathKey, toggleNode, useExplorer } from '../../state/explorer';
 import { namespacePattern } from '../../state/redis/key-browser';
+import { openTransferFrom } from '../../state/transfer-db/api';
 import {
   TOOL_TITLES,
   emitKeyChange,
@@ -286,6 +287,18 @@ function TreeNode(props: {
                 }
               >
                 Open CLI here
+              </MenuItem>
+            )}
+            {clusterNode === undefined && (
+              <MenuItem
+                onSelect={() =>
+                  openTransferFrom(profile, {
+                    ...(database !== undefined ? { database: String(database) } : {}),
+                    ...(pattern !== undefined ? { pattern } : {}),
+                  })
+                }
+              >
+                Transfer keys to…
               </MenuItem>
             )}
             <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>Refresh</MenuItem>

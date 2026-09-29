@@ -191,7 +191,8 @@ function summaryText(job: JobInfo): string {
   if (job.kind === 'run-sql-file') {
     return `${formatCount(s.statements ?? 0)} statements${s.failed ? `, ${formatCount(s.failed)} failed` : ''} · ${time}`;
   }
-  const verb = job.kind === 'export' ? 'exported' : 'imported';
+  const verb =
+    job.kind === 'export' ? 'exported' : job.kind === 'transfer' ? 'transferred' : 'imported';
   const rows = `${formatCount(s.rowsWritten)} rows ${verb}`;
   const skipped = s.rowsSkipped > 0 ? `, ${formatCount(s.rowsSkipped)} skipped` : '';
   const bytes = s.bytesWritten !== undefined ? ` · ${formatBytes(s.bytesWritten)}` : '';
@@ -310,6 +311,7 @@ function ErrorRows(props: { readonly job: JobInfo; readonly errors: readonly Job
                 </>
               )}
               <td className="px-1.5 py-0.5 text-danger">
+                {error.table !== undefined && `${error.table}: `}
                 {error.message}
                 {error.text && (
                   <pre className="mt-0.5 font-mono whitespace-pre-wrap text-muted">

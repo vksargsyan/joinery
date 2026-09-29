@@ -8,6 +8,7 @@ import {
   jobSpecSchema,
   jobSummarySchema,
   newTablePlanInputSchema,
+  transferJobSchema,
   transferPreviewInputSchema,
 } from '@joinery/ipc';
 import { z } from 'zod';
@@ -27,12 +28,30 @@ import { syncJobSpecSchema, syncRunnerRequestSchemas } from './sync-jobs';
  * by main (`host-key` → `host-key-decision`, spec §4).
  */
 
-/** Quick work for the wizards: no database, no job record. */
+/**
+ * Quick work for the wizards, with no job record: file previews, and for the data transfer
+ * wizard a connection's objects and a transfer's plan. Like `start`, the transfer requests
+ * carry resolved profiles, towards the runner only.
+ */
 export const runnerRequestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preview'), input: transferPreviewInputSchema }),
   z.object({ kind: z.literal('auto-match'), input: autoMatchInputSchema }),
   z.object({ kind: z.literal('plan-table'), input: newTablePlanInputSchema }),
   ...syncRunnerRequestSchemas,
+  z.object({
+    kind: z.literal('transfer-inspect'),
+    input: z.object({
+      database: z.string().max(256).optional(),
+      schema: z.string().max(256).optional(),
+    }),
+    resolved: resolvedProfileSchema,
+  }),
+  z.object({
+    kind: z.literal('transfer-plan'),
+    job: transferJobSchema,
+    resolved: resolvedProfileSchema,
+    resolvedTarget: resolvedProfileSchema,
+  }),
 ]);
 export type RunnerRequest = z.infer<typeof runnerRequestSchema>;
 
@@ -49,6 +68,8 @@ export const mainToRunnerSchema = z.discriminatedUnion('type', [
     resolved: resolvedProfileSchema,
     /** A comparison's source connection; `resolved` is then its target. */
     source: resolvedProfileSchema.optional(),
+    /** Transfers between databases: the target's profile. */
+    resolvedTarget: resolvedProfileSchema.optional(),
   }),
   /** Stop a job: its signal aborts, and an import rolls back. */
   z.object({ type: z.literal('cancel'), jobId: idSchema }),

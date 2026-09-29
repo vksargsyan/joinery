@@ -26,6 +26,7 @@ import { z } from 'zod';
 
 import { jobEvents, type JobDescription, type JobHistoryStore, type JobManager } from './jobs';
 import { resolveProfile } from './secrets';
+import { describeTransfer, startTransferJob } from './transfer-db-api';
 
 /**
  * The main contract's job and transfer handlers (spec §3, §12, §14), and the file grants that
@@ -145,6 +146,8 @@ export function describeJob(spec: JobSpec): JobDescription {
         title: `Run ${basename(spec.path)}`,
         target: { file: spec.path, format: 'sql', ...database },
       };
+    case 'transfer':
+      return describeTransfer(spec);
   }
 }
 
@@ -211,6 +214,7 @@ export function jobHandlers(
     jobs: {
       start: ({ job, secrets }) => {
         const jobs = manager();
+        if (job.kind === 'transfer') return startTransferJob(store, jobs, job, secrets ?? {});
         const profile = store.profiles.get(job.profileId);
         if (!profile) {
           throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
@@ -327,7 +331,7 @@ export function notificationFor(job: JobInfo): { title: string; body: string } {
   const rows = summary ? summary.rowsWritten.toLocaleString('en-US') : '0';
   const title =
     job.state === 'completed'
-      ? `${job.kind === 'export' ? 'Export' : job.kind === 'import' ? 'Import' : 'SQL file'} finished`
+      ? `${job.kind === 'export' ? 'Export' : job.kind === 'import' ? 'Import' : job.kind === 'transfer' ? 'Transfer' : 'SQL file'} finished`
       : job.state === 'cancelled'
         ? 'Job cancelled'
         : 'Job failed';
