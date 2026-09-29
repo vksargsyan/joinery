@@ -78,11 +78,22 @@ export type {
 export {
   AGGREGATION_STAGES,
   buildStagePreview,
+  formatAggregateText,
   mustBeFirst,
   stageInfo,
   stageOperator,
 } from './pipeline';
 export type { StageInfo, StagePreviewOptions, StagePreviewPlan } from './pipeline';
+
+export { SqlTranslationError } from './sql/errors';
+export type { SqlTranslationErrorCode } from './sql/errors';
+export { sqlToMql } from './sql/translate';
+export type {
+  SqlAggregateTranslation,
+  SqlFindTranslation,
+  SqlToMqlOptions,
+  SqlTranslation,
+} from './sql/translate';
 
 export { commandSafety } from './commands';
 export type { CommandSafety } from './commands';

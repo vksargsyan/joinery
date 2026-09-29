@@ -1,6 +1,8 @@
 import { JoineryError } from '@joinery/core';
 
 import { isBsonDocument, Int32, type BsonDocument } from './bson';
+import { collectionReference } from './find-text';
+import { formatShell, formatShellInline } from './shell/format';
 
 /**
  * Aggregation stage facts for the pipeline editor (spec §9): the stage picker's list, which
@@ -272,4 +274,17 @@ export function buildStagePreview(
     { $limit: new Int32(outputLimit) },
   ];
   return { pipeline: run, sampled: true, skippedStages: skipped };
+}
+
+/**
+ * The `db.coll.aggregate([...])` text of a pipeline, as mongosh would print it. With
+ * `multiline`, the pipeline wraps one stage per line when it does not fit on one.
+ */
+export function formatAggregateText(
+  collection: string,
+  pipeline: readonly BsonDocument[],
+  options: { readonly multiline?: boolean } = {},
+): string {
+  const body = options.multiline ? formatShell([...pipeline]) : formatShellInline([...pipeline]);
+  return `${collectionReference(collection)}.aggregate(${body})`;
 }
