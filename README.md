@@ -76,6 +76,8 @@ pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-pac
 | `packages/drivers/mysql`    | `@joinery/driver-mysql`    | MySQL and MariaDB adapter (mysql2)                                                  |
 | `packages/drivers/mongodb`  | `@joinery/driver-mongodb`  | MongoDB adapter (mongodb) with document, index, GridFS and change stream services   |
 | `packages/mongo-tools`      | `@joinery/mongo-tools`     | mongosh-style query parsing, Extended JSON, find() text, schema analysis            |
+| `packages/drivers/redis`    | `@joinery/driver-redis`    | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools |
+| `packages/redis-tools`      | `@joinery/redis-tools`     | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs     |
 | `packages/tunnel`           | `@joinery/tunnel`          | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks     |
 | `packages/transfer`         | `@joinery/transfer`        | Streaming CSV/TSV/JSON/JSON Lines/SQL import and export, mapping, Run SQL File      |
 

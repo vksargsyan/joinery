@@ -1,0 +1,6 @@
+$1101
+id=5 addr=127.0.0.1:58826 laddr=127.0.0.1:63790 fd=8 name= age=1188 idle=0 flags=S db=0 sub=0 psub=0 ssub=0 multi=-1 qbuf=0 qbuf-free=20474 argv-mem=0 multi-mem=0 rbs=1024 rbp=0 obl=0 oll=1 omem=20504 tot-mem=42776 events=r cmd=replconf user=default redir=-1 resp=2
+id=6 addr=127.0.0.1:58836 laddr=127.0.0.1:63790 fd=9 name=sentinel-9158c5e5-cmd age=1188 idle=0 flags=N db=0 sub=0 psub=0 ssub=0 multi=-1 qbuf=0 qbuf-free=20474 argv-mem=0 multi-mem=0 rbs=1024 rbp=7 obl=0 oll=0 omem=0 tot-mem=22272 events=r cmd=ping user=default redir=-1 resp=2
+id=7 addr=127.0.0.1:58852 laddr=127.0.0.1:63790 fd=10 name=sentinel-9158c5e5-pubsub age=1188 idle=0 flags=P db=0 sub=1 psub=0 ssub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 multi-mem=0 rbs=1024 rbp=140 obl=0 oll=0 omem=0 tot-mem=1856 events=r cmd=subscribe user=default redir=-1 resp=2
+id=80 addr=127.0.0.1:54924 laddr=127.0.0.1:63790 fd=11 name= age=0 idle=0 flags=N db=0 sub=0 psub=0 ssub=0 multi=-1 qbuf=26 qbuf-free=20448 argv-mem=10 multi-mem=0 rbs=16384 rbp=16384 obl=0 oll=0 omem=0 tot-mem=37658 events=r cmd=client|list user=default redir=-1 resp=2
+
