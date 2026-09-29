@@ -393,22 +393,26 @@ describe('SQL to MQL fuzzing', () => {
     ['grouped', groupedQuery, 'aggregate'],
     ['distinct', distinctQuery, 'aggregate'],
     ['join', joinQuery, 'aggregate'],
-  ] as const)('always translates well-formed %s queries', (_name, queries, kind) => {
-    fc.assert(
-      fc.property(queries, (sql) => {
-        let translation: SqlTranslation;
-        try {
-          translation = sqlToMql(sql);
-        } catch (error) {
-          throw new Error(`${sql}\n${String(error)}`, { cause: error });
-        }
-        expect(translation.kind, sql).toBe(kind);
-        checkTranslation(sql, translation);
-        if (!sql.includes('*') || sql.includes('(*)')) {
-          expect(translation.columns, sql).toBeDefined();
-        }
-      }),
-      { numRuns: RUNS },
-    );
-  }, 60_000);
+  ] as const)(
+    'always translates well-formed %s queries',
+    (_name, queries, kind) => {
+      fc.assert(
+        fc.property(queries, (sql) => {
+          let translation: SqlTranslation;
+          try {
+            translation = sqlToMql(sql);
+          } catch (error) {
+            throw new Error(`${sql}\n${String(error)}`, { cause: error });
+          }
+          expect(translation.kind, sql).toBe(kind);
+          checkTranslation(sql, translation);
+          if (!sql.includes('*') || sql.includes('(*)')) {
+            expect(translation.columns, sql).toBeDefined();
+          }
+        }),
+        { numRuns: RUNS },
+      );
+    },
+    60_000,
+  );
 });
