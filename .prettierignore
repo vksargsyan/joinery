@@ -1,0 +1,7 @@
+node_modules
+dist
+out
+coverage
+.turbo
+pnpm-lock.yaml
+**/test/golden/**/*.sql

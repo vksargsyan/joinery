@@ -1,0 +1,28 @@
+{
+  "name": "@joinery/driver-postgres",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PostgreSQL driver adapter (pg, pg-cursor).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@joinery/sql-tools": "workspace:*",
+    "pg": "^8.23.0",
+    "pg-cursor": "^2.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "^8.23.1",
+    "@types/pg-cursor": "^2.7.2",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
