@@ -172,12 +172,14 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s metadata', (engine, url) 
         method: 'btree',
         columns: [{ name: 'email', order: 'asc' }],
       });
+      // MariaDB before 10.8 accepts DESC in an index but builds the key ascending.
+      const descending = !mariadb || atLeast(session.serverVersion, '10.8.0');
       expect(index('customers_name_idx')).toMatchObject({
         unique: false,
         comment: 'prefix',
         columns: [
           { name: 'name', order: 'asc', length: 10 },
-          { name: 'created_at', order: 'desc' },
+          { name: 'created_at', order: descending ? 'desc' : 'asc' },
         ],
       });
       expect(index('customers_kind_idx').invisible).toBe(true);

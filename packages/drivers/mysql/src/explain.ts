@@ -129,7 +129,9 @@ function childrenOf(
   skip: ReadonlySet<string>,
 ): PlanNode[] {
   const children: PlanNode[] = [];
-  for (const [key, child] of Object.entries(value)) {
+  for (const [member, child] of Object.entries(value)) {
+    // `table#2`...: a repeated key kept by parseExplainJson.
+    const key = member.replace(/#\d+$/, '');
     if (skip.has(key)) continue;
     if (key === 'table' && isRecord(child)) children.push(tableNode(child, parent, ids));
     else if (key === 'query_block' && isRecord(child))
@@ -235,13 +237,18 @@ function queryBlockNode(
   });
 }
 
-/** MySQL JSON format version 2 (iterator tree). */
+/**
+ * MySQL JSON format version 2 (iterator tree). The relation is the table's alias when it has
+ * one, as version 1 and the operation text name it; the table's own name stays in the detail.
+ */
 function iteratorNode(node: Readonly<Record<string, unknown>>, id: string): PlanNode {
   const inputs = Array.isArray(node['inputs']) ? node['inputs'].filter(isRecord) : [];
+  const table = typeof node['table_name'] === 'string' ? node['table_name'] : undefined;
+  const alias = typeof node['alias'] === 'string' ? node['alias'] : undefined;
   return planNode({
     id,
     operation: typeof node['operation'] === 'string' ? node['operation'] : 'Unknown',
-    relation: typeof node['table_name'] === 'string' ? node['table_name'] : undefined,
+    relation: alias ?? table,
     index: typeof node['index_name'] === 'string' ? node['index_name'] : undefined,
     startupCost: toNumber(node['estimated_first_row_cost']),
     totalCost: toNumber(node['estimated_total_cost']),
@@ -254,7 +261,8 @@ function iteratorNode(node: Readonly<Record<string, unknown>>, id: string): Plan
       new Set([
         'inputs',
         'operation',
-        'table_name',
+        'alias',
+        ...(alias === undefined || alias === table ? ['table_name'] : []),
         'index_name',
         'estimated_first_row_cost',
         'estimated_total_cost',
@@ -268,6 +276,90 @@ function iteratorNode(node: Readonly<Record<string, unknown>>, id: string): Plan
   });
 }
 
+/**
+ * Parses EXPLAIN JSON text, keeping repeated keys: MariaDB before 10.9 prints the tables of a
+ * join as several `"table"` members of one object, where JSON.parse would keep only the last.
+ * The second and later ones become `table#2`, `table#3`..., in their original order.
+ */
+export function parseExplainJson(text: string): unknown {
+  let at = 0;
+  const fail = (): never => {
+    throw new JoineryError({
+      code: 'INTERNAL',
+      message: `Unexpected EXPLAIN output: invalid JSON at offset ${at}`,
+    });
+  };
+  const space = (): void => {
+    while (at < text.length && ' \t\n\r'.includes(text.charAt(at))) at += 1;
+  };
+  const string = (): string => {
+    const start = at;
+    at += 1;
+    while (at < text.length && text.charAt(at) !== '"') at += text.charAt(at) === '\\' ? 2 : 1;
+    if (at >= text.length) fail();
+    at += 1;
+    return JSON.parse(text.slice(start, at)) as string;
+  };
+  const value = (): unknown => {
+    space();
+    const char = text.charAt(at);
+    if (char === '{') {
+      at += 1;
+      const object: Record<string, unknown> = {};
+      const seen = new Map<string, number>();
+      space();
+      if (text.charAt(at) === '}') {
+        at += 1;
+        return object;
+      }
+      for (;;) {
+        space();
+        if (text.charAt(at) !== '"') fail();
+        const key = string();
+        space();
+        if (text.charAt(at) !== ':') fail();
+        at += 1;
+        const count = (seen.get(key) ?? 0) + 1;
+        seen.set(key, count);
+        object[count === 1 ? key : `${key}#${count}`] = value();
+        space();
+        if (text.charAt(at) === ',') at += 1;
+        else if (text.charAt(at) === '}') {
+          at += 1;
+          return object;
+        } else fail();
+      }
+    }
+    if (char === '[') {
+      at += 1;
+      const array: unknown[] = [];
+      space();
+      if (text.charAt(at) === ']') {
+        at += 1;
+        return array;
+      }
+      for (;;) {
+        array.push(value());
+        space();
+        if (text.charAt(at) === ',') at += 1;
+        else if (text.charAt(at) === ']') {
+          at += 1;
+          return array;
+        } else fail();
+      }
+    }
+    if (char === '"') return string();
+    const literal = /^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)/.exec(text.slice(at));
+    if (!literal) return fail();
+    at += literal[0].length;
+    return JSON.parse(literal[0]) as unknown;
+  };
+  const result = value();
+  space();
+  if (at !== text.length) fail();
+  return result;
+}
+
 /** Converts the parsed JSON of a MySQL or MariaDB JSON plan into a PlanNode tree. */
 export function normaliseMysqlJsonPlan(explain: unknown): PlanNode {
   if (!isRecord(explain)) {
@@ -277,6 +369,16 @@ export function normaliseMysqlJsonPlan(explain: unknown): PlanNode {
     });
   }
   if (typeof explain['operation'] === 'string') return iteratorNode(explain, '0');
+  // Version 2 as MySQL 9 prints it by default: the iterator tree under `query_plan`, next to
+  // the rewritten query and its type.
+  const plan = explain['query_plan'];
+  if (isRecord(plan) && typeof plan['operation'] === 'string') {
+    const root = iteratorNode(plan, '0');
+    const queryType = explain['query_type'];
+    return typeof queryType === 'string'
+      ? { ...root, detail: { ...root.detail, query_type: queryType } }
+      : root;
+  }
   const block = explain['query_block'];
   if (!isRecord(block)) {
     throw new JoineryError({
@@ -298,12 +400,25 @@ const TREE_LINE = /^(\s*)-> (.*)$/;
 const COST = /\(cost=(?:([\d.e+-]+)\.\.)?([\d.e+-]+) rows=([\d.e+-]+)\)/;
 const ACTUAL = /\(actual time=([\d.e+-]+)\.\.([\d.e+-]+) rows=([\d.e+-]+) loops=(\d+)\)/;
 
+const NOT_EXECUTABLE = '<not executable by iterator executor>';
+
 /**
- * True when MySQL answered EXPLAIN ANALYZE with "<not executable by iterator executor>": the
- * statement kind cannot be analyzed (single-table UPDATE and DELETE on MySQL 8.x).
+ * True when MySQL answered EXPLAIN ANALYZE with "<not executable by iterator executor>" (8.0
+ * prints it bare, later versions as a "-> " line): the statement kind cannot be analyzed
+ * (single-table UPDATE and DELETE).
  */
 export function isNotExecutableTreePlan(text: string): boolean {
-  return /^\s*-> <not executable by iterator executor>/.test(text);
+  return /^\s*(?:-> )?<not executable by iterator executor>/.test(text);
+}
+
+/**
+ * True for a JSON version 2 plan that is only "<not executable by iterator executor>": MySQL 9
+ * has no iterator plan for single-table UPDATE and DELETE, while version 1 still describes them.
+ */
+export function isNotExecutableJsonPlan(explain: unknown): boolean {
+  if (!isRecord(explain)) return false;
+  const plan = explain['query_plan'];
+  return isRecord(plan) && plan['operation'] === NOT_EXECUTABLE;
 }
 
 /** Converts MySQL `EXPLAIN ANALYZE` / `EXPLAIN FORMAT=TREE` text into a PlanNode tree. */

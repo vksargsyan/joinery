@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs';
 import type { PlanNode } from '@joinery/core';
 import { describe, expect, it } from 'vitest';
 
-import { isNotExecutableTreePlan, normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from '../src';
+import {
+  isNotExecutableJsonPlan,
+  isNotExecutableTreePlan,
+  normaliseMysqlJsonPlan,
+  normaliseMysqlTreePlan,
+  parseExplainJson,
+} from '../src';
 
 const text = (name: string): string =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
@@ -88,6 +94,53 @@ describe('MySQL JSON version 2 (iterator tree)', () => {
     expect(plan.children[1]).toMatchObject({ loops: 3, actualRows: 1, id: '0.1' });
     expect(plan.detail['join_algorithm']).toBe('nested_loop');
   });
+
+  it('reads the query_plan wrapper MySQL 9 prints, naming tables by alias', () => {
+    // MySQL 9.7.2's default EXPLAIN FORMAT=JSON for a two-table join (trimmed).
+    const plan = normaliseMysqlJsonPlan({
+      query: '/* select#1 */ select …',
+      query_plan: {
+        operation: 'Inner hash join (c.id = o.customer_id)',
+        access_type: 'join',
+        estimated_rows: 2,
+        estimated_total_cost: 1.2,
+        inputs: [
+          { operation: 'Table scan on c', table_name: 'customers', alias: 'c', estimated_rows: 2 },
+          {
+            operation: 'Covering index scan on o using customer_id',
+            table_name: 'orders',
+            alias: 'o',
+            index_name: 'customer_id',
+            estimated_rows: 2,
+          },
+        ],
+      },
+      query_type: 'select',
+      json_schema_version: '2.0',
+    });
+    expect(plan).toMatchObject({
+      operation: 'Inner hash join (c.id = o.customer_id)',
+      totalCost: 1.2,
+    });
+    expect(plan.detail['query_type']).toBe('select');
+    expect(plan.children.map((c) => [c.relation, c.detail['table_name']])).toEqual([
+      ['c', 'customers'],
+      ['o', 'orders'],
+    ]);
+    expect(plan.children[1]?.index).toBe('customer_id');
+  });
+
+  it('spots a version 2 plan that has no iterator plan for the statement', () => {
+    // MySQL 9.7.2's EXPLAIN FORMAT=JSON of a single-table UPDATE.
+    const update = {
+      query_plan: { operation: '<not executable by iterator executor>' },
+      query_type: 'update',
+      json_schema_version: '2.0',
+    };
+    expect(isNotExecutableJsonPlan(update)).toBe(true);
+    expect(isNotExecutableJsonPlan({ query_plan: { operation: 'Table scan on t' } })).toBe(false);
+    expect(isNotExecutableJsonPlan({ query_block: {} })).toBe(false);
+  });
 });
 
 describe('MySQL EXPLAIN ANALYZE (tree text)', () => {
@@ -119,8 +172,10 @@ describe('MySQL EXPLAIN ANALYZE (tree text)', () => {
   });
 
   it('recognises statements MySQL cannot analyze', () => {
-    // MySQL 8.4.11 output for EXPLAIN ANALYZE of a single-table UPDATE.
+    // MySQL 8.4.11 and 9.7.2 output for EXPLAIN ANALYZE of a single-table UPDATE; 8.0.46
+    // prints the same without the arrow.
     expect(isNotExecutableTreePlan('-> <not executable by iterator executor>\n')).toBe(true);
+    expect(isNotExecutableTreePlan('<not executable by iterator executor>\n')).toBe(true);
     expect(
       isNotExecutableTreePlan(
         '-> Filter: (customers.id > 0)  (cost=0.91 rows=2) (actual time=0.0118..0.0137 rows=2 loops=1)\n',
@@ -174,6 +229,37 @@ describe('MariaDB EXPLAIN / ANALYZE FORMAT=JSON', () => {
     };
     walk(plan);
     expect(relations).toEqual(expect.arrayContaining(['o2', 'c2']));
+  });
+
+  it('keeps both tables of a join that MariaDB 10.6 prints under repeated "table" keys', () => {
+    // MariaDB 10.6.28's EXPLAIN FORMAT=JSON for a two-table join (trimmed).
+    const text = `{
+  "query_block": {
+    "select_id": 1,
+    "table": {"table_name": "o", "access_type": "range", "key": "PRIMARY", "rows": 1,
+      "attached_condition": "o.\`id\` > 1"},
+    "table": {"table_name": "c", "access_type": "eq_ref", "key": "PRIMARY", "rows": 1,
+      "ref": ["db.o.customer_id"]}
+  }
+}`;
+    const parsed = parseExplainJson(text);
+    expect(Object.keys((parsed as { query_block: object }).query_block)).toEqual([
+      'select_id',
+      'table',
+      'table#2',
+    ]);
+    const plan = normaliseMysqlJsonPlan(parsed);
+    expect(plan.children.map((c) => [c.relation, c.operation])).toEqual([
+      ['o', 'Index range scan'],
+      ['c', 'Unique key lookup'],
+    ]);
+  });
+
+  it('parses EXPLAIN JSON like JSON.parse otherwise, and rejects invalid text', () => {
+    const text = '{"a": [1, -2.5e3, true, null, "q\\"x\\u00e9"], "b": {}, "c": []}';
+    expect(parseExplainJson(text)).toEqual(JSON.parse(text));
+    expect(() => parseExplainJson('{"a": 1')).toThrow('invalid JSON');
+    expect(() => parseExplainJson('{"a": 1} x')).toThrow('invalid JSON');
   });
 
   it('rejects output without a query block', () => {

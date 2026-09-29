@@ -5,5 +5,11 @@ export {
   type MysqlAdapterOptions,
 } from './adapter';
 export { buildMysqlConnectionPlan, type MysqlConnectionPlan } from './config';
-export { isNotExecutableTreePlan, normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from './explain';
+export {
+  isNotExecutableJsonPlan,
+  isNotExecutableTreePlan,
+  normaliseMysqlJsonPlan,
+  normaliseMysqlTreePlan,
+  parseExplainJson,
+} from './explain';
 export { MysqlSession } from './session';

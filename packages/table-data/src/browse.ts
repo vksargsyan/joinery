@@ -306,7 +306,9 @@ export function buildEstimateQuery(
         source: 'pg-explain',
       };
     }
-    return { ...renderQuery(['EXPLAIN ', ...select], dialect), source: 'mysql-explain' };
+    // MySQL 9 defaults to the TREE format, which has no rows and filtered columns.
+    const explain = dialect === 'mysql' ? 'EXPLAIN FORMAT=TRADITIONAL ' : 'EXPLAIN ';
+    return { ...renderQuery([explain, ...select], dialect), source: 'mysql-explain' };
   }
   if (dialect === 'postgres') {
     return {

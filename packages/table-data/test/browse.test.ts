@@ -240,6 +240,14 @@ describe('counts and estimates', () => {
       params: [],
       source: 'mysql-explain',
     });
+    expect(
+      buildEstimateQuery({
+        dialect: 'mysql',
+        table: { name: 'items' },
+        columns: mysqlColumns,
+        rawWhere: 'qty > 1',
+      }).sql,
+    ).toBe('EXPLAIN FORMAT=TRADITIONAL SELECT 1 FROM `items` WHERE (qty > 1)');
   });
 
   it('parses each estimate source', () => {

@@ -121,7 +121,9 @@ function encodeColumn(column: string, dialect: SqlDialect): string {
  * PostgreSQL: md5 of the md5 row hashes concatenated in hash order (a hash of ordered row
  * hashes; ordering by the hash itself makes it independent of the key collation).
  *
- * MySQL/MariaDB: BIT_XOR of the two 64-bit halves of each row's MD5, next to COUNT(*).
+ * MySQL/MariaDB: BIT_XOR of the two 64-bit halves of the first 128 bits of each row's SHA-256,
+ * next to COUNT(*). SHA2 rather than MD5, which MySQL 9 no longer has; every MySQL-family
+ * server since 5.5 has SHA2, so both sides of a compare hash alike.
  * GROUP_CONCAT would need group_concat_max_len raised in every session and buffers the whole
  * range; BIT_XOR streams, needs no session setting, and works on read-only replicas. XOR is
  * order-independent, which is safe here because every row hash includes the row's unique key,
@@ -148,7 +150,7 @@ export function checksumQuery(
   const half = (start: number): string =>
     `LPAD(HEX(BIT_XOR(CAST(CONV(SUBSTRING(h, ${start}, 16), 16, 10) AS UNSIGNED))), 16, '0')`;
   return {
-    text: `SELECT COUNT(*) AS row_count, CONCAT(${half(1)}, ${half(17)}) AS checksum FROM (SELECT MD5(${row}) AS h FROM ${from}${where}) AS joinery_rows`,
+    text: `SELECT COUNT(*) AS row_count, CONCAT(${half(1)}, ${half(17)}) AS checksum FROM (SELECT SHA2(${row}, 256) AS h FROM ${from}${where}) AS joinery_rows`,
     params: params.values,
   };
 }

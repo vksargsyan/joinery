@@ -293,8 +293,9 @@ describe.skipIf(!PG_URL)('PostgreSQL metadata', () => {
       const big = views[0]!;
       expect(big.checkOption).toBe('LOCAL');
       expect(big.columns).toEqual(['id', 'total']);
+      // pg_get_viewdef qualifies the columns (orders.id) before PostgreSQL 16.
       expect(big.definition).toMatch(
-        /^SELECT id,\s+total\s+FROM jt_fixture\.orders\s+WHERE \(total > \(100\)::numeric\)$/,
+        /^SELECT (orders\.)?id,\s+(orders\.)?total\s+FROM jt_fixture\.orders\s+WHERE \((orders\.)?total > \(100\)::numeric\)$/,
       );
       expect(views[2]!.options).toEqual({ security_barrier: 'true' });
       expect(views[1]!.indexes.map((i) => [i.name, i.unique])).toEqual([

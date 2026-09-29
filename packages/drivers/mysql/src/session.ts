@@ -39,7 +39,13 @@ import {
 } from './config';
 import { commandOf } from './dialect';
 import { isFatal, mapMysqlError } from './errors';
-import { isNotExecutableTreePlan, normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from './explain';
+import {
+  isNotExecutableJsonPlan,
+  isNotExecutableTreePlan,
+  normaliseMysqlJsonPlan,
+  normaliseMysqlTreePlan,
+  parseExplainJson,
+} from './explain';
 import { introspectMysql } from './introspect';
 import { ResultStream, type CommandEvents } from './stream';
 import { columnMeta } from './types';
@@ -587,18 +593,33 @@ export class MysqlSession implements Session {
             this.connection.execute(head + text, params, callback);
           } else this.connection.query({ sql: head + text, rowsAsArray: true }, callback);
         });
+      // The estimated plan as JSON. MySQL 9's default JSON version 2 has no plan for
+      // single-table UPDATE and DELETE; version 1 does, so ask for it for those alone.
+      const estimated = async (): Promise<PlanNode> => {
+        const plan = parseExplainJson(await run(estimate));
+        if (mariadb || !isNotExecutableJsonPlan(plan)) return normaliseMysqlJsonPlan(plan);
+        const [setting] = await this.query('SELECT @@SESSION.explain_json_format_version AS v');
+        await this.query('SET SESSION explain_json_format_version = 1');
+        try {
+          return normaliseMysqlJsonPlan(parseExplainJson(await run(estimate)));
+        } finally {
+          await this.query('SET SESSION explain_json_format_version = ?', [
+            Number(setting?.['v'] ?? 2),
+          ]);
+        }
+      };
       try {
-        if (!analyze) return normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
+        if (!analyze) return await estimated();
         // ANALYZE executes the statement: keep its effects out of the database.
         const nested = this.inTransaction;
         await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
         try {
           const output = await run(prefix);
-          if (mariadb) return normaliseMysqlJsonPlan(JSON.parse(output));
+          if (mariadb) return normaliseMysqlJsonPlan(parseExplainJson(output));
           if (!isNotExecutableTreePlan(output)) return normaliseMysqlTreePlan(output);
           // MySQL cannot EXPLAIN ANALYZE some statements (single-table UPDATE and DELETE):
           // return the estimated plan and say so, rather than a plan with no rows or timings.
-          const plan = normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
+          const plan = await estimated();
           return { ...plan, detail: { ...plan.detail, analyze_unavailable: true } };
         } finally {
           await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(

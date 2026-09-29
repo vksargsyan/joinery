@@ -421,9 +421,10 @@ const BINARY_TYPE = /^(?:binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/i
 
 /**
  * information_schema mangles bytes of a binary column's default that are not valid UTF-8:
- * MariaDB turns them into '?' and MySQL cuts its hex literal short ("0x"). So literal defaults
- * of binary columns are read back exactly with DEFAULT() and written as hex literals. Expression
- * defaults are left alone: DEFAULT() refuses them.
+ * MariaDB turns them into '?' and MySQL cuts its hex literal short ("0x"); MariaDB 11.8 writes
+ * them as x'..' literals. So literal defaults of binary columns are read back exactly with
+ * DEFAULT() and written as hex literals. Expression defaults are left alone: DEFAULT() refuses
+ * them.
  */
 async function exactBinaryDefaults(
   query: QueryFn,
@@ -435,7 +436,7 @@ async function exactBinaryDefaults(
     (c) =>
       BINARY_TYPE.test(c.dataType) &&
       c.default !== null &&
-      (c.default.startsWith("'") || /^0x/i.test(c.default)),
+      (c.default.startsWith("'") || /^0x/i.test(c.default) || /^x'/i.test(c.default)),
   );
   if (binary.length === 0) return columns;
   const list = binary
