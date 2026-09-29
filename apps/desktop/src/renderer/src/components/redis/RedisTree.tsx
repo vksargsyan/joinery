@@ -32,6 +32,7 @@ const TOOLS: readonly RedisTool[] = [
   'cli',
   'pubsub',
   'dashboard',
+  'config',
   'slowlog',
   'clients',
   'latency',

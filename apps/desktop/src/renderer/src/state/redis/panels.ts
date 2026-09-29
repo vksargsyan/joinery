@@ -30,6 +30,7 @@ export type RedisTool =
   | 'cli'
   | 'pubsub'
   | 'dashboard'
+  | 'config'
   | 'slowlog'
   | 'clients'
   | 'latency'
@@ -44,6 +45,7 @@ export const TOOL_TITLES: Readonly<Record<RedisTool, string>> = {
   cli: 'CLI',
   pubsub: 'Pub/Sub',
   dashboard: 'INFO dashboard',
+  config: 'Configuration',
   slowlog: 'Slow log',
   clients: 'Clients',
   latency: 'Latency',

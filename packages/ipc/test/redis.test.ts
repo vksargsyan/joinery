@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   connectionHostContract,
   createClient,
+  redisConfigApplyResultSchema,
+  redisConfigSnapshotSchema,
   redisHostContractShape,
   redisKeyInfoSchema,
   redisReplySchema,
@@ -125,6 +127,48 @@ describe('redis schemas', () => {
   });
 });
 
+describe('redis configuration schemas', () => {
+  it('carries secrets only as whether they are set', () => {
+    const snapshot = {
+      multiSet: true,
+      nodes: [
+        {
+          node: '127.0.0.1:6379',
+          role: 'primary',
+          values: { maxmemory: '0' },
+          secrets: { requirepass: true },
+        },
+      ],
+    };
+    expect(redisConfigSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+    const leaking = {
+      ...snapshot,
+      nodes: [{ ...snapshot.nodes[0], secrets: { requirepass: 'x' } }],
+    };
+    expect(redisConfigSnapshotSchema.safeParse(leaking).success).toBe(false);
+  });
+
+  it('bounds the changes of one CONFIG SET call', () => {
+    const set = redisHostContractShape.config.set.input;
+    const change = { name: 'maxmemory', value: '1gb' };
+    expect(set.safeParse({ sessionId: 's', changes: [change] }).success).toBe(true);
+    expect(set.safeParse({ sessionId: 's', changes: [] }).success).toBe(false);
+    expect(set.safeParse({ sessionId: 's', changes: [{ name: '', value: '1' }] }).success).toBe(
+      false,
+    );
+    expect(
+      set.safeParse({ sessionId: 's', changes: [change], node: '10.0.0.1:7000', replicas: true })
+        .success,
+    ).toBe(true);
+    expect(
+      redisConfigApplyResultSchema.parse({
+        atomic: true,
+        nodes: [{ node: 'a:1', parameters: [{ name: 'maxmemory', applied: false, error: 'ERR' }] }],
+      }).nodes[0]?.parameters[0]?.error,
+    ).toBe('ERR');
+  });
+});
+
 describe('redis contract', () => {
   it('declares streams, progress and nested namespaces', () => {
     const methods = connectionHostContract.methods;
@@ -135,6 +179,8 @@ describe('redis contract', () => {
     expect(methods.get('redis.bigKeys')?.progress).toBeDefined();
     expect(methods.get('redis.key.rename')?.kind).toBe('unary');
     expect(methods.get('redis.stream.claim')?.kind).toBe('unary');
+    expect(methods.get('redis.config.set')?.kind).toBe('unary');
+    expect(methods.get('redis.config.resetStat')?.kind).toBe('unary');
   });
 
   it('carries bytes and big integers across a port unchanged', async () => {

@@ -9,6 +9,11 @@ import {
 import type {
   BulkDeleteOptions,
   BulkDeleteResult,
+  ConfigApplyResult,
+  ConfigNode,
+  ConfigNodeOutcome,
+  ConfigSnapshot,
+  ConfigTarget,
   KeyInfo,
   PubSubMessage,
   PubSubSubscription,
@@ -22,10 +27,12 @@ import {
   bulk,
   bytesKey,
   integer,
+  isSecretConfig,
   NIL,
   status,
   toBytes,
   utf8Text,
+  type ConfigChange,
   type RedisBytes,
   type RedisReply,
 } from '@joinery/redis-tools';
@@ -344,6 +351,55 @@ export class FakeRedisSession {
 
   async aclSetUser(name: string, rules: readonly string[]): Promise<void> {
     this.#record('aclSetUser', name, rules);
+  }
+
+  /** The server configuration, secrets included (the fake reads them out as set / not set). */
+  readonly config = new Map<string, string>([
+    ['maxmemory-policy', 'noeviction'],
+    ['requirepass', 'hunter2'],
+  ]);
+
+  async configNodes(): Promise<ConfigNode[]> {
+    return this.nodes().map(({ address, role }) => ({ address, role }));
+  }
+
+  async configRead(target: ConfigTarget = {}): Promise<ConfigSnapshot> {
+    this.#record('configRead', target);
+    const values: Record<string, string> = {};
+    const secrets: Record<string, boolean> = {};
+    for (const [name, value] of this.config) {
+      if (isSecretConfig(name)) secrets[name] = value !== '';
+      else values[name] = value;
+    }
+    const node = target.node ?? this.nodes()[0]!.address;
+    return { multiSet: true, nodes: [{ node, role: 'primary', values, secrets }] };
+  }
+
+  async configApply(
+    changes: readonly ConfigChange[],
+    target: ConfigTarget = {},
+  ): Promise<ConfigApplyResult> {
+    this.#record('configApply', changes, target);
+    for (const change of changes) this.config.set(change.name, change.value);
+    return {
+      atomic: changes.length > 1,
+      nodes: [
+        {
+          node: target.node ?? this.nodes()[0]!.address,
+          parameters: changes.map((c) => ({ name: c.name, applied: true })),
+        },
+      ],
+    };
+  }
+
+  async configRewrite(target: ConfigTarget = {}): Promise<ConfigNodeOutcome[]> {
+    this.#record('configRewrite', target);
+    return [{ node: target.node ?? this.nodes()[0]!.address, ok: true }];
+  }
+
+  async configResetStat(target: ConfigTarget = {}): Promise<ConfigNodeOutcome[]> {
+    this.#record('configResetStat', target);
+    return [{ node: target.node ?? this.nodes()[0]!.address, ok: true }];
   }
 }
 

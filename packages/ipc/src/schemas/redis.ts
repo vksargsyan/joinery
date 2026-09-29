@@ -4,6 +4,10 @@ import type {
   BulkDeleteProgress,
   BulkDeleteResult,
   ClaimOptions,
+  ConfigApplyResult,
+  ConfigNode,
+  ConfigNodeOutcome,
+  ConfigSnapshot,
   CopyResult,
   CursorPage,
   GeoMember,
@@ -45,6 +49,8 @@ import type {
   CommandCatalog,
   CommandDoc,
   CommandKeySpec,
+  ConfigChange,
+  ConfigNodeValues,
   InfoSections,
   LatencyEvent,
   LatencySample,
@@ -458,6 +464,53 @@ export const redisAclUserSchema: Schema<AclUser> = z.object({
 
 /** ACL SETUSER rules: "on", ">password", "~app:*", "+@read"... One rule per word. */
 export const redisAclRulesSchema = z.array(z.string().min(1).max(4096)).max(1000);
+
+// ---------------------------------------------------------------------------------------------
+// Configuration
+
+const configRole = z.enum(['primary', 'replica']);
+
+export const redisConfigNodeSchema: Schema<ConfigNode> = z.object({
+  address: z.string(),
+  role: configRole,
+});
+
+const configNodeValuesSchema: Schema<ConfigNodeValues> = z.object({
+  node: z.string(),
+  role: configRole,
+  values: textRecord,
+  secrets: z.record(z.string(), z.boolean()),
+});
+
+/** CONFIG GET * per node; secret parameters only say whether they are set. */
+export const redisConfigSnapshotSchema: Schema<ConfigSnapshot> = z.object({
+  nodes: z.array(configNodeValuesSchema),
+  multiSet: z.boolean(),
+});
+
+/** One CONFIG SET pair. The value may be a secret: it is never logged or echoed. */
+export const redisConfigChangeSchema: Schema<ConfigChange> = z.object({
+  name: z.string().min(1).max(256),
+  value: z.string().max(65_536),
+});
+
+export const redisConfigApplyResultSchema: Schema<ConfigApplyResult> = z.object({
+  atomic: z.boolean(),
+  nodes: z.array(
+    z.object({
+      node: z.string(),
+      parameters: z.array(
+        z.object({ name: z.string(), applied: z.boolean(), error: z.string().optional() }),
+      ),
+    }),
+  ),
+});
+
+export const redisConfigNodeOutcomeSchema: Schema<ConfigNodeOutcome> = z.object({
+  node: z.string(),
+  ok: z.boolean(),
+  error: z.string().optional(),
+});
 
 const patternStatsSchema: Schema<PatternStats> = z.object({
   pattern: z.string(),

@@ -16,6 +16,11 @@ import {
   redisClientInfoSchema,
   redisCommandCatalogSchema,
   redisCommandResultSchema,
+  redisConfigApplyResultSchema,
+  redisConfigChangeSchema,
+  redisConfigNodeOutcomeSchema,
+  redisConfigNodeSchema,
+  redisConfigSnapshotSchema,
   redisCopyResultSchema,
   redisCursorOptionsSchema,
   redisGeoMemberSchema,
@@ -60,9 +65,9 @@ import {
  * Write rules (spec §4) are checked by the host whatever the page sends: a read-only profile
  * refuses every write with READ_ONLY (dry runs and reads still work); destructive operations
  * (deletes, bulk delete, a rename or copy over an existing key, FLUSH-like commands, CLIENT KILL,
- * ACL changes) need `confirmed` on every profile, and every write needs it on production
- * profiles and profiles that confirm writes (CONFIRMATION_REQUIRED otherwise). Engines other
- * than Redis answer NOT_SUPPORTED.
+ * ACL changes, CONFIG REWRITE and RESETSTAT) need `confirmed` on every profile, and every write
+ * needs it on production profiles and profiles that confirm writes (CONFIRMATION_REQUIRED
+ * otherwise). Engines other than Redis answer NOT_SUPPORTED.
  */
 
 const sessionId = idSchema;
@@ -77,6 +82,8 @@ const streamId = z.string().min(1).max(64);
 const streamIds = z.array(streamId).min(1).max(10_000);
 const group = redisBytesInputSchema;
 const intResult = z.number();
+/** Configuration calls: one node, or (Cluster) every primary, with `replicas` every node. */
+const configTarget = { sessionId, node: node.optional(), replicas: z.boolean().optional() };
 
 export const redisHostContractShape = {
   /** Server, database, delimiter and nodes of the session. */
@@ -462,6 +469,40 @@ export const redisHostContractShape = {
     },
   },
   memoryDoctor: { input: onNode, output: z.object({ text: z.string() }) },
+  /**
+   * The configuration editor (spec §15): CONFIG GET and SET per node. When the server refuses
+   * CONFIG (an ACL user without it, or a managed service that renamed or disabled it) the calls
+   * fail with NOT_SUPPORTED (engineCode NOPERM for the ACL case) and a hint to show.
+   */
+  config: {
+    /** The nodes it can target: Cluster nodes, the Sentinel master and its replicas, or the server. */
+    nodes: { input: z.object({ sessionId }), output: z.array(redisConfigNodeSchema) },
+    /** CONFIG GET * per node; secret values never cross (only whether they are set). */
+    get: { input: z.object(configTarget), output: redisConfigSnapshotSchema },
+    /**
+     * CONFIG SET, all pairs in one all-or-nothing call on Redis 7+ and Valkey, one at a time on
+     * 6.2; outcomes per node and parameter. A write, destructive for parameters that can lock
+     * clients out (requirepass, bind, port…).
+     */
+    set: {
+      input: z.object({
+        ...configTarget,
+        changes: z.array(redisConfigChangeSchema).min(1).max(500),
+        confirmed,
+      }),
+      output: redisConfigApplyResultSchema,
+    },
+    /** CONFIG REWRITE (destructive: it rewrites the configuration file). */
+    rewrite: {
+      input: z.object({ ...configTarget, confirmed }),
+      output: z.array(redisConfigNodeOutcomeSchema),
+    },
+    /** CONFIG RESETSTAT (destructive: the statistics are gone). */
+    resetStat: {
+      input: z.object({ ...configTarget, confirmed }),
+      output: z.array(redisConfigNodeOutcomeSchema),
+    },
+  },
   /** MONITOR on its own connection until the caller stops (costly: the page warns first). */
   monitor: {
     input: z.object({ sessionId, node: node.optional() }),

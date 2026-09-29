@@ -1,5 +1,6 @@
 import { requiresWriteConfirmation, type ConnectionProfile } from '@joinery/core';
 import {
+  configParameter,
   lookupCommand,
   quoteRepr,
   toBytes,
@@ -82,6 +83,31 @@ export function decideRedisSafety(
 }
 
 /**
+ * CONFIG SET of these parameters: a write (so production and confirm-writes profiles ask, and
+ * read-only profiles refuse), and destructive when one of them can lock clients out or move the
+ * data files (requirepass, bind, port, dir…), so every profile asks first.
+ */
+export function configSetOperation(names: readonly string[]): RedisOperation {
+  const reasons = [
+    ...new Set(
+      names
+        .map((name) => configParameter(name)?.disruptive)
+        .filter((reason): reason is string => reason !== undefined),
+    ),
+  ];
+  return reasons.length === 0 ? WRITE : destructive(reasons.join(' and '));
+}
+
+const REWRITES_CONFIG = 'rewrites the configuration file on disk';
+const RESETS_STATS = 'resets the server statistics (INFO counters, command and latency stats)';
+
+/** CONFIG REWRITE: destructive on every profile. */
+export const CONFIG_REWRITE: RedisOperation = destructive(REWRITES_CONFIG);
+
+/** CONFIG RESETSTAT: destructive on every profile. */
+export const CONFIG_RESETSTAT: RedisOperation = destructive(RESETS_STATS);
+
+/**
  * Commands that are destructive whatever the catalog says, by upper-case name (a container's
  * subcommand as "CONTAINER SUB"), with what the confirmation says about them.
  */
@@ -104,9 +130,8 @@ const DESTRUCTIVE: Readonly<Record<string, string>> = {
   'ACL SETUSER': 'changes access control',
   'ACL DELUSER': 'changes access control',
   'ACL LOAD': 'changes access control',
-  'CONFIG SET': 'changes the server configuration',
-  'CONFIG REWRITE': 'rewrites the configuration file',
-  'CONFIG RESETSTAT': 'resets the server statistics',
+  'CONFIG REWRITE': REWRITES_CONFIG,
+  'CONFIG RESETSTAT': RESETS_STATS,
   'SCRIPT FLUSH': 'removes every cached script',
   'FUNCTION FLUSH': 'removes every function library',
   'FUNCTION DELETE': 'removes a function library',
@@ -129,7 +154,6 @@ const DESTRUCTIVE: Readonly<Record<string, string>> = {
 const WRITES = new Set([
   'PUBLISH',
   'SPUBLISH',
-  'CONFIG SET',
   'SCRIPT LOAD',
   'FUNCTION LOAD',
   'SAVE',
@@ -162,6 +186,8 @@ export function classifyRedisCommand(
   const name = (words[0] ?? '').toUpperCase();
   const sub = (words[1] ?? '').toUpperCase();
   const full = sub === '' ? name : `${name} ${sub}`;
+  if (full === 'CONFIG SET')
+    return configSetOperation(words.slice(2).filter((_, i) => i % 2 === 0));
   const reason = DESTRUCTIVE[full] ?? DESTRUCTIVE[name];
   if (reason !== undefined) return destructive(reason);
   if (REPLACING.has(name) && words.some((w, i) => i > 2 && w.toUpperCase() === 'REPLACE')) {

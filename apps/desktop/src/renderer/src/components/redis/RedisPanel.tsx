@@ -1,6 +1,7 @@
 import { useRedisPanels } from '../../state/redis/panels';
 import { CliPanel } from './CliPanel';
 import { KeyBrowserPanel } from './KeyBrowserPanel';
+import { ConfigPanel } from './tools/ConfigPanel';
 import { DashboardPanel } from './tools/DashboardPanel';
 import { PubSubPanel } from './tools/PubSubPanel';
 import {
@@ -30,6 +31,8 @@ export function RedisPanel(props: { readonly panelId: string }) {
       return <PubSubPanel {...tool} />;
     case 'dashboard':
       return <DashboardPanel {...tool} />;
+    case 'config':
+      return <ConfigPanel {...tool} />;
     case 'slowlog':
       return <SlowLogPanel {...tool} />;
     case 'clients':

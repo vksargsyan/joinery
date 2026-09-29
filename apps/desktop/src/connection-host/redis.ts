@@ -5,7 +5,7 @@ import {
   type ResultChunk,
   type Session,
 } from '@joinery/core';
-import type { RedisSession, RedisTopologyView } from '@joinery/driver-redis';
+import type { ConfigTarget, RedisSession, RedisTopologyView } from '@joinery/driver-redis';
 import type { HandlersOf, redisHostContractShape } from '@joinery/ipc';
 import {
   keySlot,
@@ -19,8 +19,11 @@ import {
 } from '@joinery/redis-tools';
 
 import {
+  CONFIG_RESETSTAT,
+  CONFIG_REWRITE,
   WRITE,
   classifyRedisCommand,
+  configSetOperation,
   decideRedisSafety,
   destructive,
   type RedisOperation,
@@ -181,6 +184,10 @@ export function redisHandlers(deps: RedisHostDeps): HandlersOf<typeof redisHostC
     session.commandDocs().catch(() => undefined);
   const nodeOption = (node: string | undefined): { node?: string } =>
     node === undefined ? {} : { node };
+  const configTarget = (node: string | undefined, replicas: boolean | undefined): ConfigTarget => ({
+    ...nodeOption(node),
+    ...(replicas !== undefined ? { replicas } : {}),
+  });
 
   return {
     session: async ({ sessionId }) => {
@@ -467,6 +474,23 @@ export function redisHandlers(deps: RedisHostDeps): HandlersOf<typeof redisHostC
     memoryDoctor: async ({ sessionId, node }) => ({
       text: await redis(sessionId).memoryDoctor(nodeOption(node)),
     }),
+    config: {
+      nodes: ({ sessionId }) => redis(sessionId).configNodes(),
+      get: ({ sessionId, node, replicas }) =>
+        redis(sessionId).configRead(configTarget(node, replicas)),
+      set: async ({ sessionId, changes, node, replicas, confirmed }) => {
+        guard(configSetOperation(changes.map((c) => c.name)), confirmed);
+        return redis(sessionId).configApply(changes, configTarget(node, replicas));
+      },
+      rewrite: async ({ sessionId, node, replicas, confirmed }) => {
+        guard(CONFIG_REWRITE, confirmed);
+        return redis(sessionId).configRewrite(configTarget(node, replicas));
+      },
+      resetStat: async ({ sessionId, node, replicas, confirmed }) => {
+        guard(CONFIG_RESETSTAT, confirmed);
+        return redis(sessionId).configResetStat(configTarget(node, replicas));
+      },
+    },
     monitor: async function* ({ sessionId, node }, { signal }) {
       const stream = await redis(sessionId).monitor({ signal, ...nodeOption(node) });
       try {
