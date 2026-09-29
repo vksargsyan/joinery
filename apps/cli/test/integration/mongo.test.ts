@@ -138,6 +138,25 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
     expect(queried.stdout).toContain('"ok": 1');
   });
 
+  it('tests and queries the replica set through an SSH tunnel, every member through it', async () => {
+    const hop = ['--ssh', `${SSH_USER}@127.0.0.1:${ssh!.port}`, '--ssh-accept-new'];
+    const env = { JOINERY_SSH_PASSWORD: SSH_PASSWORD };
+    const tested = await joinery(['test', url(), ...hop], env);
+    expect(tested.code, tested.stdout + tested.stderr).toBe(0);
+    expect(tested.stdout).toMatch(
+      new RegExp(
+        `✓ SSH\\s+SSH ${SSH_USER}@127\\.0\\.0\\.1:${ssh!.port} → .*every server through the tunnel`,
+      ),
+    );
+    expect(tested.stdout).toContain('replica set rs0');
+    const forwards = ssh!.stats.forwards;
+    const queried = await joinery(['query', url(), ...hop, '-e', '{ hello: 1 }'], env);
+    expect(queried.code, queried.stderr).toBe(0);
+    expect(queried.stdout).toContain('"setName": "rs0"');
+    expect(ssh!.stats.forwards).toBeGreaterThan(forwards);
+    expect(tested.stdout + tested.stderr + queried.stderr).not.toContain(SSH_PASSWORD);
+  });
+
   it('runs command documents and prints relaxed or canonical Extended JSON', async () => {
     const inserted = await query(
       '{ insert: "orders", documents: [{ _id: 1, total: 120, at: ISODate("2026-01-01T00:00:00Z") }, { _id: 2, total: 80.5 }, { _id: 3, total: NumberLong(300) }] }',

@@ -21,6 +21,8 @@ import { startSshServer, type TestSshServer } from '../ssh-server';
 
 const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
 const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
+/** "host:port/masterName" of the test Sentinel (local only). */
+const SENTINEL = process.env['JOINERY_TEST_REDIS_SENTINEL'];
 const PREFIX = `joinery:cli:${randomBytes(4).toString('hex')}:`;
 const SSH_USER = 'tunnel';
 const SSH_PASSWORD = 'it-Redis-Bastion-7e2';
@@ -110,6 +112,23 @@ describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
     expect(tested.stdout + tested.stderr).not.toContain(SSH_PASSWORD);
     const forwards = ssh!.stats.forwards;
     const pinged = await joinery(['query', REDIS_URL!, ...hop, '-e', 'PING'], env);
+    expect(pinged.code, pinged.stderr).toBe(0);
+    expect(pinged.stdout).toBe('PONG\n');
+    expect(ssh!.stats.forwards).toBeGreaterThan(forwards);
+  });
+
+  it.skipIf(!SENTINEL)('tests and queries through Sentinel over an SSH tunnel', async () => {
+    const [address, master] = SENTINEL!.split('/') as [string, string];
+    const password = new URL(REDIS_URL!).password;
+    const uri = `redis+sentinel://default:${password}@${address}/${master}`;
+    const hop = ['--ssh', `${SSH_USER}@127.0.0.1:${ssh!.port}`, '--ssh-accept-new'];
+    const env = { JOINERY_SSH_PASSWORD: SSH_PASSWORD };
+    const tested = await joinery(['test', uri, ...hop], env);
+    expect(tested.code, tested.stdout + tested.stderr).toBe(0);
+    expect(tested.stdout).toMatch(/✓ SSH\s+SSH .*every server through the tunnel/);
+    expect(tested.stdout).toMatch(/through Sentinel, master/);
+    const forwards = ssh!.stats.forwards;
+    const pinged = await joinery(['query', uri, ...hop, '-e', 'PING'], env);
     expect(pinged.code, pinged.stderr).toBe(0);
     expect(pinged.stdout).toBe('PONG\n');
     expect(ssh!.stats.forwards).toBeGreaterThan(forwards);

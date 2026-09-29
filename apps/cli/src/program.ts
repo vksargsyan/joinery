@@ -93,6 +93,9 @@ SSH tunnels and proxies:
   http://host:port. Host keys are checked against the desktop app's known_hosts (next to
   the store; --known-hosts to use another file): a new key is asked about in a terminal
   and refused otherwise unless --ssh-accept-new is given; a changed key is always refused.
+  A MongoDB replica set (host list, mongodb+srv or ?replicaSet=), Redis Sentinel or
+  Cluster reaches every node through the tunnel or proxy, by the name the node announces;
+  SRV records are still looked up on this computer.
 
 Environment:
   JOINERY_STORE              local store file (default: the desktop app's joinery.db)

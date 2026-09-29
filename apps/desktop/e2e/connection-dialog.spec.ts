@@ -74,7 +74,7 @@ test('offers MongoDB and Redis on their ports; Elasticsearch and OpenSearch are 
   await expect(dialog).toBeHidden();
 });
 
-test('fills a MongoDB replica set from a URI, keeps it off tunnels, saves and edits it', async () => {
+test('fills a MongoDB replica set from a URI, takes it through SSH, saves and edits it', async () => {
   const dialog = await newConnection();
   await field(dialog, 'Paste a URI to fill the form').fill(
     'mongodb://app:e2e-M0ngo@db1.example.com:27017,db2.example.com:27018/sales?replicaSet=rs0&authSource=admin&tls=true',
@@ -93,17 +93,12 @@ test('fills a MongoDB replica set from a URI, keeps it off tunnels, saves and ed
   await expect(field(dialog, 'User')).toHaveValue('app');
   await expect(field(dialog, 'Password')).toHaveValue('e2e-M0ngo');
 
-  // A host list cannot go through an SSH tunnel: the dialog explains and refuses to save.
+  // A host list goes through an SSH tunnel: the dialog says how every member is reached.
   await dialog.getByLabel('Connect through an SSH tunnel').check();
-  await expect(dialog.getByText(/connects directly to one MongoDB host/)).toBeVisible();
+  await expect(dialog.getByText(/reaches every member through it/)).toBeVisible();
   await field(dialog, 'SSH host').fill('bastion.example.com');
   await field(dialog, 'SSH user').fill('ops');
   await field(dialog, 'SSH password storage').selectOption('session');
-  await dialog.getByRole('button', { name: 'Save' }).click();
-  await expect(
-    dialog.getByRole('alert').filter({ hasText: 'A host list or SRV record cannot go through' }),
-  ).toBeVisible();
-  await dialog.getByLabel('Connect through an SSH tunnel').uncheck();
 
   await field(dialog, 'Name').fill('E2E Mongo');
   await field(dialog, 'Read preference').selectOption('secondaryPreferred');
@@ -120,9 +115,12 @@ test('fills a MongoDB replica set from a URI, keeps it off tunnels, saves and ed
   await expect(field(again, 'Authentication database')).toHaveValue('admin');
   await expect(field(again, 'Read preference')).toHaveValue('secondaryPreferred');
   await expect(field(again, 'TLS')).toHaveValue('verify-full');
-  // The password went to main and does not come back.
+  await expect(again.getByLabel('Connect through an SSH tunnel')).toBeChecked();
+  await expect(field(again, 'SSH host')).toHaveValue('bastion.example.com');
+  await expect(field(again, 'SSH user')).toHaveValue('ops');
+  // The passwords (the database's and the SSH server's) went to main and do not come back.
   await expect(field(again, 'Password')).toHaveValue('');
-  await expect(again.getByText('Leave empty to keep the stored password')).toBeVisible();
+  await expect(again.getByText('Leave empty to keep the stored password')).toHaveCount(2);
   await again.getByRole('button', { name: 'Cancel' }).click();
 });
 
@@ -155,12 +153,11 @@ test('turns TLS on for SRV and asks X.509 for TLS, a certificate and a key', asy
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 });
 
-test('saves a Redis Sentinel connection, keeps it off proxies, and edits it', async () => {
+test('saves a Redis Sentinel connection through a proxy, and edits it', async () => {
   const dialog = await newConnection();
   await field(dialog, 'Name').fill('E2E Redis');
   await field(dialog, 'Database engine').selectOption('redis');
   await field(dialog, 'Connect with').selectOption('sentinel');
-  await expect(dialog.getByText(/Sentinel connections cannot go through/)).toBeVisible();
   await field(dialog, 'Sentinel 1').fill('s1.example.com');
   await dialog.getByRole('button', { name: 'Add sentinel' }).click();
   await field(dialog, 'Sentinel 2').fill('s2.example.com');
@@ -173,23 +170,23 @@ test('saves a Redis Sentinel connection, keeps it off proxies, and edits it', as
   await field(dialog, 'Password').fill('e2e-R3dis');
   await field(dialog, 'Password storage').selectOption('session');
   await field(dialog, 'TLS').selectOption('disable');
+  // Sentinel goes through a proxy: the dialog says every node is reached through it.
   await field(dialog, 'Proxy').selectOption('socks5');
+  await expect(dialog.getByText(/Sentinel and Cluster reach every node through it/)).toBeVisible();
   await field(dialog, 'Proxy host').fill('proxy.example.com');
   await dialog.getByRole('button', { name: 'Save' }).click();
-  await expect(
-    dialog.getByRole('alert').filter({ hasText: 'Sentinel and Cluster cannot go through' }),
-  ).toBeVisible();
   await expect(
     dialog.getByText('Enter a database number (0 to 15 on a default server)'),
   ).toBeVisible();
 
-  await field(dialog, 'Proxy').selectOption('none');
   await field(dialog, 'Database number').fill('3');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 
   const again = await edit('E2E Redis');
   await expect(field(again, 'Connect with')).toHaveValue('sentinel');
+  await expect(field(again, 'Proxy')).toHaveValue('socks5');
+  await expect(field(again, 'Proxy host')).toHaveValue('proxy.example.com');
   await expect(field(again, 'Sentinel 1')).toHaveValue('s1.example.com');
   await expect(field(again, 'Sentinel 2 port')).toHaveValue('26380');
   await expect(field(again, 'Master name')).toHaveValue('mymaster');

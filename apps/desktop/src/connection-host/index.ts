@@ -19,7 +19,8 @@ import { HostKeyBridge } from './host-keys';
  *
  * Every session and every Test Connection goes through the process's TransportManager, which
  * opens the profile's SSH tunnel or proxy (spec §4) and shares one SSH session between the
- * sessions of this connection. Host keys are checked by main, through the HostKeyBridge.
+ * sessions of this connection; a replica set, Sentinel or Cluster reaches each of its nodes over
+ * that session (ADR 0008). Host keys are checked by main, through the HostKeyBridge.
  */
 
 const parent = process.parentPort;

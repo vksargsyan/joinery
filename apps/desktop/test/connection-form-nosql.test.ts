@@ -17,6 +17,7 @@ import {
   profileToForm,
   switchEndpointKind,
   switchEngine,
+  tunnelLimitation,
   type ConnectionFormValues,
   type ParseUri,
 } from '../src/renderer/src/state/connection-form';
@@ -240,22 +241,21 @@ describe('MongoDB form validation', () => {
     ).toEqual({});
   });
 
-  it('lets only a single host through an SSH tunnel or a proxy, and says why', () => {
+  it('takes every MongoDB endpoint through an SSH tunnel or a proxy, and says how', () => {
     for (const extra of [tunnel, proxy]) {
       expect(issues(mongo({ ...extra }))).toEqual({});
-      expect(issues(mongo({ ...extra, endpointKind: 'hosts' }))['endpointKind']).toMatch(
-        /connects directly to one host/,
-      );
-      expect(
-        issues(mongo({ ...extra, endpointKind: 'srv', host: 'c.example.net' })),
-      ).toHaveProperty('endpointKind');
-      for (const uri of ['mongodb://a:1,b:2/app', 'mongodb+srv://c.example.net/app']) {
-        expect(issues(mongo({ ...extra, endpointKind: 'uri', uri }))['uri']).toMatch(/single-host/);
+      expect(issues(mongo({ ...extra, endpointKind: 'hosts' }))).toEqual({});
+      expect(issues(mongo({ ...extra, endpointKind: 'srv', host: 'c.example.net' }))).toEqual({});
+      for (const uri of [
+        'mongodb://a:1,b:2/app',
+        'mongodb+srv://c.example.net/app',
+        'mongodb://app@[::1]:27018/app',
+      ]) {
+        expect(issues(mongo({ ...extra, endpointKind: 'uri', uri })), uri).toEqual({});
       }
-      expect(
-        issues(mongo({ ...extra, endpointKind: 'uri', uri: 'mongodb://app@[::1]:27018/app' })),
-      ).toEqual({});
     }
+    expect(tunnelLimitation('mongodb')).toMatch(/reaches every member through it/);
+    expect(tunnelLimitation('mongodb')).toMatch(/looked up on this computer/);
   });
 });
 
@@ -308,12 +308,12 @@ describe('Redis form validation', () => {
     expect(uri('redis://default:hunter2@cache:6379', 'disable')['uri']).toMatch(/password field/);
   });
 
-  it('keeps Sentinel, Cluster and sockets out of tunnels and proxies', () => {
+  it('takes Sentinel and Cluster through tunnels and proxies, but not sockets', () => {
     for (const extra of [tunnel, proxy]) {
       expect(issues(redis({ ...extra }))).toEqual({});
       for (const endpointKind of ['sentinel', 'cluster'] as const) {
-        expect(issues(redis({ ...extra, endpointKind, masterName: 'm' }))['endpointKind']).toMatch(
-          /Sentinel and Cluster cannot go through an SSH tunnel or a proxy yet/,
+        expect(issues(redis({ ...extra, endpointKind, masterName: 'm' })), endpointKind).toEqual(
+          {},
         );
       }
       expect(
@@ -326,6 +326,7 @@ describe('Redis form validation', () => {
         {},
       );
     }
+    expect(tunnelLimitation('redis')).toMatch(/Sentinel and Cluster reach every node through it/);
   });
 });
 

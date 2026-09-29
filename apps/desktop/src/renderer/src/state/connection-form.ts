@@ -163,16 +163,17 @@ export const sshHopFormSchema = z.object({
 export type SshHopFormValues = z.infer<typeof sshHopFormSchema>;
 
 /**
- * Why a MongoDB or Redis endpoint cannot go through an SSH tunnel or a proxy, for the dialog to
- * explain next to those sections. The tunnel forwards to one host, and the drivers then talk to
- * that host directly instead of following the addresses the servers announce.
+ * How a MongoDB or Redis topology goes through an SSH tunnel or a proxy, for the dialog to
+ * explain next to those sections (ADR 0008): every server the others announce is reached
+ * through the tunnel by that name, resolved on the far side; only SRV records are looked up on
+ * this computer.
  */
 export function tunnelLimitation(engine: DialogEngine): string | undefined {
   if (engine === 'mongodb') {
-    return 'Through an SSH tunnel or a proxy, Joinery connects directly to one MongoDB host: the other replica set members announce addresses that are not reachable through it. Use Host and port (or a single-host mongodb:// URI).';
+    return 'Through an SSH tunnel or a proxy, Host and port talks to that one server. A host list, SRV record or replica set URI reaches every member through it, by the name the member announces as the SSH server or proxy resolves it; the SRV record itself is looked up on this computer.';
   }
   if (engine === 'redis') {
-    return 'Only Host and port (or a single-host URI) can go through an SSH tunnel or a proxy. Sentinel and Cluster cannot yet: Joinery would have to reach every node the servers announce.';
+    return 'Through an SSH tunnel or a proxy, Sentinel and Cluster reach every node through it, by the address the node announces as the SSH server or proxy sees it.';
   }
   return undefined;
 }
@@ -365,40 +366,26 @@ function tunnelIssues(form: ConnectionFormValues, issue: IssueAt): void {
   }
 }
 
-/** A tunnel or proxy forwards to one host, which the drivers then talk to directly. */
+/**
+ * What a tunnel or proxy cannot carry: a Unix socket, and a Redis URI with several hosts (use
+ * Sentinel or Cluster, whose nodes it reaches). MongoDB host lists, SRV names and replica set
+ * URIs, Redis Sentinel and Cluster all go through it (ADR 0008).
+ */
 function tunnelledEndpointIssues(form: ConnectionFormValues, issue: IssueAt): void {
   if (form.endpointKind === 'socket') {
     issue(
       ['socketPath'],
       'A Unix socket cannot be reached through an SSH tunnel or a proxy; use the host and port the SSH server sees',
     );
-  } else if (form.engine === 'mongodb') {
-    if (form.endpointKind === 'hosts' || form.endpointKind === 'srv') {
-      issue(
-        ['endpointKind'],
-        'A host list or SRV record cannot go through an SSH tunnel or a proxy: Joinery connects directly to one host, and the other members are not reachable through it. Connect with Host and port.',
-      );
-    } else if (
-      form.endpointKind === 'uri' &&
-      (uriScheme(form.uri) === 'mongodb+srv' || uriHosts(form.uri).length > 1)
-    ) {
-      issue(
-        ['uri'],
-        'Only a single-host mongodb:// URI can go through an SSH tunnel or a proxy: Joinery connects directly to that one host',
-      );
-    }
-  } else if (form.engine === 'redis') {
-    if (form.endpointKind === 'sentinel' || form.endpointKind === 'cluster') {
-      issue(
-        ['endpointKind'],
-        'Sentinel and Cluster cannot go through an SSH tunnel or a proxy yet: Joinery would have to reach every node the servers announce. Connect with Host and port.',
-      );
-    } else if (form.endpointKind === 'uri' && uriHosts(form.uri).length > 1) {
-      issue(
-        ['uri'],
-        'Only a single-host URI can go through an SSH tunnel or a proxy: Joinery connects directly to that one host',
-      );
-    }
+  } else if (
+    form.engine === 'redis' &&
+    form.endpointKind === 'uri' &&
+    uriHosts(form.uri).length > 1
+  ) {
+    issue(
+      ['uri'],
+      'Only a single-host URI can go through an SSH tunnel or a proxy; for several nodes, connect with Sentinel or Cluster',
+    );
   }
 }
 

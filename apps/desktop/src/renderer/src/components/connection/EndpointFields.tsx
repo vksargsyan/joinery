@@ -129,7 +129,9 @@ export function EndpointFields(props: {
           </Field>
           <Note>
             Joinery looks up the hosts (the _mongodb._tcp SRV record) and default options in DNS, as
-            a mongodb+srv:// URI does, and connects with TLS unless you turn it off below.
+            a mongodb+srv:// URI does, and connects with TLS unless you turn it off below. The
+            lookup happens on this computer, also when the servers are reached through an SSH tunnel
+            or a proxy.
           </Note>
         </>
       );
@@ -166,9 +168,7 @@ export function EndpointFields(props: {
             newRow={() => defaultHostRow(engine)}
             hint="Any reachable nodes; Joinery discovers the rest of the cluster from them."
           />
-          <Note>
-            A cluster has only database 0. It cannot go through an SSH tunnel or a proxy yet.
-          </Note>
+          <Note>A cluster has only database 0.</Note>
         </>
       );
     case 'sentinel':
@@ -191,7 +191,6 @@ export function EndpointFields(props: {
             />
           </Field>
           <div />
-          <Note>Sentinel connections cannot go through an SSH tunnel or a proxy yet.</Note>
         </>
       );
   }

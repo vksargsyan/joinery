@@ -20,8 +20,9 @@ What works today:
   time; URI and pgpass import; encrypted profile export; stepwise Test Connection.
 - **SSH tunnels and proxies**: SSH with password, private key (OpenSSH, PEM, PuTTY converted on
   import) or ssh-agent, jump hosts and keep-alives, one SSH session shared by a connection's
-  tabs; SOCKS5 and HTTP proxies; host keys checked against a known_hosts file the app and the
-  CLI share, with a trust prompt for new keys and a blocking warning for changed ones.
+  tabs; SOCKS5 and HTTP proxies; MongoDB replica sets, Redis Sentinel and Cluster reached node by
+  node through them; host keys checked against a known_hosts file the app and the CLI share,
+  with a trust prompt for new keys and a blocking warning for changed ones.
 - **Querying**: a Monaco editor with run all / statement at cursor / selection; a splitter that
   understands `DELIMITER`, dollar quoting and nested comments; `:name` / `$1` / `?` parameters;
   confirmation before risky writes and for production profiles; streaming results into a canvas
