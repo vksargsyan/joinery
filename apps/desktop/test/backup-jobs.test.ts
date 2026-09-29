@@ -477,6 +477,14 @@ describe('backup and restore in the job runner', () => {
     });
     const done = await find('done', 'j1');
     expect(done.error?.code).toBe('READ_ONLY');
+    // A production profile needs the confirmation here too, whatever main let through.
+    runner.handle({
+      type: 'start',
+      jobId: 'j2',
+      job: restoreJob('p1', { path: join(dir, 'missing.jbak') }),
+      resolved: resolvedProfile(presentation({ environment: 'production' })),
+    });
+    expect((await find('done', 'j2')).error?.code).toBe('CONFIRMATION_REQUIRED');
     expect(session.statements).toEqual([]);
   });
 

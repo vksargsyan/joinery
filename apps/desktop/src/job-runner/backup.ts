@@ -20,6 +20,7 @@ import {
   JoineryError,
   fromErrorData,
   isSqlEngine,
+  requiresWriteConfirmation,
   type ResolvedProfile,
   type Session,
 } from '@joinery/core';
@@ -215,6 +216,13 @@ export async function runRestoreJob(job: RestoreJob, ctx: BackupJobContext): Pro
     throw new JoineryError({
       code: 'READ_ONLY',
       message: 'This connection is read-only, so nothing can be restored into it',
+    });
+  }
+  // Main asks first; the rule holds here too, where the statements run.
+  if (requiresWriteConfirmation(ctx.resolved.profile) && job.confirmed !== true) {
+    throw new JoineryError({
+      code: 'CONFIRMATION_REQUIRED',
+      message: 'Restoring into this connection needs confirmation',
     });
   }
   let session: Session = ctx.session;

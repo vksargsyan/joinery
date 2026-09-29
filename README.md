@@ -54,6 +54,12 @@ What works today:
 - **Job runner**: imports, exports and SQL files run in their own utility process, several at
   once, with progress, cancel (which rolls back), failed rows by row, line and column, a job
   history and a desktop notification when a long job ends.
+- **Backup and restore**: logical backups of PostgreSQL, MySQL and MariaDB in one consistent
+  snapshot, MongoDB collections with their options and indexes, and Redis keys with their TTLs,
+  to SQL, gzipped SQL or the Joinery archive ([.jbak](docs/backup-archive-format.md): one file
+  per object, optional AES-256-GCM encryption with a passphrase); pg_dump and mysqldump when
+  installed; restores of everything or selected objects into any database, listing what would
+  be dropped before asking; a Redis BGSAVE button.
 - **MongoDB**: host lists, SRV, SCRAM, LDAP and X.509 sign-in; an explorer of databases,
   collections, views, time series, GridFS buckets, indexes, users and roles; a collection view
   with a mongosh-syntax query bar and a visual query builder (fields from a sample, typed
@@ -80,11 +86,12 @@ What works today:
   validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
   setParameter. Every change shows its exact statement first.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
-  export, run-file and profile management; test and query for MongoDB and Redis too.
+  export, run-file and profile management; test and query for MongoDB and Redis too; backup
+  and restore for every engine.
 
-Not built yet: the scheduler, backup and restore, database-to-database data transfer, Parquet,
-the visual query builder and ER modelling for SQL, cloud sync and the AI assistant; for MongoDB
-the embedded mongosh shell; RediSearch and offline RDB analysis; the
+Not built yet: the scheduler, Parquet, the visual query builder and ER modelling for SQL, cloud
+sync and the AI assistant; for MongoDB the embedded mongosh shell; RediSearch and offline RDB
+analysis; the
 Elasticsearch and OpenSearch module. The product specification lists the full scope.
 
 ## Repository layout
@@ -110,6 +117,7 @@ pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-pac
 | `packages/redis-tools`      | `@joinery/redis-tools`     | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs     |
 | `packages/tunnel`           | `@joinery/tunnel`          | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks     |
 | `packages/transfer`         | `@joinery/transfer`        | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping |
+| `packages/backup`           | `@joinery/backup`          | Backup and restore for every engine, the .jbak archive, pg_dump/mysqldump           |
 
 Packages under `packages/` never import Electron, so the CLI and the tests use them directly.
 
@@ -146,6 +154,8 @@ node apps/cli/dist/joinery.mjs export dev --table orders --table items --format 
 node apps/cli/dist/joinery.mjs import dev --table sales --file q3.xlsx --sheet July --create --key id
 node apps/cli/dist/joinery.mjs export dev --table orders --table items --format xlsx --one-file --out shop.xlsx
 node apps/cli/dist/joinery.mjs run-file dev migrate.sql --continue
+JOINERY_BACKUP_PASSPHRASE=… node apps/cli/dist/joinery.mjs backup prod --out shop.jbak --encrypt
+node apps/cli/dist/joinery.mjs restore dev shop.jbak --select public.orders --database shop_copy --create-database
 ```
 
 The CLI shares the desktop app's saved connections (`--store` or `JOINERY_STORE` point it at
