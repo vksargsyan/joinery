@@ -1,4 +1,4 @@
-import { cancelledError, type SqlDialect } from '@joinery/core';
+import { JoineryError, cancelledError, type SqlDialect } from '@joinery/core';
 import { StatementSplitter } from '@joinery/sql-tools';
 
 import { CsvParser, type CsvField } from './csv';
@@ -16,6 +16,24 @@ import {
 } from './readers';
 import { decoderFor, detectEncoding } from './text';
 import type { FileFormat, SourceCell, SourceRow } from './types';
+import {
+  XlsxRowBuilder,
+  cellText,
+  openWorkbook,
+  readSheet,
+  type SheetRow,
+  type XlsxReadOptions,
+} from './xlsx-read';
+import { XmlParser } from './xml';
+import {
+  XmlRowBuilder,
+  detectRowPaths,
+  normalizeRowPath,
+  xmlEncoding,
+  type XmlPathCandidate,
+  type XmlReadOptions,
+} from './xml-read';
+import { isCompoundFile, isZip } from './zip';
 
 /**
  * Preview and detection (spec §12): read the start of a source and work out its format,
@@ -31,6 +49,10 @@ export interface PreviewOptions {
   readonly encoding?: string;
   /** CSV settings to keep; the rest (delimiter, quote, escape, header) are detected. */
   readonly csv?: CsvReadOptions;
+  /** Excel: the worksheet (default the first visible one) and header row (default detected). */
+  readonly xlsx?: XlsxReadOptions;
+  /** XML: the row path (default detected). */
+  readonly xml?: XmlReadOptions;
   readonly decompress?: 'auto' | 'gzip' | 'none';
   /** Rows to sample (default 100). */
   readonly sampleRows?: number;
@@ -56,6 +78,10 @@ export interface SourcePreview {
   readonly complete: boolean;
   /** SQL sources: the first statements. */
   readonly statements?: readonly string[];
+  /** Excel: every worksheet's name; `read.xlsx.sheet` is the one previewed. */
+  readonly sheets?: readonly string[];
+  /** XML: paths that could hold the rows, best first; `read.xml.rowPath` is the one previewed. */
+  readonly rowPaths?: readonly XmlPathCandidate[];
 }
 
 const EXTENSIONS: Readonly<Record<string, FileFormat>> = {
@@ -66,6 +92,9 @@ const EXTENSIONS: Readonly<Record<string, FileFormat>> = {
   jsonl: 'jsonl',
   ndjson: 'jsonl',
   jsonlines: 'jsonl',
+  xlsx: 'xlsx',
+  xlsm: 'xlsx',
+  xml: 'xml',
   sql: 'sql',
 };
 
@@ -97,9 +126,10 @@ function looksLikeSql(text: string): boolean {
   return SQL_START.test(rest.slice(0, 64)) && (rest.includes(';') || /^delimiter\b/i.test(rest));
 }
 
-/** Sniffs the format of a text sample. */
+/** Sniffs the format of a text sample (workbooks are recognised by their bytes). */
 export function sniffFormat(text: string): FileFormat {
   const start = text.replace(/^\ufeff/, '').trimStart();
+  if (/^<[?!A-Za-z_:]/.test(start)) return 'xml';
   if (start.startsWith('[')) return 'json';
   if (start.startsWith('{')) {
     const eol = start.indexOf('\n');
@@ -293,10 +323,73 @@ export function detectCsvOptions(
   return { ...fixed, delimiter, quote, escape, nullMarker, header };
 }
 
+/** Pads sample rows to the column count. */
+function padded(rows: readonly SourceRow[], width: number): SourceRow[] {
+  return rows.map((row) =>
+    row.length >= width ? row : [...row, ...new Array<SourceCell>(width - row.length).fill(null)],
+  );
+}
+
 /**
- * Previews a source: reads up to `sampleBytes`, detects what the options leave open and
- * returns the columns with inferred types and the first `sampleRows` rows. The source is
- * consumed (and closed); open a fresh one to import.
+ * The header row of a worksheet sample: the first row's number when it looks like column
+ * names (by the same type contrast as CSV headers), else 0.
+ */
+export function detectHeaderRow(rows: readonly SheetRow[]): number {
+  const first = rows[0];
+  if (first === undefined) return 0;
+  return detectHeader(rows.slice(0, 50).map((row) => row.cells.map(cellText))) ? first.row : 0;
+}
+
+/** Previews a worksheet: its rows, the header row as given or detected, the sheet list. */
+async function previewWorkbook(
+  source: ByteSource,
+  options: PreviewOptions,
+  sampleRows: number,
+  decompress: 'auto' | 'gzip' | 'none',
+): Promise<SourcePreview> {
+  const workbook = await openWorkbook(source, decompress);
+  try {
+    const sheet = workbook.sheet(options.xlsx?.sheet);
+    const fixed = options.xlsx?.headerRow;
+    const limit = sampleRows + 51;
+    const collected: SheetRow[] = [];
+    let complete = true;
+    const rows = readSheet(workbook, sheet, (row) => {
+      if (row.row >= (fixed ?? 0)) collected.push(row);
+    });
+    for await (const _chunk of rows) {
+      if (options.signal?.aborted === true) throw cancelledError('Preview cancelled');
+      if (collected.length > limit) {
+        complete = false;
+        break;
+      }
+    }
+    const headerRow = fixed ?? detectHeaderRow(collected);
+    const builder = new XlsxRowBuilder(headerRow);
+    const parts = emptyParts();
+    for (const row of collected) builder.add(row, parts);
+    if (parts.rows.length > sampleRows) complete = false;
+    const sample = padded(parts.rows.slice(0, sampleRows), builder.columns.length);
+    return {
+      format: 'xlsx',
+      compression: 'none',
+      encoding: 'utf-8',
+      bom: false,
+      complete,
+      read: { format: 'xlsx', decompress, xlsx: { sheet: sheet.name, headerRow } },
+      columns: inferColumns(builder.columns, sample),
+      rows: sample,
+      sheets: workbook.sheets.map((s) => s.name),
+    };
+  } finally {
+    await workbook.close();
+  }
+}
+
+/**
+ * Previews a source: reads up to `sampleBytes` (a workbook: its first rows), detects what the
+ * options leave open and returns the columns with inferred types and the first `sampleRows`
+ * rows. The source is consumed (and closed); open a fresh one to import.
  */
 export async function previewSource(
   source: ByteSource,
@@ -304,7 +397,12 @@ export async function previewSource(
 ): Promise<SourcePreview> {
   const sampleRows = Math.max(1, options.sampleRows ?? 100);
   const sampleBytes = Math.max(1024, options.sampleBytes ?? 1024 * 1024);
-  const input = await openInput(source, options.decompress ?? 'auto');
+  const decompress = options.decompress ?? 'auto';
+  const named =
+    options.format ??
+    (options.fileName !== undefined ? formatFromFileName(options.fileName) : undefined);
+  if (named === 'xlsx') return previewWorkbook(source, options, sampleRows, decompress);
+  const input = await openInput(source, decompress);
   const chunks: Uint8Array[] = [];
   let length = 0;
   let complete = true;
@@ -320,19 +418,52 @@ export async function previewSource(
       chunks.push(next.value);
       length += next.value.length;
     }
-  } finally {
-    if (!complete) await iterator.return?.();
+  } catch (error) {
+    await iterator.return?.();
+    throw error;
   }
-  if (options.signal?.aborted === true) throw cancelledError('Preview cancelled');
   const head = concatBytes(chunks, length);
+  if (
+    named === undefined &&
+    options.signal?.aborted !== true &&
+    (isZip(head) || isCompoundFile(head))
+  ) {
+    // A workbook without a telling name (stdin, no extension): read it whole.
+    if (input.compression === 'none' && source.randomAccess !== undefined) {
+      if (!complete) await iterator.return?.();
+      return previewWorkbook(source, options, sampleRows, decompress);
+    }
+    const rest: ByteSource = {
+      async *[Symbol.asyncIterator]() {
+        try {
+          yield* chunks;
+          if (complete) return;
+          for (;;) {
+            const next = await iterator.next();
+            if (next.done === true) return;
+            yield next.value;
+          }
+        } finally {
+          if (!complete) await iterator.return?.();
+        }
+      },
+    };
+    return previewWorkbook(rest, options, sampleRows, 'none');
+  }
+  if (!complete) await iterator.return?.();
+  if (options.signal?.aborted === true) throw cancelledError('Preview cancelled');
   const detected = detectEncoding(head, complete);
-  const encoding = options.encoding ?? detected.encoding;
-  const text = decoderFor(encoding).decode(head, { stream: !complete });
+  let encoding = options.encoding ?? detected.encoding;
+  let text = decoderFor(encoding).decode(head, { stream: !complete });
+  const format = named ?? sniffFormat(text);
+  if (format === 'xml' && options.encoding === undefined) {
+    const declared = xmlEncoding(head, complete);
+    if (declared !== encoding) {
+      encoding = declared;
+      text = decoderFor(encoding).decode(head, { stream: !complete });
+    }
+  }
   const bom = detected.bom && detected.encoding === decoderFor(encoding).encoding;
-  const format =
-    options.format ??
-    (options.fileName !== undefined ? formatFromFileName(options.fileName) : undefined) ??
-    sniffFormat(text);
   const base = { format, compression: input.compression, encoding, bom, complete };
 
   if (format === 'sql') {
@@ -349,8 +480,9 @@ export async function previewSource(
   }
 
   let effective: RowFormat = format;
-  let builder: CsvRowBuilder | JsonRowBuilder;
+  let columns: readonly string[];
   let read: ReadOptions;
+  let rowPaths: XmlPathCandidate[] | undefined;
   const parts = emptyParts();
   if (format === 'csv' || format === 'tsv') {
     const csv = detectCsvOptions(text, csvReadOptions(format, options.csv), complete);
@@ -358,8 +490,27 @@ export async function previewSource(
     const { records, lines } = sampleRecords(text, csv, complete, sampleRows + 1);
     const csvBuilder = new CsvRowBuilder(csv.header);
     csvBuilder.add(records, lines, parts);
-    builder = csvBuilder;
+    columns = csvBuilder.columns;
     read = { format: effective, encoding, decompress: input.compression, csv };
+  } else if (format === 'xml') {
+    rowPaths = detectRowPaths(text, complete);
+    const given = options.xml?.rowPath;
+    const rowPath = given !== undefined ? normalizeRowPath(given) : rowPaths[0]?.path;
+    if (rowPath === undefined) {
+      throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The XML has no elements' });
+    }
+    const xmlBuilder = new XmlRowBuilder(rowPath);
+    xmlBuilder.collect(parts);
+    const parser = new XmlParser(xmlBuilder);
+    try {
+      parser.push(text);
+      if (complete) parser.end();
+    } catch (error) {
+      // A syntax error past the rows already sampled is the import's to report.
+      if (parts.rows.length === 0) throw error;
+    }
+    columns = xmlBuilder.columns;
+    read = { format: 'xml', encoding, decompress: input.compression, xml: { rowPath } };
   } else {
     const jsonBuilder = new JsonRowBuilder();
     const parser = format === 'json' ? new JsonStreamParser('auto') : new JsonLinesParser();
@@ -370,16 +521,16 @@ export async function previewSource(
       // A syntax error past the rows already sampled is the import's to report.
       if (parts.rows.length === 0) throw error;
     }
-    builder = jsonBuilder;
+    columns = jsonBuilder.columns;
     read = { format: effective, encoding, decompress: input.compression };
   }
-  const columns = builder.columns;
-  const rows = parts.rows
-    .slice(0, sampleRows)
-    .map((row) =>
-      row.length >= columns.length
-        ? row
-        : [...row, ...new Array<SourceCell>(columns.length - row.length).fill(null)],
-    );
-  return { ...base, format: effective, read, columns: inferColumns(columns, rows), rows };
+  const rows = padded(parts.rows.slice(0, sampleRows), columns.length);
+  return {
+    ...base,
+    format: effective,
+    read,
+    columns: inferColumns(columns, rows),
+    rows,
+    ...(rowPaths !== undefined ? { rowPaths } : {}),
+  };
 }

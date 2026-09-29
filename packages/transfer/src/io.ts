@@ -1,6 +1,8 @@
 import { once } from 'node:events';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { unlink } from 'node:fs/promises';
+import { mkdtemp, open, rm, unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable, type Writable } from 'node:stream';
 import { finished, pipeline } from 'node:stream/promises';
 import { createGunzip, createGzip, type ZlibOptions } from 'node:zlib';
@@ -13,8 +15,118 @@ import { createGunzip, createGzip, type ZlibOptions } from 'node:zlib';
  * fetching the next page from the database.
  */
 
-/** Bytes flowing into a reader. Node.js Readable streams qualify as they are. */
-export type ByteSource = AsyncIterable<Uint8Array>;
+/**
+ * Bytes flowing into a reader. Node.js Readable streams qualify as they are. Sources that can
+ * also be read at any position (files, in-memory bytes) say so with `randomAccess`, which
+ * formats that must seek (xlsx: a ZIP read from its central directory) use instead of
+ * iterating; every other source is spooled to a temporary file for them.
+ */
+export interface ByteSource extends AsyncIterable<Uint8Array> {
+  readonly randomAccess?: () => Promise<RandomAccessReader>;
+}
+
+/** Positioned reads of a source's bytes. */
+export interface RandomAccessReader {
+  readonly size: number;
+  /** Reads `length` bytes at `position`; fewer only where the source ends. */
+  read(position: number, length: number): Promise<Uint8Array>;
+  close(): Promise<void>;
+}
+
+/** Positioned reads of a file through one file handle. */
+export async function openFileReader(path: string): Promise<RandomAccessReader> {
+  const handle = await open(path, 'r');
+  try {
+    const { size } = await handle.stat();
+    return {
+      size,
+      async read(position, length) {
+        const count = Math.max(0, Math.min(length, size - position));
+        const buffer = Buffer.allocUnsafe(count);
+        let at = 0;
+        while (at < count) {
+          const { bytesRead } = await handle.read(buffer, at, count - at, position + at);
+          if (bytesRead === 0) break;
+          at += bytesRead;
+        }
+        return at === count ? buffer : buffer.subarray(0, at);
+      },
+      close: () => handle.close(),
+    };
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
+}
+
+/** Positioned reads of bytes already in memory. */
+export function memoryReader(bytes: Uint8Array): RandomAccessReader {
+  return {
+    size: bytes.length,
+    read: async (position, length) =>
+      bytes.subarray(Math.min(position, bytes.length), Math.min(position + length, bytes.length)),
+    close: async () => undefined,
+  };
+}
+
+/** A source copied to a temporary file; `close` removes the file. */
+export interface SpooledSource {
+  /** The copy: read it as often as needed, at any position. */
+  readonly source: ByteSource;
+  readonly size: number;
+  close(): Promise<void>;
+}
+
+/**
+ * Copies a source that can be read only once (stdin, a socket) into a temporary file, so it
+ * can be previewed, then read again, or read at any position; memory stays flat.
+ */
+export async function spoolToFile(source: ByteSource): Promise<SpooledSource> {
+  const dir = await mkdtemp(join(tmpdir(), 'joinery-spool-'));
+  const path = join(dir, 'source');
+  const remove = (): Promise<void> => rm(dir, { recursive: true, force: true });
+  let size = 0;
+  try {
+    const sink = writableSink(createWriteStream(path));
+    try {
+      for await (const chunk of source) {
+        size += chunk.length;
+        await sink.write(chunk);
+      }
+      await sink.close();
+    } catch (error) {
+      await sink.abort(error);
+      throw error;
+    }
+  } catch (error) {
+    await remove();
+    throw error;
+  }
+  return { source: fileSource(path), size, close: remove };
+}
+
+/**
+ * Positioned reads of any source: its own `randomAccess` when it has one, else a copy spooled
+ * to a temporary file (removed on close), so memory stays flat either way.
+ */
+export async function randomAccess(source: ByteSource): Promise<RandomAccessReader> {
+  if (source.randomAccess !== undefined) return source.randomAccess();
+  const spooled = await spoolToFile(source);
+  try {
+    const reader = await spooled.source.randomAccess!();
+    return {
+      size: reader.size,
+      read: (position, length) => reader.read(position, length),
+      async close() {
+        await reader.close();
+        await spooled.close();
+      },
+    };
+  } catch (error) {
+    await spooled.close();
+    throw error;
+  }
+}
 
 /** Where export bytes go. */
 export interface Sink {
@@ -33,7 +145,10 @@ export interface FileSourceOptions {
   readonly start?: number;
 }
 
-/** A file's bytes, read lazily in chunks. Iterating it again reopens the file. */
+/**
+ * A file's bytes, read lazily in chunks. Iterating it again reopens the file; `randomAccess`
+ * opens it for positioned reads (from the start of the file, whatever `start` says).
+ */
 export function fileSource(path: string, options: FileSourceOptions = {}): ByteSource {
   return {
     [Symbol.asyncIterator]: () =>
@@ -41,6 +156,7 @@ export function fileSource(path: string, options: FileSourceOptions = {}): ByteS
         highWaterMark: options.highWaterMark ?? 64 * 1024,
         ...(options.start !== undefined ? { start: options.start } : {}),
       })[Symbol.asyncIterator](),
+    randomAccess: () => openFileReader(path),
   };
 }
 
@@ -61,6 +177,7 @@ export function bytesSource(data: Uint8Array | string, chunkSize = 64 * 1024): B
     async *[Symbol.asyncIterator]() {
       for (let at = 0; at < bytes.length; at += size) yield bytes.subarray(at, at + size);
     },
+    randomAccess: async () => memoryReader(bytes),
   };
 }
 

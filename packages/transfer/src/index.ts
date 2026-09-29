@@ -2,11 +2,13 @@
  * @joinery/transfer — streaming import and export (spec §12).
  *
  * One pipeline for the wizards, scheduled jobs and joinery-cli: byte sources and sinks with
- * backpressure and optional gzip; incremental CSV/TSV, JSON and JSON Lines readers; preview
- * with format, encoding, dialect, header and type detection; column mapping and conversions;
- * batched, parameterised imports in five modes; streaming exports to CSV, TSV, JSON, JSON
- * Lines, SQL INSERTs and SQL with DDL; and "run SQL file". Never imports Electron: it runs in
- * the job runner utility process and in the CLI.
+ * backpressure, optional gzip and ZIP; incremental CSV/TSV, JSON, JSON Lines and XML readers
+ * and a streaming Excel (.xlsx) reader; preview with format, encoding, dialect, header, sheet,
+ * row path and type detection; column mapping and conversions; batched, parameterised imports
+ * in five modes; streaming exports to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL INSERTs, SQL
+ * with DDL, HTML and Markdown; and "run SQL file". Never imports Electron: it runs in the job
+ * runner utility process and in the CLI. ZIP, XML and xlsx are written here on node:zlib
+ * (ADR 0008), with no third-party dependency.
  */
 
 export { EXPORT_FORMATS, FILE_FORMATS, isJsonText, jsonText } from './types';
@@ -30,8 +32,12 @@ export {
   gunzip,
   gzipSink,
   isGzip,
+  memoryReader,
   memorySink,
+  openFileReader,
+  randomAccess,
   readableSource,
+  spoolToFile,
   writableSink,
 } from './io';
 export type {
@@ -39,9 +45,52 @@ export type {
   FileSinkOptions,
   FileSourceOptions,
   MemorySink,
+  RandomAccessReader,
   Sink,
+  SpooledSource,
   WritableSinkOptions,
 } from './io';
+
+export { ZipReader, ZipWriter, isCompoundFile, isZip } from './zip';
+export type { ZipEntry, ZipWriterOptions } from './zip';
+
+export {
+  XmlParser,
+  attribute,
+  decodeHexEscapes,
+  decodeXmlName,
+  escapeXmlAttribute,
+  escapeXmlText,
+  localName,
+  xmlName,
+} from './xml';
+export type { XmlHandler, XmlParserOptions } from './xml';
+
+export { XmlRowBuilder, detectRowPaths, normalizeRowPath, xmlEncoding } from './xml-read';
+export type { XmlPathCandidate, XmlReadOptions } from './xml-read';
+
+export {
+  Workbook,
+  XlsxRowBuilder,
+  columnName,
+  formatKind,
+  numberCell,
+  openWorkbook,
+  readSheet,
+  serialToText,
+} from './xlsx-read';
+export type { SheetRow, WorksheetInfo, XlsxReadOptions } from './xlsx-read';
+
+export {
+  XLSX_MAX_COLUMNS,
+  XLSX_MAX_ROWS,
+  XlsxSheetWriter,
+  XlsxWorkbookWriter,
+  exactDecimal,
+  excelDate,
+  sheetName,
+} from './xlsx-write';
+export type { XlsxExportOptions } from './xlsx-write';
 
 export { OUTPUT_ENCODINGS, decodeSource, detectEncoding } from './text';
 export type { DetectedEncoding, OutputEncoding } from './text';
@@ -69,6 +118,7 @@ export {
   detectCsvOptions,
   detectDelimiter,
   detectHeader,
+  detectHeaderRow,
   formatFromFileName,
   previewSource,
   sniffFormat,
@@ -107,7 +157,14 @@ export type {
   SqlStatementError,
 } from './sql-file';
 
-export { exportRows, exportTables } from './export';
+export {
+  EXPORT_EXTENSIONS,
+  combinableFormat,
+  exportFileName,
+  exportRows,
+  exportTables,
+  markdownCell,
+} from './export';
 export type {
   CsvExportOptions,
   ExportCommonOptions,

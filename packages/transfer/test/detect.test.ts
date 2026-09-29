@@ -55,11 +55,17 @@ describe('format detection', () => {
     expect(formatFromFileName('a.ndjson')).toBe('jsonl');
     expect(formatFromFileName('dump.sql')).toBe('sql');
     expect(formatFromFileName('x.tab')).toBe('tsv');
+    expect(formatFromFileName('Q3 Report.XLSX')).toBe('xlsx');
+    expect(formatFromFileName('macros.xlsm')).toBe('xlsx');
+    expect(formatFromFileName('feed.xml.gz')).toBe('xml');
     expect(formatFromFileName('notes.txt')).toBeUndefined();
     expect(formatFromFileName('README')).toBeUndefined();
   });
 
-  it('sniffs JSON, JSON Lines, SQL, TSV and CSV from content', () => {
+  it('sniffs XML, JSON, JSON Lines, SQL, TSV and CSV from content', () => {
+    expect(sniffFormat('\ufeff<?xml version="1.0"?><r/>')).toBe('xml');
+    expect(sniffFormat('  <rows><row/></rows>')).toBe('xml');
+    expect(sniffFormat('<!-- export --><r/>')).toBe('xml');
     expect(sniffFormat('  [{"a":1}]')).toBe('json');
     expect(sniffFormat('{"a":1}\n{"a":2}\n')).toBe('jsonl');
     expect(sniffFormat('{\n  "a": 1\n}')).toBe('json');

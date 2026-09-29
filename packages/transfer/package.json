@@ -2,7 +2,7 @@
   "name": "@joinery/transfer",
   "version": "0.0.0",
   "private": true,
-  "description": "Streaming import and export: CSV, TSV, JSON, JSON Lines and SQL readers and writers, column mapping and batched loads.",
+  "description": "Streaming import and export: CSV, TSV, JSON, JSON Lines, Excel, XML, HTML, Markdown and SQL readers and writers, ZIP, column mapping and batched loads.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

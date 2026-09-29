@@ -5,11 +5,25 @@
  */
 
 /** File formats the readers understand. `sql` files are run statement by statement. */
-export const FILE_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'sql'] as const;
+export const FILE_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml', 'sql'] as const;
 export type FileFormat = (typeof FILE_FORMATS)[number];
 
-/** Export formats: the file formats plus SQL INSERTs preceded by the table's DDL. */
-export const EXPORT_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'sql', 'sql-ddl'] as const;
+/**
+ * Export formats: the file formats, SQL INSERTs preceded by the table's DDL, and two formats
+ * for reading rather than loading: a self-contained HTML page and Markdown tables.
+ */
+export const EXPORT_FORMATS = [
+  'csv',
+  'tsv',
+  'json',
+  'jsonl',
+  'xlsx',
+  'xml',
+  'sql',
+  'sql-ddl',
+  'html',
+  'markdown',
+] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 /**
