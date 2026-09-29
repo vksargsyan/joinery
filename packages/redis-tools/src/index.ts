@@ -41,6 +41,37 @@ export {
   type CommandKeySpec,
 } from './commands';
 export {
+  CONFIG_SECRET_MASK,
+  buildConfigRows,
+  configErrorParameter,
+  configSetCommands,
+  filterConfigRows,
+  formatConfigBytes,
+  friendlyConfigValue,
+  humanConfigBytes,
+  parseConfigBytes,
+  sameConfigValue,
+  validateConfigValue,
+  type ConfigChange,
+  type ConfigNodeValues,
+  type ConfigRow,
+  type ConfigValidation,
+} from './config';
+export {
+  CONFIG_GROUPS,
+  canonicalConfigName,
+  configGroupOf,
+  configParameter,
+  configParameters,
+  isConfigMutable,
+  isSecretConfig,
+  versionAtLeast,
+  type ConfigGroupId,
+  type ConfigParameterMeta,
+  type ConfigUnit,
+  type ConfigValueType,
+} from './config-params';
+export {
   completeLine,
   suggestNext,
   type CommandSuggestion,
