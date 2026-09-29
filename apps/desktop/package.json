@@ -1,5 +1,6 @@
 {
   "name": "@joinery/desktop",
+  "productName": "Joinery",
   "version": "0.1.0",
   "private": true,
   "description": "Joinery desktop app: Electron main, sandboxed preload, React renderer and connection hosts.",
