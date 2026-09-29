@@ -87,7 +87,8 @@ export const BASE_CAPABILITIES: Readonly<Record<EngineId, Capabilities>> = {
   mongodb: {
     ...NONE,
     serverSideCursors: true,
-    explainFormats: ['json'],
+    // queryPlanner and executionStats verbosity.
+    explainFormats: ['json', 'analyze'],
     queryCancel: true,
     transactions: true,
     changeStreams: true,

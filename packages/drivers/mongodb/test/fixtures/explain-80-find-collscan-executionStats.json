@@ -1,0 +1,69 @@
+{
+  "explainVersion": "1",
+  "queryPlanner": {
+    "namespace": "joinery_explain_probe.orders",
+    "parsedQuery": {
+      "amount": {
+        "$gt": 40
+      }
+    },
+    "indexFilterSet": false,
+    "queryHash": "36F2A044",
+    "planCacheShapeHash": "36F2A044",
+    "planCacheKey": "491CC9B2",
+    "optimizationTimeMillis": 0,
+    "maxIndexedOrSolutionsReached": false,
+    "maxIndexedAndSolutionsReached": false,
+    "maxScansToExplodeReached": false,
+    "prunedSimilarIndexes": false,
+    "winningPlan": {
+      "isCached": false,
+      "stage": "COLLSCAN",
+      "filter": {
+        "amount": {
+          "$gt": 40
+        }
+      },
+      "direction": "forward"
+    },
+    "rejectedPlans": []
+  },
+  "executionStats": {
+    "executionSuccess": true,
+    "nReturned": 90,
+    "executionTimeMillis": 0,
+    "totalKeysExamined": 0,
+    "totalDocsExamined": 500,
+    "executionStages": {
+      "isCached": false,
+      "stage": "COLLSCAN",
+      "filter": {
+        "amount": {
+          "$gt": 40
+        }
+      },
+      "nReturned": 90,
+      "executionTimeMillisEstimate": 0,
+      "works": 501,
+      "advanced": 90,
+      "needTime": 410,
+      "needYield": 0,
+      "saveState": 0,
+      "restoreState": 0,
+      "isEOF": 1,
+      "direction": "forward",
+      "docsExamined": 500
+    }
+  },
+  "queryShapeHash": "E31CA8687F45965CC81B1823C7D386CC37F9A3E32AAF0940F512BE467F7AA3AF",
+  "command": {
+    "find": "orders",
+    "filter": {
+      "amount": {
+        "$gt": 40
+      }
+    },
+    "$db": "joinery_explain_probe"
+  },
+  "ok": 1
+}

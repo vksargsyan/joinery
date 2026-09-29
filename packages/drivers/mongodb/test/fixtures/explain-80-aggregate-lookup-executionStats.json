@@ -1,0 +1,203 @@
+{
+  "explainVersion": "1",
+  "stages": [
+    {
+      "$cursor": {
+        "queryPlanner": {
+          "namespace": "joinery_explain_probe.orders",
+          "parsedQuery": {
+            "amount": {
+              "$lt": 5
+            }
+          },
+          "indexFilterSet": false,
+          "queryHash": "ABCD8F74",
+          "planCacheShapeHash": "ABCD8F74",
+          "planCacheKey": "8906E2BB",
+          "optimizationTimeMillis": 0,
+          "maxIndexedOrSolutionsReached": false,
+          "maxIndexedAndSolutionsReached": false,
+          "maxScansToExplodeReached": false,
+          "prunedSimilarIndexes": false,
+          "winningPlan": {
+            "isCached": false,
+            "stage": "PROJECTION_SIMPLE",
+            "transformBy": {
+              "_id": 1,
+              "amount": 1,
+              "cust": 1
+            },
+            "inputStage": {
+              "stage": "COLLSCAN",
+              "filter": {
+                "amount": {
+                  "$lt": 5
+                }
+              },
+              "direction": "forward"
+            }
+          },
+          "rejectedPlans": []
+        },
+        "executionStats": {
+          "executionSuccess": true,
+          "nReturned": 50,
+          "executionTimeMillis": 3,
+          "totalKeysExamined": 0,
+          "totalDocsExamined": 500,
+          "executionStages": {
+            "isCached": false,
+            "stage": "PROJECTION_SIMPLE",
+            "nReturned": 50,
+            "executionTimeMillisEstimate": 0,
+            "works": 501,
+            "advanced": 50,
+            "needTime": 450,
+            "needYield": 0,
+            "saveState": 2,
+            "restoreState": 2,
+            "isEOF": 1,
+            "transformBy": {
+              "_id": 1,
+              "amount": 1,
+              "cust": 1
+            },
+            "inputStage": {
+              "stage": "COLLSCAN",
+              "filter": {
+                "amount": {
+                  "$lt": 5
+                }
+              },
+              "nReturned": 50,
+              "executionTimeMillisEstimate": 0,
+              "works": 501,
+              "advanced": 50,
+              "needTime": 450,
+              "needYield": 0,
+              "saveState": 2,
+              "restoreState": 2,
+              "isEOF": 1,
+              "direction": "forward",
+              "docsExamined": 500
+            }
+          }
+        }
+      },
+      "nReturned": 50,
+      "executionTimeMillisEstimate": 0
+    },
+    {
+      "$lookup": {
+        "from": "customers",
+        "as": "c",
+        "localField": "cust",
+        "foreignField": "_id",
+        "unwinding": {
+          "preserveNullAndEmptyArrays": false
+        }
+      },
+      "totalDocsExamined": 52,
+      "totalKeysExamined": 52,
+      "collectionScans": 0,
+      "indexesUsed": ["_id_"],
+      "nReturned": 50,
+      "executionTimeMillisEstimate": 4
+    },
+    {
+      "$project": {
+        "_id": true,
+        "amount": true,
+        "name": "$c.name"
+      },
+      "nReturned": 50,
+      "executionTimeMillisEstimate": 4
+    },
+    {
+      "$facet": {
+        "a": [
+          {
+            "$internalFacetTeeConsumer": {},
+            "nReturned": 50,
+            "executionTimeMillisEstimate": 4
+          },
+          {
+            "$group": {
+              "_id": {
+                "$const": null
+              },
+              "n": {
+                "$sum": {
+                  "$const": 1
+                }
+              }
+            },
+            "maxAccumulatorMemoryUsageBytes": {
+              "n": 128
+            },
+            "totalOutputDataSizeBytes": 245,
+            "usedDisk": false,
+            "spills": 0,
+            "spilledDataStorageSize": 0,
+            "numBytesSpilledEstimate": 0,
+            "spilledRecords": 0,
+            "nReturned": 1,
+            "executionTimeMillisEstimate": 4
+          },
+          {
+            "$project": {
+              "n": true,
+              "_id": false
+            },
+            "nReturned": 1,
+            "executionTimeMillisEstimate": 4
+          }
+        ]
+      },
+      "nReturned": 1,
+      "executionTimeMillisEstimate": 4
+    }
+  ],
+  "queryShapeHash": "68A72D4E49E1BB0ED45C29FADA308CF99F808D1CEAE65FEE916B4E781EE014F8",
+  "command": {
+    "aggregate": "orders",
+    "pipeline": [
+      {
+        "$match": {
+          "amount": {
+            "$lt": 5
+          }
+        }
+      },
+      {
+        "$lookup": {
+          "from": "customers",
+          "localField": "cust",
+          "foreignField": "_id",
+          "as": "c"
+        }
+      },
+      {
+        "$unwind": "$c"
+      },
+      {
+        "$project": {
+          "name": "$c.name",
+          "amount": 1
+        }
+      },
+      {
+        "$facet": {
+          "a": [
+            {
+              "$count": "n"
+            }
+          ]
+        }
+      }
+    ],
+    "cursor": {},
+    "$db": "joinery_explain_probe"
+  },
+  "ok": 1
+}

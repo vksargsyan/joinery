@@ -1,0 +1,64 @@
+{
+  "explainVersion": "1",
+  "queryPlanner": {
+    "namespace": "joinery_explain_probe.orders",
+    "indexFilterSet": false,
+    "parsedQuery": {
+      "amount": {
+        "$gt": 40
+      }
+    },
+    "queryHash": "51F076F7",
+    "planCacheKey": "6C924EDB",
+    "optimizationTimeMillis": 0,
+    "maxIndexedOrSolutionsReached": false,
+    "maxIndexedAndSolutionsReached": false,
+    "maxScansToExplodeReached": false,
+    "winningPlan": {
+      "stage": "COLLSCAN",
+      "filter": {
+        "amount": {
+          "$gt": 40
+        }
+      },
+      "direction": "forward"
+    },
+    "rejectedPlans": []
+  },
+  "executionStats": {
+    "executionSuccess": true,
+    "nReturned": 90,
+    "executionTimeMillis": 0,
+    "totalKeysExamined": 0,
+    "totalDocsExamined": 500,
+    "executionStages": {
+      "stage": "COLLSCAN",
+      "filter": {
+        "amount": {
+          "$gt": 40
+        }
+      },
+      "nReturned": 90,
+      "executionTimeMillisEstimate": 0,
+      "works": 501,
+      "advanced": 90,
+      "needTime": 410,
+      "needYield": 0,
+      "saveState": 0,
+      "restoreState": 0,
+      "isEOF": 1,
+      "direction": "forward",
+      "docsExamined": 500
+    }
+  },
+  "command": {
+    "find": "orders",
+    "filter": {
+      "amount": {
+        "$gt": 40
+      }
+    },
+    "$db": "joinery_explain_probe"
+  },
+  "ok": 1
+}
