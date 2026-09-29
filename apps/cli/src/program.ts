@@ -1,5 +1,6 @@
 import type { Environment, SecretPolicy, TlsMode } from '@joinery/core';
 import type { RenameRule, RowAction } from '@joinery/sync';
+import { DB_TABLE_MODES, type DbTableMode, type FieldShape } from '@joinery/transfer';
 import { Command, CommanderError, Option } from 'commander';
 
 import packageJson from '../package.json' with { type: 'json' };
@@ -24,6 +25,15 @@ import {
   type ExportDataOptions,
   type ImportDataOptions,
 } from './commands/transfer';
+import {
+  embedFlag,
+  renameFlag,
+  shapeFlag,
+  skipFlag,
+  transferDbCommand,
+  typeFlag,
+  type TransferDbOptions,
+} from './commands/transfer-db';
 import type { CliContext } from './context';
 import {
   BrokenPipeError,
@@ -193,6 +203,7 @@ const TUNNEL_COMMANDS = new Set([
   'import',
   'export',
   'run-file',
+  'transfer',
 ]);
 
 function addTunnelOptions(command: Command): void {
@@ -786,6 +797,94 @@ Examples:
       );
     });
 
+  // transfer ---------------------------------------------------------------------------------
+  program
+    .command('transfer')
+    .description('copy tables, collections or keys from one database to another')
+    .argument('<source>', 'profile name or id, or connection URI, to read from')
+    .argument('<target>', 'profile name or id, or connection URI, to write to')
+    .option(
+      '--table <name>',
+      'table or collection to transfer (schema.table on PostgreSQL); repeatable',
+      collect(String),
+    )
+    .option('--all', 'every table of the source schema, or collection of the database')
+    .option('--pattern <glob>', 'Redis: keys to copy, e.g. "user:*"; repeatable', collect(String))
+    .option('--database <name>', 'source database (MongoDB: of the collections)')
+    .option('--schema <name>', 'PostgreSQL source schema (default public)')
+    .option('--target-database <name>', 'target database')
+    .option('--target-schema <name>', 'PostgreSQL target schema (default public)')
+    .addOption(
+      new Option('--mode <mode>', 'create each table, drop and create it, empty it, or append')
+        .choices(DB_TABLE_MODES)
+        .default('create'),
+    )
+    .option('--rename <from=to>', 'target name of a table; repeatable', collect(renameFlag))
+    .option('--type <table.column=type>', 'target type of a column; repeatable', collect(typeFlag))
+    .option('--skip <table.column>', 'leave a column out; repeatable', collect(skipFlag))
+    .option(
+      '--shape <collection.field=shape>',
+      'MongoDB to SQL: a field as columns, json or a child table; repeatable',
+      collect(shapeFlag),
+    )
+    .option(
+      '--embed <parent:child:fk[:field]>',
+      'SQL to MongoDB: embed the child rows of each parent (by foreign key); repeatable',
+      collect(embedFlag),
+    )
+    .option('--batch-size <n>', 'rows, documents or keys per batch (default 1000)', positiveInteger)
+    .option('--parallel <n>', 'tables transferred at once (default 2)', positiveInteger)
+    .addOption(
+      new Option('--on-error <action>', 'stop at the first failed row, or log it and go on')
+        .choices(['stop', 'skip'])
+        .default('stop'),
+    )
+    .option('--no-transaction', 'no transaction per batch')
+    .option(
+      '--disable-constraints',
+      'foreign key checks (PostgreSQL: and triggers, needs superuser) off during the load',
+    )
+    .option('--no-defer-constraints', 'create keys, indexes and foreign keys before the data')
+    .option('--no-reset-sequences', 'leave sequences and AUTO_INCREMENT counters as they are')
+    .option(
+      '--sample <n>',
+      'MongoDB: documents sampled for the columns (default 1000)',
+      positiveInteger,
+    )
+    .option('--no-id-from-key', 'SQL to MongoDB: do not make the primary key the _id')
+    .option('--replace', 'Redis: overwrite keys that exist on the target')
+    .option('--no-ttl', 'Redis: copy keys without their time to live')
+    .option('--dry-run', 'print the plan (column types, statements) and change nothing')
+    .option('--json', 'print the plan or the summary as JSON on stdout')
+    .option('--error-log <file>', 'write every failed row and its error to a file')
+    .addOption(yesOption('confirm dropping, emptying or overwriting, and production targets'))
+    .addOption(tlsOption())
+    .addHelpText(
+      'after',
+      `
+Pairs: PostgreSQL, MySQL and MariaDB to any of them; those to MongoDB (typed documents, child
+rows embedded with --embed); MongoDB to them (nested fields flattened to columns, arrays as
+child tables or JSON, types from a sample); Redis to Redis (DUMP/RESTORE with TTLs, keys by
+--pattern, standalone or Cluster). Rows stream in batches with a transaction per batch;
+tables run --parallel at once on their own sessions, and primary keys, indexes and foreign
+keys follow the data. The type of each column comes from a mapping per engine pair: see it
+with --dry-run, change it with --type.
+
+Exit codes: 0 transferred, 1 transferred but rows were skipped, 2 failed or refused, 130
+interrupted. Safety: read-only targets refuse; drop-create, truncate, --replace, production
+and "confirm writes" profiles need --yes or a confirmation.
+
+Examples:
+  joinery transfer pg-dev "mysql://app@localhost/shop" --table orders --table customers
+  joinery transfer pg-dev my-dev --all --mode drop-create --yes
+  joinery transfer my-dev mongo-dev --table orders --embed orders:items:items_ibfk_1:lines
+  joinery transfer mongo-dev pg-dev --table events --shape events.tags=json --dry-run
+  joinery transfer redis-a redis-b --pattern "session:*" --replace`,
+    )
+    .action((source: string, target: string, options: TransferCliOptions) => {
+      schedule((runtime) => transferDbCommand(runtime, source, target, transferDbOptions(options)));
+    });
+
   // profiles ---------------------------------------------------------------------------------
   const profiles = program
     .command('profiles')
@@ -1041,6 +1140,76 @@ export function exportOptions(options: ExportCliOptions): ExportDataOptions {
     ...(options.rowsPerInsert !== undefined ? { rowsPerInsert: options.rowsPerInsert } : {}),
     ...(options.decimals !== undefined ? { decimals: options.decimals } : {}),
     ...(options.database !== undefined ? { database: options.database } : {}),
+    ...(options.tls !== undefined ? { tls: options.tls } : {}),
+    ...tunnelFlags(options),
+  };
+}
+
+interface TransferCliOptions extends TunnelCliOptions {
+  table?: string[];
+  all?: boolean;
+  pattern?: string[];
+  database?: string;
+  schema?: string;
+  targetDatabase?: string;
+  targetSchema?: string;
+  mode: DbTableMode;
+  rename?: (readonly [string, string])[];
+  type?: (readonly [string, string, string])[];
+  skip?: (readonly [string, string])[];
+  shape?: (readonly [string, string, FieldShape])[];
+  embed?: TransferDbOptions['embeds'][number][];
+  batchSize?: number;
+  parallel?: number;
+  onError: 'stop' | 'skip';
+  transaction: boolean;
+  disableConstraints?: boolean;
+  deferConstraints: boolean;
+  resetSequences: boolean;
+  sample?: number;
+  idFromKey: boolean;
+  replace?: boolean;
+  ttl: boolean;
+  dryRun?: boolean;
+  json?: boolean;
+  errorLog?: string;
+  yes?: boolean;
+  tls?: TlsMode;
+}
+
+/** The transfer command's options from its flags. */
+export function transferDbOptions(options: TransferCliOptions): TransferDbOptions {
+  return {
+    objects: options.table ?? [],
+    patterns: options.pattern ?? [],
+    all: options.all === true,
+    renames: options.rename ?? [],
+    types: options.type ?? [],
+    skips: options.skip ?? [],
+    shapes: options.shape ?? [],
+    embeds: options.embed ?? [],
+    options: {
+      mode: options.mode,
+      onError: options.onError,
+      transactionPerBatch: options.transaction !== false,
+      disableConstraints: options.disableConstraints === true,
+      deferConstraints: options.deferConstraints !== false,
+      resetSequences: options.resetSequences !== false,
+      idFromPrimaryKey: options.idFromKey !== false,
+      replace: options.replace === true,
+      keepTtl: options.ttl !== false,
+      ...(options.batchSize !== undefined ? { batchSize: options.batchSize } : {}),
+      ...(options.parallel !== undefined ? { parallel: options.parallel } : {}),
+      ...(options.sample !== undefined ? { sampleSize: options.sample } : {}),
+    },
+    dryRun: options.dryRun === true,
+    json: options.json === true,
+    yes: options.yes === true,
+    ...(options.database !== undefined ? { database: options.database } : {}),
+    ...(options.schema !== undefined ? { schema: options.schema } : {}),
+    ...(options.targetDatabase !== undefined ? { targetDatabase: options.targetDatabase } : {}),
+    ...(options.targetSchema !== undefined ? { targetSchema: options.targetSchema } : {}),
+    ...(options.errorLog !== undefined ? { errorLog: options.errorLog } : {}),
     ...(options.tls !== undefined ? { tls: options.tls } : {}),
     ...tunnelFlags(options),
   };
