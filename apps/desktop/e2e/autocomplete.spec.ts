@@ -72,6 +72,8 @@ test('creates tables with a foreign key through SQL', async () => {
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
+  // Main parses the URI asynchronously; typing before it answers races the fill.
+  await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
   await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');

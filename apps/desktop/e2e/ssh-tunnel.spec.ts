@@ -57,6 +57,8 @@ test('asks about the host key, runs a query through the tunnel and reconnects wi
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(PG_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
+  // Main parses the URI asynchronously; typing before it answers races the fill.
+  await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
   await dialog.getByLabel('TLS').selectOption('disable');

@@ -143,6 +143,8 @@ test('connects and opens a table from the explorer', async () => {
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
+  // Main parses the URI asynchronously; typing before it answers races the fill.
+  await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
   await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
@@ -252,7 +254,9 @@ test('stages an edit, an insert and a delete, and applies them in one transactio
 
 test('reports a conflict when another session changed the row, and offers to reload', async () => {
   const view = panel('table-data-panel');
-  await setFilter('id', '<=', '3');
+  // Still filtered to id <= 3 from the previous test. Applying the same filter again would
+  // reload the rows with nothing visible changing, so an edit could land mid-reload.
+  await expect(view.getByTestId('table-row-count')).toHaveText('3 rows loaded');
   await expect(cell(1, 0)).toHaveText('renamed item');
   await editCell(1, 0, 'mine');
   await query(direct!, `UPDATE items SET name = 'theirs' WHERE id = 1`);
