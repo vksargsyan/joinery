@@ -210,9 +210,10 @@ SELECT id, name, price FROM items ORDER BY id;
   });
 
   it('streams 50 000 rows as exact CSV and JSON', async () => {
+    // EMPTY is a reserved word in MySQL 8, so the MySQL-family alias is quoted.
     const sql = pg
       ? `select g as id, 'name ' || g as name, g::bigint * 1000000000000 as big, null::text as empty from generate_series(1, 50000) g`
-      : `SELECT n AS id, CONCAT('name ', n) AS name, CAST(n AS SIGNED) * 1000000000000 AS big, NULL AS empty FROM ${mysqlSeries(50000)} ORDER BY n`;
+      : `SELECT n AS id, CONCAT('name ', n) AS name, CAST(n AS SIGNED) * 1000000000000 AS big, NULL AS \`empty\` FROM ${mysqlSeries(50000)} ORDER BY n`;
     const csv = await joinery(['query', urlFor(engine), '--format', 'csv', '-e', sql]);
     expect(csv.code, csv.stderr).toBe(0);
     const lines = csv.stdout.trimEnd().split('\n');

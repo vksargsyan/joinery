@@ -238,8 +238,11 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s metadata', (engine, url) 
           name: 'orders_touch',
           timing: 'BEFORE',
           events: ['UPDATE'],
-          definition:
-            'CREATE TRIGGER orders_touch BEFORE UPDATE ON orders FOR EACH ROW SET NEW.placed_at = NOW()',
+          // Each server's own text: MySQL quotes the names, MariaDB keeps them as written. The
+          // sync engine's normaliser treats both spellings as the same identifier.
+          definition: mariadb
+            ? 'CREATE TRIGGER orders_touch BEFORE UPDATE ON orders FOR EACH ROW SET NEW.placed_at = NOW()'
+            : 'CREATE TRIGGER `orders_touch` BEFORE UPDATE ON `orders` FOR EACH ROW SET NEW.placed_at = NOW()',
         },
       ]);
     });
@@ -473,10 +476,26 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s metadata', (engine, url) 
         analyze: true,
       });
       expect(plan.children.length + (plan.actualRows !== undefined ? 1 : 0)).toBeGreaterThan(0);
+      // MySQL cannot analyze a single-table UPDATE: it falls back to the estimated plan and says so.
+      expect(plan.detail['analyze_unavailable']).toBe(mariadb ? undefined : true);
       expect(await rows(session, "SELECT COUNT(*) FROM customers WHERE name = 'changed'")).toEqual([
         [0],
       ]);
       expect(session.inTransaction).toBe(false);
+    });
+
+    it('returns actual rows and timings for an analyzed SELECT', async () => {
+      const plan = await session.explain!('SELECT * FROM customers WHERE id > 0', {
+        analyze: true,
+      });
+      const actuals: number[] = [];
+      const walk = (node: typeof plan): void => {
+        if (node.actualRows !== undefined) actuals.push(node.actualRows);
+        node.children.forEach(walk);
+      };
+      walk(plan);
+      expect(actuals.length).toBeGreaterThan(0);
+      expect(plan.detail['analyze_unavailable']).toBeUndefined();
     });
   });
 });

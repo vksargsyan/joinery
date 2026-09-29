@@ -258,9 +258,7 @@ export async function introspectMysql(
       const { primaryKey, indexes } = indexDefs(indexesByTable.get(name) ?? []);
       if (primaryKey) table.primaryKey = primaryKey;
       table.indexes = indexes;
-      if (mariadb) {
-        table.columns = await exactBinaryDefaults(query, db, name, table.columns);
-      }
+      table.columns = await exactBinaryDefaults(query, db, name, table.columns);
       table.foreignKeys = foreignKeyDefs(fksByTable.get(name) ?? [], db);
       table.checks = (checksByTable.get(name) ?? [])
         .map((check): CheckDef => ({
@@ -422,9 +420,10 @@ export async function introspectMysql(
 const BINARY_TYPE = /^(?:binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/i;
 
 /**
- * MariaDB's information_schema turns bytes of a binary column's default that are not valid
- * UTF-8 into '?', so literal defaults of binary columns are read back exactly with DEFAULT()
- * and written as hex literals (as MySQL reports them).
+ * information_schema mangles bytes of a binary column's default that are not valid UTF-8:
+ * MariaDB turns them into '?' and MySQL cuts its hex literal short ("0x"). So literal defaults
+ * of binary columns are read back exactly with DEFAULT() and written as hex literals. Expression
+ * defaults are left alone: DEFAULT() refuses them.
  */
 async function exactBinaryDefaults(
   query: QueryFn,
@@ -433,7 +432,10 @@ async function exactBinaryDefaults(
   columns: ColumnDef[],
 ): Promise<ColumnDef[]> {
   const binary = columns.filter(
-    (c) => BINARY_TYPE.test(c.dataType) && c.default !== null && c.default.startsWith("'"),
+    (c) =>
+      BINARY_TYPE.test(c.dataType) &&
+      c.default !== null &&
+      (c.default.startsWith("'") || /^0x/i.test(c.default)),
   );
   if (binary.length === 0) return columns;
   const list = binary

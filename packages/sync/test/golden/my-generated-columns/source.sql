@@ -3,7 +3,7 @@ CREATE TABLE g (
   a int,
   b int,
   v int AS (a + b) VIRTUAL,
-  s int AS (a * b) PERSISTENT,
+  s int AS (a * b) STORED,
   name varchar(20),
   upper_name varchar(20) AS (upper(name)) STORED,
   moved int,

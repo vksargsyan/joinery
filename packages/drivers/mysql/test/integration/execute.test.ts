@@ -3,6 +3,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { SUITES, TARGETS, collect, execId, iterate, rows, target, withDatabase } from './helpers';
 
+/** MySQL stops recursive CTEs after 1,000 iterations by default; MariaDB uses seq_1_to_N instead. */
+const RAISE_CTE_DEPTH = '/*+ SET_VAR(cte_max_recursion_depth = 10000000) */';
+
 describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) => {
   const t = target(engine, url);
   const DB = `jt_execute_${engine}`;
@@ -136,7 +139,7 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
       const sql = source
         ? `SELECT seq AS n, REPEAT('x', 2000) AS pad FROM ${source}`
         : `WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 50000)
-           SELECT n, REPEAT('x', 2000) AS pad FROM g`;
+           SELECT ${RAISE_CTE_DEPTH} n, REPEAT('x', 2000) AS pad FROM g`;
       for await (const chunk of fresh.execute(sql, { executionId: execId() })) {
         if (chunk.type === 'rows') {
           pages += 1;
@@ -158,7 +161,7 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
       session,
       engine === 'mariadb'
         ? 'SELECT seq FROM seq_1_to_2000000'
-        : 'WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 2000000) SELECT n FROM g',
+        : `WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 2000000) SELECT ${RAISE_CTE_DEPTH} n FROM g`,
       { executionId: execId(), pageSize: 100 },
     );
     let seen = 0;
@@ -287,7 +290,7 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
       session,
       engine === 'mariadb'
         ? 'SELECT seq FROM seq_1_to_500000'
-        : 'WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 500000) SELECT n FROM g',
+        : `WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 500000) SELECT ${RAISE_CTE_DEPTH} n FROM g`,
       { executionId: id, pageSize: 100 },
     );
     let next = await iterator.next();

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { PlanNode } from '@joinery/core';
 import { describe, expect, it } from 'vitest';
 
-import { normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from '../src';
+import { isNotExecutableTreePlan, normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from '../src';
 
 const text = (name: string): string =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
@@ -116,6 +116,16 @@ describe('MySQL EXPLAIN ANALYZE (tree text)', () => {
     const filter = plan.children[0]!.children[0]!.children[1]!.children[0]!;
     expect(filter.detail['never_executed']).toBe(true);
     expect(filter.actualRows).toBeUndefined();
+  });
+
+  it('recognises statements MySQL cannot analyze', () => {
+    // MySQL 8.4.11 output for EXPLAIN ANALYZE of a single-table UPDATE.
+    expect(isNotExecutableTreePlan('-> <not executable by iterator executor>\n')).toBe(true);
+    expect(
+      isNotExecutableTreePlan(
+        '-> Filter: (customers.id > 0)  (cost=0.91 rows=2) (actual time=0.0118..0.0137 rows=2 loops=1)\n',
+      ),
+    ).toBe(false);
   });
 
   it('rejects text without plan lines', () => {

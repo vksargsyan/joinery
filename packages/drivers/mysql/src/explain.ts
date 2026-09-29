@@ -298,6 +298,14 @@ const TREE_LINE = /^(\s*)-> (.*)$/;
 const COST = /\(cost=(?:([\d.e+-]+)\.\.)?([\d.e+-]+) rows=([\d.e+-]+)\)/;
 const ACTUAL = /\(actual time=([\d.e+-]+)\.\.([\d.e+-]+) rows=([\d.e+-]+) loops=(\d+)\)/;
 
+/**
+ * True when MySQL answered EXPLAIN ANALYZE with "<not executable by iterator executor>": the
+ * statement kind cannot be analyzed (single-table UPDATE and DELETE on MySQL 8.x).
+ */
+export function isNotExecutableTreePlan(text: string): boolean {
+  return /^\s*-> <not executable by iterator executor>/.test(text);
+}
+
 /** Converts MySQL `EXPLAIN ANALYZE` / `EXPLAIN FORMAT=TREE` text into a PlanNode tree. */
 export function normaliseMysqlTreePlan(text: string): PlanNode {
   interface Draft {

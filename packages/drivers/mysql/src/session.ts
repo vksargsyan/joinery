@@ -38,7 +38,7 @@ import {
 } from './config';
 import { commandOf } from './dialect';
 import { isFatal, mapMysqlError } from './errors';
-import { normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from './explain';
+import { isNotExecutableTreePlan, normaliseMysqlJsonPlan, normaliseMysqlTreePlan } from './explain';
 import { introspectMysql } from './introspect';
 import { ResultStream, type CommandEvents } from './stream';
 import { columnMeta } from './types';
@@ -476,61 +476,62 @@ export class MysqlSession implements Session {
   async explain(text: string, opts: ExplainOptions = {}): Promise<PlanNode> {
     const mariadb = this.flavor === 'mariadb';
     const analyze = opts.analyze === true;
-    const prefix = analyze
-      ? mariadb
-        ? 'ANALYZE FORMAT=JSON '
-        : 'EXPLAIN ANALYZE '
-      : 'EXPLAIN FORMAT=JSON ';
+    const estimate = 'EXPLAIN FORMAT=JSON ';
+    const prefix = analyze ? (mariadb ? 'ANALYZE FORMAT=JSON ' : 'EXPLAIN ANALYZE ') : estimate;
     const params = toMysqlParams(positionalParams(opts.params));
+    const prepared = new Set<string>();
     return this.gate.run(async () => {
       this.assertUsable();
-      const run = (): Promise<unknown> =>
+      const run = (head: string): Promise<string> =>
         new Promise((resolve, reject) => {
           const callback = (error: unknown, result: unknown): void => {
             if (error) {
               this.noteFatal(error);
               const mapped = mapMysqlError(error, {
                 where: this.plan.where,
-                statement: prefix + text,
+                statement: head + text,
               });
               reject(
                 mapped.position === undefined
                   ? mapped
                   : new JoineryError({
                       ...mapped.toJSON(),
-                      position: Math.max(0, mapped.position - prefix.length),
+                      position: Math.max(0, mapped.position - head.length),
                     }),
               );
               return;
             }
             const first = Array.isArray(result) ? (result[0] as unknown) : undefined;
-            resolve(Array.isArray(first) ? first[0] : undefined);
+            const output = Array.isArray(first) ? (first[0] as unknown) : undefined;
+            resolve(typeof output === 'string' ? output : String(output ?? ''));
           };
-          if (params.length > 0)
+          if (params.length > 0) {
+            prepared.add(head + text);
             this.connection.execute(
-              { sql: prefix + text, values: params, rowsAsArray: true },
+              { sql: head + text, values: params, rowsAsArray: true },
               callback,
             );
-          else this.connection.query({ sql: prefix + text, rowsAsArray: true }, callback);
+          } else this.connection.query({ sql: head + text, rowsAsArray: true }, callback);
         });
-      const toPlan = (output: unknown): PlanNode => {
-        const textOutput = typeof output === 'string' ? output : String(output ?? '');
-        if (analyze && !mariadb) return normaliseMysqlTreePlan(textOutput);
-        return normaliseMysqlJsonPlan(JSON.parse(textOutput));
-      };
-      if (!analyze) return toPlan(await run());
+      if (!analyze) return normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
       // ANALYZE executes the statement: keep its effects out of the database.
       const nested = this.inTransaction;
       await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
       try {
-        return toPlan(await run());
+        const output = await run(prefix);
+        if (mariadb) return normaliseMysqlJsonPlan(JSON.parse(output));
+        if (!isNotExecutableTreePlan(output)) return normaliseMysqlTreePlan(output);
+        // MySQL cannot EXPLAIN ANALYZE some statements (single-table UPDATE and DELETE): return
+        // the estimated plan and say so, rather than a plan with no rows or timings.
+        const plan = normaliseMysqlJsonPlan(JSON.parse(await run(estimate)));
+        return { ...plan, detail: { ...plan.detail, analyze_unavailable: true } };
       } finally {
         await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(
           () => undefined,
         );
-        if (params.length > 0) {
+        for (const sql of prepared) {
           try {
-            this.connection.unprepare(prefix + text);
+            this.connection.unprepare(sql);
           } catch {
             // not prepared
           }
