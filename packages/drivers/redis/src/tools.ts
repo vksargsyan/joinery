@@ -315,6 +315,7 @@ function peer(raw: unknown): SentinelPeer {
 async function sentinelView(ctx: RedisContext): Promise<RedisTopologyView['sentinel']> {
   const plan = ctx.conn.plan;
   const masterName = plan.masterName ?? '';
+  const tls = ctx.conn.sentinelTls();
   let lastError: unknown;
   for (const seed of plan.seeds) {
     if (seed.kind !== 'tcp') continue;
@@ -330,7 +331,7 @@ async function sentinelView(ctx: RedisContext): Promise<RedisTopologyView['senti
       ...(plan.password !== undefined
         ? { username: plan.user ?? 'default', password: plan.password }
         : {}),
-      ...(plan.tlsOptions ? { tls: plan.tlsOptions } : {}),
+      ...(tls ? { tls } : {}),
     });
     sentinel.on('error', () => undefined);
     try {

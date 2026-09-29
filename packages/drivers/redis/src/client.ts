@@ -1,4 +1,5 @@
 import type { Socket } from 'node:net';
+import type { ConnectionOptions } from 'node:tls';
 
 import { JoineryError } from '@joinery/core';
 import { Cluster, Command, Redis, type ClusterOptions, type RedisOptions } from 'ioredis';
@@ -70,6 +71,14 @@ export class RedisConnection {
     readonly client: Redis | Cluster,
     private readonly routing: NodeRouting | undefined,
   ) {}
+
+  /**
+   * TLS options for a direct connection to one of the Sentinels. Behind a tunnel the seeds are
+   * local forwards, so a certificate is checked against the configured Sentinel names instead.
+   */
+  sentinelTls(): ConnectionOptions | undefined {
+    return this.routing ? this.routing.sentinelTls() : this.plan.tlsOptions;
+  }
 
   /** Opens and authenticates the connection; maps failures to JoineryErrors with hints. */
   static async open(plan: RedisConnectionPlan): Promise<RedisConnection> {
