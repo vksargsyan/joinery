@@ -1,0 +1,91 @@
+name: Package
+
+# Installable test builds: an ad-hoc signed universal macOS DMG, installed from the disk image
+# and smoke-tested against PostgreSQL. Signed and notarised releases need the Developer ID
+# certificate (spec §20) and are not built here yet.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/package.yml
+      - apps/desktop/electron-builder*.yml
+      - apps/desktop/build/**
+      - apps/desktop/e2e/packaged.config.ts
+      - apps/desktop/e2e/packaged/**
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: package-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS DMG (universal, ad-hoc signed)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @joinery/desktop build
+      - name: Package
+        working-directory: apps/desktop
+        env:
+          # electron-builder skips signing in pull request builds unless told otherwise. The
+          # signature is ad-hoc: no certificate or secret is involved.
+          CSC_FOR_PULL_REQUEST: 'true'
+        run: >-
+          pnpm exec electron-builder --config electron-builder.adhoc.yml --mac dmg --universal
+          --publish never
+      - name: Check the signature and architectures
+        working-directory: apps/desktop/dist/mac-universal
+        run: |
+          codesign --verify --deep --strict --verbose=2 Joinery.app
+          codesign --display --verbose=2 Joinery.app 2>&1 | grep -E '^(Identifier|Format|Signature)'
+          lipo -archs "Joinery.app/Contents/MacOS/$(defaults read "$PWD/Joinery.app/Contents/Info" CFBundleExecutable)"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: joinery-macos-dmg
+          path: apps/desktop/dist/*.dmg
+          # A DMG is already compressed.
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - name: Start PostgreSQL
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
+        run: |
+          brew install postgresql@16
+          bin="$(brew --prefix postgresql@16)/bin"
+          "$bin/initdb" -D "$RUNNER_TEMP/pg" -U postgres --auth=trust >/dev/null
+          "$bin/pg_ctl" -D "$RUNNER_TEMP/pg" -l "$RUNNER_TEMP/pg.log" -w start \
+            -o "-p 5432 -k $RUNNER_TEMP -c listen_addresses=127.0.0.1"
+          "$bin/createdb" -h 127.0.0.1 -U postgres joinery_test
+      - name: Install from the DMG and smoke test
+        working-directory: apps/desktop
+        env:
+          JOINERY_TEST_POSTGRES_URL: postgres://postgres:postgres@127.0.0.1:5432/joinery_test
+          JOINERY_E2E_OUTPUT: ${{ runner.temp }}/packaged-results
+        run: |
+          mountpoint="$(mktemp -d)"
+          hdiutil attach dist/*.dmg -nobrowse -readonly -mountpoint "$mountpoint"
+          app="$RUNNER_TEMP/Applications/Joinery.app"
+          ditto "$mountpoint/Joinery.app" "$app"
+          hdiutil detach "$mountpoint"
+          export JOINERY_PACKAGED_APP="$app/Contents/MacOS/$(defaults read "$app/Contents/Info" CFBundleExecutable)"
+          pnpm exec playwright test -c e2e/packaged.config.ts
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: packaged-smoke-results
+          path: ${{ runner.temp }}/packaged-results
+          retention-days: 7

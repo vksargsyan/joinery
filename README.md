@@ -116,6 +116,11 @@ Run the desktop app in development:
 pnpm --filter @joinery/desktop dev
 ```
 
+Build installers for the current OS with `pnpm --filter @joinery/desktop package` (output in
+`apps/desktop/dist`). The Package workflow builds an ad-hoc signed universal macOS DMG and
+smoke-tests it after installing it; until releases are signed with a Developer ID, macOS asks
+you to allow the app in System Settings → Privacy & Security the first time it opens.
+
 Build and use the CLI:
 
 ```sh

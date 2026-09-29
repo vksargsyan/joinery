@@ -1,0 +1,8 @@
+# Test builds for macOS without a Developer ID certificate (the Package workflow, or a local
+# `electron-builder --config electron-builder.adhoc.yml --mac dmg --universal`). An ad-hoc
+# signature lets the app run on Apple Silicon; the hardened runtime is off because its library
+# validation rejects ad-hoc signed frameworks, and it only matters for notarised releases.
+extends: ./electron-builder.yml
+mac:
+  identity: '-'
+  hardenedRuntime: false
