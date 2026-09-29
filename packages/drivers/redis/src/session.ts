@@ -21,6 +21,7 @@ import {
   type AclUser,
   type ClientInfo,
   type CommandCatalog,
+  type ConfigChange,
   type InfoSections,
   type LatencyEvent,
   type LatencySample,
@@ -33,6 +34,7 @@ import { Cluster, type Redis } from 'ioredis';
 import { browseRedis } from './browse';
 import { addressOf, RedisConnection, type Arg } from './client';
 import { buildRedisConnectionPlan } from './config';
+import * as config from './config-service';
 import type { RedisContext } from './context';
 import { isReplyError, mapRedisError } from './errors';
 import { executeText } from './execute';
@@ -934,6 +936,29 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
     options: { readonly node?: string } = {},
   ): Promise<void> {
     return tools.configSet(this, parameter, value, options.node);
+  }
+
+  configNodes(): Promise<config.ConfigNode[]> {
+    return config.configNodes(this);
+  }
+
+  configRead(target?: config.ConfigTarget): Promise<config.ConfigSnapshot> {
+    return config.configRead(this, target);
+  }
+
+  configApply(
+    changes: readonly ConfigChange[],
+    target?: config.ConfigTarget,
+  ): Promise<config.ConfigApplyResult> {
+    return config.configApply(this, changes, target);
+  }
+
+  configRewrite(target?: config.ConfigTarget): Promise<config.ConfigNodeOutcome[]> {
+    return config.configRewrite(this, target);
+  }
+
+  configResetStat(target?: config.ConfigTarget): Promise<config.ConfigNodeOutcome[]> {
+    return config.configResetStat(this, target);
   }
 
   slowlogGet(count?: number, options: { readonly node?: string } = {}): Promise<SlowlogEntry[]> {

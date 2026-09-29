@@ -5,6 +5,7 @@ import type {
   ClientInfo,
   ClusterNodeInfo,
   CommandCatalog,
+  ConfigChange,
   InfoSections,
   LatencyEvent,
   LatencySample,
@@ -13,6 +14,14 @@ import type {
   RedisReply,
   SlowlogEntry,
 } from '@joinery/redis-tools';
+
+import type {
+  ConfigApplyResult,
+  ConfigNode,
+  ConfigNodeOutcome,
+  ConfigSnapshot,
+  ConfigTarget,
+} from './config-service';
 
 /**
  * The Redis session API (spec §10, §15): the generic Session contract plus key services and
@@ -717,6 +726,19 @@ export interface RedisSession extends Session {
   infoAll(options?: { readonly section?: string }): Promise<NodeInfo[]>;
   configGet(pattern: string, options?: { readonly node?: string }): Promise<ConfigValues>;
   configSet(parameter: string, value: string, options?: { readonly node?: string }): Promise<void>;
+  /** Nodes the configuration editor can target (Cluster nodes, Sentinel master and replicas). */
+  configNodes(): Promise<ConfigNode[]>;
+  /**
+   * CONFIG GET * per node (every primary by default in Cluster mode), secrets masked;
+   * NOT_SUPPORTED when the server refuses CONFIG (ACL, or renamed or disabled).
+   */
+  configRead(target?: ConfigTarget): Promise<ConfigSnapshot>;
+  /** CONFIG SET of several parameters, with a result per node and parameter. */
+  configApply(changes: readonly ConfigChange[], target?: ConfigTarget): Promise<ConfigApplyResult>;
+  /** CONFIG REWRITE on each node of the target. */
+  configRewrite(target?: ConfigTarget): Promise<ConfigNodeOutcome[]>;
+  /** CONFIG RESETSTAT on each node of the target. */
+  configResetStat(target?: ConfigTarget): Promise<ConfigNodeOutcome[]>;
   slowlogGet(count?: number, options?: { readonly node?: string }): Promise<SlowlogEntry[]>;
   slowlogLength(options?: { readonly node?: string }): Promise<number>;
   slowlogReset(options?: { readonly node?: string }): Promise<void>;
