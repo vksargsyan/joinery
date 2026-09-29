@@ -157,11 +157,14 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
   });
 
   it('closes the result on early return and stays usable', async () => {
+    // A millisecond per row: reading the rest would take over half an hour, so finishing
+    // within the limit below shows the query was killed rather than drained, even on a busy
+    // machine.
     const iterator = iterate(
       session,
       engine === 'mariadb'
-        ? 'SELECT seq FROM seq_1_to_2000000'
-        : `WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 2000000) SELECT ${RAISE_CTE_DEPTH} n FROM g`,
+        ? 'SELECT seq, SLEEP(0.001) FROM seq_1_to_2000000'
+        : `WITH RECURSIVE g(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < 2000000) SELECT ${RAISE_CTE_DEPTH} n, SLEEP(0.001) FROM g`,
       { executionId: execId(), pageSize: 100 },
     );
     let seen = 0;
@@ -175,7 +178,7 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
     }
     const started = Date.now();
     await iterator.return?.();
-    expect(Date.now() - started).toBeLessThan(5000);
+    expect(Date.now() - started).toBeLessThan(10_000);
     expect(seen).toBe(100);
     expect(await rows(session, 'SELECT 42')).toEqual([[42]]);
   });

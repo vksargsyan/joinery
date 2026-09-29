@@ -112,23 +112,34 @@ describe.skipIf(!REDIS_URL)('server tools (standalone)', () => {
 
   it('shows slow commands in the slow log', async () => {
     const marker = `${p}slow`;
-    // A script that busy-waits ~20 ms, over the default 10 ms slow log threshold.
-    const script = `-- ${marker}
-local t0 = redis.call('TIME')
-local start = tonumber(t0[1]) * 1000000 + tonumber(t0[2])
-while true do
-  local t = redis.call('TIME')
-  if tonumber(t[1]) * 1000000 + tonumber(t[2]) - start > 20000 then break end
-end
-return 1`;
-    await session.command(['EVAL', script, '0']);
-    const entries = await session.slowlogGet(50);
-    const entry = entries.find((e) => e.args.some((a) => dec(a)!.includes(marker)));
-    expect(entry).toBeDefined();
-    expect(entry!.durationMicros).toBeGreaterThanOrEqual(20_000);
-    expect(dec(entry!.args[0]!)!.toLowerCase()).toBe('eval');
-    expect(entry!.clientName).toBe('Joinery');
-    expect(await session.slowlogLength()).toBeGreaterThan(0);
+    // Log every command for the moment, so a marked command lands in the slow log without being
+    // slow: a busy script would block the whole server for the suites running beside this one
+    // (and scripts see a frozen clock on newer servers). A longer log keeps the entry from being
+    // pushed out by those suites' commands.
+    const settings = ['slowlog-log-slower-than', 'slowlog-max-len'] as const;
+    const original = await Promise.all(
+      settings.map(async (name) => (await session.configGet(name)).values[name]),
+    );
+    await session.command(['CONFIG', 'SET', settings[0], '0', settings[1], '100000']);
+    try {
+      await session.command(['ECHO', marker]);
+      const entries = await session.slowlogGet(100_000);
+      const entry = entries.find((e) => e.args.some((a) => dec(a)!.includes(marker)));
+      expect(entry).toBeDefined();
+      expect(entry!.durationMicros).toBeGreaterThanOrEqual(0);
+      expect(dec(entry!.args[0]!)!.toLowerCase()).toBe('echo');
+      expect(entry!.clientName).toBe('Joinery');
+      expect(await session.slowlogLength()).toBeGreaterThan(0);
+    } finally {
+      await session.command([
+        'CONFIG',
+        'SET',
+        settings[0],
+        original[0] ?? '10000',
+        settings[1],
+        original[1] ?? '128',
+      ]);
+    }
   });
 
   it('lists and kills clients', async () => {
