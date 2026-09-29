@@ -1,7 +1,8 @@
 import type { EngineId } from './engines';
 import { atLeast } from './version';
 
-export type ExplainFormat = 'text' | 'json' | 'tree' | 'analyze';
+export const EXPLAIN_FORMATS = ['text', 'json', 'tree', 'analyze'] as const;
+export type ExplainFormat = (typeof EXPLAIN_FORMATS)[number];
 
 /**
  * What an adapter and the connected server support (spec §2). The UI shows only what is

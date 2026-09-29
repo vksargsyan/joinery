@@ -30,29 +30,31 @@ export interface IntrospectScope {
   readonly include?: readonly SchemaObjectKind[];
 }
 
-export type BrowseNodeKind =
-  | 'database'
-  | 'schema'
-  | 'folder'
-  | 'table'
-  | 'partition'
-  | 'view'
-  | 'materialized-view'
-  | 'function'
-  | 'procedure'
-  | 'trigger'
-  | 'event'
-  | 'sequence'
-  | 'type'
-  | 'extension'
-  | 'foreign-table'
-  | 'user'
-  | 'role'
-  | 'column'
-  | 'index'
-  | 'collection'
-  | 'key'
-  | 'other';
+export const BROWSE_NODE_KINDS = [
+  'database',
+  'schema',
+  'folder',
+  'table',
+  'partition',
+  'view',
+  'materialized-view',
+  'function',
+  'procedure',
+  'trigger',
+  'event',
+  'sequence',
+  'type',
+  'extension',
+  'foreign-table',
+  'user',
+  'role',
+  'column',
+  'index',
+  'collection',
+  'key',
+  'other',
+] as const;
+export type BrowseNodeKind = (typeof BROWSE_NODE_KINDS)[number];
 
 /** One node of the lazily loaded object explorer tree (spec §5). */
 export interface BrowseNode {

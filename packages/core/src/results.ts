@@ -4,25 +4,27 @@
  * so chunks cross MessagePorts unchanged.
  */
 
-export type ColumnKind =
-  | 'string'
-  | 'integer'
-  | 'bigint'
-  | 'decimal'
-  | 'float'
-  | 'boolean'
-  | 'date'
-  | 'time'
-  | 'datetime'
-  | 'timestamp'
-  | 'interval'
-  | 'json'
-  | 'binary'
-  | 'uuid'
-  | 'array'
-  | 'enum'
-  | 'geometry'
-  | 'unknown';
+export const COLUMN_KINDS = [
+  'string',
+  'integer',
+  'bigint',
+  'decimal',
+  'float',
+  'boolean',
+  'date',
+  'time',
+  'datetime',
+  'timestamp',
+  'interval',
+  'json',
+  'binary',
+  'uuid',
+  'array',
+  'enum',
+  'geometry',
+  'unknown',
+] as const;
+export type ColumnKind = (typeof COLUMN_KINDS)[number];
 
 export interface ColumnMeta {
   readonly name: string;
@@ -66,7 +68,8 @@ export interface ExecOptions {
   readonly signal?: AbortSignal;
 }
 
-export type NoticeSeverity = 'debug' | 'info' | 'notice' | 'warning';
+export const NOTICE_SEVERITIES = ['debug', 'info', 'notice', 'warning'] as const;
+export type NoticeSeverity = (typeof NOTICE_SEVERITIES)[number];
 
 /**
  * What `Session.execute` yields for one statement, in order:
