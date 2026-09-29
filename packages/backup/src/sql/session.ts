@@ -211,7 +211,10 @@ export async function createDatabase(
     return;
   }
   const word = /^[A-Za-z0-9_]+$/;
-  const charset = options['charset'] !== undefined && word.test(options['charset']) ? options['charset'] : 'utf8mb4';
+  const charset =
+    options['charset'] !== undefined && word.test(options['charset'])
+      ? options['charset']
+      : 'utf8mb4';
   const known = async (sql: string, value: string): Promise<boolean> =>
     (await queryRows(session, sql, [value])).length > 0;
   const collation = options['collation'];
@@ -219,7 +222,10 @@ export async function createDatabase(
     collation !== undefined &&
     word.test(collation) &&
     collation.startsWith(`${charset}_`) &&
-    (await known('SELECT 1 FROM information_schema.COLLATIONS WHERE COLLATION_NAME = ?', collation));
+    (await known(
+      'SELECT 1 FROM information_schema.COLLATIONS WHERE COLLATION_NAME = ?',
+      collation,
+    ));
   await drain(
     session,
     `CREATE DATABASE ${ident} CHARACTER SET ${charset}${useCollation ? ` COLLATE ${collation}` : ''}`,

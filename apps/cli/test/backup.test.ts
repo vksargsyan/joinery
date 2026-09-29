@@ -155,7 +155,7 @@ describe('flags', () => {
 
 describe('joinery backup', () => {
   it('refuses options that do not go together before connecting', async () => {
-    const session = new FakeSession('postgres', () => undefined);
+    const session = new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 }));
     const adapter = new FakeAdapter('postgres', session);
     const cases: [string[], RegExp][] = [
       [['--out', 'x.sql', '--encrypt'], /Encryption needs the Joinery archive/],
@@ -177,7 +177,7 @@ describe('joinery backup', () => {
   });
 
   it('takes the passphrase from the environment or a prompt, never from argv', async () => {
-    const session = new FakeSession('postgres', () => undefined);
+    const session = new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 }));
     const adapter = new FakeAdapter('postgres', session);
     const none = await run(['backup', URI, '--out', 'x.jbak', '--encrypt'], { adapter, cwd: dir });
     expect(none.code).toBe(2);
@@ -209,7 +209,10 @@ describe('joinery restore', () => {
   it('lists an archive, unlocking it with the passphrase from the environment', async () => {
     await archive('plain.jbak');
     await archive('sealed.jbak', PASSPHRASE);
-    const adapter = new FakeAdapter('postgres', new FakeSession('postgres', () => undefined));
+    const adapter = new FakeAdapter(
+      'postgres',
+      new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 })),
+    );
     const plain = await run(['restore', URI, 'plain.jbak', '--list'], { adapter, cwd: dir });
     expect(plain.code, plain.stderr).toBe(0);
     expect(plain.stdout.split('\n')).toEqual([
@@ -240,7 +243,10 @@ describe('joinery restore', () => {
 
   it('refuses a read-only target and a selection that is not there', async () => {
     await archive('plain.jbak');
-    const adapter = new FakeAdapter('postgres', new FakeSession('postgres', () => undefined));
+    const adapter = new FakeAdapter(
+      'postgres',
+      new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 })),
+    );
     const readOnly = await run(['restore', URI, 'plain.jbak', '--read-only'], {
       adapter,
       cwd: dir,
