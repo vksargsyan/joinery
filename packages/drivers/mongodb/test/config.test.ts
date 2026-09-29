@@ -207,7 +207,7 @@ describe('buildMongoClientPlan', () => {
     ).toThrow(expect.objectContaining({ code: 'NOT_SUPPORTED' }));
   });
 
-  it('maps X.509 and AWS IAM', () => {
+  it('maps X.509', () => {
     const x509 = buildMongoClientPlan(
       resolved({
         auth: { method: 'clientCertificate' },
@@ -232,8 +232,6 @@ describe('buildMongoClientPlan', () => {
         resolved({ auth: { method: 'clientCertificate' }, tls: { mode: 'disable' } }),
       ),
     ).toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }));
-    const aws = buildMongoClientPlan(resolved({ auth: { method: 'awsIam', region: 'eu-west-1' } }));
-    expect(aws.options).toMatchObject({ authMechanism: 'MONGODB-AWS', authSource: '$external' });
   });
 
   it('maps the four TLS modes', () => {
@@ -351,6 +349,9 @@ describe('redactSecrets', () => {
     );
     expect(redactSecrets('tlsCertificateKeyFilePassword=abc&x=1', [])).toBe(
       'tlsCertificateKeyFilePassword=***&x=1',
+    );
+    expect(redactSecrets('?authMechanismProperties=SESSION_TOKEN:abc,X:y&x=1', [])).toBe(
+      '?authMechanismProperties=***&x=1',
     );
     expect(redactSecrets('password hunter2 rejected', ['hunter2'])).toBe('password *** rejected');
     // Short secrets only where they stand alone.

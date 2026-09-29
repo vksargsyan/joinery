@@ -139,8 +139,7 @@ const PASSWORD_MECHANISMS: Readonly<Record<string, AuthMechanism>> = {
  *   since replica set discovery would try member names only the far side can reach; host
  *   lists, SRV and multi-host URIs cannot be tunnelled (NOT_SUPPORTED from the tunnel layer).
  * - Auth: `none`; `password` with SCRAM-SHA-1/256 (or LDAP as PLAIN in `$external`) from
- *   `mechanism`; `clientCertificate` as MONGODB-X509 from the TLS certificate; `awsIam` as
- *   MONGODB-AWS (credentials from the AWS SDK credential chain).
+ *   `mechanism`; `clientCertificate` as MONGODB-X509 from the TLS certificate.
  * - TLS: disable → no TLS; require → tlsAllowInvalidCertificates; verify-ca →
  *   tlsAllowInvalidHostnames; verify-full → full checks (pinned to the profile host name when
  *   tunnelled or when a server name override is set). CA, client certificate, key and key
@@ -356,14 +355,12 @@ export function authOptions(
         ...(user !== undefined ? { auth: { username: user } } : {}),
       };
     }
-    case 'awsIam':
-      return { authMechanism: 'MONGODB-AWS', authSource: '$external' };
     case 'apiKey':
     case 'bearer':
       throw new JoineryError({
         code: 'NOT_SUPPORTED',
         message: `"${auth.method}" authentication does not apply to MongoDB`,
-        hint: 'Use password (SCRAM or LDAP), X.509 or AWS IAM authentication',
+        hint: 'Use password (SCRAM or LDAP) or X.509 authentication',
       });
   }
 }
@@ -376,10 +373,9 @@ export function authOptions(
 export function redactSecrets(text: string, secrets: readonly string[]): string {
   let out = text
     .replace(/(mongodb(?:\+srv)?:\/\/)[^@/\s]*@/gi, '$1<credentials>@')
-    .replace(
-      /((?:tlsCertificateKeyFilePassword|sslPEMKeyPassword|AWS_SESSION_TOKEN)[=:])[^&,\s]*/gi,
-      '$1***',
-    );
+    .replace(/((?:tlsCertificateKeyFilePassword|sslPEMKeyPassword)[=:])[^&,\s]*/gi, '$1***')
+    // Mechanism properties can carry a session token among other key:value pairs.
+    .replace(/(authMechanismProperties=)[^&\s]*/gi, '$1***');
   for (const secret of secrets) {
     if (secret.length >= 4) {
       out = out.split(secret).join('***');

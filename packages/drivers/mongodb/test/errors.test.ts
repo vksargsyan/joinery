@@ -295,15 +295,12 @@ describe('mapMongoError', () => {
       code: 'VALIDATION_FAILED',
       message: 'Invalid scheme in mongodb://<credentials>@h',
     });
-    const missing = new MongoMissingDependencyError(
-      'Optional module `@aws-sdk/credential-providers` not found.',
-      {
-        dependencyName: '@aws-sdk/credential-providers',
-      } as never,
-    );
+    const missing = new MongoMissingDependencyError('Optional module `kerberos` not found.', {
+      dependencyName: 'kerberos',
+    } as never);
     expect(mapMongoError(missing, context)).toMatchObject({
       code: 'NOT_SUPPORTED',
-      hint: expect.stringContaining('@aws-sdk/credential-providers'),
+      hint: expect.stringContaining('kerberos'),
     });
     expect(JSON.stringify(mapMongoError(new Error('bad hunter2'), context))).not.toContain(
       'hunter2',

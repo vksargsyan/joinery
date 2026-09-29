@@ -283,7 +283,7 @@ class Params {
   }
 
   /**
-   * Takes a secret out of the value of parameter `name` (e.g. AWS_SESSION_TOKEN inside
+   * Takes a secret out of the value of parameter `name` (e.g. a session token inside
    * authMechanismProperties): `clean` returns the value without it, '' when nothing is left
    * (the parameter is then dropped), or undefined when the value holds no secret. The secret is
    * reported as `reported` among the ignored parameters.
@@ -538,28 +538,13 @@ function buildMysql(engine: 'mysql' | 'mariadb', parts: UriParts, params: Params
 }
 
 /** Mechanisms whose credentials live in the `$external` database. */
-const EXTERNAL_MECHANISMS = new Set([
-  'MONGODB-X509',
-  'PLAIN',
-  'GSSAPI',
-  'MONGODB-AWS',
-  'MONGODB-OIDC',
-]);
+const EXTERNAL_MECHANISMS = new Set(['MONGODB-X509', 'PLAIN', 'GSSAPI', 'MONGODB-OIDC']);
 /** Mechanisms the profile's auth can express. */
-const MAPPED_MECHANISMS = new Set([
-  'SCRAM-SHA-1',
-  'SCRAM-SHA-256',
-  'PLAIN',
-  'MONGODB-X509',
-  'MONGODB-AWS',
-]);
+const MAPPED_MECHANISMS = new Set(['SCRAM-SHA-1', 'SCRAM-SHA-256', 'PLAIN', 'MONGODB-X509']);
 /** Read preference modes a profile holds, in the driver's spelling. */
 const READ_PREFERENCES = connectionOptionsSchema.shape.readPreference.unwrap().options;
-/**
- * The region an AWS IAM profile made from a URI records. MONGODB-AWS takes its credentials and
- * STS endpoint from the AWS SDK's chain, not from the profile, so this only fills the field.
- */
-const AWS_DEFAULT_REGION = 'us-east-1';
+/** A session token among authMechanismProperties' key:value pairs. */
+const MECHANISM_TOKEN = /^\s*\w*TOKEN\s*:/i;
 
 function buildMongo(parts: UriParts, params: Params): BuiltProfile {
   const srv = parts.scheme === 'mongodb+srv';
@@ -595,16 +580,16 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
   const statedAuthSource = params.take('authSource');
   const authSource =
     statedAuthSource ?? (external || srv || user === undefined ? undefined : database);
-  // A TXT record's (or the driver's) AWS session token lives inside another option's value.
-  params.removeSecret('authMechanismProperties', 'AWS_SESSION_TOKEN', (value) => {
+  // A session token lives inside another option's value.
+  params.removeSecret('authMechanismProperties', 'authMechanismProperties token', (value) => {
     const properties = value.split(',');
-    const kept = properties.filter((property) => !/^\s*AWS_SESSION_TOKEN\s*:/i.test(property));
+    const kept = properties.filter((property) => !MECHANISM_TOKEN.test(property));
     return kept.length === properties.length ? undefined : kept.join(',');
   });
 
   // Options the profile holds in its own fields; a URI kept whole carries them itself.
   const lifted: Pick<OptionsDraft, 'authSource' | 'readPreference' | 'directConnection'> = {};
-  // The profile's default is $external for certificate, LDAP and AWS logins, admin otherwise;
+  // The profile's default is $external for certificate and LDAP logins, admin otherwise;
   // stating it where the URI names no database (or for an external login) changes nothing.
   const profileAuthSource = external ? '$external' : 'admin';
   if (authSource && !(authSource === profileAuthSource && (external || database === undefined))) {
@@ -633,9 +618,7 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
   const auth: AuthDraft | undefined =
     mechanism === 'MONGODB-X509'
       ? { method: 'clientCertificate', ...(user ? { user } : {}) }
-      : mechanism === 'MONGODB-AWS'
-        ? { method: 'awsIam', region: AWS_DEFAULT_REGION, ...(user ? { user } : {}) }
-        : passwordAuth(user, password, mechanism);
+      : passwordAuth(user, password, mechanism);
 
   const hosts = parts.hosts;
   const [first] = hosts;
@@ -674,8 +657,7 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
     auth,
     tls,
     options: keepsUri ? options : { ...lifted, ...options },
-    // X.509 authenticates with the certificate and MONGODB-AWS with the AWS SDK's credentials
-    // (a URI's password is then an AWS secret key, which a profile never keeps).
+    // X.509 authenticates with the certificate, so a URI's password is not kept.
     password: auth?.method === 'password' ? password : undefined,
   };
 }

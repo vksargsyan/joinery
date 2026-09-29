@@ -79,12 +79,6 @@ export const authSchema = z.discriminatedUnion('method', [
   z.object({ method: z.literal('clientCertificate'), user: z.string().optional() }),
   z.object({ method: z.literal('apiKey'), apiKey: secretRefSchema }),
   z.object({ method: z.literal('bearer'), token: secretRefSchema }),
-  z.object({
-    method: z.literal('awsIam'),
-    user: z.string().optional(),
-    region: z.string().min(1),
-    awsProfile: z.string().optional(),
-  }),
 ]);
 export type Auth = z.infer<typeof authSchema>;
 

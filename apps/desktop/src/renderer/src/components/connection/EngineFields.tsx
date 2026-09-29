@@ -48,7 +48,6 @@ const MONGO_AUTH_LABELS: Readonly<Record<FormAuthMethod, string>> = {
   none: 'None',
   password: 'User and password',
   clientCertificate: 'X.509 client certificate',
-  awsIam: 'AWS IAM',
 };
 
 const MECHANISM_LABELS: Readonly<Record<(typeof MONGO_MECHANISMS)[number], string>> = {
@@ -189,29 +188,6 @@ export function MongoFields(props: SectionProps) {
           <Note>
             Signs in (in $external) with the client certificate and key chosen under TLS below; TLS
             must be on. One PEM file holding both can be chosen for each.
-          </Note>
-        </>
-      )}
-      {authMethod === 'awsIam' && (
-        <>
-          <Field label="AWS region" htmlFor="cx-aws-region" error={errors.awsRegion?.message}>
-            <Input
-              id="cx-aws-region"
-              placeholder="eu-west-1"
-              {...register('awsRegion')}
-              aria-invalid={!!errors.awsRegion}
-            />
-          </Field>
-          <Field
-            label="AWS profile"
-            htmlFor="cx-aws-profile"
-            hint="Optional; empty uses the default credential chain"
-          >
-            <Input id="cx-aws-profile" placeholder="default" {...register('awsProfile')} />
-          </Field>
-          <Note>
-            Signs in (in $external) with AWS credentials from that profile in ~/.aws, or from the
-            environment or the instance role. No password is stored.
           </Note>
         </>
       )}

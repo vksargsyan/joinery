@@ -366,20 +366,15 @@ const CASES: readonly Case[] = [
     },
   },
   {
-    uri: 'mongodb://AKIDEXAMPLE:wJalrXUtnFEMI@db.example.com/?authMechanism=MONGODB-AWS&authSource=$external&authMechanismProperties=AWS_SESSION_TOKEN:FwoGZXIvY',
-    endpoint: { kind: 'host', host: 'db.example.com', port: 27017 },
-    auth: { method: 'awsIam', user: 'AKIDEXAMPLE', region: 'us-east-1' },
-    ignored: ['AWS_SESSION_TOKEN'],
+    // A session token is taken out of authMechanismProperties; the rest is kept.
+    uri: 'mongodb://h/?authMechanismProperties=SESSION_TOKEN%3Ax%2CSERVICE_NAME%3Amongo',
+    endpoint: { kind: 'uri', uri: 'mongodb://h/?authMechanismProperties=SERVICE_NAME%3Amongo' },
+    ignored: ['authMechanismProperties token'],
   },
   {
-    // Only the token is taken out of authMechanismProperties; the rest is kept.
-    uri: 'mongodb://h/?authMechanism=MONGODB-AWS&authMechanismProperties=AWS_SESSION_TOKEN%3Ax%2CSERVICE_NAME%3Amongo',
-    endpoint: {
-      kind: 'uri',
-      uri: 'mongodb://h/?authMechanism=MONGODB-AWS&authMechanismProperties=SERVICE_NAME%3Amongo',
-    },
-    auth: { method: 'awsIam', region: 'us-east-1' },
-    ignored: ['AWS_SESSION_TOKEN'],
+    uri: 'mongodb://h/?authMechanismProperties=SESSION_TOKEN:x',
+    endpoint: { kind: 'host', host: 'h', port: 27017 },
+    ignored: ['authMechanismProperties token'],
   },
   {
     uri: 'mongodb://h/?proxyHost=p&proxyPort=1080&proxyUsername=me&proxyPassword=hunter2',

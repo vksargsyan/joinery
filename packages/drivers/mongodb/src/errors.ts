@@ -343,7 +343,6 @@ export function mapMongoError(error: unknown, context: MongoErrorContext): Joine
         hint: `This needs the optional package ${errorProp(error, 'dependencyName') ?? 'named above'}, which Joinery does not ship`,
       });
     case 'MongoMissingCredentialsError':
-    case 'MongoAWSError':
     case 'MongoOIDCError':
       return make('AUTH_FAILED', {
         hint: 'Check the credentials this authentication method needs',

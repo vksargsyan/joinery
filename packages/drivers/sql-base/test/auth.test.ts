@@ -60,7 +60,7 @@ describe('resolveCredentials', () => {
   });
 
   it('refuses auth methods the SQL drivers do not implement', () => {
-    expect(() => credentials({ auth: { method: 'awsIam', region: 'eu-west-1' } })).toThrow(
+    expect(() => credentials({ auth: { method: 'bearer', token: { id: 't' } } })).toThrow(
       expect.objectContaining({ code: 'NOT_SUPPORTED' }),
     );
     expect(() => credentials({ auth: { method: 'apiKey', apiKey: { id: 'k' } } })).toThrow(

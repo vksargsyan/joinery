@@ -64,12 +64,6 @@ export function resolveCredentials(
       const user = auth.user ?? endpoint.user;
       return { ...(user !== undefined ? { user } : {}), clientCertificate: true };
     }
-    case 'awsIam':
-      throw new JoineryError({
-        code: 'NOT_SUPPORTED',
-        message: 'AWS IAM authentication is not supported yet',
-        hint: 'Use password authentication for now',
-      });
     case 'apiKey':
     case 'bearer':
       throw new JoineryError({

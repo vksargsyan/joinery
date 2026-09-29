@@ -69,7 +69,7 @@ function isFormEndpointKind(kind: string): kind is FormEndpointKind {
   return (FORM_ENDPOINT_KINDS as readonly string[]).includes(kind);
 }
 
-export const AUTH_METHODS = ['none', 'password', 'clientCertificate', 'awsIam'] as const;
+export const AUTH_METHODS = ['none', 'password', 'clientCertificate'] as const;
 export type FormAuthMethod = (typeof AUTH_METHODS)[number];
 
 /**
@@ -80,7 +80,7 @@ export const ENGINE_AUTH_METHODS: Readonly<Record<DialogEngine, readonly FormAut
   postgres: ['password'],
   mysql: ['password'],
   mariadb: ['password'],
-  mongodb: ['none', 'password', 'clientCertificate', 'awsIam'],
+  mongodb: ['none', 'password', 'clientCertificate'],
   redis: ['none', 'password'],
 };
 
@@ -91,7 +91,7 @@ export const ENGINE_AUTH_METHODS: Readonly<Record<DialogEngine, readonly FormAut
  */
 export const MONGO_MECHANISMS = ['SCRAM-SHA-256', 'SCRAM-SHA-1', 'PLAIN', ''] as const;
 
-/** The database that holds LDAP, X.509 and AWS users in MongoDB. */
+/** The database that holds LDAP and X.509 users in MongoDB. */
 export const EXTERNAL_AUTH_SOURCE = '$external';
 
 /** Redis Sentinel's default port. */
@@ -204,8 +204,6 @@ export const connectionFormSchema = z
     passwordMode: z.enum(PASSWORD_MODES),
     /** SASL mechanism or auth plugin; the dialog edits it for MongoDB and keeps it otherwise. */
     mechanism: z.string().trim().max(64),
-    awsRegion: z.string().trim().max(64),
-    awsProfile: z.string().trim().max(255),
     /** MongoDB: the database holding the user; empty uses the driver's default (admin). */
     authSource: z.string().trim().max(255),
     directConnection: z.boolean(),
@@ -335,9 +333,6 @@ function authIssues(form: ConnectionFormValues, issue: IssueAt): void {
       issue(['keyPath'], 'Choose the client key (the same file when the PEM holds both)');
     }
   }
-  if (form.authMethod === 'awsIam' && form.awsRegion === '') {
-    issue(['awsRegion'], 'Enter the AWS region');
-  }
 }
 
 function optionIssues(form: ConnectionFormValues, issue: IssueAt): void {
@@ -437,8 +432,8 @@ export function showsDatabase(
 }
 
 /**
- * Whether the form edits MongoDB's authentication database: for a user and SCRAM password. LDAP,
- * X.509 and AWS users always live in `$external`.
+ * Whether the form edits MongoDB's authentication database: for a user and SCRAM password. LDAP
+ * and X.509 users always live in `$external`.
  */
 export function showsAuthSource(
   form: Pick<ConnectionFormValues, 'engine' | 'endpointKind' | 'authMethod' | 'mechanism'>,
@@ -504,8 +499,6 @@ export function defaultFormValues(engine: DialogEngine = 'postgres'): Connection
     password: '',
     passwordMode: 'save',
     mechanism: engine === 'mongodb' ? 'SCRAM-SHA-256' : '',
-    awsRegion: '',
-    awsProfile: '',
     authSource: '',
     directConnection: false,
     readPreference: '',
@@ -567,8 +560,6 @@ export function switchEngine(
       ? values.authMethod
       : fresh.authMethod,
     mechanism: fresh.mechanism,
-    awsRegion: '',
-    awsProfile: '',
     authSource: '',
     directConnection: false,
     readPreference: '',
@@ -650,10 +641,6 @@ export function profileToForm(profile: ConnectionProfile): ConnectionFormValues 
     passwordMode = auth.password ? auth.password.policy : 'none';
   } else if (auth.method === 'clientCertificate') {
     values.user = auth.user ?? '';
-  } else if (auth.method === 'awsIam') {
-    values.user = auth.user ?? '';
-    values.awsRegion = auth.region;
-    values.awsProfile = auth.awsProfile ?? '';
   }
   const method = ENGINE_AUTH_METHODS[engine].find((known) => known === auth.method);
   if (method !== undefined) values.authMethod = method;
@@ -858,13 +845,6 @@ function authFromForm(form: ConnectionFormValues, passwordRef: SecretRef | undef
       };
     case 'clientCertificate':
       return { method: 'clientCertificate', ...user };
-    case 'awsIam':
-      return {
-        method: 'awsIam',
-        ...user,
-        region: form.awsRegion,
-        ...(form.awsProfile === '' ? {} : { awsProfile: form.awsProfile }),
-      };
   }
 }
 
@@ -917,14 +897,14 @@ function optionsFromForm(
 
 /**
  * MongoDB's authSource for the form's sign-in: what the user typed for SCRAM, `$external` for
- * LDAP (the only place LDAP users can be), and for X.509 and AWS only an explicit `$external`
- * (their default; any other database would be refused by the driver).
+ * LDAP (the only place LDAP users can be), and for X.509 only an explicit `$external` (its
+ * default; any other database would be refused by the driver).
  */
 function mongoAuthSource(form: ConnectionFormValues): string | undefined {
   if (form.authMethod === 'password') {
     return form.mechanism === 'PLAIN' ? EXTERNAL_AUTH_SOURCE : optional(form.authSource);
   }
-  if (form.authMethod === 'clientCertificate' || form.authMethod === 'awsIam') {
+  if (form.authMethod === 'clientCertificate') {
     return form.authSource === EXTERNAL_AUTH_SOURCE ? EXTERNAL_AUTH_SOURCE : undefined;
   }
   return undefined;

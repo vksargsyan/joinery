@@ -36,8 +36,8 @@ const URI_PARAM_NAMES = /[?&;]([^=?&;#]*)=/g;
  */
 const SECRET_PARAM_NAME =
   /(?:password|passwd|passphrase)\d*$|^(?:pwd|pass)$|secret|token$|(?:api|access)[-_]?key$/i;
-/** MongoDB's authMechanismProperties can carry the temporary AWS credentials' session token. */
-const AWS_SESSION_TOKEN = /[?&;]authMechanismProperties=[^&;#]*AWS_SESSION_TOKEN(?::|%3A)/i;
+/** MongoDB's authMechanismProperties can carry a session token among its key:value pairs. */
+const MECHANISM_TOKEN = /[?&;]authMechanismProperties=(?:[^&;#]*(?:,|%2C))?\w*TOKEN(?::|%3A)/i;
 
 /**
  * True when a connection URI or node URL carries a password or token: in its user info
@@ -47,7 +47,7 @@ const AWS_SESSION_TOKEN = /[?&;]authMechanismProperties=[^&;#]*AWS_SESSION_TOKEN
 export function uriCarriesSecret(uri: string): boolean {
   return (
     authorityHasPassword(uri) ||
-    AWS_SESSION_TOKEN.test(uri) ||
+    MECHANISM_TOKEN.test(uri) ||
     [...uri.matchAll(URI_PARAM_NAMES)].some((match) =>
       SECRET_PARAM_NAME.test(decodeOrKeep(match[1] ?? '')),
     )

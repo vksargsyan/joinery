@@ -222,8 +222,6 @@ describe('MongoDB form validation', () => {
     expect(
       issues(mongo({ authMethod: 'clientCertificate', certPath: '/c.pem', keyPath: '/c.pem' })),
     ).toEqual({});
-    expect(issues(mongo({ authMethod: 'awsIam' }))).toEqual({ awsRegion: 'Enter the AWS region' });
-    expect(issues(mongo({ authMethod: 'awsIam', awsRegion: 'eu-west-1' }))).toEqual({});
   });
 
   it('checks database names, the authentication database and the delimiter', () => {
@@ -397,11 +395,6 @@ describe('MongoDB profile ↔ form', () => {
       },
       options: { authSource: '$external' },
     },
-    'AWS IAM': {
-      endpoint: { kind: 'host', host: 'docdb', port: 27017 },
-      auth: { method: 'awsIam', region: 'eu-west-1', awsProfile: 'prod' },
-      tls: { mode: 'verify-full' },
-    },
     'an explicit directConnection=false and a negotiated mechanism': {
       endpoint: { kind: 'host', host: 'db', port: 27017 },
       auth: { method: 'password', user: 'app' },
@@ -437,8 +430,6 @@ describe('MongoDB profile ↔ form', () => {
       authMethod: 'none',
       readPreference: 'nearest',
     });
-    const aws = roundTrip({ engine: 'mongodb', ...cases['AWS IAM'] }).values;
-    expect(aws).toMatchObject({ authMethod: 'awsIam', awsRegion: 'eu-west-1', awsProfile: 'prod' });
     const srv = roundTrip({ engine: 'mongodb', ...cases['SRV record and LDAP'] }).values;
     expect(srv).toMatchObject({
       endpointKind: 'srv',
@@ -494,7 +485,7 @@ describe('MongoDB profile ↔ form', () => {
     expect(secrets).toEqual([{ ref: passwordRef, value: 'hunter2', previousPolicy: undefined }]);
   });
 
-  it('puts LDAP users in $external and keeps other databases away from X.509 and AWS', () => {
+  it('puts LDAP users in $external and keeps other databases away from X.509', () => {
     const ldap = formToProfile(
       mongo({ authMethod: 'password', user: 'u', mechanism: 'PLAIN', authSource: 'admin' }),
     );
