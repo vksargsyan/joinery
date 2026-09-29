@@ -8,10 +8,10 @@ end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreS
 
 ## Status
 
-The foundation, the SQL MVP and the first part of the NoSQL modules are built: MySQL, MariaDB
-and PostgreSQL work end to end in the desktop app and on the command line, and MongoDB and Redis
-(or Valkey) connect, browse, query and edit there too. Elasticsearch and OpenSearch are designed
-for (engine ids, capability flags, profile shapes) but have no drivers yet.
+The foundation, the SQL MVP and most of the NoSQL modules are built: MySQL, MariaDB and PostgreSQL
+work end to end in the desktop app and on the command line, and MongoDB and Redis (or Valkey)
+connect, browse, query and edit there too. Elasticsearch and OpenSearch are designed for (engine
+ids, capability flags, profile shapes) but have no drivers yet.
 
 What works today:
 
@@ -56,7 +56,9 @@ What works today:
   with a mongosh-syntax query bar kept in step with the generated find(), tree, table (with
   drill-down into arrays and sub-documents) and JSON views, a document editor with Extended JSON
   types and conflict detection, bulk update and delete with a matched-count preview, visual
-  explain that flags collection scans, and a command console.
+  explain that flags collection scans, an aggregation editor with per-stage previews, an index
+  manager, schema analysis exported as JSON Schema or applied as a validator, collection and view
+  options, a change stream viewer, a GridFS browser, users and roles, and a command console.
 - **Redis and Valkey**: standalone, Sentinel and Cluster with ACL users; a SCAN-based key browser
   with a namespace tree, type filters and lazy memory sizes (cluster-wide in Cluster mode);
   editors for strings, hashes, lists, sets, sorted sets, streams (groups and pending entries),
@@ -68,10 +70,9 @@ What works today:
 
 Not built yet: the scheduler, backup and restore, database-to-database data transfer, Excel and
 XML import and export, the visual query builder and ER modelling, explain plan views for SQL,
-server tools, cloud sync and the AI assistant; for MongoDB the aggregation editor, index manager,
-schema analysis, change stream viewer, GridFS browser, users and roles editor, SQL to MQL, code
-export and the embedded mongosh shell; the Elasticsearch and OpenSearch module. The product
-specification lists the full scope.
+server tools, cloud sync and the AI assistant; for MongoDB the visual query builder, SQL to MQL,
+code export and the embedded mongosh shell; RediSearch and offline RDB analysis; the
+Elasticsearch and OpenSearch module. The product specification lists the full scope.
 
 ## Repository layout
 

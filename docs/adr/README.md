@@ -11,3 +11,4 @@ supersede it with a new one.
 | [0004](0004-desktop-ports-and-protocol.md)   | Desktop wiring: MessagePorts into the page, app:// scheme        | Accepted |
 | [0005](0005-autocomplete-on-the-lexer.md)    | Autocomplete on Joinery's lexer, not the parser's suggestion API | Accepted |
 | [0006](0006-job-runner-process.md)           | Long jobs in a job runner process; host keys checked in main     | Accepted |
+| [0007](0007-nosql-engine-services.md)        | MongoDB and Redis: engine services beside the Session contract   | Accepted |
