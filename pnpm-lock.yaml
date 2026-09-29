@@ -99,6 +99,9 @@ importers:
         specifier: ^1.17.0
         version: 1.17.0
     devDependencies:
+      '@joinery/backup':
+        specifier: workspace:*
+        version: link:../../packages/backup
       '@joinery/core':
         specifier: workspace:*
         version: link:../../packages/core

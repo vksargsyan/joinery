@@ -4,6 +4,7 @@ import { DB_TABLE_MODES, type DbTableMode, type FieldShape } from '@joinery/tran
 import { Command, CommanderError, Option } from 'commander';
 
 import packageJson from '../package.json' with { type: 'json' };
+import { addBackupCommands } from './commands/backup-cli';
 import { compareCommand } from './commands/compare';
 import { dataCompareCommand } from './commands/data-compare';
 import { ddlCommand } from './commands/ddl';
@@ -116,6 +117,7 @@ Environment:
   JOINERY_PROXY_PASSWORD     proxy password (a --proxy URL may carry it too)
   JOINERY_PASSPHRASE         seals passwords the CLI saves (the OS keychain is app-only)
   JOINERY_EXPORT_PASSPHRASE  passphrase for profiles export/import files
+  JOINERY_BACKUP_PASSPHRASE  passphrase of encrypted backups (backup --encrypt, restore)
   NO_COLOR                   turn colours off
 
 Exit codes:
@@ -204,6 +206,8 @@ const TUNNEL_COMMANDS = new Set([
   'export',
   'run-file',
   'transfer',
+  'backup',
+  'restore',
 ]);
 
 function addTunnelOptions(command: Command): void {
@@ -884,6 +888,9 @@ Examples:
     .action((source: string, target: string, options: TransferCliOptions) => {
       schedule((runtime) => transferDbCommand(runtime, source, target, transferDbOptions(options)));
     });
+
+  // backup, restore -------------------------------------------------------------------------
+  addBackupCommands(program, schedule, { tlsOption, yesOption, tunnelFlags });
 
   // profiles ---------------------------------------------------------------------------------
   const profiles = program

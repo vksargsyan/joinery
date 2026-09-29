@@ -30,6 +30,7 @@
     "ssh2": "^1.17.0"
   },
   "devDependencies": {
+    "@joinery/backup": "workspace:*",
     "@joinery/core": "workspace:*",
     "@joinery/driver-mongodb": "workspace:*",
     "@joinery/driver-mysql": "workspace:*",
