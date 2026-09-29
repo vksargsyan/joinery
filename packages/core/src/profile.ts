@@ -147,8 +147,19 @@ export const connectionOptionsSchema = z.object({
   timeZone: z.string().optional(),
   /** Statements run on every new session, in order. */
   initSql: z.array(z.string()).default([]),
+  /** For Redis, the logical database number as text ("0" to "15" on a default server). */
   defaultDatabase: z.string().optional(),
   applicationName: z.string().default('Joinery'),
+  /** MongoDB: the database that holds the user's credentials (the driver's default: admin). */
+  authSource: z.string().min(1).optional(),
+  /** MongoDB: talk to the one host given instead of discovering the replica set from it. */
+  directConnection: z.boolean().optional(),
+  /** MongoDB: which members reads may go to (the driver's default: primary). */
+  readPreference: z
+    .enum(['primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest'])
+    .optional(),
+  /** Redis: the delimiter that splits key names into the browser's namespace tree (default ":"). */
+  keyDelimiter: z.string().min(1).max(16).optional(),
 });
 export type ConnectionOptions = z.infer<typeof connectionOptionsSchema>;
 

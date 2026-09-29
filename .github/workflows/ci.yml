@@ -48,13 +48,13 @@ jobs:
       - run: pnpm audit --audit-level high
 
   integration:
-    name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }})
+    name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }}, MongoDB ${{ matrix.mongodb }}, ${{ matrix.redis }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         # Pull requests test the current LTS versions; the nightly run covers the full matrix.
-        include: ${{ fromJSON(github.event_name == 'schedule' && '[{"postgres":"14","mysql":"8.0","mariadb":"10.6"},{"postgres":"15","mysql":"8.4","mariadb":"10.11"},{"postgres":"16","mysql":"8.4","mariadb":"11.4"},{"postgres":"17","mysql":"9.7","mariadb":"11.8"},{"postgres":"18","mysql":"9.7","mariadb":"11.8"}]' || '[{"postgres":"16","mysql":"8.4","mariadb":"11.4"}]') }}
+        include: ${{ fromJSON(github.event_name == 'schedule' && '[{"postgres":"14","mysql":"8.0","mariadb":"10.6","mongodb":"7.0","redis":"redis:6.2"},{"postgres":"15","mysql":"8.4","mariadb":"10.11","mongodb":"7.0","redis":"valkey/valkey:7.2"},{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4"},{"postgres":"17","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"valkey/valkey:8.0"},{"postgres":"18","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"redis:8.0"}]' || '[{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4"}]') }}
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -88,8 +88,16 @@ jobs:
       JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
       JOINERY_TEST_MYSQL_URL: mysql://root:joinery@127.0.0.1:3306/joinery_test
       JOINERY_TEST_MARIADB_URL: mariadb://root:joinery@127.0.0.1:3307/joinery_test
+      JOINERY_TEST_MONGODB_URL: mongodb://joinery:joinery@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
+      JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
+      JOINERY_TEST_REDIS_ACL_USER: app:app-secret
+      JOINERY_TEST_REDIS_SENTINEL: 127.0.0.1:26380/joinery-master
+      JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
     steps:
       - uses: actions/checkout@v7
+      # A MongoDB replica set and a Redis Sentinel and Cluster need server arguments, which
+      # service containers cannot pass.
+      - run: .github/scripts/start-nosql.sh "${{ matrix.mongodb }}" "${{ matrix.redis }}"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:

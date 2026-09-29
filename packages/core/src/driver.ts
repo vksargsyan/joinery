@@ -51,7 +51,15 @@ export const BROWSE_NODE_KINDS = [
   'column',
   'index',
   'collection',
+  /** MongoDB time series collection. */
+  'time-series',
+  /** MongoDB GridFS bucket (its `.files` and `.chunks` collections shown as one node). */
+  'gridfs-bucket',
+  /** A Redis key-name prefix: one level of the namespace tree split on the delimiter. */
+  'namespace',
   'key',
+  /** A cluster node or shard (Redis Cluster primary, MongoDB shard). */
+  'node',
   'other',
 ] as const;
 export type BrowseNodeKind = (typeof BROWSE_NODE_KINDS)[number];
