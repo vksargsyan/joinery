@@ -74,7 +74,19 @@ function wizardApi(): ImportWizardApi {
           filters: [
             {
               name: 'Data files',
-              extensions: ['csv', 'tsv', 'tab', 'txt', 'json', 'jsonl', 'ndjson', 'gz'],
+              extensions: [
+                'csv',
+                'tsv',
+                'tab',
+                'txt',
+                'json',
+                'jsonl',
+                'ndjson',
+                'xlsx',
+                'xlsm',
+                'xml',
+                'gz',
+              ],
             },
             { name: 'All files', extensions: ['*'] },
           ],
@@ -195,8 +207,9 @@ function FileStep({ wizard, state }: StepProps) {
   return (
     <div className="flex flex-col items-start gap-3 text-[13px]">
       <p className="text-muted">
-        CSV, TSV, JSON (an array of objects) and JSON Lines files, optionally gzip-compressed. The
-        format, encoding, delimiter and header are detected; you can change them on the next step.
+        CSV, TSV, JSON (an array of objects), JSON Lines, Excel workbooks (.xlsx) and XML files,
+        text formats optionally gzip-compressed. The format, encoding, delimiter, header, worksheet
+        and XML row path are detected; you can change them on the next step.
       </p>
       <Button
         variant="primary"
@@ -226,11 +239,27 @@ function Labelled(props: {
   );
 }
 
+const FORMAT_NAMES: Readonly<Record<string, string>> = {
+  csv: 'CSV',
+  tsv: 'TSV',
+  json: 'JSON',
+  jsonl: 'JSON Lines',
+  xlsx: 'Excel',
+  xml: 'XML',
+  sql: 'SQL',
+};
+
 function PreviewStep({ wizard, state }: StepProps) {
   const preview = state.preview!;
   const csv = preview.csv;
   const csvLike = preview.format === 'csv' || preview.format === 'tsv';
   const delimiterKnown = DELIMITERS.some((d) => d.value === csv?.delimiter);
+  const xml = preview.xml;
+  const paths = xml
+    ? xml.candidates.some((c) => c.path === xml.rowPath)
+      ? xml.candidates
+      : [{ path: xml.rowPath, count: 0, fields: 0 }, ...xml.candidates]
+    : [];
   return (
     <div className="flex flex-col gap-3">
       <p className="font-mono text-[11px] break-all text-muted">
@@ -249,29 +278,107 @@ function PreviewStep({ wizard, state }: StepProps) {
               })
             }
           >
-            <option value="">Detected: {preview.format.toUpperCase()}</option>
+            <option value="">
+              Detected: {FORMAT_NAMES[preview.format] ?? preview.format.toUpperCase()}
+            </option>
             <option value="csv">CSV</option>
             <option value="tsv">TSV</option>
             <option value="json">JSON</option>
             <option value="jsonl">JSON Lines</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="xml">XML</option>
           </SelectField>
         </Labelled>
-        <Labelled id="import-encoding" label="Encoding">
-          <SelectField
-            id="import-encoding"
-            value={state.encoding ?? ''}
-            onChange={(event) =>
-              void wizard.setFileOptions({ encoding: event.target.value || undefined })
-            }
-          >
-            <option value="">Detected: {preview.encoding}</option>
-            {ENCODINGS.map((encoding) => (
-              <option key={encoding} value={encoding}>
-                {encoding}
-              </option>
-            ))}
-          </SelectField>
-        </Labelled>
+        {preview.format === 'xlsx' && preview.xlsx && (
+          <>
+            <Labelled id="import-sheet" label="Worksheet" className="col-span-2">
+              <SelectField
+                id="import-sheet"
+                value={preview.xlsx.sheet}
+                onChange={(event) =>
+                  void wizard.setFileOptions({ xlsx: { sheet: event.target.value } })
+                }
+              >
+                {(preview.sheets ?? [preview.xlsx.sheet]).map((sheet) => (
+                  <option key={sheet} value={sheet}>
+                    {sheet}
+                  </option>
+                ))}
+              </SelectField>
+            </Labelled>
+            <Labelled id="import-header-row" label="Header row (0: none)">
+              <TextField
+                key={`${preview.xlsx.sheet}:${preview.xlsx.headerRow}`}
+                id="import-header-row"
+                type="number"
+                min={0}
+                defaultValue={preview.xlsx.headerRow}
+                onBlur={(event) => {
+                  const row = Math.max(0, Math.floor(Number(event.target.value) || 0));
+                  if (row !== preview.xlsx?.headerRow) {
+                    void wizard.setFileOptions({ xlsx: { headerRow: row } });
+                  }
+                }}
+              />
+            </Labelled>
+          </>
+        )}
+        {preview.format !== 'xlsx' && (
+          <Labelled id="import-encoding" label="Encoding">
+            <SelectField
+              id="import-encoding"
+              value={state.encoding ?? ''}
+              onChange={(event) =>
+                void wizard.setFileOptions({ encoding: event.target.value || undefined })
+              }
+            >
+              <option value="">Detected: {preview.encoding}</option>
+              {ENCODINGS.map((encoding) => (
+                <option key={encoding} value={encoding}>
+                  {encoding}
+                </option>
+              ))}
+            </SelectField>
+          </Labelled>
+        )}
+        {preview.format === 'xml' && xml && (
+          <>
+            <Labelled id="import-row-path" label="Rows are the elements at" className="col-span-2">
+              <SelectField
+                id="import-row-path"
+                value={xml.rowPath}
+                onChange={(event) =>
+                  void wizard.setFileOptions({ xml: { rowPath: event.target.value } })
+                }
+              >
+                {paths.map((candidate) => (
+                  <option key={candidate.path} value={candidate.path}>
+                    {candidate.path}
+                    {candidate.count > 0 ? ` (${candidate.count})` : ''}
+                  </option>
+                ))}
+              </SelectField>
+            </Labelled>
+            <Labelled id="import-row-path-custom" label="Or type a path">
+              <TextField
+                key={xml.rowPath}
+                id="import-row-path-custom"
+                mono
+                placeholder="/root/row"
+                defaultValue={xml.rowPath}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+                onBlur={(event) => {
+                  const path = event.target.value.trim();
+                  if (path !== '' && path !== xml.rowPath) {
+                    void wizard.setFileOptions({ xml: { rowPath: path } });
+                  }
+                }}
+              />
+            </Labelled>
+          </>
+        )}
         {csvLike && csv && (
           <>
             <Labelled id="import-delimiter" label="Delimiter">
@@ -640,20 +747,31 @@ function OptionsStep({ wizard, state }: StepProps) {
   );
 }
 
+/** The file format line of the review: dialect, worksheet or row path as the preview read it. */
+function formatSummary(state: ImportWizardState): string {
+  const preview = state.preview;
+  if (!preview) return '';
+  const name = FORMAT_NAMES[preview.format] ?? preview.format.toUpperCase();
+  if (preview.xlsx) {
+    return `${name} · worksheet "${preview.xlsx.sheet}" · ${
+      preview.xlsx.headerRow > 0 ? `header in row ${preview.xlsx.headerRow}` : 'no header row'
+    }`;
+  }
+  if (preview.xml) return `${name} · ${preview.encoding} · rows at ${preview.xml.rowPath}`;
+  return `${name} · ${preview.encoding}${
+    preview.csv
+      ? ` · delimiter ${preview.csv.delimiter === '\t' ? 'tab' : `"${preview.csv.delimiter}"`}${preview.csv.header ? ' · header' : ''}`
+      : ''
+  }`;
+}
+
 function ReviewStep({ state }: { readonly state: ImportWizardState }) {
-  const { target, preview } = state;
+  const { target } = state;
   const pairs = mappedPairs(state);
   const table = target.table ?? state.newTableName.trim();
   const rows: [string, string][] = [
     ['File', state.path ?? ''],
-    [
-      'Format',
-      `${preview?.format.toUpperCase() ?? ''} · ${preview?.encoding ?? ''}${
-        preview?.csv
-          ? ` · delimiter ${preview.csv.delimiter === '\t' ? 'tab' : `"${preview.csv.delimiter}"`}${preview.csv.header ? ' · header' : ''}`
-          : ''
-      }`,
-    ],
+    ['Format', formatSummary(state)],
     ['Into', `${target.table === null ? 'new table ' : ''}${target.schema}.${table}`],
     ['Columns', pairs.map((pair) => `${pair.source} → ${pair.target}`).join(', ')],
     [

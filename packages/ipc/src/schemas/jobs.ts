@@ -19,7 +19,7 @@ import { SYNC_JOB_KINDS } from './sync';
 export const sqlDialectSchema = z.enum(SQL_ENGINE_IDS);
 
 /** Formats rows are read from. */
-export const TRANSFER_ROW_FORMATS = ['csv', 'tsv', 'json', 'jsonl'] as const;
+export const TRANSFER_ROW_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml'] as const;
 export const transferRowFormatSchema = z.enum(TRANSFER_ROW_FORMATS);
 export type TransferRowFormat = z.infer<typeof transferRowFormatSchema>;
 
@@ -28,7 +28,18 @@ export const TRANSFER_FILE_FORMATS = [...TRANSFER_ROW_FORMATS, 'sql'] as const;
 export const transferFileFormatSchema = z.enum(TRANSFER_FILE_FORMATS);
 export type TransferFileFormat = z.infer<typeof transferFileFormatSchema>;
 
-export const TRANSFER_EXPORT_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'sql', 'sql-ddl'] as const;
+export const TRANSFER_EXPORT_FORMATS = [
+  'csv',
+  'tsv',
+  'json',
+  'jsonl',
+  'xlsx',
+  'xml',
+  'sql',
+  'sql-ddl',
+  'html',
+  'markdown',
+] as const;
 export const transferExportFormatSchema = z.enum(TRANSFER_EXPORT_FORMATS);
 export type TransferExportFormat = z.infer<typeof transferExportFormatSchema>;
 
@@ -73,12 +84,27 @@ export const csvReadSettingsSchema = z.object({
 });
 export type CsvReadSettings = z.infer<typeof csvReadSettingsSchema>;
 
+/** Excel: the worksheet and the row holding the column names (0: none). */
+export const xlsxReadSettingsSchema = z.object({
+  sheet: z.string().min(1).max(255).optional(),
+  headerRow: z.number().int().min(0).max(1_048_576).optional(),
+});
+export type XlsxReadSettings = z.infer<typeof xlsxReadSettingsSchema>;
+
+/** XML: the path from the root of the repeated row elements, e.g. `/orders/order`. */
+export const xmlReadSettingsSchema = z.object({
+  rowPath: z.string().min(1).max(4096).optional(),
+});
+export type XmlReadSettings = z.infer<typeof xmlReadSettingsSchema>;
+
 export const transferPreviewInputSchema = z.object({
   path: filePathSchema,
   /** Detected from the name and content when absent. */
   format: transferFileFormatSchema.optional(),
   encoding: encodingSchema.optional(),
   csv: csvReadSettingsSchema.optional(),
+  xlsx: xlsxReadSettingsSchema.optional(),
+  xml: xmlReadSettingsSchema.optional(),
   sampleRows: z.number().int().min(1).max(1000).optional(),
   /** For splitting SQL files. */
   dialect: sqlDialectSchema.optional(),
@@ -123,6 +149,16 @@ export const transferPreviewSchema = z.object({
   rows: z.array(z.array(z.string().nullable())),
   /** SQL files: the first statements. */
   statements: z.array(z.string()).optional(),
+  /** Excel: every worksheet, and the one previewed with its header row (0: none). */
+  sheets: z.array(z.string()).optional(),
+  xlsx: z.object({ sheet: z.string(), headerRow: countSchema }).optional(),
+  /** XML: the row path previewed, and the paths that could hold rows, best first. */
+  xml: z
+    .object({
+      rowPath: z.string(),
+      candidates: z.array(z.object({ path: z.string(), count: countSchema, fields: countSchema })),
+    })
+    .optional(),
   /** File size in bytes. */
   size: countSchema,
 });
@@ -217,6 +253,8 @@ export const importJobSchema = z.object({
     format: transferRowFormatSchema,
     encoding: encodingSchema.optional(),
     csv: csvReadSettingsSchema.optional(),
+    xlsx: xlsxReadSettingsSchema.optional(),
+    xml: xmlReadSettingsSchema.optional(),
   }),
   /** The target table; PostgreSQL schema, or none on MySQL and MariaDB. */
   table: z.object({ schema: z.string().max(256).optional(), name: nameSchema }),
@@ -258,6 +296,12 @@ export const exportJsonSettingsSchema = z.object({
   pretty: z.boolean().optional(),
 });
 
+/** Excel: a header row (default on); decimals as exact text (default) or as numbers when exact. */
+export const exportXlsxSettingsSchema = z.object({
+  header: z.boolean().optional(),
+  decimals: z.enum(['text', 'number']).optional(),
+});
+
 export const exportSqlSettingsSchema = z.object({
   /** Rows per INSERT statement. */
   rowsPerStatement: z.number().int().min(1).max(10_000).optional(),
@@ -286,11 +330,14 @@ export const exportJobSchema = z.object({
   csv: exportCsvSettingsSchema.optional(),
   json: exportJsonSettingsSchema.optional(),
   sql: exportSqlSettingsSchema.optional(),
+  xlsx: exportXlsxSettingsSchema.optional(),
   encoding: z.enum(['utf-8', 'utf-16le']).optional(),
   bom: z.boolean().optional(),
   gzip: z.boolean().optional(),
+  /** One file per table (or the query's one file) inside a ZIP archive written to `output`. */
+  zip: z.boolean().optional(),
   /**
-   * `file`: one file (a table, a query, or several tables combined, for SQL and JSON).
+   * `file`: one file (a table, a query, several tables combined, or the ZIP archive).
    * `directory`: one file per table, named after it.
    */
   output: z.discriminatedUnion('kind', [
@@ -464,6 +511,8 @@ export const importSettingsSchema = z.object({
   format: transferRowFormatSchema.optional(),
   encoding: encodingSchema.optional(),
   csv: csvReadSettingsSchema.optional(),
+  xlsx: xlsxReadSettingsSchema.optional(),
+  xml: xmlReadSettingsSchema.optional(),
   mode: importModeSchema.optional(),
   batchSize: z.number().int().min(1).max(100_000).optional(),
   transaction: z.enum(['single', 'per-batch']).optional(),
@@ -477,9 +526,11 @@ export const exportSettingsSchema = z.object({
   csv: exportCsvSettingsSchema.optional(),
   json: exportJsonSettingsSchema.optional(),
   sql: exportSqlSettingsSchema.optional(),
+  xlsx: exportXlsxSettingsSchema.optional(),
   encoding: z.enum(['utf-8', 'utf-16le']).optional(),
   bom: z.boolean().optional(),
   gzip: z.boolean().optional(),
+  zip: z.boolean().optional(),
   /** Several tables: one file per table or one combined file. */
   layout: z.enum(['per-table', 'combined']).optional(),
 });

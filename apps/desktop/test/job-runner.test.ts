@@ -8,9 +8,19 @@ import {
   type ConnectionProfileInput,
   type ResolvedProfile,
 } from '@joinery/core';
-import type { ExportJob, ImportJob, RunSqlFileJob } from '@joinery/ipc';
-import { INFERRED_TYPES } from '@joinery/transfer';
-import { INFERRED_COLUMN_TYPES } from '@joinery/ipc';
+import type { ExportJob, ImportJob, RunSqlFileJob, TransferPreview } from '@joinery/ipc';
+import {
+  EXPORT_FORMATS,
+  FILE_FORMATS,
+  INFERRED_TYPES,
+  ZipReader,
+  openFileReader,
+} from '@joinery/transfer';
+import {
+  INFERRED_COLUMN_TYPES,
+  TRANSFER_EXPORT_FORMATS,
+  TRANSFER_FILE_FORMATS,
+} from '@joinery/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { JobRunner } from '../src/job-runner/runner';
@@ -515,8 +525,148 @@ describe('JobRunner requests', () => {
   });
 });
 
+describe('JobRunner Excel, XML and ZIP', () => {
+  const columns = [
+    { name: 'id', nativeType: 'int4', kind: 'integer' as const },
+    { name: 'name', nativeType: 'text', kind: 'string' as const },
+  ];
+
+  it('exports a table to a workbook, previews it and imports it back', async () => {
+    const { runner, session, done, response } = setup();
+    session.result = {
+      columns,
+      rows: [
+        [1, 'Ada'],
+        [2, null],
+        [3, 'Grace & <co>'],
+      ],
+    };
+    const path = join(dir, 'people.xlsx');
+    runner.handle({
+      type: 'start',
+      jobId: 'x1',
+      job: {
+        kind: 'export',
+        profileId: 'p1',
+        source: { kind: 'tables', schema: 'public', tables: ['people'] },
+        format: 'xlsx',
+        xlsx: { header: true },
+        output: { kind: 'file', path },
+      },
+      resolved: resolved(),
+    });
+    expect((await done('x1')).summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+
+    runner.handle({
+      type: 'request',
+      requestId: 'p',
+      request: { kind: 'preview', input: { path } },
+    });
+    const preview = (await response('p')).result as TransferPreview;
+    expect(preview).toMatchObject({
+      format: 'xlsx',
+      sheets: ['people'],
+      xlsx: { sheet: 'people', headerRow: 1 },
+      rows: [
+        ['1', 'Ada'],
+        ['2', null],
+        ['3', 'Grace & <co>'],
+      ],
+    });
+    expect(preview.columns.map((c) => [c.name, c.type])).toEqual([
+      ['id', 'integer'],
+      ['name', 'text'],
+    ]);
+
+    runner.handle({
+      type: 'start',
+      jobId: 'x2',
+      job: importJob(path, { file: { path, format: 'xlsx', xlsx: preview.xlsx } }),
+      resolved: resolved(),
+    });
+    expect((await done('x2')).summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+    expect(session.committed).toEqual([
+      [1, 'Ada'],
+      [2, null],
+      [3, 'Grace & <co>'],
+    ]);
+  });
+
+  it('imports XML rows from the chosen path, reporting bad rows by row and line', async () => {
+    const { runner, session, done } = setup();
+    const path = file(
+      'people.xml',
+      '<people>\n  <person id="1"><name>Ada</name></person>\n  <person id="x"><name>Bad</name></person>\n</people>\n',
+    );
+    runner.handle({
+      type: 'start',
+      jobId: 'x3',
+      job: importJob(path, {
+        file: { path, format: 'xml', xml: { rowPath: '/people/person' } },
+        onError: 'skip',
+      }),
+      resolved: resolved(),
+    });
+    const message = await done('x3');
+    expect(message.summary).toMatchObject({ status: 'completed', rowsWritten: 1, rowsSkipped: 1 });
+    expect(message.errors).toEqual([
+      { row: 2, line: 3, column: 'id', message: 'id: "x" is not an integer' },
+    ]);
+    expect(session.committed).toEqual([[1, 'Ada']]);
+  });
+
+  it('zips a file per table, or a query result, into one archive', async () => {
+    const { runner, session, done } = setup();
+    session.result = { columns, rows: [[1, 'Ada']] };
+    const path = join(dir, 'tables.zip');
+    runner.handle({
+      type: 'start',
+      jobId: 'x4',
+      job: {
+        kind: 'export',
+        profileId: 'p1',
+        source: { kind: 'tables', schema: 'public', tables: ['a', 'b'] },
+        format: 'markdown',
+        zip: true,
+        output: { kind: 'file', path },
+      },
+      resolved: resolved(),
+    });
+    expect((await done('x4')).summary).toMatchObject({ status: 'completed', files: [path] });
+    const zip = await ZipReader.open(await openFileReader(path));
+    expect(zip.entries.map((e) => e.name)).toEqual(['a.md', 'b.md']);
+    expect(await zip.text(zip.entry('a.md')!)).toBe('| id | name |\n| ---: | --- |\n| 1 | Ada |\n');
+    await zip.close();
+
+    const queryZip = join(dir, 'query.zip');
+    runner.handle({
+      type: 'start',
+      jobId: 'x5',
+      job: {
+        kind: 'export',
+        profileId: 'p1',
+        source: { kind: 'query', text: 'SELECT 1' },
+        format: 'html',
+        zip: true,
+        output: { kind: 'file', path: queryZip },
+      },
+      resolved: resolved(),
+    });
+    expect((await done('x5')).summary?.status).toBe('completed');
+    const single = await ZipReader.open(await openFileReader(queryZip));
+    expect(single.entries.map((e) => e.name)).toEqual(['query_result.html']);
+    await single.close();
+    expect(readdirSync(dir).sort()).toEqual(['query.zip', 'tables.zip']);
+  });
+});
+
 describe('protocol mirrors', () => {
   it('lists the same inferred column types as @joinery/transfer', () => {
     expect([...INFERRED_COLUMN_TYPES]).toEqual([...INFERRED_TYPES]);
+  });
+
+  it('lists the same file and export formats as @joinery/transfer', () => {
+    expect([...TRANSFER_FILE_FORMATS]).toEqual([...FILE_FORMATS]);
+    expect([...TRANSFER_EXPORT_FORMATS]).toEqual([...EXPORT_FORMATS]);
   });
 });

@@ -392,6 +392,70 @@ describe('import wizard', () => {
     expect(wizard.state).toMatchObject({ mode: 'upsert', batchSize: 250, onError: 'skip' });
   });
 
+  it('previews another worksheet or header row of a workbook and imports with them', async () => {
+    const workbook = (input: TransferPreviewInput): TransferPreview =>
+      preview({
+        format: 'xlsx',
+        csv: undefined,
+        sheets: ['People', 'Totals'],
+        xlsx: { sheet: input.xlsx?.sheet ?? 'People', headerRow: input.xlsx?.headerRow ?? 1 },
+      });
+    const fake = fakeApi({
+      pickFile: async () => '/data/People.xlsx',
+      preview: async (i) => workbook(i),
+    });
+    const wizard = new ImportWizard(TARGET, fake.api);
+    await wizard.chooseFile();
+    expect(wizard.state.preview?.xlsx).toEqual({ sheet: 'People', headerRow: 1 });
+    await wizard.setFileOptions({ xlsx: { sheet: 'Totals' } });
+    await wizard.setFileOptions({ xlsx: { headerRow: 3 } });
+    expect(wizard.state.preview?.xlsx).toEqual({ sheet: 'Totals', headerRow: 3 });
+    await wizard.next();
+    await wizard.next();
+    await wizard.next();
+    await wizard.run();
+    expect(fake.started[0]?.file).toEqual({
+      path: '/data/People.xlsx',
+      format: 'xlsx',
+      xlsx: { sheet: 'Totals', headerRow: 3 },
+    });
+    expect(importSettingsOf(wizard.state)).toMatchObject({
+      format: 'xlsx',
+      xlsx: { sheet: 'Totals', headerRow: 3 },
+    });
+    expect(tableNameFromFile('/data/People.xlsx')).toBe('people');
+  });
+
+  it('imports XML rows from the path the preview found or the one chosen', async () => {
+    const fake = fakeApi({
+      pickFile: async () => '/data/orders.xml',
+      preview: async (input) =>
+        preview({
+          format: 'xml',
+          csv: undefined,
+          xml: {
+            rowPath: input.xml?.rowPath ?? '/orders/order',
+            candidates: [{ path: '/orders/order', count: 2, fields: 3 }],
+          },
+        }),
+    });
+    const wizard = new ImportWizard(TARGET, fake.api);
+    await wizard.chooseFile();
+    await wizard.setFileOptions({ xml: { rowPath: '/orders/item' } });
+    expect(wizard.state.preview?.xml?.rowPath).toBe('/orders/item');
+    await wizard.applySettings({ xml: { rowPath: '/orders/order' } });
+    await wizard.next();
+    await wizard.next();
+    await wizard.next();
+    await wizard.run();
+    expect(fake.started[0]?.file).toEqual({
+      path: '/data/orders.xml',
+      format: 'xml',
+      encoding: 'utf-8',
+      xml: { rowPath: '/orders/order' },
+    });
+  });
+
   it('names a new table after its file', () => {
     expect(tableNameFromFile('/tmp/Orders 2024.csv.gz')).toBe('orders_2024');
     expect(tableNameFromFile('C:\\data\\2024-sales.json')).toBe('t_2024_sales');

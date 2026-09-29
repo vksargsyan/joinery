@@ -9,6 +9,7 @@ import {
   ExportWizard,
   combinable,
   exportSettingsOf,
+  textFormat,
   exportStepProblem,
   writesOneFile,
   type ExportSource,
@@ -26,6 +27,17 @@ import { SavedSettings, StepBar } from './shared';
  * The export wizard's dialog (spec §12): tables of one schema (or a query result) → format and
  * options → destination, then a job in the job runner writes the files.
  */
+
+/** What each format writes, under the format picker. */
+const FORMAT_NOTES: Partial<Readonly<Record<TransferExportFormat, string>>> = {
+  jsonl: 'One JSON object per line.',
+  xlsx: 'Typed cells: numbers, booleans, and dates as Excel dates. Several tables go on one worksheet each.',
+  xml: 'An <export> of <table> elements with one <row> per row; NULL is xsi:nil.',
+  html: 'A self-contained page with one table per result, readable in any browser.',
+  markdown: 'Pipe tables, as GitHub and most wikis render them.',
+};
+
+type Compression = 'none' | 'gzip' | 'zip';
 
 const STEP_LABELS: Readonly<Record<ExportStep, string>> = {
   source: 'Tables',
@@ -178,6 +190,8 @@ function FormatStep({ wizard, state }: StepProps) {
   const csvLike = state.format === 'csv' || state.format === 'tsv';
   const sql = state.format === 'sql' || state.format === 'sql-ddl';
   const several = state.source.kind === 'tables' && state.selected.length > 1;
+  const compression: Compression = state.zip ? 'zip' : state.gzip ? 'gzip' : 'none';
+  const note = FORMAT_NOTES[state.format];
   return (
     <div className="flex flex-col gap-3 text-xs">
       <div className="grid grid-cols-2 gap-3">
@@ -221,11 +235,32 @@ function FormatStep({ wizard, state }: StepProps) {
                 checked={state.layout === 'combined'}
                 onChange={() => wizard.setOptions({ layout: 'combined' })}
               />
-              One combined file{combinable(state.format) ? '' : ' (SQL and JSON only)'}
+              One combined file{combinable(state.format) ? '' : ' (not for CSV, TSV or JSON Lines)'}
             </label>
           </fieldset>
         )}
       </div>
+      {note && <p className="text-muted">{note}</p>}
+      {state.format === 'xlsx' && (
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={state.header}
+              onChange={(event) => wizard.setOptions({ header: event.target.checked })}
+            />
+            Header row with the column names (bold, frozen, with filters)
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={state.decimalsAsNumbers}
+              onChange={(event) => wizard.setOptions({ decimalsAsNumbers: event.target.checked })}
+            />
+            Decimals as Excel numbers when exact (up to 15 digits); otherwise decimals are text
+          </label>
+        </div>
+      )}
       {csvLike && (
         <div className="grid grid-cols-3 gap-3">
           <label className="flex items-center gap-1.5">
@@ -275,7 +310,6 @@ function FormatStep({ wizard, state }: StepProps) {
           Pretty-print (indent each object)
         </label>
       )}
-      {state.format === 'jsonl' && <p className="text-muted">One JSON object per line.</p>}
       {sql && (
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
@@ -307,37 +341,51 @@ function FormatStep({ wizard, state }: StepProps) {
           )}
         </div>
       )}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-1.5">
-          <input
-            type="checkbox"
-            checked={state.gzip}
-            onChange={(event) => wizard.setOptions({ gzip: event.target.checked })}
-          />
-          Compress with gzip
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input
-            type="checkbox"
-            checked={state.bom}
-            onChange={(event) => wizard.setOptions({ bom: event.target.checked })}
-          />
-          Byte order mark (for Excel)
-        </label>
-        <label className="flex items-center gap-1.5">
-          Encoding
+          Compression
           <SelectField
-            aria-label="Encoding"
-            className="w-28"
-            value={state.encoding}
-            onChange={(event) =>
-              wizard.setOptions({ encoding: event.target.value as 'utf-8' | 'utf-16le' })
-            }
+            aria-label="Compression"
+            className="w-56"
+            value={compression}
+            onChange={(event) => {
+              const value = event.target.value as Compression;
+              wizard.setOptions({ gzip: value === 'gzip', zip: value === 'zip' });
+            }}
           >
-            <option value="utf-8">UTF-8</option>
-            <option value="utf-16le">UTF-16LE</option>
+            <option value="none">None</option>
+            {state.format !== 'xlsx' && <option value="gzip">gzip</option>}
+            <option value="zip">
+              {several ? 'ZIP archive, one file per table' : 'ZIP archive'}
+            </option>
           </SelectField>
         </label>
+        {textFormat(state.format) && (
+          <>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={state.bom}
+                onChange={(event) => wizard.setOptions({ bom: event.target.checked })}
+              />
+              Byte order mark (for Excel)
+            </label>
+            <label className="flex items-center gap-1.5">
+              Encoding
+              <SelectField
+                aria-label="Encoding"
+                className="w-28"
+                value={state.encoding}
+                onChange={(event) =>
+                  wizard.setOptions({ encoding: event.target.value as 'utf-8' | 'utf-16le' })
+                }
+              >
+                <option value="utf-8">UTF-8</option>
+                <option value="utf-16le">UTF-16LE</option>
+              </SelectField>
+            </label>
+          </>
+        )}
       </div>
       <SavedSettings
         kind="export"
@@ -361,7 +409,11 @@ function DestinationStep({ wizard, state }: StepProps) {
       <p>
         Export {what} as {EXPORT_FORMAT_LABELS[state.format]}
         {state.gzip ? ', gzip-compressed' : ''}
-        {oneFile ? ' to one file.' : ', one file per table, into a folder.'}
+        {state.zip
+          ? ', into a ZIP archive.'
+          : oneFile
+            ? ' to one file.'
+            : ', one file per table, into a folder.'}
       </p>
       {state.source.kind === 'query' && (
         <p className="text-muted">

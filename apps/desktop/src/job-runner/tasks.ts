@@ -28,6 +28,7 @@ import { renderTableStatements } from '@joinery/sync';
 import {
   autoMatch,
   createTable,
+  exportFileName,
   exportRows,
   exportTables,
   fileSink,
@@ -47,6 +48,8 @@ import {
   type SourceCell,
   type TransferProgress,
 } from '@joinery/transfer';
+
+export { exportFileName } from '@joinery/transfer';
 
 /**
  * What the job runner does with the @joinery/transfer engine (spec §12): the three job kinds
@@ -121,9 +124,13 @@ export async function previewFile(input: TransferPreviewInput): Promise<Transfer
     ...(input.format !== undefined ? { format: input.format } : {}),
     ...(input.encoding !== undefined ? { encoding: input.encoding } : {}),
     ...(input.csv !== undefined ? { csv: input.csv } : {}),
+    ...(input.xlsx !== undefined ? { xlsx: input.xlsx } : {}),
+    ...(input.xml !== undefined ? { xml: input.xml } : {}),
     ...(input.dialect !== undefined ? { sqlDialect: input.dialect } : {}),
   });
   const csv = preview.read?.csv;
+  const xlsx = preview.read?.xlsx;
+  const xml = preview.read?.xml;
   return {
     format: preview.format,
     compression: preview.compression,
@@ -144,6 +151,18 @@ export async function previewFile(input: TransferPreviewInput): Promise<Transfer
     columns: preview.columns.map((column) => ({ ...column })),
     rows: preview.rows.map((row) => row.map(displayCell)),
     ...(preview.statements !== undefined ? { statements: [...preview.statements] } : {}),
+    ...(preview.sheets !== undefined ? { sheets: [...preview.sheets] } : {}),
+    ...(xlsx?.sheet !== undefined
+      ? { xlsx: { sheet: xlsx.sheet, headerRow: xlsx.headerRow ?? 1 } }
+      : {}),
+    ...(xml?.rowPath !== undefined
+      ? {
+          xml: {
+            rowPath: xml.rowPath,
+            candidates: (preview.rowPaths ?? []).map((candidate) => ({ ...candidate })),
+          },
+        }
+      : {}),
     size,
   };
 }
@@ -295,6 +314,8 @@ export async function runImport(job: ImportJob, context: JobContext): Promise<Jo
       decompress: 'auto',
       ...(job.file.encoding !== undefined ? { encoding: job.file.encoding } : {}),
       ...(job.file.csv !== undefined ? { csv: job.file.csv } : {}),
+      ...(job.file.xlsx !== undefined ? { xlsx: job.file.xlsx } : {}),
+      ...(job.file.xml !== undefined ? { xml: job.file.xml } : {}),
     }),
     mapping: job.mapping,
     mode: job.mode,
@@ -359,28 +380,15 @@ export async function runImport(job: ImportJob, context: JobContext): Promise<Jo
 // ---------------------------------------------------------------------------------------------
 // Export
 
-const EXTENSIONS: Readonly<Record<ExportJob['format'], string>> = {
-  csv: 'csv',
-  tsv: 'tsv',
-  json: 'json',
-  jsonl: 'jsonl',
-  sql: 'sql',
-  'sql-ddl': 'sql',
-};
-
-/** The file name a table exports to: characters file systems refuse become `_`. */
-export function exportFileName(table: string, format: ExportJob['format'], gzip: boolean): string {
-  // eslint-disable-next-line no-control-regex
-  let base = table.replace(/[\u0000-\u001f<>:"/\\|?*]/g, '_').replace(/^\.+/, '_');
-  if (base === '') base = 'table';
-  return `${base}.${EXTENSIONS[format]}${gzip ? '.gz' : ''}`;
-}
-
-/** Exports tables or a query result to one file or a file per table (spec §12). */
+/**
+ * Exports tables or a query result to one file, a file per table, or a ZIP archive of a file
+ * per table (spec §12).
+ */
 export async function runExport(job: ExportJob, context: JobContext): Promise<JobOutcome> {
   const { session, signal } = context;
   const dialect = dialectOf(session);
-  const gzip = job.gzip === true;
+  const zip = job.zip === true;
+  const gzip = job.gzip === true && !zip;
   const csv: CsvExportOptions = {
     ...(job.csv?.header !== undefined ? { header: job.csv.header } : {}),
     ...(job.csv?.delimiter !== undefined ? { delimiter: job.csv.delimiter } : {}),
@@ -400,6 +408,10 @@ export async function runExport(job: ExportJob, context: JobContext): Promise<Jo
         : {}),
       ...(job.sql?.dropTable === true ? { dropTable: true } : {}),
     },
+    xlsx: {
+      ...(job.xlsx?.header !== undefined ? { header: job.xlsx.header } : {}),
+      ...(job.xlsx?.decimals !== undefined ? { decimals: job.xlsx.decimals } : {}),
+    },
     ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
     ...(job.bom === true ? { bom: true } : {}),
     signal,
@@ -418,6 +430,12 @@ export async function runExport(job: ExportJob, context: JobContext): Promise<Jo
   const schema = dialect === 'postgres' && job.source.kind === 'tables' ? job.source.schema : '';
   let summary: ExportSummary | ExportTablesSummary;
   context.progress({ phase: 'Exporting', rowsWritten: 0, bytes: 0 });
+  if (zip && job.output.kind !== 'file') {
+    throw new JoineryError({
+      code: 'VALIDATION_FAILED',
+      message: 'A ZIP export writes one file',
+    });
+  }
   if (job.source.kind === 'query') {
     if (job.output.kind !== 'file') {
       throw new JoineryError({
@@ -441,13 +459,24 @@ export async function runExport(job: ExportJob, context: JobContext): Promise<Jo
         ...(job.source.params !== undefined ? { params: job.source.params } : {}),
       },
       sink: sinkAt(job.output.path),
+      ...(zip ? { zipEntry: exportFileName('query_result', job.format) } : {}),
     });
   } else {
     const tables = job.source.tables.map((name) => ({
       name,
       ...(schema ? { schema } : {}),
     }));
-    if (job.output.kind === 'file' && tables.length === 1) {
+    if (zip) {
+      context.log(
+        'info',
+        `Exporting ${plural(tables.length, 'table')} into the ZIP archive ${job.output.path}`,
+      );
+      summary = await exportTables({
+        ...common,
+        tables,
+        output: { kind: 'zip', sink: sinkAt(job.output.path) },
+      });
+    } else if (job.output.kind === 'file' && tables.length === 1) {
       context.log('info', `Exporting ${tables[0]!.name} to ${job.output.path}`);
       summary = await exportRows({ ...common, table: tables[0]!, sink: sinkAt(job.output.path) });
     } else if (job.output.kind === 'file') {

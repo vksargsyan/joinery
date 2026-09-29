@@ -265,6 +265,49 @@ describe.each(ENGINES)('%s', (dialect: SqlDialect, url: string | undefined) => {
     expect(await rows(checkTarget!, query)).toEqual(await rows(check!, query));
   });
 
+  it.skipIf(!url)(
+    'exports a table to a workbook and imports it into a new table in another database',
+    async () => {
+      const book = join(work, `people-${dialect}.xlsx`);
+      const exported = await job({
+        kind: 'export',
+        profileId: 'p',
+        database: source,
+        source: { kind: 'tables', ...schema, tables: ['people'] },
+        format: 'xlsx',
+        output: { kind: 'file', path: book },
+      });
+      expect(exported.summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+      const preview = await request<TransferPreview>({ kind: 'preview', input: { path: book } });
+      expect(preview).toMatchObject({ format: 'xlsx', xlsx: { sheet: 'people', headerRow: 1 } });
+      const plan = await request<NewTablePlan>({
+        kind: 'plan-table',
+        input: {
+          dialect,
+          name: 'people_copy',
+          ...schema,
+          columns: preview.columns.map((inferred) => ({ inferred })),
+          primaryKey: ['id'],
+        },
+      });
+      const imported = await job({
+        kind: 'import',
+        profileId: 'p',
+        database: target,
+        file: { path: book, format: 'xlsx', xlsx: preview.xlsx! },
+        table: { ...schema, name: 'people_copy' },
+        create: { columns: plan.columns, primaryKey: plan.primaryKey },
+        mapping: plan.columns.map((c) => ({ source: c.source, target: c.name })),
+        mode: 'append',
+      });
+      expect(imported.summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+      const cast = dialect === 'postgres' ? '::text' : '';
+      expect(
+        await rows(checkTarget!, `SELECT id, name, joined${cast} FROM people_copy ORDER BY id`),
+      ).toEqual(await rows(check!, `SELECT id, name, joined${cast} FROM people ORDER BY id`));
+    },
+  );
+
   it.skipIf(!url)('stops a read-only profile at the first statement that writes', async () => {
     const script = join(work, `writes-${dialect}.sql`);
     writeFileSync(script, "SELECT 1;\nINSERT INTO people (id, name) VALUES (99, 'x');\n");

@@ -7,10 +7,10 @@ import { errorMessage } from '../lib/errors';
 /**
  * The export wizard (spec §12) as a state machine: the tables to export (several from one
  * database or schema), or a query result that the job runner runs again → the format and its
- * options (header, delimiter, NULL marker, JSON pretty or lines, SQL INSERT batch size, with
- * DDL, gzip, byte order mark) and one file per table or one combined file → the destination →
- * run as a job. The page never touches the file system: the destination comes from main's save
- * or folder dialog, and the job runner writes it.
+ * options (header, delimiter, NULL marker, JSON pretty or lines, Excel decimals, SQL INSERT
+ * batch size, with DDL, gzip or a ZIP archive, byte order mark) and one file per table or one
+ * combined file → the destination → run as a job. The page never touches the file system: the
+ * destination comes from main's save or folder dialog, and the job runner writes it.
  */
 
 export const EXPORT_STEPS = ['source', 'format', 'destination'] as const;
@@ -64,10 +64,14 @@ export interface ExportWizardState {
   readonly pretty: boolean;
   readonly rowsPerStatement: number;
   readonly dropTable: boolean;
+  /** Excel: decimals that fit a double exactly as numbers (else every decimal as text). */
+  readonly decimalsAsNumbers: boolean;
   readonly gzip: boolean;
+  /** A ZIP archive holding a file per table (or the query's file); never with gzip. */
+  readonly zip: boolean;
   readonly bom: boolean;
   readonly encoding: 'utf-8' | 'utf-16le';
-  /** Several tables: one file per table, or one combined file (SQL and JSON). */
+  /** Several tables: one file per table, or one combined file (not CSV, TSV, JSON Lines). */
   readonly layout: 'per-table' | 'combined';
   /** The file or folder picked. */
   readonly path: string | undefined;
@@ -81,8 +85,12 @@ export const EXPORT_FORMAT_LABELS: Readonly<Record<TransferExportFormat, string>
   tsv: 'TSV',
   json: 'JSON',
   jsonl: 'JSON Lines',
+  xlsx: 'Excel workbook (.xlsx)',
+  xml: 'XML',
   sql: 'SQL INSERT statements',
   'sql-ddl': 'SQL with DDL (CREATE TABLE and INSERTs)',
+  html: 'HTML page',
+  markdown: 'Markdown tables',
 };
 
 const EXTENSIONS: Readonly<Record<TransferExportFormat, string>> = {
@@ -90,13 +98,22 @@ const EXTENSIONS: Readonly<Record<TransferExportFormat, string>> = {
   tsv: 'tsv',
   json: 'json',
   jsonl: 'jsonl',
+  xlsx: 'xlsx',
+  xml: 'xml',
   sql: 'sql',
   'sql-ddl': 'sql',
+  html: 'html',
+  markdown: 'md',
 };
 
 /** Formats that can hold several tables in one file. */
 export function combinable(format: TransferExportFormat): boolean {
-  return format === 'sql' || format === 'sql-ddl' || format === 'json';
+  return format !== 'csv' && format !== 'tsv' && format !== 'jsonl';
+}
+
+/** Formats written as text, where encoding and byte order mark apply. */
+export function textFormat(format: TransferExportFormat): boolean {
+  return format !== 'xlsx';
 }
 
 export function initialExportState(
@@ -115,7 +132,9 @@ export function initialExportState(
     pretty: false,
     rowsPerStatement: 100,
     dropTable: false,
+    decimalsAsNumbers: false,
     gzip: false,
+    zip: false,
     bom: false,
     encoding: 'utf-8',
     layout: 'per-table',
@@ -126,9 +145,14 @@ export function initialExportState(
   };
 }
 
-/** Whether the export writes one file (else one per table into a folder). */
+/** Whether the export writes one file (else one per table into a folder). A ZIP is one file. */
 export function writesOneFile(state: ExportWizardState): boolean {
-  return state.source.kind === 'query' || state.selected.length <= 1 || state.layout === 'combined';
+  return (
+    state.zip ||
+    state.source.kind === 'query' ||
+    state.selected.length <= 1 ||
+    state.layout === 'combined'
+  );
 }
 
 /** The file name the save dialog suggests. */
@@ -139,7 +163,9 @@ export function suggestedName(state: ExportWizardState): string {
       : state.selected.length === 1
         ? state.selected[0]!
         : state.source.schema;
-  return `${base.replace(/[<>:"/\\|?*]/g, '_')}.${EXTENSIONS[state.format]}${state.gzip ? '.gz' : ''}`;
+  const safe = base.replace(/[<>:"/\\|?*]/g, '_');
+  if (state.zip) return `${safe}.zip`;
+  return `${safe}.${EXTENSIONS[state.format]}${state.gzip ? '.gz' : ''}`;
 }
 
 export function exportStepProblem(state: ExportWizardState): string | undefined {
@@ -160,7 +186,7 @@ export function exportStepProblem(state: ExportWizardState): string | undefined 
         state.layout === 'combined' &&
         !combinable(state.format)
       ) {
-        return `A combined file is available for SQL and JSON; export ${EXPORT_FORMAT_LABELS[state.format]} one file per table`;
+        return `A combined file is not available for ${EXPORT_FORMAT_LABELS[state.format]}; export one file per table`;
       }
       return undefined;
     case 'destination':
@@ -177,6 +203,8 @@ export function buildExportJob(state: ExportWizardState): ExportJob {
   const { source } = state;
   if (state.path === undefined) throw new Error('Choose where to export first');
   const csvLike = state.format === 'csv' || state.format === 'tsv';
+  const text = textFormat(state.format);
+  const zip = state.zip;
   return {
     kind: 'export',
     profileId: source.profileId,
@@ -214,9 +242,17 @@ export function buildExportJob(state: ExportWizardState): ExportJob {
           },
         }
       : {}),
-    ...(state.encoding !== 'utf-8' ? { encoding: state.encoding } : {}),
-    ...(state.bom ? { bom: true } : {}),
-    ...(state.gzip ? { gzip: true } : {}),
+    ...(state.format === 'xlsx'
+      ? {
+          xlsx: {
+            header: state.header,
+            decimals: state.decimalsAsNumbers ? ('number' as const) : ('text' as const),
+          },
+        }
+      : {}),
+    ...(text && state.encoding !== 'utf-8' ? { encoding: state.encoding } : {}),
+    ...(text && state.bom ? { bom: true } : {}),
+    ...(zip ? { zip: true } : state.gzip ? { gzip: true } : {}),
     output: writesOneFile(state)
       ? { kind: 'file', path: state.path }
       : { kind: 'directory', path: state.path },
@@ -234,9 +270,11 @@ export function exportSettingsOf(state: ExportWizardState): ExportSettings {
     },
     json: { pretty: state.pretty },
     sql: { rowsPerStatement: state.rowsPerStatement, dropTable: state.dropTable },
+    xlsx: { header: state.header, decimals: state.decimalsAsNumbers ? 'number' : 'text' },
     encoding: state.encoding,
     bom: state.bom,
     gzip: state.gzip,
+    zip: state.zip,
     layout: state.layout,
   };
 }
@@ -293,15 +331,27 @@ export class ExportWizard {
         | 'pretty'
         | 'rowsPerStatement'
         | 'dropTable'
+        | 'decimalsAsNumbers'
         | 'gzip'
+        | 'zip'
         | 'bom'
         | 'encoding'
         | 'layout'
       >
     >,
   ): void {
-    const resets = patch.format !== undefined || patch.gzip !== undefined || patch.layout;
+    const resets =
+      patch.format !== undefined ||
+      patch.gzip !== undefined ||
+      patch.zip !== undefined ||
+      patch.layout;
     this.#set({ ...patch, ...(resets ? { path: undefined } : {}) });
+    // gzip and ZIP exclude each other; a workbook is compressed already; a ZIP holds a file
+    // per table, not a combined one.
+    if (patch.zip === true) this.#set({ gzip: false, layout: 'per-table' });
+    if (patch.gzip === true) this.#set({ zip: false });
+    if (patch.layout === 'combined') this.#set({ zip: false });
+    if (this.state.format === 'xlsx' && this.state.gzip) this.#set({ gzip: false });
     if (
       patch.format !== undefined &&
       !combinable(patch.format) &&
@@ -327,10 +377,17 @@ export class ExportWizard {
         ? { rowsPerStatement: settings.sql.rowsPerStatement }
         : {}),
       ...(settings.sql?.dropTable !== undefined ? { dropTable: settings.sql.dropTable } : {}),
+      ...(settings.format === 'xlsx' && settings.xlsx?.header !== undefined
+        ? { header: settings.xlsx.header }
+        : {}),
+      ...(settings.xlsx?.decimals !== undefined
+        ? { decimalsAsNumbers: settings.xlsx.decimals === 'number' }
+        : {}),
       ...(settings.encoding !== undefined ? { encoding: settings.encoding } : {}),
       ...(settings.bom !== undefined ? { bom: settings.bom } : {}),
-      ...(settings.gzip !== undefined ? { gzip: settings.gzip } : {}),
       ...(settings.layout !== undefined ? { layout: settings.layout } : {}),
+      ...(settings.gzip !== undefined ? { gzip: settings.gzip } : {}),
+      ...(settings.zip !== undefined ? { zip: settings.zip } : {}),
     });
   }
 
@@ -354,10 +411,12 @@ export class ExportWizard {
           title: 'Export to',
           defaultName: suggestedName(state),
           filters: [
-            {
-              name: EXPORT_FORMAT_LABELS[state.format],
-              extensions: state.gzip ? ['gz'] : [EXTENSIONS[state.format]],
-            },
+            state.zip
+              ? { name: 'ZIP archive', extensions: ['zip'] }
+              : {
+                  name: EXPORT_FORMAT_LABELS[state.format],
+                  extensions: state.gzip ? ['gz'] : [EXTENSIONS[state.format]],
+                },
           ],
         })
       : await this.#api.openDirectory({ title: 'Export the tables into' });

@@ -110,9 +110,30 @@ describe('jobs contract', () => {
     expect(jobSpecSchema.safeParse({ ...base, file: { path: '', format: 'csv' } }).success).toBe(
       false,
     );
-    expect(jobSpecSchema.safeParse({ ...base, file: { path: '/x', format: 'xlsx' } }).success).toBe(
-      false,
-    );
+    expect(
+      jobSpecSchema.safeParse({ ...base, file: { path: '/x', format: 'parquet' } }).success,
+    ).toBe(false);
+    const file = (extra: object) =>
+      jobSpecSchema.safeParse({ ...base, file: { path: '/x', ...extra } }).success;
+    expect(file({ format: 'xlsx', xlsx: { sheet: 'Data', headerRow: 3 } })).toBe(true);
+    expect(file({ format: 'xlsx', xlsx: { headerRow: -1 } })).toBe(false);
+    expect(file({ format: 'xlsx', xlsx: { sheet: '' } })).toBe(false);
+    expect(file({ format: 'xml', xml: { rowPath: '/orders/order' } })).toBe(true);
+    expect(file({ format: 'xml', xml: { rowPath: '' } })).toBe(false);
+    const exported = (extra: object) =>
+      jobSpecSchema.safeParse({
+        kind: 'export',
+        profileId: 'p1',
+        source: { kind: 'tables', tables: ['a', 'b'] },
+        output: { kind: 'file', path: '/x.zip' },
+        ...extra,
+      }).success;
+    for (const format of ['xlsx', 'xml', 'html', 'markdown']) {
+      expect(exported({ format, zip: true }), format).toBe(true);
+    }
+    expect(exported({ format: 'pdf' })).toBe(false);
+    expect(exported({ format: 'xlsx', xlsx: { header: false, decimals: 'number' } })).toBe(true);
+    expect(exported({ format: 'xlsx', xlsx: { decimals: 'float' } })).toBe(false);
     const create = (dataType: string) =>
       jobSpecSchema.safeParse({
         ...base,

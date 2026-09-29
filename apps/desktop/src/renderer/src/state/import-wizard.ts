@@ -11,6 +11,8 @@ import {
   type TransferPreview,
   type TransferPreviewInput,
   type TransferRowFormat,
+  type XlsxReadSettings,
+  type XmlReadSettings,
 } from '@joinery/ipc';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -18,7 +20,8 @@ import { errorMessage } from '../lib/errors';
 
 /**
  * The import wizard (spec §12) as a state machine: choose the file → preview with the detected
- * format, delimiter, header and encoding (editable; every change previews again) → column
+ * format, delimiter, header and encoding, or an Excel workbook's worksheet and header row, or
+ * an XML file's row path (editable; every change previews again) → column
  * mapping (auto-matched; for a new table the inferred columns and types, rendered through
  * `tableFromColumns` in the job runner) → options (mode, key columns, batch size, transaction,
  * errors, foreign key checks) → review → run as a job. The write rules apply before it starts:
@@ -95,6 +98,10 @@ export interface ImportWizardState {
   readonly format: TransferRowFormat | undefined;
   readonly encoding: string | undefined;
   readonly csv: CsvReadSettings;
+  /** Excel: the worksheet and header row the user chose. */
+  readonly xlsx: XlsxReadSettings;
+  /** XML: the row path the user chose. */
+  readonly xml: XmlReadSettings;
   readonly preview: TransferPreview | undefined;
   /** Existing table: its columns, and which one each file column goes to ('' skips it). */
   readonly tableColumns: readonly TargetColumn[];
@@ -117,7 +124,7 @@ export interface ImportWizardState {
   readonly jobId: string | undefined;
 }
 
-const ROW_FORMATS: readonly string[] = ['csv', 'tsv', 'json', 'jsonl'];
+const ROW_FORMATS: readonly string[] = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml'];
 
 /** A table name from a file name: `Orders 2024.csv.gz` → `orders_2024`. */
 export function tableNameFromFile(path: string): string {
@@ -142,6 +149,8 @@ export function initialImportState(target: ImportTarget): ImportWizardState {
     format: undefined,
     encoding: undefined,
     csv: {},
+    xlsx: {},
+    xml: {},
     preview: undefined,
     tableColumns: [],
     primaryKey: [],
@@ -255,8 +264,12 @@ export function buildImportJob(state: ImportWizardState, confirmed: boolean): Im
     file: {
       path: state.path,
       format,
-      encoding: preview.encoding,
+      ...(format !== 'xlsx' ? { encoding: preview.encoding } : {}),
       ...(csv ? { csv } : {}),
+      ...(format === 'xlsx' && preview.xlsx
+        ? { xlsx: { sheet: preview.xlsx.sheet, headerRow: preview.xlsx.headerRow } }
+        : {}),
+      ...(format === 'xml' && preview.xml ? { xml: { rowPath: preview.xml.rowPath } } : {}),
     },
     table: {
       ...(target.dialect === 'postgres' ? { schema: target.schema } : {}),
@@ -285,6 +298,8 @@ export function importSettingsOf(state: ImportWizardState): ImportSettings {
       : {}),
     ...(state.encoding !== undefined ? { encoding: state.encoding } : {}),
     ...(Object.keys(state.csv).length > 0 ? { csv: state.csv } : {}),
+    ...(Object.keys(state.xlsx).length > 0 ? { xlsx: state.xlsx } : {}),
+    ...(Object.keys(state.xml).length > 0 ? { xml: state.xml } : {}),
     mode: state.mode,
     batchSize: state.batchSize,
     transaction: state.transaction,
@@ -323,6 +338,8 @@ export class ImportWizard {
       format: undefined,
       encoding: undefined,
       csv: {},
+      xlsx: {},
+      xml: {},
       preview: undefined,
       mapping: {},
       newColumns: [],
@@ -332,23 +349,30 @@ export class ImportWizard {
     if (await this.refreshPreview()) this.#set({ step: 'preview' });
   }
 
-  /** Fixes file options (format, encoding, CSV dialect) and previews again. */
+  /**
+   * Fixes file options (format, encoding, CSV dialect, worksheet and header row, XML row path)
+   * and previews again.
+   */
   async setFileOptions(patch: {
     readonly format?: TransferRowFormat | undefined;
     readonly encoding?: string | undefined;
     readonly csv?: CsvReadSettings;
+    readonly xlsx?: XlsxReadSettings;
+    readonly xml?: XmlReadSettings;
   }): Promise<void> {
     this.#set({
       ...('format' in patch ? { format: patch.format } : {}),
       ...('encoding' in patch ? { encoding: patch.encoding } : {}),
       ...(patch.csv !== undefined ? { csv: { ...this.state.csv, ...patch.csv } } : {}),
+      ...(patch.xlsx !== undefined ? { xlsx: { ...this.state.xlsx, ...patch.xlsx } } : {}),
+      ...(patch.xml !== undefined ? { xml: { ...this.state.xml, ...patch.xml } } : {}),
     });
     await this.refreshPreview();
   }
 
   /** Reads the file again with the current options; false when it could not be read. */
   async refreshPreview(): Promise<boolean> {
-    const { path, format, encoding, csv, target } = this.state;
+    const { path, format, encoding, csv, xlsx, xml, target } = this.state;
     if (!path) return false;
     const seq = ++this.#previewSeq;
     this.#set({ busy: 'Reading the file…', error: undefined });
@@ -359,6 +383,8 @@ export class ImportWizard {
         ...(format !== undefined ? { format } : {}),
         ...(encoding !== undefined ? { encoding } : {}),
         ...(Object.keys(csv).length > 0 ? { csv } : {}),
+        ...(Object.keys(xlsx).length > 0 ? { xlsx } : {}),
+        ...(Object.keys(xml).length > 0 ? { xml } : {}),
       });
       if (seq !== this.#previewSeq) return false;
       this.#set({ preview, busy: undefined });
@@ -551,11 +577,19 @@ export class ImportWizard {
         ? { disableForeignKeys: settings.disableForeignKeys }
         : {}),
     });
-    if (settings.format !== undefined || settings.encoding !== undefined || settings.csv) {
+    if (
+      settings.format !== undefined ||
+      settings.encoding !== undefined ||
+      settings.csv ||
+      settings.xlsx ||
+      settings.xml
+    ) {
       await this.setFileOptions({
         ...(settings.format !== undefined ? { format: settings.format } : {}),
         ...(settings.encoding !== undefined ? { encoding: settings.encoding } : {}),
         ...(settings.csv !== undefined ? { csv: settings.csv } : {}),
+        ...(settings.xlsx !== undefined ? { xlsx: settings.xlsx } : {}),
+        ...(settings.xml !== undefined ? { xml: settings.xml } : {}),
       });
     }
   }

@@ -239,6 +239,64 @@ test('exports a table to CSV and to JSON', async () => {
   ]);
 });
 
+test('exports a table to an Excel workbook and imports it into a new table', async () => {
+  const xlsxPath = join(work, 'orders.xlsx');
+  await stubDialog('save', xlsxPath);
+  await menu(treeRow('orders'), 'Export…');
+  let wizard = page.getByRole('dialog', { name: 'Export tables of public' });
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await wizard.getByLabel('Format').selectOption('xlsx');
+  await expect(wizard.getByText('Header row with the column names')).toBeVisible();
+  // A workbook is compressed already: no gzip, no text encoding.
+  await expect(wizard.getByLabel('Encoding')).toHaveCount(0);
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await wizard.getByRole('button', { name: 'Choose file…' }).click();
+  await expect(wizard.getByTestId('export-destination')).toHaveText(xlsxPath);
+  await wizard.getByRole('button', { name: 'Export', exact: true }).click();
+  await expect(wizard).toBeHidden();
+  await expect(job('Export orders to XLSX')).toHaveAttribute('data-state', 'completed');
+  expect(readFileSync(xlsxPath).subarray(0, 2).toString('latin1')).toBe('PK');
+
+  await stubDialog('open', xlsxPath);
+  await menu(treeRow('Tables'), 'Import into new table…');
+  wizard = page.getByRole('dialog', { name: 'Import into a new table in public' });
+  await wizard.getByRole('button', { name: 'Choose file…' }).click();
+  await expect(wizard.getByLabel('Worksheet')).toHaveValue('orders');
+  await expect(wizard.getByLabel('Header row (0: none)')).toHaveValue('1');
+  await expect(wizard.getByTestId('import-preview')).toContainText('Grace, Hopper');
+  await wizard.getByRole('button', { name: 'Next' }).click();
+
+  await expect(wizard.getByLabel('Table name')).toHaveValue('orders');
+  await wizard.getByLabel('Table name').fill('orders_copy');
+  await wizard.getByLabel('id is in the primary key').check();
+  await expect(wizard.getByTestId('import-ddl')).toContainText(
+    'CREATE TABLE "public"."orders_copy"',
+  );
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await expect(wizard.getByTestId('import-review')).toContainText('worksheet "orders"');
+  await wizard.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(wizard).toBeHidden();
+
+  const item = job('Import orders.xlsx into new table public.orders_copy');
+  await expect(item).toHaveAttribute('data-state', 'completed');
+  await expect(item.getByTestId('job-summary')).toContainText('3 rows imported');
+  const count = `SELECT count(*)::int FROM`;
+  expect(await query(direct!, `${count} orders_copy`)).toEqual(
+    await query(direct!, `${count} orders`),
+  );
+  const values = (table: string): string =>
+    `SELECT id, customer, total::text, note FROM ${table} ORDER BY id`;
+  expect(await query(direct!, values('orders_copy'))).toEqual(
+    await query(direct!, values('orders')),
+  );
+  expect(await query(direct!, values('orders_copy'))).toEqual([
+    [1, 'Ada', '12.50', 'first'],
+    [2, 'Grace, Hopper', '7.00', null],
+    [3, 'Linus', '100.25', 'say "hi"'],
+  ]);
+});
+
 test('runs a SQL file past a failing statement and logs the error', async () => {
   await stubDialog('open', join(work, 'script.sql'));
   await menu(treeRow(database!.name), 'Run SQL file…');
