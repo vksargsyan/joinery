@@ -8,6 +8,12 @@ import {
 } from '@joinery/core';
 import { createMysqlAdapter } from '@joinery/driver-mysql';
 import { createPostgresAdapter } from '@joinery/driver-postgres';
+import {
+  connectThroughTransport,
+  needsTransport,
+  type TransportManager,
+  type TransportSession,
+} from '@joinery/tunnel';
 
 import type { AdapterFactory, Prompter } from './context';
 import { CliError } from './errors';
@@ -32,6 +38,8 @@ export interface ConnectDeps {
   readonly adapters: AdapterFactory;
   readonly prompter: Prompter;
   readonly reporter: Reporter;
+  /** The run's TransportManager, asked for only by targets with an SSH tunnel or a proxy. */
+  readonly transports: () => TransportManager;
 }
 
 /** An open session and the target it was opened with (plus any password typed on the way). */
@@ -39,26 +47,35 @@ export interface Connection {
   readonly session: Session;
   readonly target: Target;
   readonly dialect: SqlDialect;
+  /** Closes the session, then releases its SSH tunnel or proxy route, if any. */
+  close(): Promise<void>;
+}
+
+/** Opens a session, through the target's tunnel or proxy when it has one (spec §4). */
+function openSession(
+  adapter: DriverAdapter,
+  target: Target,
+  deps: ConnectDeps,
+): Promise<TransportSession> {
+  const resolved = resolvedProfile(target);
+  if (needsTransport(target.profile)) {
+    return connectThroughTransport(adapter, resolved, deps.transports());
+  }
+  return adapter.connect(resolved).then((session) => ({ session, close: () => session.close() }));
 }
 
 /**
  * Connects to a target. When the server rejects a login made without a password and there is a
  * terminal, asks for the password and tries once more (psql's behaviour). A `mysql://` target
  * that turns out to be MariaDB is reopened with the MariaDB dialect, so scripts and snapshots
- * use MariaDB rules.
+ * use MariaDB rules. A target with an SSH tunnel or a proxy connects through it.
  */
 export async function connect(target: Target, deps: ConnectDeps): Promise<Connection> {
-  if (target.profile.ssh) {
-    throw new CliError('joinery-cli cannot open SSH tunnels yet', {
-      code: 'NOT_SUPPORTED',
-      hint: 'Open the tunnel yourself (ssh -N -L 15432:db-host:5432 bastion) and connect to the local port with a URI',
-    });
-  }
   const adapter = deps.adapters(target.profile.engine);
   let current = target;
-  let session: Session;
+  let opened: TransportSession;
   try {
-    session = await adapter.connect(resolvedProfile(current));
+    opened = await openSession(adapter, current, deps);
   } catch (error) {
     if (!isAuthFailure(error) || current.passwordKnown) throw error;
     if (!deps.prompter.interactive) {
@@ -70,17 +87,23 @@ export async function connect(target: Target, deps: ConnectDeps): Promise<Connec
     }
     deps.reporter.info(`${current.label}: ${error.message}`);
     current = withPassword(current, await deps.prompter.secret(`Password for ${current.label}: `));
-    session = await adapter.connect(resolvedProfile(current));
+    opened = await openSession(adapter, current, deps);
   }
-  if (current.profile.engine === 'mysql' && /mariadb/i.test(session.serverVersion)) {
+  if (current.profile.engine === 'mysql' && /mariadb/i.test(opened.session.serverVersion)) {
     deps.reporter.debug(
-      `${current.label} is MariaDB ${session.serverVersion}; using the MariaDB dialect`,
+      `${current.label} is MariaDB ${opened.session.serverVersion}; using the MariaDB dialect`,
     );
-    await session.close();
-    session = await deps.adapters('mariadb').connect(resolvedProfile(current));
+    // Open the new session first, so a tunnel's SSH session is reused rather than reconnected.
+    const reopened = await openSession(deps.adapters('mariadb'), current, deps).finally(() =>
+      opened.close().catch(() => undefined),
+    );
+    opened = reopened;
   }
-  deps.reporter.debug(`connected to ${current.label}: ${session.engine} ${session.serverVersion}`);
-  return { session, target: current, dialect: dialectOf(session.engine) };
+  const { session } = opened;
+  deps.reporter.debug(
+    `connected to ${current.label}: ${session.engine} ${session.serverVersion}${opened.transport ? ` via ${opened.transport.description}` : ''}`,
+  );
+  return { session, target: current, dialect: dialectOf(session.engine), close: opened.close };
 }
 
 /** What to do when a login without a password was refused and nobody can be asked. */
@@ -134,8 +157,13 @@ export async function drain(session: Session, sql: string, execution?: Execution
   }
 }
 
-/** Closes a session, never throwing (used in finally blocks). */
-export async function closeQuietly(session: Session | undefined): Promise<void> {
-  if (!session) return;
-  await session.close().catch(() => undefined);
+/**
+ * Closes a connection (session and tunnel) or a bare session, never throwing (used in finally
+ * blocks).
+ */
+export async function closeQuietly(
+  closable: { close(): Promise<void> } | undefined,
+): Promise<void> {
+  if (!closable) return;
+  await closable.close().catch(() => undefined);
 }

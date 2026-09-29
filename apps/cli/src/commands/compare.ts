@@ -40,6 +40,7 @@ export interface CompareCommandOptions {
   readonly apply: boolean;
   readonly yes: boolean;
   readonly tls?: TargetOverrides['tls'];
+  readonly tunnel?: TargetOverrides['tunnel'];
 }
 
 /**
@@ -58,7 +59,10 @@ export async function compareCommand(
   if (options.json && options.out === '-') {
     throw new CliError('--json and --out - both write to stdout; write the script to a file');
   }
-  const overrides = options.tls !== undefined ? { tls: options.tls } : {};
+  const overrides: TargetOverrides = {
+    ...(options.tls !== undefined ? { tls: options.tls } : {}),
+    ...(options.tunnel !== undefined ? { tunnel: options.tunnel } : {}),
+  };
   let source: Connection | undefined;
   let target: Connection | undefined;
   try {
@@ -66,8 +70,8 @@ export async function compareCommand(
     target = await openTarget(runtime, targetSpec, overrides);
     return await runCompare(runtime, source, target, options);
   } finally {
-    await closeQuietly(source?.session);
-    await closeQuietly(target?.session);
+    await closeQuietly(source);
+    await closeQuietly(target);
   }
 }
 

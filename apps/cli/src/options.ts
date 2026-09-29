@@ -2,6 +2,8 @@ import { tlsModeSchema, type TlsMode } from '@joinery/core';
 import type { CompareOptions, RenameObjectKind, RenameRule, RowAction } from '@joinery/sync';
 import { InvalidArgumentError } from 'commander';
 
+import type { ProxyFlag, SshHopFlag } from './tunnels';
+
 /**
  * Parsers for option values. Each throws commander's InvalidArgumentError, which prints as
  * `error: option '--x <v>' argument 'y' is invalid. <reason>` and exits 2.
@@ -175,4 +177,55 @@ export function actionList(value: string): RowAction[] {
     );
   }
   return [...new Set(names as RowAction[])];
+}
+
+function port(text: string): number | undefined {
+  if (!/^\d{1,5}$/.test(text)) return undefined;
+  const n = Number(text);
+  return n >= 1 && n <= 65535 ? n : undefined;
+}
+
+/** `--ssh user@host[:port]` (port 22 by default; an IPv6 host goes in brackets). */
+export function sshHop(value: string): SshHopFlag {
+  const match = /^([^@\s]+)@(\[[0-9A-Fa-f:.]+\]|[^:@\s[\]]+)(?::([^:]*))?$/.exec(value.trim());
+  if (!match) throw new InvalidArgumentError('Use user@host or user@host:port.');
+  const parsed = match[3] === undefined ? 22 : port(match[3]);
+  if (parsed === undefined) throw new InvalidArgumentError('The port must be 1 to 65535.');
+  return { user: match[1]!, host: match[2]!.replace(/^\[(.*)\]$/, '$1'), port: parsed };
+}
+
+const PROXY_KINDS: Readonly<Record<string, ProxyFlag['kind']>> = {
+  'socks5:': 'socks5',
+  'socks5h:': 'socks5',
+  'socks:': 'socks5',
+  'http:': 'http',
+};
+
+/**
+ * `--proxy socks5://host:port` or `http://host:port` (an HTTP CONNECT proxy), optionally with
+ * `user[:password]@`. The port defaults to 1080 for SOCKS5 and 80 for HTTP.
+ */
+export function proxyUrl(value: string): ProxyFlag {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new InvalidArgumentError('Use socks5://host:port or http://host:port.');
+  }
+  const kind = PROXY_KINDS[url.protocol];
+  if (kind === undefined) throw new InvalidArgumentError('Use a socks5:// or http:// proxy URL.');
+  if (url.pathname !== '' && url.pathname !== '/') {
+    throw new InvalidArgumentError('A proxy URL has no path.');
+  }
+  const host = decodeURIComponent(url.hostname.replace(/^\[(.*)\]$/, '$1'));
+  if (host === '') throw new InvalidArgumentError('The proxy URL needs a host.');
+  const user = url.username === '' ? undefined : decodeURIComponent(url.username);
+  const password = url.password === '' ? undefined : decodeURIComponent(url.password);
+  return {
+    kind,
+    host,
+    port: url.port === '' ? (kind === 'socks5' ? 1080 : 80) : Number(url.port),
+    ...(user !== undefined ? { user } : {}),
+    ...(password !== undefined ? { password } : {}),
+  };
 }

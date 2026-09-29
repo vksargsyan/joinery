@@ -119,6 +119,10 @@ export async function showProfile(
   ];
   if (profile.ssh)
     lines.push(['SSH', profile.ssh.hops.map((h) => `${h.user}@${h.host}:${h.port}`).join(' → ')]);
+  if (profile.proxy) {
+    const { kind, host, port, user } = profile.proxy;
+    lines.push(['Proxy', `${kind}://${user ? `${user}@` : ''}${host}:${port}`]);
+  }
   for (const secret of secretStatus(store, profile)) {
     lines.push([secret.label, describeSecret(secret)]);
   }

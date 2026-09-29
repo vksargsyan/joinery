@@ -22,7 +22,9 @@
   "dependencies": {
     "mysql2": "^3.24.4",
     "pg": "^8.23.0",
-    "pg-cursor": "^2.22.0"
+    "pg-cursor": "^2.22.0",
+    "socks": "^2.8.10",
+    "ssh2": "^1.17.0"
   },
   "devDependencies": {
     "@joinery/core": "workspace:*",
@@ -31,7 +33,9 @@
     "@joinery/sql-tools": "workspace:*",
     "@joinery/storage": "workspace:*",
     "@joinery/sync": "workspace:*",
+    "@joinery/tunnel": "workspace:*",
     "@types/node": "catalog:",
+    "@types/ssh2": "^1.15.6",
     "commander": "^15.0.0",
     "tsup": "^8.5.1",
     "typescript": "catalog:",

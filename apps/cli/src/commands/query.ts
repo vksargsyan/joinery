@@ -156,7 +156,7 @@ export async function queryCommand(
       reporter.warn('A transaction was left open; it was rolled back');
       await (session.rollback ? session.rollback() : Promise.resolve()).catch(() => undefined);
     }
-    await closeQuietly(session);
+    await closeQuietly(connection);
   }
   if (index > 1 || !input.inline) {
     reporter.info(

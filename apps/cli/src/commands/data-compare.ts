@@ -37,6 +37,7 @@ import { bytesToBase64, cellText, isHandle } from '../output/cells';
 import { singleLine, truncateToWidth } from '../output/width';
 import { formatDuration, openTarget, plural, writeLine, type Runtime } from '../runtime';
 import { confirmOperation } from '../safety';
+import type { TargetOverrides } from '../target';
 
 export interface DataCompareCommandOptions {
   /** Source table, `schema.table` on PostgreSQL. */
@@ -59,6 +60,7 @@ export interface DataCompareCommandOptions {
   readonly batchSize?: number;
   readonly disableForeignKeyChecks?: boolean;
   readonly tls?: TlsMode;
+  readonly tunnel?: TargetOverrides['tunnel'];
 }
 
 /** The row layout compareTableData streams: key columns first, then compared columns. */
@@ -89,7 +91,10 @@ export async function dataCompareCommand(
   targetSpec: string,
   options: DataCompareCommandOptions,
 ): Promise<ExitCode> {
-  const overrides = options.tls !== undefined ? { tls: options.tls } : {};
+  const overrides: TargetOverrides = {
+    ...(options.tls !== undefined ? { tls: options.tls } : {}),
+    ...(options.tunnel !== undefined ? { tunnel: options.tunnel } : {}),
+  };
   let source: Connection | undefined;
   let target: Connection | undefined;
   let spool: SyncSpool | undefined;
@@ -202,8 +207,8 @@ export async function dataCompareCommand(
     return EXIT.differences;
   } finally {
     spool?.dispose();
-    await closeQuietly(source?.session);
-    await closeQuietly(target?.session);
+    await closeQuietly(source);
+    await closeQuietly(target);
   }
 }
 

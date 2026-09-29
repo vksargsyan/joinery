@@ -83,6 +83,12 @@ importers:
       pg-cursor:
         specifier: ^2.22.0
         version: 2.22.0(pg@8.23.0)
+      socks:
+        specifier: ^2.8.10
+        version: 2.8.10
+      ssh2:
+        specifier: ^1.17.0
+        version: 1.17.0
     devDependencies:
       '@joinery/core':
         specifier: workspace:*
@@ -102,9 +108,15 @@ importers:
       '@joinery/sync':
         specifier: workspace:*
         version: link:../../packages/sync
+      '@joinery/tunnel':
+        specifier: workspace:*
+        version: link:../../packages/tunnel
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.4
+      '@types/ssh2':
+        specifier: ^1.15.6
+        version: 1.15.6
       commander:
         specifier: ^15.0.0
         version: 15.0.0

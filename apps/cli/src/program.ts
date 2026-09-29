@@ -18,7 +18,14 @@ import {
 import { queryCommand } from './commands/query';
 import { testCommand } from './commands/test';
 import type { CliContext } from './context';
-import { BrokenPipeError, EXIT, InterruptedError, formatError, type ExitCode } from './errors';
+import {
+  BrokenPipeError,
+  CliError,
+  EXIT,
+  InterruptedError,
+  formatError,
+  type ExitCode,
+} from './errors';
 import { Interrupts } from './interrupt';
 import {
   actionList,
@@ -29,7 +36,9 @@ import {
   nonNegativeNumber,
   param,
   positiveInteger,
+  proxyUrl,
   renameRule,
+  sshHop,
   tlsMode,
   type IgnoreName,
 } from './options';
@@ -38,6 +47,14 @@ import { Sink } from './output/sink';
 import { Reporter, Style } from './reporter';
 import type { Runtime } from './runtime';
 import { StoreHandle, resolveStorePath } from './store';
+import { redactUri } from './target';
+import {
+  SSH_PASSWORD_ENV,
+  Tunnels,
+  type ProxyFlag,
+  type SshHopFlag,
+  type TunnelFlags,
+} from './tunnels';
 
 export const VERSION = packageJson.version;
 
@@ -59,10 +76,22 @@ Targets:
   hidden prompt. TLS defaults to verify-full unless the URI says otherwise (?sslmode=...)
   or --tls is given.
 
+SSH tunnels and proxies:
+  A saved profile connects through its own SSH tunnel and proxy. A URI target takes them
+  from --ssh user@host[:port] (repeat it for jump hosts, in the order to connect), with
+  --ssh-key <path>, --ssh-agent or an SSH password (--ssh-password-env <VAR>, else
+  ${SSH_PASSWORD_ENV}, else a hidden prompt), and --proxy socks5://host:port or
+  http://host:port. Host keys are checked against the desktop app's known_hosts (next to
+  the store; --known-hosts to use another file): a new key is asked about in a terminal
+  and refused otherwise unless --ssh-accept-new is given; a changed key is always refused.
+
 Environment:
   JOINERY_STORE              local store file (default: the desktop app's joinery.db)
   JOINERY_PASSWORD           password for targets without one
   JOINERY_PASSWORD_<NAME>    password for one profile (name upper-cased, other chars as _)
+  JOINERY_SSH_PASSWORD       SSH password for --ssh hops and profiles that ask for it
+  JOINERY_SSH_KEY_PASSPHRASE passphrase of an encrypted SSH key
+  JOINERY_PROXY_PASSWORD     proxy password (a --proxy URL may carry it too)
   JOINERY_PASSPHRASE         seals passwords the CLI saves (the OS keychain is app-only)
   JOINERY_EXPORT_PASSPHRASE  passphrase for profiles export/import files
   NO_COLOR                   turn colours off
@@ -109,6 +138,12 @@ export async function runCli(argv: readonly string[], ctx: CliContext): Promise<
   interrupts.listen(ctx.signals);
   const stdout = new Sink(ctx.stdout);
   const store = new StoreHandle(location, ctx.env);
+  const tunnels = new Tunnels({
+    storePath: location.path,
+    cwd: ctx.cwd,
+    prompter: ctx.prompter,
+    reporter,
+  });
   const runtime: Runtime = {
     ctx,
     reporter,
@@ -116,6 +151,7 @@ export async function runCli(argv: readonly string[], ctx: CliContext): Promise<
     out: new Style(color && ctx.stdout.isTTY === true),
     store,
     interrupts,
+    tunnels,
   };
   try {
     const code = await Promise.race([job(runtime), interrupts.hardStop]);
@@ -127,10 +163,81 @@ export async function runCli(argv: readonly string[], ctx: CliContext): Promise<
     reporter.error(formatError(error, { verbose: reporter.verbose }));
     return EXIT.error;
   } finally {
+    tunnels.closeAll();
     interrupts.dispose();
     stdout.dispose();
     store.close();
   }
+}
+
+/** Commands that connect take the SSH tunnel and proxy options. */
+const TUNNEL_COMMANDS = new Set(['test', 'query', 'compare', 'data-compare', 'ddl']);
+
+function addTunnelOptions(command: Command): void {
+  command
+    .option(
+      '--ssh <user@host[:port]>',
+      'reach URI targets through this SSH server; repeat for jump hosts, in order',
+      collect(sshHop),
+    )
+    .addOption(
+      new Option('--ssh-key <path>', 'SSH private key file (OpenSSH, PEM or PuTTY .ppk)').conflicts(
+        ['sshAgent', 'sshPasswordEnv'],
+      ),
+    )
+    .addOption(
+      new Option(
+        '--ssh-password-env <VAR>',
+        `take the SSH password from this variable (default ${SSH_PASSWORD_ENV}, else a prompt)`,
+      ).conflicts('sshAgent'),
+    )
+    .option('--ssh-agent', 'log in with the keys of ssh-agent (SSH_AUTH_SOCK) or Pageant')
+    // Parsed when the command runs, so an invalid URL is reported without its password.
+    .option(
+      '--proxy <url>',
+      'reach URI targets (or their first SSH server) through socks5://host:port or http://host:port',
+    )
+    .option(
+      '--ssh-accept-new',
+      'trust and remember an SSH host key not seen before (a changed key is always refused)',
+    )
+    .option('--known-hosts <path>', "SSH known hosts file (default: the desktop app's)");
+}
+
+interface TunnelCliOptions {
+  ssh?: SshHopFlag[];
+  sshKey?: string;
+  sshPasswordEnv?: string;
+  sshAgent?: boolean;
+  proxy?: string;
+  sshAcceptNew?: boolean;
+  knownHosts?: string;
+}
+
+/** `--proxy`, with a password in an invalid URL masked in the message. */
+function parseProxy(value: string): ProxyFlag {
+  try {
+    return proxyUrl(value);
+  } catch (error) {
+    throw new CliError(
+      `--proxy ${redactUri(value)}: ${error instanceof Error ? error.message : String(error)}`,
+      { hint: 'Use socks5://host:port or http://host:port' },
+    );
+  }
+}
+
+/** The tunnel flags of a command, or nothing when none was given. */
+function tunnelFlags(options: TunnelCliOptions): { tunnel?: TunnelFlags } {
+  const flags: TunnelFlags = {
+    ...(options.ssh !== undefined ? { ssh: options.ssh } : {}),
+    ...(options.sshKey !== undefined ? { sshKey: options.sshKey } : {}),
+    ...(options.sshPasswordEnv !== undefined ? { sshPasswordEnv: options.sshPasswordEnv } : {}),
+    ...(options.sshAgent ? { sshAgent: true } : {}),
+    ...(options.proxy !== undefined ? { proxy: parseProxy(options.proxy) } : {}),
+    ...(options.sshAcceptNew ? { sshAcceptNew: true } : {}),
+    ...(options.knownHosts !== undefined ? { knownHosts: options.knownHosts } : {}),
+  };
+  return Object.keys(flags).length > 0 ? { tunnel: flags } : {};
 }
 
 function tlsOption(): Option {
@@ -177,13 +284,14 @@ export function buildProgram(ctx: CliContext, schedule: (job: Job) => void): Com
     .option('--json', 'print the steps as JSON')
     .addHelpText(
       'after',
-      '\nExit code 0 when every step passes, 1 when one fails (with a fix hint), 2 on errors.\n\nExamples:\n  joinery test prod-db\n  joinery test "postgres://app@db.internal:5432/app?sslmode=verify-full"',
+      '\nExit code 0 when every step passes, 1 when one fails (with a fix hint), 2 on errors.\n\nExamples:\n  joinery test prod-db\n  joinery test "postgres://app@db.internal:5432/app?sslmode=verify-full"\n  joinery test "postgres://app@10.0.3.7/app" --ssh ops@bastion.example.com --ssh-agent',
     )
-    .action((target: string, options: { tls?: TlsMode; json?: boolean }) => {
+    .action((target: string, options: { tls?: TlsMode; json?: boolean } & TunnelCliOptions) => {
       schedule((runtime) =>
         testCommand(runtime, target, {
           json: options.json === true,
           ...(options.tls !== undefined ? { tls: options.tls } : {}),
+          ...tunnelFlags(options),
         }),
       );
     });
@@ -238,7 +346,8 @@ Examples:
   joinery query prod -e "select * from users where id = :id" --param id=42
   joinery query "postgres://app@localhost/app" -f migrate.sql --continue --error-log errors.log
   joinery query dev -f dump.sql --yes --quiet
-  cat report.sql | joinery query dev --format csv > report.csv`,
+  cat report.sql | joinery query dev --format csv > report.csv
+  joinery query "mysql://app@db.internal/app" --ssh ops@jump:22 --ssh ops@bastion --ssh-key ~/.ssh/id_ed25519 -e "select 1"`,
     )
     .action((target: string, options: QueryCliOptions) => {
       schedule((runtime) => queryCommand(runtime, target, queryOptions(options)));
@@ -308,6 +417,7 @@ Examples:
           ...(options.out !== undefined ? { out: options.out } : {}),
           ...(options.html !== undefined ? { html: options.html } : {}),
           ...(options.tls !== undefined ? { tls: options.tls } : {}),
+          ...tunnelFlags(options),
         }),
       );
     });
@@ -382,6 +492,7 @@ Examples:
           ...(options.disableFkChecks ? { disableForeignKeyChecks: true } : {}),
           ...(options.out !== undefined ? { out: options.out } : {}),
           ...(options.tls !== undefined ? { tls: options.tls } : {}),
+          ...tunnelFlags(options),
         }),
       );
     });
@@ -402,7 +513,12 @@ Examples:
     .action(
       (
         target: string,
-        options: { schema?: string[]; database?: string; out?: string; tls?: TlsMode },
+        options: {
+          schema?: string[];
+          database?: string;
+          out?: string;
+          tls?: TlsMode;
+        } & TunnelCliOptions,
       ) => {
         schedule((runtime) =>
           ddlCommand(runtime, target, {
@@ -410,6 +526,7 @@ Examples:
             ...(options.database !== undefined ? { database: options.database } : {}),
             ...(options.out !== undefined ? { out: options.out } : {}),
             ...(options.tls !== undefined ? { tls: options.tls } : {}),
+            ...tunnelFlags(options),
           }),
         );
       },
@@ -534,10 +651,13 @@ Examples:
       schedule((runtime) => importCommand(runtime, file, { replace: options.replace === true }));
     });
 
+  for (const command of program.commands) {
+    if (TUNNEL_COMMANDS.has(command.name())) addTunnelOptions(command);
+  }
   return program;
 }
 
-interface QueryCliOptions {
+interface QueryCliOptions extends TunnelCliOptions {
   execute?: string;
   file?: string;
   format: OutputFormat;
@@ -566,10 +686,11 @@ function queryOptions(options: QueryCliOptions): Parameters<typeof queryCommand>
     ...(options.database !== undefined ? { database: options.database } : {}),
     ...(options.readOnly ? { readOnly: true } : {}),
     ...(options.tls !== undefined ? { tls: options.tls } : {}),
+    ...tunnelFlags(options),
   };
 }
 
-interface CompareCliOptions {
+interface CompareCliOptions extends TunnelCliOptions {
   schema?: string[];
   ignore?: IgnoreName[];
   defaultIgnores?: boolean;
@@ -584,7 +705,7 @@ interface CompareCliOptions {
   tls?: TlsMode;
 }
 
-interface DataCompareCliOptions {
+interface DataCompareCliOptions extends TunnelCliOptions {
   table: string;
   targetTable?: string;
   key?: string[];

@@ -53,6 +53,6 @@ export async function ddlCommand(
     }
     return EXIT.ok;
   } finally {
-    await closeQuietly(connection.session);
+    await closeQuietly(connection);
   }
 }

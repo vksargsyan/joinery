@@ -14,12 +14,26 @@ import type { Prompter } from './context';
 import { CliError } from './errors';
 import type { Reporter } from './reporter';
 import type { StoreHandle } from './store';
+import {
+  PROXY_PASSWORD_ENV,
+  SSH_KEY_PASSPHRASE_ENV,
+  SSH_PASSWORD_ENV,
+  applyTunnelFlags,
+  describeRoute,
+  hasRouteFlags,
+  hopLabel,
+  type TunnelFlags,
+} from './tunnels';
 
 /**
  * Targets: every command's connection argument is a saved profile (name or id) or a connection
  * URI. URI passwords are used for the run only and never stored. Otherwise the password comes
  * from the profile's saved secret, JOINERY_PASSWORD_<PROFILE> / JOINERY_PASSWORD, or a hidden
  * prompt; without a terminal and without a password the command fails and says how to pass one.
+ *
+ * A saved profile's SSH tunnel and proxy come with it; their missing secrets are read from
+ * JOINERY_SSH_PASSWORD, JOINERY_SSH_KEY_PASSPHRASE and JOINERY_PROXY_PASSWORD or asked for. A URI
+ * target gets its tunnel and proxy from the command line (`--ssh`, `--proxy`, see tunnels.ts).
  */
 
 /** Per-run overrides applied on top of the profile or URI. */
@@ -30,6 +44,8 @@ export interface TargetOverrides {
   readonly database?: string;
   /** --read-only: refuse writes on this run whatever the profile says. */
   readonly readOnly?: boolean;
+  /** --ssh, --proxy and the host key flags. The route flags apply to URI targets only. */
+  readonly tunnel?: TunnelFlags;
 }
 
 /** A resolved connection target, ready to connect. Its secrets never print. */
@@ -92,10 +108,11 @@ export async function resolveTarget(
   deps: TargetDeps,
 ): Promise<Target> {
   const target = isConnectionUri(spec)
-    ? resolveUri(spec, overrides, deps)
+    ? await resolveUri(spec, overrides, deps)
     : await resolveProfile(spec, overrides, deps);
+  const route = describeRoute(target.profile);
   deps.reporter.debug(
-    `target ${target.label}: ${target.profile.engine}, ${describeEndpoint(target.profile)}, tls ${target.profile.tls.mode}, password ${target.passwordKnown ? 'provided' : 'not provided'}`,
+    `target ${target.label}: ${target.profile.engine}, ${describeEndpoint(target.profile)}${route ? ` via ${route}` : ''}, tls ${target.profile.tls.mode}, password ${target.passwordKnown ? 'provided' : 'not provided'}`,
   );
   return target;
 }
@@ -148,7 +165,11 @@ export function describeEndpoint(profile: ConnectionProfile): string {
 
 // ---------------------------------------------------------------------------------------------
 
-function resolveUri(spec: string, overrides: TargetOverrides, deps: TargetDeps): Target {
+async function resolveUri(
+  spec: string,
+  overrides: TargetOverrides,
+  deps: TargetDeps,
+): Promise<Target> {
   const scheme = /^(?:jdbc:)?([a-z][a-z0-9+.-]*):/i.exec(spec.trim())?.[1]?.toLowerCase() ?? '';
   if (!SQL_SCHEMES.has(scheme)) {
     throw new CliError(`joinery-cli does not support "${scheme}://" URIs`, {
@@ -168,12 +189,18 @@ function resolveUri(spec: string, overrides: TargetOverrides, deps: TargetDeps):
     updatedAt: now,
   });
   profile = applyOverrides(profile, overrides);
+  let tunnelSecrets: [string, string][] = [];
+  if (hasRouteFlags(overrides.tunnel)) {
+    const tunnelled = await applyTunnelFlags(profile, overrides.tunnel ?? {}, deps);
+    profile = tunnelled.profile;
+    tunnelSecrets = tunnelled.secrets;
+  }
   const label = `${ENGINES[profile.engine].displayName} ${profile.name}`;
   let target: Target = {
     kind: 'uri',
     label,
     profile,
-    secrets: secretMap([]),
+    secrets: secretMap(tunnelSecrets),
     policy: policyFor(profile, overrides),
     passwordKnown: false,
     ...(overrides.readOnly ? { readOnlySource: 'flag' as const } : {}),
@@ -197,6 +224,11 @@ async function resolveProfile(
   }
   const stored = findProfile(store, spec);
   const profile = applyOverrides(stripVersion(stored), overrides);
+  if (hasRouteFlags(overrides.tunnel)) {
+    deps.reporter.warn(
+      `--ssh, --ssh-key, --ssh-agent, --ssh-password-env and --proxy apply to URI targets; "${profile.name}" uses its saved SSH and proxy settings`,
+    );
+  }
   if (!isSqlEngine(profile.engine)) {
     throw new CliError(
       `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL and MariaDB`,
@@ -208,6 +240,7 @@ async function resolveProfile(
   const unreadable = new Set(resolved.unreadable.map((ref) => ref.id));
   const auth = profile.auth;
   const passwordRef = auth.method === 'password' ? auth.password : undefined;
+  const tunnelSecrets = tunnelSecretsOf(profile);
 
   for (const ref of resolved.missing) {
     if (passwordRef && ref.id === passwordRef.id) {
@@ -221,8 +254,15 @@ async function resolveProfile(
         deps,
       );
       secrets.push([ref.id, value]);
+    } else {
+      const tunnel = tunnelSecrets.get(ref.id);
+      if (tunnel) {
+        secrets.push([
+          ref.id,
+          await missingSecret(profile, tunnel.what, tunnel.env, unreadable.has(ref.id), deps),
+        ]);
+      }
     }
-    // SSH and proxy secrets: the CLI cannot open tunnels or proxies; connecting says so.
   }
 
   const target: Target = {
@@ -243,6 +283,33 @@ async function resolveProfile(
   };
   const envPassword = target.passwordKnown ? undefined : passwordFromEnv(profile, deps.env);
   return envPassword !== undefined ? withPassword(target, envPassword) : target;
+}
+
+/** What each SSH and proxy secret of a profile is, and the variable that can supply it. */
+function tunnelSecretsOf(
+  profile: ConnectionProfile,
+): Map<string, { readonly what: string; readonly env: string }> {
+  const secrets = new Map<string, { readonly what: string; readonly env: string }>();
+  for (const hop of profile.ssh?.hops ?? []) {
+    if (hop.auth.method === 'password') {
+      secrets.set(hop.auth.password.id, {
+        what: `SSH password (${hopLabel(hop)})`,
+        env: SSH_PASSWORD_ENV,
+      });
+    } else if (hop.auth.method === 'privateKey' && hop.auth.passphrase) {
+      secrets.set(hop.auth.passphrase.id, {
+        what: `SSH key passphrase (${hop.auth.keyPath})`,
+        env: SSH_KEY_PASSPHRASE_ENV,
+      });
+    }
+  }
+  if (profile.proxy?.password) {
+    secrets.set(profile.proxy.password.id, {
+      what: `proxy password (${hopLabel(profile.proxy)})`,
+      env: PROXY_PASSWORD_ENV,
+    });
+  }
+  return secrets;
 }
 
 /** Finds a profile by id, then exact name, then name ignoring case; ambiguity is an error. */

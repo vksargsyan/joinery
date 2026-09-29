@@ -5,6 +5,7 @@ import type { Sink } from './output/sink';
 import type { Reporter, Style } from './reporter';
 import type { StoreHandle } from './store';
 import { resolveTarget, type Target, type TargetOverrides } from './target';
+import type { Tunnels } from './tunnels';
 
 /**
  * What every command gets. stdout carries the command's result (rows, the diff, test steps,
@@ -19,6 +20,8 @@ export interface Runtime {
   readonly out: Style;
   readonly store: StoreHandle;
   readonly interrupts: Interrupts;
+  /** SSH tunnels and proxies of this run; closed before the process exits. */
+  readonly tunnels: Tunnels;
 }
 
 export function targetFor(
@@ -54,6 +57,7 @@ export async function openTarget(
       adapters: runtime.ctx.adapters,
       prompter: runtime.ctx.prompter,
       reporter: runtime.reporter,
+      transports: () => runtime.tunnels.manager(overrides.tunnel),
     });
   } finally {
     runtime.reporter.clearProgress();
