@@ -8,6 +8,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import {
+  EXPORT_TEXT_LIMIT,
   connectionHostContract,
   createClient,
   mainContract,
@@ -164,6 +165,40 @@ describe('mongo schemas', () => {
     // Whole GridFS files move by path in main, never through the page.
     expect(mainContract.methods.get('mongo.gridfs.upload')?.progress).toBeDefined();
     expect(mainContract.methods.get('mongo.gridfs.download')?.kind).toBe('unary');
+    // Saved pipelines and exported text go through main too.
+    expect(
+      [...mainContract.methods.keys()].filter(
+        (p) => p.startsWith('mongo.pipelines.') || p === 'mongo.writeText',
+      ),
+    ).toEqual([
+      'mongo.pipelines.list',
+      'mongo.pipelines.save',
+      'mongo.pipelines.delete',
+      'mongo.writeText',
+    ]);
+  });
+
+  it('checks saved pipelines and exported text before main sees them', () => {
+    const scope = { profileId: 'p1', db: 'shop', collection: 'orders' };
+    expect(
+      parseRequest(mainContract, 'mongo.pipelines.save', {
+        ...scope,
+        name: '  Totals ',
+        text: '[]',
+      }),
+    ).toMatchObject({ input: { name: 'Totals' } });
+    expect(() =>
+      parseRequest(mainContract, 'mongo.pipelines.save', { ...scope, name: '   ', text: '[]' }),
+    ).toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }));
+    expect(() =>
+      parseRequest(mainContract, 'mongo.pipelines.list', { ...scope, collection: '' }),
+    ).toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }));
+    expect(() =>
+      parseRequest(mainContract, 'mongo.writeText', {
+        path: '/tmp/x.json',
+        text: 'x'.repeat(EXPORT_TEXT_LIMIT + 1),
+      }),
+    ).toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }));
   });
 
   it('streams documents and carries bytes and write summaries across a port', async () => {

@@ -13,6 +13,7 @@ import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
 import { BulkDialog, DocumentEditorDialog } from './DocumentDialogs';
 import { ExplainView } from './ExplainView';
+import { openMongoTool } from './open';
 import { ResultViews } from './ResultViews';
 import { ShellEditor } from './ShellEditor';
 
@@ -102,6 +103,8 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
         >
           Bulk delete…
         </Button>
+        <span className="mx-1 h-5 w-px bg-border" />
+        <CollectionTools view={view} />
         <span className="flex-1" />
         <span className="font-mono text-xs text-muted">
           {db}.{collection}
@@ -189,6 +192,66 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
       <DocumentEditorDialog view={view} theme={theme} />
       <BulkDialog view={view} theme={theme} />
     </div>
+  );
+}
+
+/** The collection's tool panels: aggregation, indexes, schema, options, change stream. */
+function CollectionTools({ view }: { readonly view: CollectionView }) {
+  const { profileId, db, collection, kind } = view.target;
+  const target = { profileId, db, collection };
+  const filter = useCollectionState(view, (s) => s.fields.filter);
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        title="Open the aggregation editor, starting from the current filter"
+        onClick={() =>
+          openMongoTool({
+            tool: 'aggregation',
+            target: {
+              ...target,
+              ...(filter.trim() !== '' ? { text: `[{ $match: ${filter.trim()} }]` } : {}),
+            },
+          })
+        }
+      >
+        Aggregate
+      </Button>
+      {kind !== 'view' && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => openMongoTool({ tool: 'indexes', target })}
+        >
+          Indexes
+        </Button>
+      )}
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => openMongoTool({ tool: 'schema', target: { ...target, kind } })}
+      >
+        Schema
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => openMongoTool({ tool: 'options', target })}>
+        Options
+      </Button>
+      {kind !== 'view' && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            openMongoTool({
+              tool: 'changes',
+              target: { profileId, scope: { kind: 'collection', ns: { db, collection } } },
+            })
+          }
+        >
+          Watch
+        </Button>
+      )}
+    </>
   );
 }
 

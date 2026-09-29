@@ -1,10 +1,17 @@
 import type { CollectionTarget } from '../../state/mongo/collection-view';
-import { createCollectionPanel, createConsolePanel } from '../../state/mongo/panels';
+import {
+  createCollectionPanel,
+  createConsolePanel,
+  createToolPanel,
+  getMongoPanel,
+  type ToolPanelRequest,
+} from '../../state/mongo/panels';
+import { UsersRoles } from '../../state/mongo/users';
 import { currentDock } from '../dock';
 
 /**
- * Opens the MongoDB module's panels in the dock: a collection's view (or focuses the open one)
- * and a command console, the "query tab" of a MongoDB connection.
+ * Opens the MongoDB module's panels in the dock: a collection's view (or focuses the open one),
+ * a command console (the "query tab" of a MongoDB connection) and the tool panels.
  */
 
 function addToDock(id: string, title: string): void {
@@ -45,5 +52,27 @@ export function openMongoConsole(options: {
     title,
   );
   addToDock(id, title);
+  return id;
+}
+
+/**
+ * Opens a MongoDB tool panel (aggregation editor, indexes, schema, options, change stream,
+ * GridFS files, users and roles), or focuses the one already open on the same object.
+ */
+export function openMongoTool(request: ToolPanelRequest): string {
+  const { id, opened, title } = createToolPanel(request);
+  if (opened) {
+    addToDock(id, title);
+    return id;
+  }
+  currentDock()?.getPanel(id)?.api.setActive();
+  const panel = getMongoPanel(id);
+  if (request.tool === 'users' && panel instanceof UsersRoles) {
+    panel.setTab(request.target.tab);
+    if (request.target.select !== undefined) {
+      if (request.target.tab === 'users') panel.selectUser(request.target.select);
+      else panel.selectRole(request.target.select);
+    }
+  }
   return id;
 }

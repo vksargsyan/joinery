@@ -16,15 +16,19 @@ import {
   opensCollection,
   type MongoObject,
 } from '../../state/mongo/explorer';
+import { openCreateCollection, openCreateView } from '../../state/mongo/create-dialogs';
 import { MenuItem, Row } from '../Sidebar';
 import { Icon } from '../ui';
-import { openMongoCollection, openMongoConsole } from './open';
+import { MongoCreateDialogs } from './CreateDialogs';
+import { openMongoCollection, openMongoConsole, openMongoTool } from './open';
 
 /**
  * A MongoDB connection's object tree (spec §5): databases, then collections, views, time series
  * collections, GridFS buckets, users and roles, with each collection's indexes. Double-click (or
- * Enter) opens a collection or view in the collection view; the menu opens a console, refreshes,
- * and drops objects after showing the exact command.
+ * Enter) opens a collection or view in the collection view, a bucket in the GridFS browser and a
+ * user or role in the users and roles editor; the menu opens a console and the tool panels
+ * (aggregation, indexes, schema, options, change streams), creates collections and views,
+ * refreshes, and drops objects after showing the exact command.
  */
 
 type MongoIconName = 'collection' | 'view' | 'time-series' | 'bucket' | 'index' | 'user' | 'role';
@@ -116,7 +120,9 @@ function iconFor(node: BrowseNode) {
 function detailOf(node: BrowseNode): string | undefined {
   const detail = node.detail ?? {};
   if (typeof detail['count'] === 'number') return formatCount(detail['count']);
-  if (typeof detail['files'] === 'number') return `${formatCount(detail['files'])} files`;
+  if (typeof detail['files'] === 'number') {
+    return `${formatCount(detail['files'])} ${detail['files'] === 1 ? 'file' : 'files'}`;
+  }
   if (node.kind === 'index' && typeof detail['keys'] === 'string') {
     try {
       return formatShellInline(fromEjson(detail['keys'], 'index keys'));
@@ -132,7 +138,158 @@ export function MongoTree(props: {
   readonly depth: number;
   readonly onError: (message: string) => void;
 }) {
-  return <MongoChildren {...props} path={[]} />;
+  return (
+    <>
+      <MongoChildren {...props} path={[]} />
+      <MongoCreateDialogs profileId={props.profile.id} />
+    </>
+  );
+}
+
+/** Opens the tool panel a node stands for on double-click; undefined when it has none. */
+function toolOpener(profileId: string, node: BrowseNode): (() => void) | undefined {
+  const [db, folder, name] = node.path;
+  if (db === undefined) return undefined;
+  if (node.kind === 'gridfs-bucket' && name !== undefined) {
+    return () => openMongoTool({ tool: 'gridfs', target: { profileId, db, bucket: name } });
+  }
+  if ((node.kind === 'user' || node.kind === 'role') && name !== undefined) {
+    const tab = node.kind === 'user' ? 'users' : 'roles';
+    return () => openMongoTool({ tool: 'users', target: { profileId, db, tab, select: name } });
+  }
+  if (node.kind === 'index' && folder !== undefined && name !== undefined) {
+    return () => openMongoTool({ tool: 'indexes', target: { profileId, db, collection: name } });
+  }
+  return undefined;
+}
+
+/** The tool menu items of a node (collections, databases and folders). */
+function ToolItems(props: { readonly profile: StoredProfile; readonly node: BrowseNode }) {
+  const { profile, node } = props;
+  const profileId = profile.id;
+  const readOnly = profile.presentation.readOnly;
+  const [db, folder, name, sub] = node.path;
+  if (db === undefined) return null;
+  const object = mongoObjectOf(node);
+  if (
+    object &&
+    (object.kind === 'collection' || object.kind === 'view' || object.kind === 'time-series')
+  ) {
+    const target = { profileId, db, collection: object.name };
+    return (
+      <>
+        <MenuItem onSelect={() => openMongoTool({ tool: 'aggregation', target })}>
+          Aggregate…
+        </MenuItem>
+        {object.kind !== 'view' && (
+          <MenuItem onSelect={() => openMongoTool({ tool: 'indexes', target })}>Indexes</MenuItem>
+        )}
+        <MenuItem
+          onSelect={() =>
+            openMongoTool({ tool: 'schema', target: { ...target, kind: object.kind } })
+          }
+        >
+          Analyse schema
+        </MenuItem>
+        <MenuItem onSelect={() => openMongoTool({ tool: 'options', target })}>Options</MenuItem>
+        {object.kind !== 'view' && (
+          <MenuItem
+            onSelect={() =>
+              openMongoTool({
+                tool: 'changes',
+                target: {
+                  profileId,
+                  scope: { kind: 'collection', ns: { db, collection: object.name } },
+                },
+              })
+            }
+          >
+            Watch changes
+          </MenuItem>
+        )}
+        {!readOnly && (
+          <MenuItem onSelect={() => openCreateView(profileId, db, object.name)}>
+            Create view on it…
+          </MenuItem>
+        )}
+      </>
+    );
+  }
+  if (node.kind === 'database') {
+    return (
+      <>
+        {!readOnly && (
+          <>
+            <MenuItem onSelect={() => openCreateCollection(profileId, db)}>
+              Create collection…
+            </MenuItem>
+            <MenuItem onSelect={() => openCreateView(profileId, db)}>Create view…</MenuItem>
+          </>
+        )}
+        <MenuItem
+          onSelect={() =>
+            openMongoTool({
+              tool: 'changes',
+              target: { profileId, scope: { kind: 'database', db } },
+            })
+          }
+        >
+          Watch changes
+        </MenuItem>
+        <MenuItem
+          onSelect={() =>
+            openMongoTool({ tool: 'changes', target: { profileId, scope: { kind: 'cluster' } } })
+          }
+        >
+          Watch the whole deployment
+        </MenuItem>
+        <MenuItem
+          onSelect={() => openMongoTool({ tool: 'users', target: { profileId, db, tab: 'users' } })}
+        >
+          Users and roles
+        </MenuItem>
+      </>
+    );
+  }
+  if (node.kind !== 'folder') return null;
+  if (sub === 'indexes' && name !== undefined) {
+    return (
+      <MenuItem
+        onSelect={() =>
+          openMongoTool({ tool: 'indexes', target: { profileId, db, collection: name } })
+        }
+      >
+        Manage indexes
+      </MenuItem>
+    );
+  }
+  switch (folder) {
+    case 'users':
+    case 'roles':
+      return (
+        <MenuItem
+          onSelect={() => openMongoTool({ tool: 'users', target: { profileId, db, tab: folder } })}
+        >
+          {folder === 'users' ? 'Manage users' : 'Manage roles'}
+        </MenuItem>
+      );
+    case 'collections':
+      return readOnly ? null : (
+        <MenuItem onSelect={() => openCreateCollection(profileId, db)}>Create collection…</MenuItem>
+      );
+    case 'time-series':
+      return readOnly ? null : (
+        <MenuItem onSelect={() => openCreateCollection(profileId, db, 'timeseries')}>
+          Create time series collection…
+        </MenuItem>
+      );
+    case 'views':
+      return readOnly ? null : (
+        <MenuItem onSelect={() => openCreateView(profileId, db)}>Create view…</MenuItem>
+      );
+    default:
+      return null;
+  }
 }
 
 function MongoChildren(props: {
@@ -193,6 +350,7 @@ function MongoNode(props: {
   const command = object && !readOnly ? dropCommand(object) : undefined;
   const database = node.path[0];
 
+  const tool = toolOpener(profile.id, node);
   const open = (): void => {
     if (!opens || object.kind === 'index') return;
     openMongoCollection({
@@ -221,7 +379,12 @@ function MongoNode(props: {
     }
   };
   const detail = detailOf(node);
-  const hasMenu = opens || node.kind === 'database' || node.hasChildren || command !== undefined;
+  const hasMenu =
+    opens ||
+    node.kind === 'database' ||
+    node.hasChildren ||
+    command !== undefined ||
+    tool !== undefined;
 
   return (
     <div
@@ -234,8 +397,10 @@ function MongoNode(props: {
         expandable={node.hasChildren}
         expanded={expanded}
         onToggle={() => toggleNode(profile.id, node)}
-        onActivate={opens ? open : undefined}
-        title={opens ? 'Double-click to open the documents' : undefined}
+        onActivate={opens ? open : tool}
+        title={
+          opens ? 'Double-click to open the documents' : tool ? 'Double-click to open' : undefined
+        }
         label={
           <span className="flex min-w-0 items-center gap-1.5" data-mongo-kind={node.kind}>
             {iconFor(node)}
@@ -251,6 +416,16 @@ function MongoNode(props: {
           hasMenu ? (
             <>
               {opens && <MenuItem onSelect={open}>Open documents</MenuItem>}
+              {tool && (
+                <MenuItem onSelect={tool}>
+                  {node.kind === 'gridfs-bucket'
+                    ? 'Open files'
+                    : node.kind === 'index'
+                      ? 'Manage indexes'
+                      : 'Open in users and roles'}
+                </MenuItem>
+              )}
+              <ToolItems profile={profile} node={node} />
               {database !== undefined && (node.kind === 'database' || opens) && (
                 <MenuItem
                   onSelect={() =>
