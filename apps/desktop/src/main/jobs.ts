@@ -1,9 +1,10 @@
 import { JoineryError, fromErrorData, newId, type ResolvedProfile } from '@joinery/core';
-import type { JobEvent, JobInfo, JobLogEntry, JobSpec, JobState } from '@joinery/ipc';
+import type { JobEvent, JobInfo, JobLogEntry, JobState } from '@joinery/ipc';
 
 import {
   runnerToMainSchema,
   type MainToRunner,
+  type RunnerJobSpec,
   type RunnerRequest,
   type RunnerToMain,
 } from '../shared/job-protocol';
@@ -64,9 +65,21 @@ export interface JobDescription {
   readonly target: JobInfo['target'];
 }
 
+/** What a sync job adds when it starts (spec §13). */
+export interface JobStartExtras {
+  /** A comparison's source connection; its secrets travel to the runner only. */
+  readonly source?: ResolvedProfile;
+  /**
+   * Called once when the job ends, however it ends, with the result the runner sent with
+   * `done` (sync jobs), unchecked.
+   */
+  readonly onDone?: (job: JobInfo, result: unknown) => void;
+}
+
 interface LiveJob {
   info: JobInfo;
   readonly startedAt: number;
+  readonly onDone?: ((job: JobInfo, result: unknown) => void) | undefined;
 }
 
 interface PendingRequest {
@@ -143,7 +156,12 @@ export class JobManager {
    * Starts a job in the runner with the resolved profile (its secrets travel to the runner
    * only). Returns the job's record.
    */
-  start(spec: JobSpec, resolved: ResolvedProfile, description: JobDescription): JobInfo {
+  start(
+    spec: RunnerJobSpec,
+    resolved: ResolvedProfile,
+    description: JobDescription,
+    extras: JobStartExtras = {},
+  ): JobInfo {
     const id = newId();
     const info: JobInfo = {
       id,
@@ -159,13 +177,19 @@ export class JobManager {
       log: [],
       target: description.target,
     };
-    const job: LiveJob = { info, startedAt: this.#now() };
+    const job: LiveJob = { info, startedAt: this.#now(), onDone: extras.onDone };
     this.#running.set(id, job);
     this.#publish({ type: 'job', job: info });
     let process: JobRunnerProcess;
     try {
       process = this.#ensureProcess();
-      process.send({ type: 'start', jobId: id, job: spec, resolved });
+      process.send({
+        type: 'start',
+        jobId: id,
+        job: spec,
+        resolved,
+        ...(extras.source ? { source: extras.source } : {}),
+      });
     } catch (error) {
       this.#finish(job, {
         state: 'failed',
@@ -349,12 +373,16 @@ export class JobManager {
     if (!job) return;
     const state: JobState =
       message.summary?.status ?? (message.error?.code === 'CANCELLED' ? 'cancelled' : 'failed');
-    this.#finish(job, {
-      state,
-      ...(message.summary ? { summary: message.summary } : {}),
-      ...(message.error ? { error: message.error } : {}),
-      errors: message.errors.slice(0, MAX_ERRORS),
-    });
+    this.#finish(
+      job,
+      {
+        state,
+        ...(message.summary ? { summary: message.summary } : {}),
+        ...(message.error ? { error: message.error } : {}),
+        errors: message.errors.slice(0, MAX_ERRORS),
+      },
+      message.result,
+    );
   }
 
   #onExit(process: JobRunnerProcess, code: number | null): void {
@@ -379,6 +407,7 @@ export class JobManager {
   #finish(
     job: LiveJob,
     outcome: Pick<JobInfo, 'state'> & Partial<Pick<JobInfo, 'summary' | 'error' | 'errors'>>,
+    result?: unknown,
   ): void {
     if (!this.#running.delete(job.info.id)) return;
     if (outcome.state === 'failed' && outcome.error && job.info.log.at(-1)?.level !== 'error') {
@@ -396,6 +425,12 @@ export class JobManager {
     };
     this.#history = [finished, ...this.#history].slice(0, this.#historyLimit);
     this.#saveHistory();
+    // The result is in place before the page hears the job finished and asks for it.
+    try {
+      job.onDone?.(finished, result);
+    } catch {
+      // A result that cannot be kept fails its reader, not the job list.
+    }
     this.#publish({ type: 'job', job: finished });
     if (this.#notify && this.#now() - job.startedAt >= this.#notifyAfterMs) {
       try {

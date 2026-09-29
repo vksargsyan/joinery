@@ -30,6 +30,8 @@ import { metadataHandlers, snippetHandlers } from './metadata';
 import { mongoMainHandlers } from './mongo-api';
 import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
+import type { SyncService } from './sync';
+import { syncHandlers } from './sync-api';
 
 /**
  * The main contract's handlers (spec §3): profiles, folders, secrets, connections, history,
@@ -66,6 +68,8 @@ export interface MainServices<P> {
   readonly keysDir?: string;
   /** Runs import, export and SQL file jobs in the job runner; without it jobs are refused. */
   readonly jobs?: JobManager;
+  /** Structure and data compare on the job runner (spec §13); without it they are refused. */
+  readonly sync?: SyncService;
 }
 
 /** What differs per window: where its ports go and which window owns its dialogs. */
@@ -284,6 +288,7 @@ export function createMainHandlers<P>(
     snippets: snippetHandlers(store),
     ...jobHandlers(services, files),
     mongo: mongoMainHandlers(services, files),
+    sync: syncHandlers(services, files),
   };
 }
 

@@ -9,6 +9,7 @@ import {
 } from '@joinery/core';
 import {
   columnMappingSchema,
+  isSyncJobKind,
   jobInfoSchema,
   newTablePlanSchema,
   transferPreviewSchema,
@@ -16,6 +17,7 @@ import {
   type HandlersOf,
   type JobInfo,
   type JobSpec,
+  type SyncJobKind,
   type TransferProfile,
   type mainContract,
 } from '@joinery/ipc';
@@ -293,9 +295,35 @@ export function fileDialogHandlers(
   };
 }
 
+const STATE_WORDS: Readonly<Record<JobInfo['state'], string>> = {
+  running: 'running',
+  completed: 'done',
+  failed: 'failed',
+  cancelled: 'cancelled',
+};
+
+const SYNC_JOB_TITLES: Readonly<Record<SyncJobKind, string>> = {
+  'structure-compare': 'Structure compare',
+  'structure-apply': 'Structure sync',
+  'data-compare': 'Data compare',
+  'data-apply': 'Data sync',
+};
+
 /** The finished job's one-line summary, for the desktop notification. */
 export function notificationFor(job: JobInfo): { title: string; body: string } {
   const summary = job.summary;
+  if (isSyncJobKind(job.kind)) {
+    const what = SYNC_JOB_TITLES[job.kind];
+    return {
+      title:
+        job.state === 'completed'
+          ? `${what} finished`
+          : job.state === 'cancelled'
+            ? `${what} cancelled`
+            : `${what} failed`,
+      body: `${job.title}: ${job.error?.message ?? summary?.outcome ?? STATE_WORDS[job.state]}`,
+    };
+  }
   const rows = summary ? summary.rowsWritten.toLocaleString('en-US') : '0';
   const title =
     job.state === 'completed'

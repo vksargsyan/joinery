@@ -13,6 +13,7 @@ import {
 import { z } from 'zod';
 
 import { resolvedProfileSchema } from './host-protocol';
+import { syncJobSpecSchema, syncRunnerRequestSchemas } from './sync-jobs';
 
 /**
  * Control messages between main and the job runner over the utility process's parent port
@@ -31,16 +32,23 @@ export const runnerRequestSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preview'), input: transferPreviewInputSchema }),
   z.object({ kind: z.literal('auto-match'), input: autoMatchInputSchema }),
   z.object({ kind: z.literal('plan-table'), input: newTablePlanInputSchema }),
+  ...syncRunnerRequestSchemas,
 ]);
 export type RunnerRequest = z.infer<typeof runnerRequestSchema>;
+
+/** Any job the runner runs: a transfer job, or a structure or data sync job. */
+export const runnerJobSpecSchema = z.union([jobSpecSchema, syncJobSpecSchema]);
+export type RunnerJobSpec = z.infer<typeof runnerJobSpecSchema>;
 
 export const mainToRunnerSchema = z.discriminatedUnion('type', [
   /** Run a job with its own driver session, opened with this profile. */
   z.object({
     type: z.literal('start'),
     jobId: idSchema,
-    job: jobSpecSchema,
+    job: runnerJobSpecSchema,
     resolved: resolvedProfileSchema,
+    /** A comparison's source connection; `resolved` is then its target. */
+    source: resolvedProfileSchema.optional(),
   }),
   /** Stop a job: its signal aborts, and an import rolls back. */
   z.object({ type: z.literal('cancel'), jobId: idSchema }),
@@ -74,6 +82,8 @@ export const runnerToMainSchema = z.discriminatedUnion('type', [
     summary: jobSummarySchema.optional(),
     errors: z.array(jobRowErrorSchema),
     error: errorDataSchema.optional(),
+    /** A sync job's result (main checks it against the sync result schema). */
+    result: z.unknown().optional(),
   }),
   /** The answer to a `request`: `result` (checked by main against the method's schema) or `error`. */
   z.object({

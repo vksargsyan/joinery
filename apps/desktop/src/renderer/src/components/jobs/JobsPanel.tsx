@@ -1,4 +1,4 @@
-import type { JobInfo, JobRowError } from '@joinery/ipc';
+import { isSyncJobKind, type JobInfo, type JobRowError } from '@joinery/ipc';
 
 import { formatCount, formatDuration } from '../../lib/format';
 import {
@@ -45,7 +45,7 @@ export function JobsPanel() {
       <ol className="min-h-0 flex-1 overflow-auto" data-testid="job-list">
         {order.length === 0 && (
           <li className="p-3 text-xs text-muted">
-            Imports, exports and SQL files you run appear here.
+            Imports, exports, SQL files and comparisons you run appear here.
           </li>
         )}
         {order.map((id) => {
@@ -163,7 +163,7 @@ function progressText(job: JobInfo): string {
   const p = job.progress;
   if (!p) return 'Starting…';
   const parts: string[] = [];
-  if (job.kind === 'run-sql-file') {
+  if (job.kind === 'run-sql-file' || isSyncJobKind(job.kind)) {
     if (p.statements !== undefined) parts.push(`${formatCount(p.statements)} statements`);
     if (p.failed) parts.push(`${formatCount(p.failed)} failed`);
   } else if (p.rowsWritten !== undefined) {
@@ -187,6 +187,7 @@ function summaryText(job: JobInfo): string {
   const s = job.summary;
   if (!s) return job.error?.message ?? STATE_LABELS[job.state];
   const time = formatDuration(s.durationMs);
+  if (isSyncJobKind(job.kind)) return `${s.outcome ?? STATE_LABELS[job.state]} · ${time}`;
   if (job.kind === 'run-sql-file') {
     return `${formatCount(s.statements ?? 0)} statements${s.failed ? `, ${formatCount(s.failed)} failed` : ''} · ${time}`;
   }
@@ -207,7 +208,18 @@ function JobDetails({ job }: { readonly job: JobInfo }) {
       )}
       {summary && (
         <dl className="grid grid-cols-[6.5rem_1fr] gap-x-2 text-[11px]">
-          {job.kind === 'run-sql-file' ? (
+          {isSyncJobKind(job.kind) ? (
+            <>
+              <dt className="text-muted">Outcome</dt>
+              <dd>{summary.outcome ?? STATE_LABELS[job.state]}</dd>
+              {summary.statements !== undefined && (
+                <>
+                  <dt className="text-muted">Statements</dt>
+                  <dd>{formatCount(summary.statements)}</dd>
+                </>
+              )}
+            </>
+          ) : job.kind === 'run-sql-file' ? (
             <>
               <dt className="text-muted">Statements</dt>
               <dd>{formatCount(summary.statements ?? 0)}</dd>
@@ -261,7 +273,7 @@ function JobDetails({ job }: { readonly job: JobInfo }) {
 }
 
 function ErrorRows(props: { readonly job: JobInfo; readonly errors: readonly JobRowError[] }) {
-  const statements = props.job.kind === 'run-sql-file';
+  const statements = props.job.kind === 'run-sql-file' || isSyncJobKind(props.job.kind);
   return (
     <div className="max-h-48 overflow-auto rounded border border-danger/40">
       <table className="w-full text-[11px]" data-testid="job-errors">

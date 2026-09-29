@@ -42,6 +42,7 @@ import {
   secureWebPreferences,
 } from './security';
 import { ConnectionSupervisor } from './supervisor';
+import { SyncService } from './sync';
 import { utilityHostFactory } from './utility-host';
 
 /**
@@ -99,6 +100,7 @@ if (!app.requestSingleInstanceLock()) {
 let store: Store | undefined;
 let supervisor: ConnectionSupervisor<MessagePortMain> | undefined;
 let jobs: JobManager | undefined;
+let sync: SyncService | undefined;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -152,6 +154,9 @@ function start(): void {
   });
   const connections = new ConnectionSupervisor<MessagePortMain>({ spawn: spawnHost, hostKeys });
   supervisor = connections;
+  const jobManager = startJobs(openedStore, hostKeys);
+  // Data compare jobs spool their rows under the temporary folder, for this app run only.
+  sync = new SyncService({ jobs: jobManager, spoolRoot: app.getPath('temp') });
   const services: MainServices<MessagePortMain> = {
     store: openedStore,
     supervisor: connections,
@@ -174,7 +179,8 @@ function start(): void {
     openExternal,
     hostKeys,
     keysDir: join(app.getPath('userData'), 'ssh-keys'),
-    jobs: startJobs(openedStore, hostKeys),
+    jobs: jobManager,
+    sync,
     // The desktop starts dark and without the editor minimap; users change both in settings.
     defaultSettings: {
       ...DEFAULT_APP_SETTINGS,
@@ -306,6 +312,12 @@ app.on('before-quit', () => {
   jobs?.shutdown();
   jobs = undefined;
   supervisor = undefined;
+});
+
+app.on('will-quit', () => {
+  // The job runner has stopped writing by now; data compare spools go with the app run.
+  sync?.dispose();
+  sync = undefined;
 });
 
 app.on('will-quit', () => {

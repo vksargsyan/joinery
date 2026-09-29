@@ -12,6 +12,7 @@ import { TransferDialogs } from './components/jobs/TransferDialogs';
 import { Prompts } from './components/Prompts';
 import { openRedisTool } from './components/redis/RedisTree';
 import { Sidebar } from './components/Sidebar';
+import { SyncMenu } from './components/sync/SyncMenu';
 import { useTheme } from './components/theme';
 import { Button, Icon } from './components/ui';
 import { useConnections } from './state/connections';
@@ -104,6 +105,7 @@ export function App() {
           <Icon name="history" className="h-3.5 w-3.5" />
           History
         </Button>
+        <SyncMenu />
         <Button
           size="sm"
           variant={jobsOpen ? 'secondary' : 'ghost'}

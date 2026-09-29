@@ -10,9 +10,13 @@ import type { JobProgress, JobSpec } from '@joinery/ipc';
 import {
   mainToRunnerSchema,
   type MainToRunner,
+  type RunnerJobSpec,
   type RunnerRequest,
   type RunnerToMain,
 } from '../shared/job-protocol';
+import type { SyncJobSpec } from '../shared/sync-jobs';
+import type { SyncJobOutcome } from './sync-common';
+import { answerSyncRequest, isSyncRequest, runSyncJob } from './sync-tasks';
 import {
   matchColumns,
   planNewTable,
@@ -69,6 +73,15 @@ function cancelled(error: unknown): boolean {
   return error instanceof JoineryError && error.code === 'CANCELLED';
 }
 
+function isSyncJob(job: RunnerJobSpec): job is SyncJobSpec {
+  return (
+    job.kind === 'structure-compare' ||
+    job.kind === 'structure-apply' ||
+    job.kind === 'data-compare' ||
+    job.kind === 'data-apply'
+  );
+}
+
 export class JobRunner {
   readonly #deps: JobRunnerDeps;
   readonly #jobs = new Map<string, RunningJob>();
@@ -89,7 +102,7 @@ export class JobRunner {
     const message = parsed.data;
     switch (message.type) {
       case 'start':
-        this.#start(message.jobId, message.job, message.resolved);
+        this.#start(message.jobId, message.job, message.resolved, message.source);
         return;
       case 'cancel':
         this.#jobs.get(message.jobId)?.controller.abort();
@@ -126,8 +139,9 @@ export class JobRunner {
 
   async #answer(requestId: string, request: RunnerRequest): Promise<void> {
     try {
-      const result =
-        request.kind === 'preview'
+      const result = isSyncRequest(request)
+        ? await answerSyncRequest(request)
+        : request.kind === 'preview'
           ? await previewFile(request.input)
           : request.kind === 'auto-match'
             ? matchColumns(request.input.sources, request.input.targets)
@@ -138,13 +152,101 @@ export class JobRunner {
     }
   }
 
-  #start(jobId: string, job: JobSpec, resolved: ResolvedProfile): void {
+  #start(
+    jobId: string,
+    job: RunnerJobSpec,
+    resolved: ResolvedProfile,
+    source: ResolvedProfile | undefined,
+  ): void {
     if (this.#jobs.has(jobId)) return;
     const controller = new AbortController();
-    const done = this.#run(jobId, job, resolved, controller.signal).finally(() => {
+    const run = isSyncJob(job)
+      ? this.#runSync(jobId, job, resolved, source, controller.signal)
+      : this.#run(jobId, job, resolved, controller.signal);
+    const done = run.finally(() => {
       this.#jobs.delete(jobId);
     });
     this.#jobs.set(jobId, { controller, done });
+  }
+
+  /** Progress (with the elapsed time) and log lines of one job. */
+  #reporter(jobId: string, started: number): Pick<JobContext, 'progress' | 'log'> {
+    return {
+      progress: (progress: Omit<JobProgress, 'elapsedMs'>) =>
+        this.#post({
+          type: 'progress',
+          jobId,
+          progress: { ...progress, elapsedMs: Math.round(performance.now() - started) },
+        }),
+      log: (level, message) => this.#post({ type: 'log', jobId, level, message }),
+    };
+  }
+
+  /**
+   * A structure or data sync job (spec §13): the target session, and the source session for
+   * a compare, each through its own tunnel when the profile has one. The result travels back
+   * with `done` for main to keep.
+   */
+  async #runSync(
+    jobId: string,
+    job: SyncJobSpec,
+    resolved: ResolvedProfile,
+    source: ResolvedProfile | undefined,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const reporter = this.#reporter(jobId, performance.now());
+    const opened: JobSession[] = [];
+    let outcome: SyncJobOutcome | { error: ErrorData };
+    try {
+      this.#post({ type: 'progress', jobId, progress: { phase: 'Connecting', elapsedMs: 0 } });
+      const target = await this.#deps.connect(withDatabase(resolved, job.target.database), jobId);
+      opened.push(target);
+      let sourceSession: JobSession | undefined;
+      if (job.kind === 'structure-compare' || job.kind === 'data-compare') {
+        if (!source) {
+          throw new JoineryError({ code: 'INTERNAL', message: 'The source connection is missing' });
+        }
+        sourceSession = await this.#deps.connect(withDatabase(source, job.source.database), jobId);
+        opened.push(sourceSession);
+      }
+      if (signal.aborted) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+      for (const [profile, session] of [
+        ...(sourceSession && source ? [[source.profile, sourceSession.session] as const] : []),
+        [resolved.profile, target.session] as const,
+      ]) {
+        reporter.log(
+          'info',
+          `Connected to ${profile.name} (${session.engine} ${session.serverVersion})`,
+        );
+      }
+      outcome = await runSyncJob(job, {
+        target: target.session,
+        targetProfile: resolved.profile,
+        source: sourceSession?.session,
+        sourceProfile: source?.profile,
+        signal,
+        ...reporter,
+      });
+    } catch (error) {
+      const data: ErrorData =
+        signal.aborted || cancelled(error)
+          ? { code: 'CANCELLED', message: 'Cancelled' }
+          : toErrorData(error);
+      if (data.code !== 'CANCELLED') reporter.log('error', data.message);
+      outcome = { error: data };
+    }
+    for (const session of opened.reverse()) await session.close().catch(() => undefined);
+    this.#post(
+      'error' in outcome
+        ? { type: 'done', jobId, errors: [], error: outcome.error }
+        : {
+            type: 'done',
+            jobId,
+            summary: outcome.summary,
+            errors: [...outcome.errors],
+            ...(outcome.result !== undefined ? { result: outcome.result } : {}),
+          },
+    );
   }
 
   async #run(

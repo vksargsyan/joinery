@@ -26,6 +26,7 @@ import {
 import { refreshObjects } from '../state/metadata';
 import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
+import { openDataCompare, openStructureCompare } from '../state/sync/panels';
 import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
 import { RedisTree, openRedisTool } from './redis/RedisTree';
@@ -381,6 +382,14 @@ function ProfileItem(props: {
             ) : (
               <MenuItem onSelect={() => void open()}>Connect</MenuItem>
             )}
+            {isSqlEngine(profile.engine) && (
+              <CompareItems
+                source={{
+                  profileId: profile.id,
+                  database: profile.options.defaultDatabase ?? '',
+                }}
+              />
+            )}
             <DropdownMenu.Separator className="my-1 h-px bg-border" />
             <MenuItem onSelect={() => props.onEdit({ kind: 'edit', profile })}>Edit…</MenuItem>
             <MenuItem onSelect={() => props.onEdit({ kind: 'duplicate', profile })}>
@@ -576,6 +585,18 @@ function ObjectNode(props: {
                   Run SQL file…
                 </MenuItem>
               )}
+              {node.kind === 'database' && node.path.length === 1 && (
+                <CompareItems source={{ profileId: profile.id, database: node.name }} />
+              )}
+              {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
+                <CompareItems
+                  source={{
+                    profileId: profile.id,
+                    database: node.path[0] ?? '',
+                    schemas: node.name,
+                  }}
+                />
+              )}
               {node.hasChildren && (
                 <MenuItem onSelect={() => refreshObjects(profile.id, node.path)}>Refresh</MenuItem>
               )}
@@ -612,7 +633,31 @@ function ObjectNode(props: {
   );
 }
 
-/** One tree row: indent, disclosure chevron, label, and an actions menu. */
+/** "Compare structure with…" and "Compare data with…" (spec §13), from this source. */
+function CompareItems(props: {
+  readonly source: {
+    readonly profileId: string;
+    readonly database: string;
+    readonly schemas?: string;
+  };
+}) {
+  return (
+    <>
+      <DropdownMenu.Separator className="my-1 h-px bg-border" />
+      <MenuItem onSelect={() => openStructureCompare({ source: props.source })}>
+        Compare structure with…
+      </MenuItem>
+      <MenuItem onSelect={() => openDataCompare({ source: props.source })}>
+        Compare data with…
+      </MenuItem>
+    </>
+  );
+}
+
+/**
+ * One tree row: indent, disclosure chevron, label, and an actions menu, which the "Actions"
+ * button and a right-click open.
+ */
 export function Row(props: {
   readonly depth: number;
   readonly label: ReactNode;
@@ -623,6 +668,7 @@ export function Row(props: {
   readonly menu?: ReactNode;
   readonly title?: string | undefined;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const row = event.currentTarget;
     const rows = [
@@ -662,6 +708,14 @@ export function Row(props: {
       onClick={props.onToggle}
       onDoubleClick={props.onActivate}
       onKeyDown={onKeyDown}
+      onContextMenu={
+        props.menu
+          ? (event) => {
+              event.preventDefault();
+              setMenuOpen(true);
+            }
+          : undefined
+      }
     >
       <span className="w-4 text-muted">
         {props.expandable && (
@@ -670,7 +724,7 @@ export function Row(props: {
       </span>
       <span className="min-w-0 flex-1">{props.label}</span>
       {props.menu && (
-        <DropdownMenu.Root>
+        <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenu.Trigger asChild>
             <button
               type="button"
