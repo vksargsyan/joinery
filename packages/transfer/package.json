@@ -1,0 +1,29 @@
+{
+  "name": "@joinery/transfer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Streaming import and export: CSV, TSV, JSON, JSON Lines and SQL readers and writers, column mapping and batched loads.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --passWithNoTests --testTimeout=120000 --hookTimeout=120000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/sql-tools": "workspace:*",
+    "@joinery/sync": "workspace:*"
+  },
+  "devDependencies": {
+    "@joinery/driver-mysql": "workspace:*",
+    "@joinery/driver-postgres": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

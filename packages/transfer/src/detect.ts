@@ -1,0 +1,385 @@
+import { cancelledError, type SqlDialect } from '@joinery/core';
+import { StatementSplitter } from '@joinery/sql-tools';
+
+import { CsvParser, type CsvField } from './csv';
+import { concatBytes, openInput, type ByteSource } from './io';
+import { fitsType, inferColumns, type InferredColumn } from './infer';
+import { JsonLinesParser, JsonStreamParser, parseJsonElement } from './json';
+import {
+  CsvRowBuilder,
+  JsonRowBuilder,
+  csvReadOptions,
+  emptyParts,
+  type CsvReadOptions,
+  type ReadOptions,
+  type RowFormat,
+} from './readers';
+import { decoderFor, detectEncoding } from './text';
+import type { FileFormat, SourceCell, SourceRow } from './types';
+
+/**
+ * Preview and detection (spec §12): read the start of a source and work out its format,
+ * encoding, CSV dialect, header, columns and column types, so the wizard can show a preview
+ * and pre-fill its options. Detection only fills in what the caller did not fix.
+ */
+
+export interface PreviewOptions {
+  /** Known format; otherwise taken from `fileName`'s extension, then sniffed from the content. */
+  readonly format?: FileFormat;
+  readonly fileName?: string;
+  /** Known encoding; otherwise detected from a byte order mark or UTF-8 validity. */
+  readonly encoding?: string;
+  /** CSV settings to keep; the rest (delimiter, quote, escape, header) are detected. */
+  readonly csv?: CsvReadOptions;
+  readonly decompress?: 'auto' | 'gzip' | 'none';
+  /** Rows to sample (default 100). */
+  readonly sampleRows?: number;
+  /** Most bytes to read (default 1 MiB of decompressed text). */
+  readonly sampleBytes?: number;
+  /** Dialect for splitting SQL sources (default postgres). */
+  readonly sqlDialect?: SqlDialect;
+  /** Stops reading; the preview then rejects with CANCELLED. */
+  readonly signal?: AbortSignal;
+}
+
+export interface SourcePreview {
+  readonly format: FileFormat;
+  readonly compression: 'gzip' | 'none';
+  readonly encoding: string;
+  /** The source starts with a byte order mark. */
+  readonly bom: boolean;
+  /** Everything needed to read the whole source as previewed; pass it to `readRows`. */
+  readonly read: ReadOptions | null;
+  readonly columns: readonly InferredColumn[];
+  readonly rows: readonly SourceRow[];
+  /** The sample is the whole source. */
+  readonly complete: boolean;
+  /** SQL sources: the first statements. */
+  readonly statements?: readonly string[];
+}
+
+const EXTENSIONS: Readonly<Record<string, FileFormat>> = {
+  csv: 'csv',
+  tsv: 'tsv',
+  tab: 'tsv',
+  json: 'json',
+  jsonl: 'jsonl',
+  ndjson: 'jsonl',
+  jsonlines: 'jsonl',
+  sql: 'sql',
+};
+
+/** The format a file name implies (`.csv.gz` → csv), if any. */
+export function formatFromFileName(fileName: string): FileFormat | undefined {
+  const parts = fileName.toLowerCase().split(/[\\/]/).pop()!.split('.');
+  if (parts[parts.length - 1] === 'gz') parts.pop();
+  return parts.length > 1 ? EXTENSIONS[parts[parts.length - 1]!] : undefined;
+}
+
+const SQL_START =
+  /^(?:insert|create|drop|alter|set|use|begin|start|delimiter|lock|unlock|update|delete|select|with|truncate|comment|grant|revoke|copy|do|call|replace|commit|savepoint)\b[\s(;]/i;
+
+function looksLikeSql(text: string): boolean {
+  let rest = text.trimStart();
+  let commented = false;
+  for (;;) {
+    if (rest.startsWith('--') || rest.startsWith('#')) {
+      const eol = rest.indexOf('\n');
+      rest = eol < 0 ? '' : rest.slice(eol + 1).trimStart();
+      commented = true;
+    } else if (rest.startsWith('/*')) {
+      const end = rest.indexOf('*/');
+      rest = end < 0 ? '' : rest.slice(end + 2).trimStart();
+      commented = true;
+    } else break;
+  }
+  if (rest === '') return commented;
+  return SQL_START.test(rest.slice(0, 64)) && (rest.includes(';') || /^delimiter\b/i.test(rest));
+}
+
+/** Sniffs the format of a text sample. */
+export function sniffFormat(text: string): FileFormat {
+  const start = text.replace(/^\ufeff/, '').trimStart();
+  if (start.startsWith('[')) return 'json';
+  if (start.startsWith('{')) {
+    const eol = start.indexOf('\n');
+    const first = eol < 0 ? start : start.slice(0, eol);
+    try {
+      parseJsonElement(first.trim());
+      return 'jsonl';
+    } catch {
+      return 'json';
+    }
+  }
+  if (looksLikeSql(start)) return 'sql';
+  return detectDelimiter(start) === '\t' ? 'tsv' : 'csv';
+}
+
+const DELIMITERS = [',', '\t', ';', '|'] as const;
+const DETECT_CHARS = 64 * 1024;
+
+/** Complete records of a sample: the last one is dropped unless the sample is complete. */
+function sampleRecords(
+  text: string,
+  options: CsvReadOptions,
+  complete: boolean,
+  limit: number,
+): { records: CsvField[][]; lines: number[] } {
+  const parser = new CsvParser({ ...options, emptyLines: options.emptyLines ?? 'auto' });
+  const records: CsvField[][] = [];
+  const lines: number[] = [];
+  try {
+    const parsed = parser.push(text);
+    records.push(...parsed.records);
+    lines.push(...parsed.lines);
+    if (complete) {
+      const rest = parser.end();
+      records.push(...rest.records);
+      lines.push(...rest.lines);
+    }
+  } catch {
+    // A sample that does not parse with these options scores on what did.
+  }
+  return { records: records.slice(0, limit), lines: lines.slice(0, limit) };
+}
+
+/**
+ * Picks the delimiter whose field counts are most consistent across the sample's records,
+ * honouring quotes. Ties go to more fields, then to the order `, \t ; |`. A sample in which
+ * no candidate splits records gives `,` (one column).
+ */
+export function detectDelimiter(
+  sample: string,
+  quote: string | null = '"',
+  complete = false,
+): string {
+  // The first 64 KiB decide; a longer sample only costs time.
+  const text = sample.length > DETECT_CHARS ? sample.slice(0, DETECT_CHARS) : sample;
+  const whole = complete && text.length === sample.length;
+  let best: { delimiter: string; score: number; fields: number } | undefined;
+  for (const delimiter of DELIMITERS) {
+    const { records } = sampleRecords(
+      text,
+      { delimiter, quote, escape: quote, nullMarker: null },
+      whole,
+      200,
+    );
+    if (records.length === 0) continue;
+    const counts = new Map<number, number>();
+    for (const record of records) counts.set(record.length, (counts.get(record.length) ?? 0) + 1);
+    let mode = 0;
+    let frequency = 0;
+    for (const [fields, count] of counts) {
+      if (count > frequency || (count === frequency && fields > mode)) {
+        mode = fields;
+        frequency = count;
+      }
+    }
+    if (mode < 2) continue;
+    const score = frequency / records.length;
+    if (
+      best === undefined ||
+      score > best.score + 1e-9 ||
+      (Math.abs(score - best.score) <= 1e-9 && mode > best.fields)
+    ) {
+      best = { delimiter, score, fields: mode };
+    }
+  }
+  return best?.delimiter ?? ',';
+}
+
+/** Quote character: `'` only when fields start with it and never with `"`. */
+function detectQuote(text: string, delimiter: string): string {
+  const starts = (quote: string): number => {
+    let count = 0;
+    for (const prefix of [delimiter, '\n']) {
+      for (
+        let at = text.indexOf(prefix + quote);
+        at >= 0;
+        at = text.indexOf(prefix + quote, at + 1)
+      )
+        count++;
+    }
+    return count + (text.startsWith(quote) ? 1 : 0);
+  };
+  return starts('"') === 0 && starts("'") > 0 ? "'" : '"';
+}
+
+/** Escape character: backslash when quotes inside fields are written `\"` rather than `""`. */
+function detectEscape(text: string, quote: string): string {
+  const backslashed = text.split(`\\${quote}`).length - 1;
+  const doubled = text.split(quote + quote).length - 1;
+  return backslashed > 0 && doubled === 0 ? '\\' : quote;
+}
+
+/**
+ * Whether the first record is a header, by type contrast: for columns whose other values have
+ * a type (numbers, dates, booleans, uuids), a first value of that type votes "data" and any
+ * other value votes "header". Text columns vote "header" when the first value's length
+ * differs from the others' common length. Undecided samples (all text) count as having a
+ * header when the first row's values are non-empty, distinct and do not recur below.
+ */
+export function detectHeader(records: readonly (readonly CsvField[])[]): boolean {
+  const first = records[0];
+  if (first === undefined) return true;
+  const rest = records.slice(1);
+  if (rest.length === 0) {
+    return first.every((cell) => cell !== null && cell.trim() !== '' && fitsOnlyText(cell));
+  }
+  const width = first.length;
+  const names = Array.from({ length: width }, (_, i) => `c${i}`);
+  const inferred = inferColumns(names, rest as SourceRow[]);
+  let votes = 0;
+  for (let c = 0; c < width; c++) {
+    const head = first[c] ?? null;
+    const type = inferred[c]!.type;
+    if (type !== 'text') {
+      if (head === null || head.trim() === '') continue;
+      votes += fitsType(head, type) ? -1 : 1;
+      continue;
+    }
+    const lengths = new Set(rest.map((r) => (r[c] ?? '').length));
+    if (lengths.size === 1 && head !== null && !lengths.has(head.length)) votes += 1;
+  }
+  if (votes !== 0) return votes > 0;
+  const seen = new Set<string>();
+  for (let c = 0; c < width; c++) {
+    const head = first[c];
+    if (head === null || head === undefined || head.trim() === '') return false;
+    if (seen.has(head)) return false;
+    seen.add(head);
+    if (rest.some((r) => r[c] === head)) return false;
+  }
+  return true;
+}
+
+function fitsOnlyText(cell: string): boolean {
+  return (
+    !fitsType(cell, 'integer') &&
+    !fitsType(cell, 'float') &&
+    !fitsType(cell, 'boolean') &&
+    !fitsType(cell, 'timestamp')
+  );
+}
+
+/**
+ * Detects the CSV dialect of a text sample: delimiter, quote, escape and header, keeping any
+ * the caller fixed. The NULL marker defaults to the empty unquoted field.
+ */
+export function detectCsvOptions(
+  text: string,
+  fixed: CsvReadOptions = {},
+  complete = false,
+): Required<Pick<CsvReadOptions, 'delimiter' | 'quote' | 'escape' | 'nullMarker' | 'header'>> &
+  CsvReadOptions {
+  const delimiter =
+    fixed.delimiter ??
+    detectDelimiter(text, fixed.quote === undefined ? '"' : fixed.quote, complete);
+  const quote = fixed.quote === undefined ? detectQuote(text, delimiter) : fixed.quote;
+  const escape =
+    fixed.escape === undefined ? (quote === null ? null : detectEscape(text, quote)) : fixed.escape;
+  const nullMarker = fixed.nullMarker === undefined ? '' : fixed.nullMarker;
+  const head = text.length > DETECT_CHARS ? text.slice(0, DETECT_CHARS) : text;
+  const header =
+    fixed.header ??
+    detectHeader(
+      sampleRecords(
+        head,
+        { delimiter, quote, escape, nullMarker: null },
+        complete && head.length === text.length,
+        50,
+      ).records,
+    );
+  return { ...fixed, delimiter, quote, escape, nullMarker, header };
+}
+
+/**
+ * Previews a source: reads up to `sampleBytes`, detects what the options leave open and
+ * returns the columns with inferred types and the first `sampleRows` rows. The source is
+ * consumed (and closed); open a fresh one to import.
+ */
+export async function previewSource(
+  source: ByteSource,
+  options: PreviewOptions = {},
+): Promise<SourcePreview> {
+  const sampleRows = Math.max(1, options.sampleRows ?? 100);
+  const sampleBytes = Math.max(1024, options.sampleBytes ?? 1024 * 1024);
+  const input = await openInput(source, options.decompress ?? 'auto');
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  let complete = true;
+  const iterator = input.source[Symbol.asyncIterator]();
+  try {
+    for (;;) {
+      if (length >= sampleBytes || options.signal?.aborted === true) {
+        complete = false;
+        break;
+      }
+      const next = await iterator.next();
+      if (next.done === true) break;
+      chunks.push(next.value);
+      length += next.value.length;
+    }
+  } finally {
+    if (!complete) await iterator.return?.();
+  }
+  if (options.signal?.aborted === true) throw cancelledError('Preview cancelled');
+  const head = concatBytes(chunks, length);
+  const detected = detectEncoding(head, complete);
+  const encoding = options.encoding ?? detected.encoding;
+  const text = decoderFor(encoding).decode(head, { stream: !complete });
+  const bom = detected.bom && detected.encoding === decoderFor(encoding).encoding;
+  const format =
+    options.format ??
+    (options.fileName !== undefined ? formatFromFileName(options.fileName) : undefined) ??
+    sniffFormat(text);
+  const base = { format, compression: input.compression, encoding, bom, complete };
+
+  if (format === 'sql') {
+    const splitter = new StatementSplitter(options.sqlDialect ?? 'postgres');
+    const statements = splitter.push(text);
+    if (complete) statements.push(...splitter.end());
+    return {
+      ...base,
+      read: null,
+      columns: [],
+      rows: [],
+      statements: statements.slice(0, sampleRows).map((s) => s.text),
+    };
+  }
+
+  let effective: RowFormat = format;
+  let builder: CsvRowBuilder | JsonRowBuilder;
+  let read: ReadOptions;
+  const parts = emptyParts();
+  if (format === 'csv' || format === 'tsv') {
+    const csv = detectCsvOptions(text, csvReadOptions(format, options.csv), complete);
+    if (options.format === undefined && csv.delimiter === '\t') effective = 'tsv';
+    const { records, lines } = sampleRecords(text, csv, complete, sampleRows + 1);
+    const csvBuilder = new CsvRowBuilder(csv.header);
+    csvBuilder.add(records, lines, parts);
+    builder = csvBuilder;
+    read = { format: effective, encoding, decompress: input.compression, csv };
+  } else {
+    const jsonBuilder = new JsonRowBuilder();
+    const parser = format === 'json' ? new JsonStreamParser('auto') : new JsonLinesParser();
+    try {
+      jsonBuilder.add(parser.push(text), parts);
+      if (complete) jsonBuilder.add(parser.end(), parts);
+    } catch (error) {
+      // A syntax error past the rows already sampled is the import's to report.
+      if (parts.rows.length === 0) throw error;
+    }
+    builder = jsonBuilder;
+    read = { format: effective, encoding, decompress: input.compression };
+  }
+  const columns = builder.columns;
+  const rows = parts.rows
+    .slice(0, sampleRows)
+    .map((row) =>
+      row.length >= columns.length
+        ? row
+        : [...row, ...new Array<SourceCell>(columns.length - row.length).fill(null)],
+    );
+  return { ...base, format: effective, read, columns: inferColumns(columns, rows), rows };
+}
