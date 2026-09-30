@@ -27,6 +27,14 @@ const SERVERS = [
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 
+/**
+ * An index name in SQL: double quotes on Elasticsearch, backquotes on OpenSearch, whose SQL
+ * plugin reads a double-quoted name as a string.
+ */
+function sqlName(engine: 'elasticsearch' | 'opensearch', index: string): string {
+  return engine === 'opensearch' ? `\`${index}\`` : `"${index}"`;
+}
+
 function resolvedFromUrl(
   engine: 'elasticsearch' | 'opensearch',
   url: string,
@@ -228,7 +236,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)(
           const rows: string[][] = [];
           for await (const page of client.search.sql.query({
             sessionId,
-            query: `SELECT k, COUNT(*) AS c FROM "${source}" GROUP BY k ORDER BY k`,
+            query: `SELECT k, COUNT(*) AS c FROM ${sqlName(server.engine, source)} GROUP BY k ORDER BY k`,
           })) {
             rows.push(...page.rows.map((r) => [...r]));
           }

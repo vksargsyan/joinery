@@ -64,6 +64,10 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine administration', (s
   const repository = `${prefix}repo`;
   let session: SearchSession;
   let repoDir: string | undefined;
+  // An index name in SQL: double quotes on Elasticsearch, backquotes on OpenSearch, whose SQL
+  // plugin reads a double-quoted name as a string.
+  const sqlName = (index: string): string =>
+    server.engine === 'opensearch' ? `\`${index}\`` : `"${index}"`;
 
   beforeAll(async () => {
     session = await connect(server);
@@ -140,7 +144,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine administration', (s
       { index: people, refresh: true },
     );
     const paged = await tables(
-      session.sql(`SELECT name, score FROM "${people}" ORDER BY name`, { fetchSize: 2 }),
+      session.sql(`SELECT name, score FROM ${sqlName(people)} ORDER BY name`, { fetchSize: 2 }),
     );
     expect(paged.map((p) => p.rows.length)).toEqual([2, 2, 1]);
     expect(paged[0]!.columns.map((c) => c.name)).toEqual(['name', 'score']);
@@ -149,12 +153,12 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine administration', (s
     expect(paged[2]!.more).toBeUndefined();
     // Stopping early closes the cursor; maxRows cuts the last page.
     const capped = await tables(
-      session.sql(`SELECT name FROM "${people}"`, { fetchSize: 2, maxRows: 3 }),
+      session.sql(`SELECT name FROM ${sqlName(people)}`, { fetchSize: 2, maxRows: 3 }),
     );
     expect(capped.flatMap((p) => p.rows)).toHaveLength(3);
 
     const grouped = await tables(
-      session.sql(`SELECT team, COUNT(*) AS n FROM "${people}" GROUP BY team ORDER BY team`),
+      session.sql(`SELECT team, COUNT(*) AS n FROM ${sqlName(people)} GROUP BY team ORDER BY team`),
     );
     expect(grouped[0]!.rows).toEqual([
       ['"core"', '2'],
@@ -162,7 +166,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine administration', (s
       ['"web"', '2'],
     ]);
     const translation = await session.translateSql(
-      `SELECT team, COUNT(*) FROM "${people}" WHERE score > 2 GROUP BY team`,
+      `SELECT team, COUNT(*) FROM ${sqlName(people)} WHERE score > 2 GROUP BY team`,
     );
     expect(translation.target).toBe(people);
     expect(translation.dsl).toBeDefined();
