@@ -1,6 +1,7 @@
 import {
   inlineJson,
   member,
+  nodeAt,
   nodeText,
   parseJsonTree,
   quoteJson,
@@ -16,7 +17,7 @@ import type { MappingField } from './mapping';
  * aggregations with sub-aggregations), and the two conversions that keep it in step with the
  * documents view's query bar. `buildDsl` writes the query, sort and aggregations as one-line
  * JSON, or says what is missing; `readDsl` reads that text back into a model. What the builder
- * does not break down (a function_score, a range with a format, a filters aggregation) stays in
+ * does not break down (a function_score, a range with a relation, a filters aggregation) stays in
  * the model as its JSON, so any valid query opens in the builder, and building what was read
  * gives the same text again. Values are typed by the mapping and kept as written, so a long
  * such as 12345678901234567890 is never rounded.
@@ -246,6 +247,10 @@ export interface DslCondition {
   readonly lowerInclusive: boolean;
   readonly upper: string;
   readonly upperInclusive: boolean;
+  /** range on dates: how the bounds are written ("yyyy-MM-dd"), '' for the field's format. */
+  readonly format: string;
+  /** range on dates: the time zone of the bounds ("+01:00", "Europe/Berlin"), '' for UTC. */
+  readonly timeZone: string;
   /** geo_distance: "10km". */
   readonly distance: string;
 }
@@ -458,6 +463,8 @@ export function newCondition(
     lowerInclusive: true,
     upper: '',
     upperInclusive: field?.kind === 'date' ? false : true,
+    format: '',
+    timeZone: '',
     distance: operator === 'geo_distance' ? '10km' : '',
     ...patch,
   };
@@ -810,6 +817,8 @@ class Writer {
           if (json === undefined) return undefined;
           bounds.push([c.upperInclusive ? 'lte' : 'lt', json]);
         }
+        if (c.format.trim() !== '') bounds.push(['format', quoteJson(c.format.trim())]);
+        if (c.timeZone.trim() !== '') bounds.push(['time_zone', quoteJson(c.timeZone.trim())]);
         return obj([['range', obj([[c.field, obj(bounds)]])]]);
       }
       case 'exists':
@@ -951,6 +960,66 @@ export function buildDsl(model: DslModel, fields: readonly DslField[]): DslBuild
   };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Top values
+
+/** A value the field has, as it would be typed, and how many documents have it. */
+export interface TopValue {
+  readonly text: string;
+  readonly count: number;
+}
+
+/** How many values `topValuesBody` asks for. */
+export const TOP_VALUES = 20;
+
+/** The body of a search for a field's most common values (a terms aggregation, no hits). */
+export function topValuesBody(path: string, size = TOP_VALUES): string {
+  return obj([
+    ['size', '0'],
+    [
+      'aggs',
+      obj([
+        [
+          'values',
+          obj([
+            [
+              'terms',
+              obj([
+                ['field', quoteJson(path)],
+                ['size', String(size)],
+              ]),
+            ],
+          ]),
+        ],
+      ]),
+    ],
+  ]);
+}
+
+/**
+ * The values of a `topValuesBody` search, most common first, as the builder's value inputs
+ * take them: keyword values as text (quoted when typing them plainly would change them),
+ * numbers as written, and dates and booleans by their `key_as_string`.
+ */
+export function readTopValues(response: string, kind: DslFieldKind | undefined): TopValue[] {
+  const buckets = nodeAt(parseJsonTree(response), ['aggregations', 'values', 'buckets']);
+  if (buckets?.type !== 'array') return [];
+  const out: TopValue[] = [];
+  for (const bucket of buckets.items) {
+    const key = member(bucket, 'key');
+    const asString = member(bucket, 'key_as_string');
+    const count = member(bucket, 'doc_count');
+    let text: string | undefined;
+    if (kind === 'boolean' && asString?.type === 'string') text = asString.value;
+    else if (kind === 'date' && asString !== undefined) text = valueText(asString, kind, false);
+    else if (key !== undefined) text = valueText(key, kind, false);
+    if (text !== undefined) {
+      out.push({ text, count: count?.type === 'number' ? Number(count.text) : 0 });
+    }
+  }
+  return out;
+}
+
 /** The search body of the texts, on one line (formatJson spreads it over lines). */
 export function dslBody(texts: DslTexts): string {
   const members: [string, string][] = [];
@@ -1058,8 +1127,12 @@ function readCondition(r: Reader, type: string, body: JsonNode): DslCondition | 
       return cond(r, f.key, 'terms', { value: texts.join(', ') });
     }
     case 'range': {
-      const keys = keysWithin(v, ['gt', 'gte', 'lt', 'lte']);
+      const keys = keysWithin(v, ['gt', 'gte', 'lt', 'lte', 'format', 'time_zone']);
       if (!keys || keys.size === 0) return undefined;
+      const format = member(v, 'format');
+      const timeZone = member(v, 'time_zone');
+      if (format !== undefined && format.type !== 'string') return undefined;
+      if (timeZone !== undefined && timeZone.type !== 'string') return undefined;
       if ((keys.has('gt') && keys.has('gte')) || (keys.has('lt') && keys.has('lte')))
         return undefined;
       const lowerKey = keys.has('gt') ? 'gt' : keys.has('gte') ? 'gte' : undefined;
@@ -1072,6 +1145,8 @@ function readCondition(r: Reader, type: string, body: JsonNode): DslCondition | 
         lowerInclusive: lowerKey !== 'gt',
         upper,
         upperInclusive: upperKey !== 'lt',
+        format: format?.type === 'string' ? format.value : '',
+        timeZone: timeZone?.type === 'string' ? timeZone.value : '',
       });
     }
     case 'prefix':
@@ -1121,6 +1196,8 @@ function cond(
     lowerInclusive: true,
     upper: '',
     upperInclusive: true,
+    format: '',
+    timeZone: '',
     distance: '',
     ...patch,
   };

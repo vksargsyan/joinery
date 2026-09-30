@@ -225,7 +225,13 @@ test('builds a query, a sort and aggregations visually, and reads typed Query DS
   const team = builder.locator('[data-testid="search-builder-condition"][data-field="team"]');
   await expect(team.getByTestId('search-builder-value')).toBeFocused();
   await expect(view.getByTestId('search-builder-pending')).toContainText('team: type a value');
-  await team.getByTestId('search-builder-value').fill('t1');
+  // Pick t1 from the field's most common values.
+  await team.getByTestId('search-builder-top-values').click();
+  const topValues = page.getByTestId('search-builder-top-value');
+  await expect(topValues).toHaveCount(3);
+  await shot('search-builder-top-values');
+  await topValues.filter({ hasText: 't1' }).click();
+  await expect(team.getByTestId('search-builder-value')).toHaveValue('t1');
   // 100 ≤ n < 200, dragged into Must.
   const must = builder.locator('[data-testid="search-builder-section"][data-occur="must"]');
   await builder

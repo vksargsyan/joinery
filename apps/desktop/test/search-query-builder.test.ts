@@ -75,6 +75,26 @@ function fakeHost() {
           capabilities: searchCapabilities({ version: '9.4.0' }),
         }),
         indices: { getMapping: async () => MAPPING },
+        request: async (input: { request: { path: string; body: string } }) => {
+          calls.record('request', input);
+          const field = /"field": "([^"]+)"/.exec(input.request.body)?.[1];
+          if (field === 'total') {
+            return { status: 400, body: '{"error": {"type": "x", "reason": "no fielddata"}}' };
+          }
+          return {
+            status: 200,
+            body: JSON.stringify({
+              aggregations: {
+                values: {
+                  buckets: [
+                    { key: 'paid', doc_count: 7 },
+                    { key: 'sent, late', doc_count: 2 },
+                  ],
+                },
+              },
+            }),
+          };
+        },
         documents: {
           search: (input: object) => {
             calls.record('search', input);
@@ -197,6 +217,42 @@ describe('the query builder in the documents view', () => {
     expect(view.state.aggsText).toBe(
       '{"mine": {"terms": {"field": "status"}, "aggs": {"max_total": {"max": {"field": "total"}}}}}',
     );
+    await view.dispose();
+  });
+});
+
+describe('top values', () => {
+  it("reads a field's most common values once, a text field's from its keyword", async () => {
+    const { view, calls } = await openView('b4');
+    const builder = view.builder;
+    await builder.loadTopValues('status');
+    expect(builder.state.topValues['status']).toEqual({
+      status: 'done',
+      values: [
+        { text: 'paid', count: 7 },
+        { text: 'sent, late', count: 2 },
+      ],
+      error: undefined,
+    });
+    await builder.loadTopValues('status');
+    await builder.loadTopValues('title');
+    expect(calls.of('request').map((c) => c.input['request'])).toEqual([
+      {
+        method: 'POST',
+        path: '/orders/_search',
+        body: '{"size": 0, "aggs": {"values": {"terms": {"field": "status", "size": 20}}}}',
+      },
+      {
+        method: 'POST',
+        path: '/orders/_search',
+        body: '{"size": 0, "aggs": {"values": {"terms": {"field": "title.keyword", "size": 20}}}}',
+      },
+    ]);
+    await builder.loadTopValues('total');
+    expect(builder.state.topValues['total']).toMatchObject({
+      status: 'error',
+      error: 'no fielddata',
+    });
     await view.dispose();
   });
 });

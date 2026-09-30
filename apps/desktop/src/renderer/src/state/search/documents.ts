@@ -10,7 +10,9 @@ import {
   flatRecord,
   mappingFields,
   parseJsonTree,
+  parseSearchError,
   partialDocument,
+  topValuesBody,
   valueJsonOf,
   type BulkTarget,
   type FlatField,
@@ -191,6 +193,22 @@ export class DocumentsView extends SearchView<DocumentsState> {
           aggsText: texts.aggs,
           issue: undefined,
         }),
+      topValues: async (path) => {
+        const response = await this.call((host, sessionId) =>
+          host.search.request({
+            sessionId,
+            request: {
+              method: 'POST',
+              path: `/${encodeURIComponent(this.target.target)}/_search`,
+              body: topValuesBody(path),
+            },
+          }),
+        );
+        if (response.status >= 300) {
+          throw new Error(parseSearchError(response.body)?.reason ?? `HTTP ${response.status}`);
+        }
+        return response.body;
+      },
     });
   }
 

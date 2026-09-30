@@ -16,7 +16,9 @@ import {
   newSort,
   operatorsFor,
   readDsl,
+  readTopValues,
   splitList,
+  topValuesBody,
   valueJson,
   withOperator,
   type DslAggregation,
@@ -373,6 +375,48 @@ describe('sort and aggregations', () => {
   });
 });
 
+describe('top values', () => {
+  it('asks for a terms aggregation and reads its buckets as typed values', () => {
+    expect(topValuesBody('status')).toBe(
+      '{"size": 0, "aggs": {"values": {"terms": {"field": "status", "size": 20}}}}',
+    );
+    const reply = (buckets: object[]): string =>
+      JSON.stringify({ hits: { hits: [] }, aggregations: { values: { buckets } } });
+    expect(
+      readTopValues(
+        reply([
+          { key: 'paid', doc_count: 120 },
+          { key: 'a, b', doc_count: 3 },
+          { key: ' padded', doc_count: 2 },
+          { key: '"quoted"', doc_count: 1 },
+        ]),
+        'keyword',
+      ),
+    ).toEqual([
+      { text: 'paid', count: 120 },
+      { text: 'a, b', count: 3 },
+      { text: '" padded"', count: 2 },
+      { text: '"\\"quoted\\""', count: 1 },
+    ]);
+    expect(
+      readTopValues(
+        '{"aggregations": {"values": {"buckets": [{"key": 12345678901234567890, "doc_count": 4}]}}}',
+        'number',
+      ),
+    ).toEqual([{ text: '12345678901234567890', count: 4 }]);
+    expect(
+      readTopValues(reply([{ key: 1, key_as_string: 'true', doc_count: 9 }]), 'boolean'),
+    ).toEqual([{ text: 'true', count: 9 }]);
+    expect(
+      readTopValues(
+        reply([{ key: 1767225600000, key_as_string: '2026-01-01T00:00:00.000Z', doc_count: 2 }]),
+        'date',
+      ),
+    ).toEqual([{ text: '2026-01-01T00:00:00.000Z', count: 2 }]);
+    expect(readTopValues('{"hits": {}}', 'keyword')).toEqual([]);
+  });
+});
+
 describe('reading', () => {
   it('reads Lucene text as a query over every field, and match_all as nothing', () => {
     expect(again({ query: 'status:paid' }).query).toBe(
@@ -386,7 +430,8 @@ describe('reading', () => {
     const kibana = `{
       "bool": {
         "filter": [
-          {"range": {"created": {"gte": "now-15m", "format": "strict_date_optional_time"}}},
+          {"range": {"created": {"gte": "now-15m", "lte": "now", "format": "strict_date_optional_time", "time_zone": "Europe/Berlin"}}},
+          {"range": {"created": {"gte": "now-1d", "relation": "within"}}},
           {"match_phrase": {"status": {"query": "paid"}}},
           {"term": {"total": {"value": "42"}}}
         ],
@@ -396,17 +441,30 @@ describe('reading', () => {
     }`;
     const m = read({ query: kibana });
     expect(m.query.clauses.filter.map((item) => item.kind)).toEqual([
+      'condition',
       'dsl',
       'condition',
       'condition',
     ]);
+    // Kibana's date range, with its format and time zone.
     expect(m.query.clauses.filter[0]).toMatchObject({
-      text: '{"range": {"created": {"gte": "now-15m", "format": "strict_date_optional_time"}}}',
+      operator: 'range',
+      lower: 'now-15m',
+      upper: 'now',
+      format: 'strict_date_optional_time',
+      timeZone: 'Europe/Berlin',
     });
-    expect(m.query.clauses.filter[2]).toMatchObject({ operator: 'term', value: '"42"' });
+    expect(m.query.clauses.filter[1]).toMatchObject({
+      text: '{"range": {"created": {"gte": "now-1d", "relation": "within"}}}',
+    });
+    expect(m.query.clauses.filter[3]).toMatchObject({ operator: 'term', value: '"42"' });
     expect(texts(m).query).toBe(
-      '{"bool": {"filter": [{"range": {"created": {"gte": "now-15m", "format": "strict_date_optional_time"}}}, {"match_phrase": {"status": "paid"}}, {"term": {"total": "42"}}], "must_not": [{"exists": {"field": "refund"}}]}}',
+      '{"bool": {"filter": [{"range": {"created": {"gte": "now-15m", "lte": "now", "format": "strict_date_optional_time", "time_zone": "Europe/Berlin"}}}, {"range": {"created": {"gte": "now-1d", "relation": "within"}}}, {"match_phrase": {"status": "paid"}}, {"term": {"total": "42"}}], "must_not": [{"exists": {"field": "refund"}}]}}',
     );
+    // A format alone, without a bound, is not a range the builder writes.
+    expect(
+      read({ query: '{"range": {"created": {"format": "yyyy"}}}' }).query.clauses.must[0]!.kind,
+    ).toBe('dsl');
     // A bool with more than clauses (a boost) is kept whole.
     expect(
       read({ query: '{"bool": {"must": [], "boost": 2}}' }).query.clauses.must[0],
@@ -494,7 +552,7 @@ const PATHS = [...FIELDS.map((f) => f.path), 'unmapped', 'extra.deep'];
 const RAW_CLAUSES = [
   '{"function_score": {"query": {"match_all": {}}, "boost": 2}}',
   '{"ids": {"values": ["a", "b"]}}',
-  '{"range": {"created": {"gte": "now-1d", "format": "strict_date"}}}',
+  '{"range": {"created": {"gte": "now-1d", "relation": "within"}}}',
   '{"term": {"status": {"value": "paid", "boost": 2}}}',
   '{"script": {"script": "doc[\'total\'].value > 1"}}',
 ];
@@ -548,6 +606,8 @@ const conditionArb: fc.Arbitrary<DslCondition> = fc.constantFrom('', ...PATHS).c
           upper: fc.oneof(fc.constant(''), valueFor(path)),
           upperInclusive: fc.boolean(),
           distance: fc.constantFrom('10km', '500m', '2.5mi'),
+          format: fc.constantFrom('', '', 'yyyy-MM-dd'),
+          timeZone: fc.constantFrom('', '', '+01:00', 'Europe/Berlin'),
         })
         .map((patch) =>
           newCondition(

@@ -44,7 +44,7 @@ back from them; clauses the model does not break down are kept as JSON inside it
   it, builds with a warning, since it matches no document.
 - **`readDsl`** reads the texts back. Lucene text becomes a query_string condition; a bool,
   a nested query and each clause the model has are broken down; anything else (a
-  function_score, a range with a format, a term with a boost, a filters aggregation) is kept as
+  function_score, a range with a relation, a term with a boost, a filters aggregation) is kept as
   its JSON in place, so every valid query opens in the builder. Only text that is not valid
   JSON is refused, naming the part. Two fast-check properties hold: building what was read from
   built text gives the same text, and one read and build of any query text is stable.
