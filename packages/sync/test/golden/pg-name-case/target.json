@@ -1,0 +1,88 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "users",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "name",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "extra",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "users_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "users_name_idx",
+              "columns": [
+                {
+                  "name": "name",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX users_name_idx ON public.users USING btree (name)"
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

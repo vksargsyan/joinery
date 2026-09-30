@@ -1,0 +1,99 @@
+{
+  "explainVersion": "2",
+  "stages": [
+    {
+      "$cursor": {
+        "queryPlanner": {
+          "namespace": "joinery_explain_probe.orders",
+          "parsedQuery": {
+            "status": {
+              "$eq": "A"
+            }
+          },
+          "indexFilterSet": false,
+          "queryHash": "0C429EB0",
+          "planCacheShapeHash": "0C429EB0",
+          "planCacheKey": "48EFD6AF",
+          "optimizationTimeMillis": 2,
+          "maxIndexedOrSolutionsReached": false,
+          "maxIndexedAndSolutionsReached": false,
+          "maxScansToExplodeReached": false,
+          "prunedSimilarIndexes": false,
+          "winningPlan": {
+            "isCached": false,
+            "queryPlan": {
+              "stage": "GROUP",
+              "planNodeId": 4,
+              "inputStage": {
+                "stage": "FETCH",
+                "planNodeId": 2,
+                "inputStage": {
+                  "stage": "IXSCAN",
+                  "planNodeId": 1,
+                  "keyPattern": {
+                    "status": 1,
+                    "amount": -1
+                  },
+                  "indexName": "status_amount",
+                  "isMultiKey": false,
+                  "multiKeyPaths": {
+                    "status": [],
+                    "amount": []
+                  },
+                  "isUnique": false,
+                  "isSparse": false,
+                  "isPartial": false,
+                  "indexVersion": 2,
+                  "direction": "forward",
+                  "indexBounds": {
+                    "status": ["[\"A\", \"A\"]"],
+                    "amount": ["[MaxKey, MinKey]"]
+                  }
+                }
+              }
+            },
+            "slotBasedPlan": {
+              "slots": "$$RESULT=s14 env: { s5 = {\"status\" : 1, \"amount\" : -1} }",
+              "stages": "[4] project [s14 = newObj(\"_id\", s11, \"total\", s13)] \n[4] project [s13 = doubleDoubleSumFinalize(s12)] \n[4] group [s11] [s12 = aggDoubleDoubleSum(s8)] spillSlots[s10] mergingExprs[aggMergeDoubleDoubleSums(s10)] \n[4] project [s11 = (s9 ?: null)] \n[2] nlj inner [] [s1, s2, s3, s4, s5] \n    left \n        [1] ixseek KS(3C41000F0104) KS(3C4100F5FE04) s4 s1 s2 s3 [] @\"db13156b-44af-4809-b1d4-e6199518445b\" @\"status_amount\" true \n    right \n        [2] limit 1ll \n        [2] seek s1 s6 s7 s2 s3 s4 s5 none none [s8 = amount, s9 = cust] @\"db13156b-44af-4809-b1d4-e6199518445b\" true false \n"
+            }
+          },
+          "rejectedPlans": []
+        }
+      }
+    },
+    {
+      "$sort": {
+        "sortKey": {
+          "total": -1
+        }
+      }
+    }
+  ],
+  "queryShapeHash": "066C36B194A143FCC8734ECFCD0D537C9D972DDAF876931E7505786A40C82227",
+  "command": {
+    "aggregate": "orders",
+    "pipeline": [
+      {
+        "$match": {
+          "status": "A"
+        }
+      },
+      {
+        "$group": {
+          "_id": "$cust",
+          "total": {
+            "$sum": "$amount"
+          }
+        }
+      },
+      {
+        "$sort": {
+          "total": -1
+        }
+      }
+    ],
+    "cursor": {},
+    "$db": "joinery_explain_probe"
+  },
+  "ok": 1
+}

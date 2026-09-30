@@ -1,0 +1,69 @@
+// go get go.mongodb.org/mongo-driver/v2/mongo
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
+
+func main() {
+	uri := os.Getenv("MONGODB_URI")
+	if uri == "" {
+		log.Fatal("Set the MONGODB_URI environment variable")
+	}
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := client.Disconnect(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
+	defer cancel()
+	collection := client.Database("shop").Collection("orders")
+	filter := bson.D{
+		{"status", bson.D{{"$in", bson.A{"A", "D"}}}},
+		{"qty", bson.D{{"$gte", 5}, {"$lt", int64(100)}}},
+		{"item.sku", bson.Regex{Pattern: "^ab", Options: "i"}},
+	}
+	projection := bson.D{{"status", 1}, {"qty", 1}, {"_id", 0}}
+	sort := bson.D{{"qty", -1}, {"status", 1}}
+	opts := options.Find().
+		SetProjection(projection).
+		SetSort(sort).
+		SetSkip(10).
+		SetLimit(20).
+		SetCollation(&options.Collation{Locale: "en", Strength: 2, NumericOrdering: true}).
+		SetHint(bson.D{{"status", 1}})
+	cursor, err := collection.Find(ctx, filter, opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var document bson.D
+		if err := cursor.Decode(&document); err != nil {
+			log.Fatal(err)
+		}
+		text, err := bson.MarshalExtJSON(document, false, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(text))
+	}
+	if err := cursor.Err(); err != nil {
+		log.Fatal(err)
+	}
+}

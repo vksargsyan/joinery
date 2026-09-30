@@ -1,0 +1,27 @@
+{
+  "name": "@joinery/driver-redis",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Redis and Valkey driver adapter (ioredis): standalone, Sentinel, Cluster, TLS, ACL; key services and server tools.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@joinery/redis-tools": "workspace:*",
+    "@joinery/tunnel": "workspace:*",
+    "ioredis": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

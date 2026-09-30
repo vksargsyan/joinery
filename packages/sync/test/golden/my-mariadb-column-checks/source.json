@@ -1,0 +1,180 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "mariadb_column_checks_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "mariadb_column_checks_dev",
+      "tables": [
+        {
+          "name": "fresh",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "payload",
+              "ordinal": 2,
+              "dataType": "longtext",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false,
+              "collation": "utf8mb4_bin"
+            },
+            {
+              "name": "n",
+              "ordinal": 3,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "CONSTRAINT_1",
+              "expression": "`n` <> 5"
+            },
+            {
+              "name": "n",
+              "expression": "`n` between 1 and 9"
+            },
+            {
+              "name": "payload",
+              "expression": "json_valid(`payload`)"
+            }
+          ],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "doc",
+              "ordinal": 2,
+              "dataType": "longtext",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false,
+              "collation": "utf8mb4_bin",
+              "comment": "new comment"
+            },
+            {
+              "name": "qty",
+              "ordinal": 3,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "keep_json",
+              "ordinal": 4,
+              "dataType": "longtext",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "plain",
+              "ordinal": 5,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "newcol",
+              "ordinal": 6,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c2",
+              "ordinal": 7,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "doc",
+              "expression": "json_valid(`doc`)"
+            },
+            {
+              "name": "keep_json",
+              "expression": "json_valid(`keep_json`)"
+            },
+            {
+              "name": "newcol",
+              "expression": "`newcol` < 100"
+            },
+            {
+              "name": "qty",
+              "expression": "`qty` > 0"
+            },
+            {
+              "name": "two_cols",
+              "expression": "`qty` < `c2`"
+            }
+          ],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

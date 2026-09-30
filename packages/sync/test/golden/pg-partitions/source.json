@@ -1,0 +1,99 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "logs",
+          "kind": "partitioned",
+          "columns": [
+            {
+              "name": "at",
+              "ordinal": 1,
+              "dataType": "timestamp with time zone",
+              "nullable": false
+            },
+            {
+              "name": "line",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "partitioning": {
+            "method": "LIST",
+            "key": "(line)",
+            "partitions": [
+              {
+                "name": "logs_default",
+                "bound": "DEFAULT"
+              }
+            ]
+          },
+          "owner": "postgres"
+        },
+        {
+          "name": "measurements",
+          "kind": "partitioned",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "taken",
+              "ordinal": 2,
+              "dataType": "date",
+              "nullable": false
+            },
+            {
+              "name": "value",
+              "ordinal": 3,
+              "dataType": "double precision",
+              "nullable": true
+            },
+            {
+              "name": "unit",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "partitioning": {
+            "method": "RANGE",
+            "key": "(taken)",
+            "partitions": [
+              {
+                "name": "measurements_2024",
+                "bound": "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')"
+              },
+              {
+                "name": "measurements_2025",
+                "bound": "FOR VALUES FROM ('2025-01-01') TO ('2026-01-01')"
+              }
+            ]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

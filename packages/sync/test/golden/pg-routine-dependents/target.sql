@@ -1,0 +1,10 @@
+create function score(x int) returns int language sql immutable as $$ select x * 2 $$;
+create function tag(t text) returns text language sql immutable as $$ select lower(t) $$;
+create table t (id int primary key, v int check (score(v) >= 0), name text);
+create index t_score on t (score(v));
+create index t_tag on t (tag(name));
+create view tv as select id, score(v) as s from t;
+create function trg() returns trigger language plpgsql as $$ begin return old; end $$;
+create trigger t_trg before insert on t for each row execute function trg();
+create function next_code() returns int language sql as $$ select 42 $$;
+create table codes (id int primary key, code bigint default next_code());

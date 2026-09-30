@@ -1,0 +1,148 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "accounts",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "email",
+              "ordinal": 2,
+              "dataType": "public.citext",
+              "nullable": true
+            },
+            {
+              "name": "region",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "accounts_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "accounts_norm_email",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "public.norm(email::text)",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX accounts_norm_email ON public.accounts USING btree (public.norm((email)::text))"
+            }
+          ],
+          "checks": [
+            {
+              "name": "accounts_region_check",
+              "expression": "((public.norm(region) <> ''::text))"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "audit",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false,
+              "identity": {
+                "generation": "by-default",
+                "start": "1",
+                "increment": "1"
+              }
+            },
+            {
+              "name": "at",
+              "ordinal": 2,
+              "dataType": "timestamp with time zone",
+              "nullable": true,
+              "default": "now()",
+              "comment": "when"
+            }
+          ],
+          "indexes": [
+            {
+              "name": "audit_at",
+              "columns": [
+                {
+                  "name": "at",
+                  "order": "desc",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "comment": "newest first",
+              "definition": "CREATE INDEX audit_at ON public.audit USING btree (at DESC NULLS LAST)"
+            }
+          ],
+          "options": {
+            "fillfactor": "80",
+            "autovacuum_enabled": "false"
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "eu_accounts",
+          "definition": "SELECT id,\n    email,\n    region\n   FROM public.accounts\n  WHERE (region = 'eu'::text)",
+          "columns": ["id", "email", "region"],
+          "checkOption": "LOCAL",
+          "owner": "postgres"
+        },
+        {
+          "name": "secure_accounts",
+          "definition": "SELECT id\n   FROM public.accounts",
+          "columns": ["id"],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "norm",
+          "kind": "function",
+          "signature": "text",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.norm(t text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select lower(trim(t)) $function$\n",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "citext",
+      "schema": "public",
+      "version": "1.6"
+    },
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

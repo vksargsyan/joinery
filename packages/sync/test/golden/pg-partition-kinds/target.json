@@ -1,0 +1,161 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "h",
+          "kind": "partitioned",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "partitioning": {
+            "method": "HASH",
+            "key": "(id)",
+            "partitions": [
+              {
+                "name": "h0",
+                "bound": "FOR VALUES WITH (modulus 2, remainder 0)"
+              },
+              {
+                "name": "h1",
+                "bound": "FOR VALUES WITH (modulus 2, remainder 1)"
+              }
+            ]
+          },
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "l",
+          "kind": "partitioned",
+          "columns": [
+            {
+              "name": "region",
+              "ordinal": 1,
+              "dataType": "text",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "n",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "partitioning": {
+            "method": "LIST",
+            "key": "(region)",
+            "partitions": [
+              {
+                "name": "l_eu",
+                "bound": "FOR VALUES IN ('de', 'fr')"
+              },
+              {
+                "name": "l_old",
+                "bound": "FOR VALUES IN ('xx')"
+              }
+            ]
+          },
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "r",
+          "kind": "partitioned",
+          "columns": [
+            {
+              "name": "d",
+              "ordinal": 1,
+              "dataType": "date",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "r_pkey",
+            "columns": ["d", "id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "partitioning": {
+            "method": "RANGE",
+            "key": "(d)",
+            "partitions": [
+              {
+                "name": "r_2023",
+                "bound": "FOR VALUES FROM ('2023-01-01') TO ('2024-01-01')"
+              }
+            ]
+          },
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

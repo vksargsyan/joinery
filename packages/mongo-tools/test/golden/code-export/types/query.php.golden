@@ -1,0 +1,67 @@
+<?php
+
+// composer require mongodb/mongodb
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+
+require __DIR__ . '/vendor/autoload.php';
+
+use MongoDB\BSON\Binary;
+use MongoDB\BSON\Decimal128;
+use MongoDB\BSON\Document;
+use MongoDB\BSON\Int64;
+use MongoDB\BSON\Javascript;
+use MongoDB\BSON\MaxKey;
+use MongoDB\BSON\MinKey;
+use MongoDB\BSON\ObjectId;
+use MongoDB\BSON\Regex;
+use MongoDB\BSON\Timestamp;
+use MongoDB\BSON\UTCDateTime;
+use MongoDB\Client;
+
+$uri = getenv('MONGODB_URI');
+if ($uri === false) {
+    fwrite(STDERR, "Set the MONGODB_URI environment variable\n");
+    exit(1);
+}
+
+$client = new Client($uri);
+$collection = $client->selectCollection('shop', 'types');
+
+$filter = [
+    'oid' => new ObjectId('65a1b2c3d4e5f60718293a4b'),
+    'date' => new UTCDateTime(new DateTimeImmutable('2024-01-02T03:04:05.678Z')),
+    'far' => new UTCDateTime(253402300800000),
+    'dec' => new Decimal128('1234.5600'),
+    'long' => new Int64(9007199254740993),
+    'smallLong' => new Int64(5),
+    'int' => 42,
+    'double' => 1.0,
+    'frac' => 2.5,
+    'nan' => NAN,
+    'inf' => INF,
+    'nzero' => -0.0,
+    'bin' => new Binary(base64_decode('AQIDBA=='), 0),
+    'userBin' => new Binary(base64_decode('AA=='), 128),
+    'uuid' => new Binary(hex2bin('a8098c1af86e11dabd1a00112444be1e'), Binary::TYPE_UUID),
+    're' => new Regex('^ab+c', 'i'),
+    'reX' => new Regex('a b # comment', 'sx'),
+    'ts' => new Timestamp(7, 1700000000),
+    'tsBig' => new Timestamp(4294967295, 4294967295),
+    'min' => new MinKey(),
+    'max' => new MaxKey(),
+    'nul' => null,
+    't' => true,
+    's' => "it's \"quoted\" \\ \$var\n\ttab \u{1} é 😀",
+    'nested' => ['a' => [1, 'x', ['b' => null]], 'a.b' => 1],
+    'list' => (object) ['0' => 'a', '1' => 'b'],
+    'emptyDoc' => (object) [],
+    'emptyArr' => [],
+    'single' => [null],
+    'code' => new Javascript('function() { return 1; }'),
+    'ref' => ['$ref' => 'things', '$id' => new ObjectId('65a1b2c3d4e5f60718293a4c')],
+];
+
+foreach ($collection->find($filter) as $document) {
+    // Relaxed Extended JSON prints every BSON type (json_encode fails on NaN and Infinity).
+    echo Document::fromPHP($document)->toRelaxedExtendedJSON(), PHP_EOL;
+}

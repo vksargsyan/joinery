@@ -1,0 +1,28 @@
+{
+  "name": "@joinery/ipc",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed RPC over MessagePort with zod-validated contracts, streaming, cancellation and progress.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/driver-redis": "workspace:*",
+    "@joinery/mongo-tools": "workspace:*",
+    "@joinery/redis-tools": "workspace:*",
+    "@joinery/search-tools": "workspace:*",
+    "@joinery/sync": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

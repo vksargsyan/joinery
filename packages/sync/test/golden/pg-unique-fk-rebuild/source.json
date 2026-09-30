@@ -1,0 +1,98 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "regions",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "character varying(8)",
+              "nullable": false
+            },
+            {
+              "name": "zone",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "0"
+            }
+          ],
+          "primaryKey": {
+            "name": "regions_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "regions_code_key",
+              "columns": ["code", "zone"]
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "shops",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "region_code",
+              "ordinal": 2,
+              "dataType": "character varying(8)",
+              "nullable": true
+            },
+            {
+              "name": "region_zone",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "shops_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "shops_region_code_region_zone_fkey",
+              "columns": ["region_code", "region_zone"],
+              "refTable": "regions",
+              "refColumns": ["code", "zone"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

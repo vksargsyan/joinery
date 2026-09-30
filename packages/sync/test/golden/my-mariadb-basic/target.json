@@ -1,0 +1,92 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.9-MariaDB",
+  "database": "helpdesk",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "tables": [
+        {
+          "name": "tickets",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint(20)",
+              "nullable": false
+            },
+            {
+              "name": "subject",
+              "ordinal": 2,
+              "dataType": "varchar(200)",
+              "nullable": false
+            },
+            {
+              "name": "payload",
+              "ordinal": 3,
+              "dataType": "longtext",
+              "nullable": true,
+              "collation": "utf8mb4_bin"
+            },
+            {
+              "name": "opened_at",
+              "ordinal": 4,
+              "dataType": "datetime",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "idx_subject",
+              "columns": [
+                {
+                  "name": "subject"
+                }
+              ],
+              "method": "btree"
+            }
+          ],
+          "checks": [
+            {
+              "name": "payload",
+              "expression": "json_valid(`payload`)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "sequences": [
+        {
+          "name": "old_seq",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775806",
+          "cache": "1000"
+        },
+        {
+          "name": "ticket_seq",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775806",
+          "cache": "1000"
+        }
+      ],
+      "name": "helpdesk"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

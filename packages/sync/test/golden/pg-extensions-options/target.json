@@ -1,0 +1,70 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "accounts",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "email",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "region",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "accounts_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "eu_accounts",
+          "definition": "SELECT id,\n    email,\n    region\n   FROM public.accounts\n  WHERE (region = 'eu'::text)",
+          "columns": ["id", "email", "region"],
+          "owner": "postgres"
+        },
+        {
+          "name": "secure_accounts",
+          "definition": "SELECT id\n   FROM public.accounts",
+          "columns": ["id"],
+          "options": {
+            "security_barrier": "true"
+          },
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

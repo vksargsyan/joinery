@@ -1,0 +1,144 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "clients",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.clients_id_seq'::regclass)"
+            },
+            {
+              "name": "fname",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "lname",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "email",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "clients_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "clients_email_idx",
+              "columns": [
+                {
+                  "name": "email",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX clients_email_idx ON public.clients USING btree (email)"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "invoices",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.invoices_id_seq'::regclass)"
+            },
+            {
+              "name": "client_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true
+            },
+            {
+              "name": "amount",
+              "ordinal": 3,
+              "dataType": "numeric",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "invoices_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "invoices_client_id_fkey",
+              "columns": ["client_id"],
+              "refTable": "clients",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "client_names",
+          "definition": "SELECT id,\n    fname,\n    lname\n   FROM public.clients",
+          "columns": ["id", "fname", "lname"],
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "clients_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "clients.id",
+          "owner": "postgres"
+        },
+        {
+          "name": "invoices_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "invoices.id",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

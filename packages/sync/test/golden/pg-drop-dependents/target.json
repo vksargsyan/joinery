@@ -1,0 +1,237 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "a",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "keep",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "gone",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "gone2",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "a_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "b",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "b_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [
+            {
+              "name": "b_a_id_fkey",
+              "columns": ["a_id"],
+              "refTable": "a",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "c",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "n",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": "nextval('public.b_seq'::regclass)",
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "c_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "d",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "e",
+              "ordinal": 1,
+              "dataType": "public.old_enum",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "av",
+          "materialized": false,
+          "definition": "SELECT id,\n    keep,\n    gone\n   FROM public.a",
+          "columns": ["id", "keep", "gone"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        },
+        {
+          "name": "av2",
+          "materialized": false,
+          "definition": "SELECT id,\n    gone2\n   FROM public.a",
+          "columns": ["id", "gone2"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        },
+        {
+          "name": "bv",
+          "materialized": false,
+          "definition": "SELECT b.id,\n    a.keep\n   FROM (public.b\n     JOIN public.a ON ((a.id = b.a_id)))",
+          "columns": ["id", "keep"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "uses_d",
+          "kind": "function",
+          "signature": "",
+          "returns": "bigint",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.uses_d()\n RETURNS bigint\n LANGUAGE sql\nAS $function$ select count(*) from d $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "b_seq",
+          "dataType": "bigint",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775807",
+          "cache": "1",
+          "cycle": false,
+          "owner": "postgres"
+        }
+      ],
+      "types": [
+        {
+          "name": "old_enum",
+          "kind": "enum",
+          "values": ["x"],
+          "definition": "CREATE TYPE \"public\".\"old_enum\" AS ENUM ('x')",
+          "owner": "postgres"
+        }
+      ],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

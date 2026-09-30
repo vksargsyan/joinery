@@ -1,0 +1,175 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "j",
+              "ordinal": 4,
+              "dataType": "jsonb",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "ts",
+              "ordinal": 5,
+              "dataType": "tstzrange",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c",
+              "ordinal": 6,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false,
+              "collation": "C"
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "t_a_pattern",
+              "columns": [
+                {
+                  "name": "a",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_a_pattern ON public.t USING btree (a)"
+            },
+            {
+              "name": "t_ab_uq",
+              "columns": [
+                {
+                  "name": "a",
+                  "order": "asc"
+                },
+                {
+                  "name": "b",
+                  "order": "asc"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE UNIQUE INDEX t_ab_uq ON public.t USING btree (a, b)"
+            },
+            {
+              "name": "t_c",
+              "columns": [
+                {
+                  "name": "c",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "where": "(c > 'a'::text)",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_c ON public.t USING btree (c) WHERE (c > 'a'::text)"
+            },
+            {
+              "name": "t_j_gin",
+              "columns": [
+                {
+                  "name": "j",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "gin",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_j_gin ON public.t USING gin (j)"
+            },
+            {
+              "name": "t_lower",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "lower(a)",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_lower ON public.t USING btree (lower(a))"
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

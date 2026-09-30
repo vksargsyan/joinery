@@ -1,0 +1,6 @@
+{
+  "renames": [
+    { "objectKind": "table", "from": "clients", "to": "customers" },
+    { "objectKind": "column", "table": "customers", "from": "name", "to": "full_name" }
+  ]
+}

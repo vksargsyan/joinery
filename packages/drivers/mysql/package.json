@@ -1,0 +1,26 @@
+{
+  "name": "@joinery/driver-mysql",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MySQL and MariaDB driver adapter (mysql2).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@joinery/sql-tools": "workspace:*",
+    "mysql2": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

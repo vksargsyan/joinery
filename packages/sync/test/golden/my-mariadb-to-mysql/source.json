@@ -1,0 +1,72 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "11.4.3-MariaDB",
+  "database": "iot",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_uca1400_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "iot",
+      "tables": [
+        {
+          "name": "devices",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "uuid",
+              "nullable": false
+            },
+            {
+              "name": "serial",
+              "ordinal": 2,
+              "dataType": "bigint(20) unsigned",
+              "nullable": false
+            },
+            {
+              "name": "name",
+              "ordinal": 3,
+              "dataType": "varchar(100)",
+              "nullable": false
+            },
+            {
+              "name": "meta",
+              "ordinal": 4,
+              "dataType": "longtext",
+              "nullable": true,
+              "collation": "utf8mb4_bin"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "checks": [
+            {
+              "name": "meta",
+              "expression": "json_valid(`meta`)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_uca1400_ai_ci"
+          }
+        }
+      ],
+      "sequences": [
+        {
+          "name": "device_seq",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775806",
+          "cache": "1000"
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

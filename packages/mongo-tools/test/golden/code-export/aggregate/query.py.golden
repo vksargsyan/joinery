@@ -1,0 +1,32 @@
+# pip install pymongo
+# Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+import os
+from datetime import datetime, timezone
+
+from bson import Decimal128
+from pymongo import MongoClient
+
+with MongoClient(os.environ["MONGODB_URI"]) as client:
+    collection = client["shop"]["order items"]
+    pipeline = [
+        {
+            "$match": {
+                "status": "A",
+                "at": {"$gte": datetime(2024, 1, 1, tzinfo=timezone.utc)},
+                "price": {"$gt": Decimal128("9.99")},
+            },
+        },
+        {
+            "$group": {
+                "_id": "$cust",
+                "total": {"$sum": "$amount"},
+                "n": {"$sum": 1},
+                "avg": {"$avg": 1.0},
+            },
+        },
+        {"$match": {}},
+        {"$sort": {"total": -1}},
+        {"$limit": 5},
+    ]
+    for document in collection.aggregate(pipeline):
+        print(document)

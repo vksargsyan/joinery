@@ -1,0 +1,1 @@
+{ "renames": [{ "objectKind": "column", "table": "r", "from": "fname", "to": "first_name" }] }

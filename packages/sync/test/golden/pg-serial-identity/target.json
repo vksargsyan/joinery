@@ -1,0 +1,77 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "s1",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.s1_id_seq'::regclass)"
+            },
+            {
+              "name": "note",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "s1_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        },
+        {
+          "name": "s2",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "s2_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "s1_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "s1.id",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

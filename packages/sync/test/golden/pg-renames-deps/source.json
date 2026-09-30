@@ -1,0 +1,193 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "app",
+      "tables": [
+        {
+          "name": "customers",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "full_name",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "email",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "customers_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "customers_email_uq",
+              "columns": ["email"]
+            }
+          ],
+          "indexes": [
+            {
+              "name": "customers_name_idx",
+              "columns": [
+                {
+                  "name": "full_name",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX customers_name_idx ON app.customers USING btree (full_name)"
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "name_len",
+              "expression": "((length(full_name) > 1))"
+            }
+          ],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "orders",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "customer_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "note",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "orders_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [
+            {
+              "name": "orders_customer_id_fkey",
+              "columns": ["customer_id"],
+              "refTable": "customers",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "names",
+          "materialized": false,
+          "definition": "SELECT id,\n    full_name\n   FROM app.customers",
+          "columns": ["id", "full_name"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "cust_count",
+          "kind": "function",
+          "signature": "",
+          "returns": "bigint",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION app.cust_count()\n RETURNS bigint\n LANGUAGE sql\nAS $function$ select count(*) from app.customers $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "order_seq",
+          "dataType": "bigint",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "9223372036854775807",
+          "cache": "1",
+          "cycle": false,
+          "ownedBy": "orders.id",
+          "owner": "postgres"
+        }
+      ],
+      "types": [],
+      "events": [],
+      "owner": "postgres"
+    },
+    {
+      "name": "public",
+      "tables": [],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,207 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Theme tokens. Dark is the default (spec §18: dark and light themes); components use the
+ * Tailwind colours below, never raw hex values, so both themes stay consistent.
+ */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #101216;
+  --panel: #161a20;
+  --panel-2: #1d222a;
+  --hover: #252b35;
+  --border: #2b313c;
+  --fg: #e6e8ec;
+  --muted: #98a2b3;
+  --accent: #4f8cff;
+  --accent-fg: #ffffff;
+  --danger: #f2555a;
+  --warning: #f5a524;
+  --success: #3fb950;
+  --focus: #7aa7ff;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #eef0f3;
+  --hover: #e4e7ec;
+  --border: #d5dae1;
+  --fg: #1a1e24;
+  --muted: #5a6473;
+  --accent: #2f6fec;
+  --accent-fg: #ffffff;
+  --danger: #d1242f;
+  --warning: #9a6700;
+  --success: #1a7f37;
+  --focus: #2f6fec;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-hover: var(--hover);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-focus: var(--focus);
+  --color-env-dev: #3fb950;
+  --color-env-test: #4f8cff;
+  --color-env-staging: #f5a524;
+  --color-env-production: #f2555a;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  overflow: hidden;
+  user-select: none;
+}
+
+input,
+textarea,
+select {
+  user-select: text;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Dockview blends into the app theme. */
+.joinery-dock {
+  --dv-group-view-background-color: var(--bg);
+  --dv-tabs-and-actions-container-background-color: var(--panel);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--panel);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--panel);
+  --dv-activegroup-visiblepanel-tab-color: var(--fg);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--fg);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-tabs-and-actions-container-height: 34px;
+}
+
+/* Glide Data Grid's overlay editors render into #portal: keep it above the dock panels. */
+#portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 35;
+}
+
+/* The ER diagram's canvas: React Flow in the app's colours. */
+.er-canvas {
+  --er-line: color-mix(in srgb, var(--muted) 72%, var(--bg));
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-dots-color-default: color-mix(in srgb, var(--muted) 28%, transparent);
+  --xy-minimap-background-color: var(--panel);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 70%, transparent);
+  --xy-minimap-mask-stroke-color: var(--accent);
+  --xy-minimap-mask-stroke-width: 1.5;
+  --xy-controls-button-background-color: var(--panel);
+  --xy-controls-button-background-color-hover: var(--hover);
+  --xy-controls-button-color: var(--fg);
+  --xy-controls-button-color-hover: var(--fg);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: 0 6px 20px -8px rgb(0 0 0 / 0.45);
+}
+
+.er-canvas .react-flow__controls,
+.er-canvas .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.er-canvas .react-flow__node {
+  cursor: default;
+}
+
+.er-canvas .react-flow__node.dragging {
+  cursor: grabbing;
+}
+
+.er-canvas .react-flow__node:focus-visible {
+  outline: none;
+}
+
+.er-canvas .react-flow__node:focus-visible .er-table {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.er-canvas .er-handle {
+  opacity: 0;
+  pointer-events: none;
+  min-width: 0;
+  min-height: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+}
+
+.er-canvas .er-edge {
+  transition:
+    opacity 150ms,
+    stroke 150ms;
+}
+
+/* While editing, a column's whole row starts (and takes) a relationship drag. */
+.er-canvas .react-flow__handle.er-row-handle {
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  transform: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: crosshair;
+}
+
+.er-canvas .react-flow__handle.er-row-handle:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.er-canvas .react-flow__handle.er-row-handle.connectingto,
+.er-canvas .react-flow__handle.er-row-handle.valid {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.er-canvas.er-editing .react-flow__pane {
+  cursor: default;
+}
+
+/* A highlighted relationship's label reads over the boxes it runs between. */
+.er-canvas .react-flow__edgelabel-renderer {
+  z-index: 1001;
+}

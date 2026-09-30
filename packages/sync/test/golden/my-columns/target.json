@@ -1,0 +1,54 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_prod",
+  "options": { "charset": "utf8mb4", "collation": "utf8mb4_0900_ai_ci" },
+  "schemas": [
+    {
+      "name": "shop_prod",
+      "tables": [
+        {
+          "name": "products",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            { "name": "sku", "ordinal": 2, "dataType": "varchar(32)", "nullable": false },
+            { "name": "title", "ordinal": 3, "dataType": "varchar(100)", "nullable": false },
+            { "name": "price", "ordinal": 4, "dataType": "decimal(8,2)", "nullable": true },
+            {
+              "name": "legacy_flag",
+              "ordinal": 5,
+              "dataType": "tinyint(1)",
+              "nullable": false,
+              "default": "0"
+            },
+            { "name": "description", "ordinal": 6, "dataType": "text", "nullable": true },
+            { "name": "stock", "ordinal": 7, "dataType": "int", "nullable": false, "default": "0" },
+            { "name": "updated_at", "ordinal": 8, "dataType": "timestamp", "nullable": true },
+            {
+              "name": "notes",
+              "ordinal": 9,
+              "dataType": "varchar(500)",
+              "nullable": true,
+              "charset": "latin1",
+              "collation": "latin1_swedish_ci"
+            }
+          ],
+          "primaryKey": { "name": "PRIMARY", "columns": ["id"] },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "9120"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

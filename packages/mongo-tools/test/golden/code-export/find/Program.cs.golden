@@ -1,0 +1,35 @@
+// dotnet add package MongoDB.Driver
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+using System;
+using MongoDB.Bson;
+using MongoDB.Driver;
+
+var uri = Environment.GetEnvironmentVariable("MONGODB_URI")
+    ?? throw new InvalidOperationException("Set the MONGODB_URI environment variable");
+var client = new MongoClient(uri);
+var collection = client.GetDatabase("shop").GetCollection<BsonDocument>("orders");
+
+var filter = new BsonDocument
+{
+    { "status", new BsonDocument("$in", new BsonArray { "A", "D" }) },
+    { "qty", new BsonDocument { { "$gte", 5 }, { "$lt", 100L } } },
+    { "item.sku", new BsonRegularExpression("^ab", "i") },
+};
+var options = new FindOptions
+{
+    Collation = Collation.FromBsonDocument(new BsonDocument
+    {
+        { "locale", "en" },
+        { "strength", 2 },
+        { "numericOrdering", true },
+    }),
+    Hint = new BsonDocument("status", 1),
+    MaxTime = TimeSpan.FromMilliseconds(5000),
+};
+var projection = new BsonDocument { { "status", 1 }, { "qty", 1 }, { "_id", 0 } };
+var sort = new BsonDocument { { "qty", -1 }, { "status", 1 } };
+var cursor = collection.Find(filter, options).Project(projection).Sort(sort).Skip(10).Limit(20);
+foreach (var document in cursor.ToEnumerable())
+{
+    Console.WriteLine(document);
+}

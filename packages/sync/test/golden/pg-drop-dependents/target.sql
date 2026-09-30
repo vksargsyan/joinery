@@ -1,0 +1,10 @@
+create table a (id int primary key, keep text, gone int, gone2 text);
+create view av as select id, keep, gone from a;
+create view av2 as select id, gone2 from a;
+create table b (id int primary key, a_id int references a (id));
+create view bv as select b.id, a.keep from b join a on a.id = b.a_id;
+create sequence b_seq;
+create table c (id int primary key, n int default nextval('b_seq'));
+create type old_enum as enum ('x');
+create table d (e old_enum);
+create function uses_d() returns bigint language sql as $$ select count(*) from d $$;

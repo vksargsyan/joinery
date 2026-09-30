@@ -1,0 +1,64 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "notes",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "body",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "pinned",
+              "ordinal": 3,
+              "dataType": "boolean",
+              "nullable": false,
+              "default": "false"
+            }
+          ],
+          "primaryKey": {
+            "name": "notes_pkey",
+            "columns": ["id"]
+          },
+          "comment": "new words",
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "note_ids",
+          "definition": "SELECT id\n   FROM public.notes",
+          "columns": ["id"],
+          "comment": "ids only",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

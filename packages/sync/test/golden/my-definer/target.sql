@@ -1,0 +1,3 @@
+CREATE TABLE `t` (`id` int NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB;
+CREATE DEFINER=`admin`@`localhost` SQL SECURITY DEFINER VIEW `v_t` AS SELECT id FROM t;
+CREATE DEFINER=`admin`@`localhost` PROCEDURE `p_count`() SELECT COUNT(*) FROM t;

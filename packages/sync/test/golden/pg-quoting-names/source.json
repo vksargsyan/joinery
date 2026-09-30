@@ -1,0 +1,146 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "MySchema",
+      "tables": [
+        {
+          "name": "Order",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "Select",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false,
+              "comment": "col"
+            },
+            {
+              "name": "From",
+              "ordinal": 2,
+              "dataType": "\"MySchema\".\"Status\"",
+              "nullable": true,
+              "default": "'Open'::\"MySchema\".\"Status\"",
+              "autoIncrement": false
+            },
+            {
+              "name": "with space",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "ünï",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true,
+              "default": "'ç''a'::text",
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "Order_pkey",
+            "columns": ["Select"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "idx Select",
+              "columns": [
+                {
+                  "name": "From",
+                  "order": "asc"
+                },
+                {
+                  "name": "with space",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX \"idx Select\" ON \"MySchema\".\"Order\" USING btree (\"From\", \"with space\")"
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "Order_with space_check",
+              "expression": "((\"with space\" <> 'a\"b'::text))"
+            }
+          ],
+          "triggers": [],
+          "options": {},
+          "comment": "multi\nline 'comment' 😀",
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "V",
+          "materialized": false,
+          "definition": "SELECT \"Select\" AS \"S\",\n    \"ünï\"\n   FROM \"MySchema\".\"Order\"\n  WHERE (\"From\" = 'Closed''s'::\"MySchema\".\"Status\")",
+          "columns": ["S", "ünï"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "Fn",
+          "kind": "function",
+          "signature": "integer",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION \"MySchema\".\"Fn\"(\"X\" integer)\n RETURNS integer\n LANGUAGE sql\nAS $function$ select \"X\" * 2 $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [],
+      "types": [
+        {
+          "name": "Status",
+          "kind": "enum",
+          "values": ["Open", "Closed's", "ÄÖÜ"],
+          "definition": "CREATE TYPE \"MySchema\".\"Status\" AS ENUM ('Open', 'Closed''s', 'ÄÖÜ')",
+          "owner": "postgres"
+        }
+      ],
+      "events": [],
+      "comment": "schema 'c'",
+      "owner": "postgres"
+    },
+    {
+      "name": "public",
+      "tables": [],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

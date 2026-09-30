@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly run of the integration tests across the engine version matrix (spec §20).
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format, lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # Two packages at a time: each vitest run already uses every core, and more at once starved
+      # the timing-sensitive tests (parser warm-up, message round trips) on the 4-core runner.
+      - run: pnpm test --concurrency=2
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      # No pnpm cache: this job never installs, so the cache directory would not exist and
+      # setup-node's post step fails the job.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      # Not --prod: the desktop app bundles its dependencies, so they are all devDependencies.
+      - run: pnpm audit --audit-level high
+
+  integration:
+    name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }}, MongoDB ${{ matrix.mongodb }}, ${{ matrix.redis }}, Elasticsearch ${{ matrix.elasticsearch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Pull requests test the current LTS versions; nightly and manual runs cover the full matrix.
+        include: ${{ fromJSON((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '[{"postgres":"14","mysql":"8.0","mariadb":"10.6","mongodb":"7.0","redis":"redis:6.2","elasticsearch":"7.17.28"},{"postgres":"15","mysql":"8.4","mariadb":"10.11","mongodb":"7.0","redis":"valkey/valkey:7.2","elasticsearch":"8.19.22"},{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4","elasticsearch":"9.5.3"},{"postgres":"17","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"valkey/valkey:8.0","elasticsearch":"8.19.22"},{"postgres":"18","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"redis:8.0","elasticsearch":"9.5.3"}]' || '[{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4","elasticsearch":"9.5.3"}]') }}
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_USER: joinery
+          POSTGRES_PASSWORD: joinery
+          POSTGRES_DB: joinery_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-retries 20
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: joinery
+          MYSQL_DATABASE: joinery_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pjoinery" --health-interval 5s
+          --health-timeout 5s --health-retries 30
+      mariadb:
+        image: mariadb:${{ matrix.mariadb }}
+        env:
+          MARIADB_ROOT_PASSWORD: joinery
+          MARIADB_DATABASE: joinery_test
+        ports: ['3307:3306']
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s
+          --health-timeout 5s --health-retries 30
+    env:
+      JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
+      JOINERY_TEST_MYSQL_URL: mysql://root:joinery@127.0.0.1:3306/joinery_test
+      JOINERY_TEST_MARIADB_URL: mariadb://root:joinery@127.0.0.1:3307/joinery_test
+      JOINERY_TEST_MONGODB_URL: mongodb://joinery:joinery@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
+      JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
+      JOINERY_TEST_REDIS_ACL_USER: app:app-secret
+      JOINERY_TEST_REDIS_SENTINEL: 127.0.0.1:26380/joinery-master
+      JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
+      JOINERY_TEST_ELASTICSEARCH_URL: http://elastic:joinery-es@127.0.0.1:9200
+    steps:
+      - uses: actions/checkout@v7
+      # A MongoDB replica set and a Redis Sentinel and Cluster need server arguments, which
+      # service containers cannot pass.
+      - run: .github/scripts/start-nosql.sh "${{ matrix.mongodb }}" "${{ matrix.redis }}"
+      - run: .github/scripts/start-search.sh "${{ matrix.elasticsearch }}"
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # --continue: every package reports its failures, not only the first one to fail.
+      - run: pnpm test:integration --continue
+
+  e2e:
+    name: Desktop end-to-end (PostgreSQL 16, MongoDB 8.0, Redis 7.4, Elasticsearch 9.5)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: joinery
+          POSTGRES_PASSWORD: joinery
+          POSTGRES_DB: joinery_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-retries 20
+    env:
+      JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
+      JOINERY_TEST_MONGODB_URL: mongodb://joinery:joinery@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
+      JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
+      JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
+      JOINERY_TEST_ELASTICSEARCH_URL: http://elastic:joinery-es@127.0.0.1:9200
+      # Ubuntu runners restrict the unprivileged user namespaces Chromium's sandbox needs. Only
+      # the e2e launcher honours this; the app itself always keeps the renderer sandbox on.
+      JOINERY_E2E_NO_SANDBOX: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - run: .github/scripts/start-nosql.sh 8.0 redis:7.4
+      - run: .github/scripts/start-search.sh 9.5.3
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: xvfb-run -a pnpm --filter @joinery/desktop test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: /tmp/joinery-e2e-results
+          retention-days: 7

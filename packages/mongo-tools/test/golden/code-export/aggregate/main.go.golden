@@ -1,0 +1,80 @@
+// go get go.mongodb.org/mongo-driver/v2/mongo
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
+
+func main() {
+	uri := os.Getenv("MONGODB_URI")
+	if uri == "" {
+		log.Fatal("Set the MONGODB_URI environment variable")
+	}
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := client.Disconnect(context.Background()); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	ctx := context.Background()
+	collection := client.Database("shop").Collection("order items")
+	pipeline := mongo.Pipeline{
+		bson.D{{"$match", bson.D{
+			{"status", "A"},
+			{"at", bson.D{
+				{"$gte", time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC)},
+			}},
+			{"price", bson.D{{"$gt", decimal128("9.99")}}},
+		}}},
+		bson.D{{"$group", bson.D{
+			{"_id", "$cust"},
+			{"total", bson.D{{"$sum", "$amount"}}},
+			{"n", bson.D{{"$sum", 1}}},
+			{"avg", bson.D{{"$avg", 1.0}}},
+		}}},
+		bson.D{{"$match", bson.D{}}},
+		bson.D{{"$sort", bson.D{{"total", -1}}}},
+		bson.D{{"$limit", 5}},
+	}
+	cursor, err := collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var document bson.D
+		if err := cursor.Decode(&document); err != nil {
+			log.Fatal(err)
+		}
+		text, err := bson.MarshalExtJSON(document, false, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(text))
+	}
+	if err := cursor.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func decimal128(s string) bson.Decimal128 {
+	d, err := bson.ParseDecimal128(s)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return d
+}

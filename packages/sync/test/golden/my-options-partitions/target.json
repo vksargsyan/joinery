@@ -1,0 +1,124 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "audit_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "audit_prod",
+      "tables": [
+        {
+          "name": "archive",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            },
+            {
+              "name": "year",
+              "ordinal": 2,
+              "dataType": "smallint",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id", "year"]
+          },
+          "kind": "table",
+          "partitioning": {
+            "method": "RANGE",
+            "key": "`year`",
+            "partitions": [
+              {
+                "name": "p2022",
+                "bound": "VALUES LESS THAN (2023)"
+              },
+              {
+                "name": "p2023",
+                "bound": "VALUES LESS THAN (2024)"
+              },
+              {
+                "name": "pmax",
+                "bound": "VALUES LESS THAN MAXVALUE"
+              }
+            ]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        },
+        {
+          "name": "events_log",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "message",
+              "ordinal": 2,
+              "dataType": "varchar(200)",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "MyISAM",
+            "charset": "latin1",
+            "collation": "latin1_swedish_ci",
+            "autoIncrement": "500",
+            "rowFormat": "COMPACT"
+          },
+          "comment": "old"
+        },
+        {
+          "name": "hashed",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "partitioning": {
+            "method": "HASH",
+            "key": "`id`",
+            "partitions": [
+              {
+                "name": "p0"
+              },
+              {
+                "name": "p1"
+              }
+            ]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

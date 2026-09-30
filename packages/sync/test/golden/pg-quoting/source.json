@@ -1,0 +1,80 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "Sales Dept",
+      "tables": [
+        {
+          "name": "Order \"Lines\"",
+          "columns": [
+            {
+              "name": "Id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "qty;drop",
+              "ordinal": 2,
+              "dataType": "bigint",
+              "nullable": true,
+              "comment": "semi; colon's"
+            },
+            {
+              "name": "Note'); DROP TABLE x; --",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": "'it''s'::text"
+            }
+          ],
+          "primaryKey": {
+            "name": "Order \"Lines\"_pkey",
+            "columns": ["Id"]
+          },
+          "indexes": [
+            {
+              "name": "Idx \"q\"",
+              "columns": [
+                {
+                  "name": "qty;drop",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX \"Idx \"\"q\"\"\" ON \"Sales Dept\".\"Order \"\"Lines\"\"\" USING btree (\"qty;drop\")"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "V \"1\"",
+          "definition": "SELECT \"Id\",\n    \"qty;drop\"\n   FROM \"Sales Dept\".\"Order \"\"Lines\"\"\"",
+          "columns": ["Id", "qty;drop"],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "postgres"
+    },
+    {
+      "name": "public",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,184 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "routines_events_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "routines_events_prod",
+      "tables": [
+        {
+          "name": "acc",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "bal",
+              "ordinal": 2,
+              "dataType": "decimal(12,2)",
+              "nullable": false,
+              "default": "0.00",
+              "autoIncrement": false
+            },
+            {
+              "name": "owner",
+              "ordinal": 3,
+              "dataType": "varchar(40)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "acc_ai",
+              "timing": "AFTER",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER acc_ai AFTER INSERT ON acc FOR EACH ROW INSERT INTO log (msg) VALUES ('new')"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "log",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": true
+            },
+            {
+              "name": "msg",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci",
+            "autoIncrement": "1"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "v_acc",
+          "materialized": false,
+          "definition": "select `acc`.`id` AS `id`,`acc`.`bal` AS `bal` from `acc`",
+          "columns": ["id", "bal"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v_fee",
+          "materialized": false,
+          "definition": "select `acc`.`id` AS `id`,`fee`(`acc`.`bal`) AS `f` from `acc`",
+          "columns": ["id", "f"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v_owner",
+          "materialized": false,
+          "definition": "select `acc`.`owner` AS `owner` from `acc`",
+          "columns": ["owner"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v_rich",
+          "materialized": false,
+          "definition": "select `v_acc`.`id` AS `id` from `v_acc` where `v_acc`.`bal` > 1000",
+          "columns": ["id"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        }
+      ],
+      "routines": [
+        {
+          "name": "audit_all",
+          "kind": "procedure",
+          "signature": "",
+          "language": "SQL",
+          "definition": "CREATE PROCEDURE `audit_all`(IN p_note varchar(50))\nINSERT INTO log (msg) VALUES (p_note)",
+          "definer": "joinery@localhost"
+        },
+        {
+          "name": "fee",
+          "kind": "function",
+          "signature": "",
+          "returns": "decimal(10,2)",
+          "language": "SQL",
+          "definition": "CREATE FUNCTION `fee`(x decimal(10,2)) RETURNS decimal(10,2)\n    DETERMINISTIC\nRETURN x * 0.01",
+          "definer": "joinery@localhost"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [
+        {
+          "name": "ev1",
+          "definition": "CREATE EVENT `ev1` ON SCHEDULE EVERY 1 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM log WHERE id < 0",
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

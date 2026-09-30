@@ -1,0 +1,107 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "docs",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "body",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "lang",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "score",
+              "ordinal": 5,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "docs_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "docs_lang",
+              "columns": [
+                {
+                  "name": "lang",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "where": "(lang IS NOT NULL)",
+              "definition": "CREATE INDEX docs_lang ON public.docs USING btree (lang) WHERE (lang IS NOT NULL)"
+            },
+            {
+              "name": "docs_old",
+              "columns": [
+                {
+                  "name": "score",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX docs_old ON public.docs USING btree (score)"
+            },
+            {
+              "name": "docs_title_idx",
+              "columns": [
+                {
+                  "name": "title",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX docs_title_idx ON public.docs USING btree (title)"
+            }
+          ],
+          "checks": [
+            {
+              "name": "docs_score_chk",
+              "expression": "((score >= 0))"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

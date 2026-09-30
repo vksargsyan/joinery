@@ -1,0 +1,7 @@
+{
+  "renames": [
+    { "objectKind": "column", "table": "items", "from": "qty", "to": "quantity" },
+    { "objectKind": "table", "from": "item_log", "to": "item_history" },
+    { "objectKind": "column", "table": "item_history", "from": "qty", "to": "quantity" }
+  ]
+}

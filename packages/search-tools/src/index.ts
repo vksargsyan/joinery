@@ -1,0 +1,177 @@
+/**
+ * @joinery/search-tools — what the Elasticsearch module (spec §11) needs on both
+ * sides of the process boundary: the Kibana console parser and formatter, lossless JSON text
+ * helpers, the request safety classifier behind the write rules, the wire types, the capability
+ * flags, reply readers, and autocomplete from the open Elasticsearch API specification. No Node
+ * built-ins: the sandboxed renderer imports it too.
+ */
+
+export {
+  API_SPEC,
+  endpointFor,
+  isPlaceholder,
+  matchEndpoints,
+  type ApiEndpoint,
+  type ApiSpec,
+  type ApiType,
+  type EndpointMatch,
+} from './api/spec';
+export {
+  searchCapabilities,
+  versionAtLeast,
+  type SearchCapabilities,
+  type SearchServerFacts,
+} from './capabilities';
+export {
+  completeConsole,
+  type CompletionItem,
+  type CompletionKind,
+  type ConsoleCompletion,
+  type ConsoleCompletionOptions,
+} from './completion';
+export {
+  HTTP_METHODS,
+  bodyErrorOffset,
+  bodyKindForPath,
+  formatConsoleRequest,
+  isRequestLine,
+  issuesOf,
+  offsetOfLineColumn,
+  parseConsole,
+  requestAt,
+  requestsIn,
+  sourceOffset,
+  splitUrl,
+  type BodySegment,
+  type ConsoleIssue,
+  type ConsoleParse,
+  type ConsoleRequest,
+  type HttpMethod,
+} from './console/parser';
+export {
+  JsonSyntaxError,
+  booleanAt,
+  compactJson,
+  formatJson,
+  member,
+  nodeAt,
+  nodeText,
+  numberAt,
+  parseJsonTree,
+  parseJsonValueAt,
+  quoteJson,
+  readJsonString,
+  stringAt,
+  toLooseJson,
+  type FormatJsonOptions,
+  type JsonMember,
+  type JsonNode,
+  type LooseJson,
+} from './json';
+export { parseSearchError, parseSearchReply, type SearchErrorInfo } from './response';
+export { blocksSetIn, classifyRequest, type RequestSafety } from './safety';
+export {
+  SEARCH_RESOURCE_KINDS,
+  type JsonText,
+  type SearchAliasInfo,
+  type SearchAllocationDecision,
+  type SearchAllocationExplain,
+  type SearchBulkItem,
+  type SearchBulkResult,
+  type SearchByQueryResult,
+  type SearchClusterHealth,
+  type SearchClusterInfo,
+  type SearchDataStreamInfo,
+  type SearchDiskAllocation,
+  type SearchDocument,
+  type SearchHealthStatus,
+  type SearchHit,
+  type SearchIndexSummary,
+  type SearchNodeDisk,
+  type SearchNodeSummary,
+  type SearchPage,
+  type SearchRequest,
+  type SearchResourceInfo,
+  type SearchResourceKind,
+  type SearchResponse,
+  type SearchShardInfo,
+  type SearchSimulatedDocument,
+  type SearchSimulatedProcessor,
+  type SearchSnapshotInfo,
+  type SearchTaskStatus,
+  type SearchWriteResult,
+} from './wire';
+export {
+  aliasActions,
+  aliasSwapActions,
+  copyableSettings,
+  indexNameProblem,
+  nextIndexName,
+  reindexPlan,
+  type AliasTarget,
+  type ReindexCutover,
+  type ReindexPlan,
+  type ReindexPlanInput,
+  type ReindexStep,
+} from './admin';
+export {
+  aggregationTable,
+  aggregationTree,
+  aggregationsOf,
+  type AggregationKind,
+  type AggregationNode,
+  type AggregationTable,
+} from './aggregations';
+export { bulkDeleteLines, bulkUpdateLines, type BulkTarget } from './bulk';
+export {
+  documentColumns,
+  flatRecord,
+  flattenSource,
+  partialDocument,
+  valueJsonOf,
+  type FlatField,
+  type FlatKind,
+  type FlattenOptions,
+} from './flatten';
+export {
+  mappingFields,
+  mappingRoot,
+  planMappingChange,
+  type MappingChange,
+  type MappingField,
+  type MappingPlan,
+} from './mapping';
+export {
+  parseAllocationExplain,
+  parseDiskAllocation,
+  parseResources,
+  parseShards,
+  parseSimulation,
+  parseSnapshots,
+  parseTaskList,
+  parseTaskReply,
+  resourcePath,
+  resourcePutRequest,
+  restoreBody,
+  restoredNames,
+  simulateBody,
+  snapshotBody,
+  watermarkPercent,
+  type RestoreOptions,
+  type SnapshotOptions,
+} from './replies';
+export {
+  cellDisplay,
+  esqlRequest,
+  parseTableReply,
+  sqlCloseRequest,
+  sqlCursorRequest,
+  sqlFromTarget,
+  sqlRequest,
+  sqlTranslateRequest,
+  translatedDsl,
+  type SearchTable,
+  type SearchTableColumn,
+  type SqlRequestOptions,
+  type SqlTranslation,
+} from './sql';

@@ -1,0 +1,70 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.0.39",
+  "database": "telemetry_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "telemetry_dev",
+      "tables": [
+        {
+          "name": "metrics",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "kind",
+              "ordinal": 2,
+              "dataType": "enum('cpu','mem','gpu')",
+              "nullable": false
+            },
+            {
+              "name": "value",
+              "ordinal": 3,
+              "dataType": "float",
+              "nullable": false
+            },
+            {
+              "name": "sampled_at",
+              "ordinal": 4,
+              "dataType": "datetime",
+              "nullable": false
+            },
+            {
+              "name": "host",
+              "ordinal": 5,
+              "dataType": "varchar(255)",
+              "nullable": false,
+              "charset": "latin1",
+              "collation": "latin1_swedish_ci"
+            },
+            {
+              "name": "counter",
+              "ordinal": 6,
+              "dataType": "smallint",
+              "nullable": false,
+              "default": "0"
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,34 @@
+// dotnet add package MongoDB.Driver
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+using System;
+using MongoDB.Bson;
+using MongoDB.Driver;
+
+var uri = Environment.GetEnvironmentVariable("MONGODB_URI")
+    ?? throw new InvalidOperationException("Set the MONGODB_URI environment variable");
+var client = new MongoClient(uri);
+var collection = client.GetDatabase("shop").GetCollection<BsonDocument>("order items");
+
+var pipeline = new BsonDocument[]
+{
+    new BsonDocument("$match", new BsonDocument
+    {
+        { "status", "A" },
+        { "at", new BsonDocument("$gte", new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)) },
+        { "price", new BsonDocument("$gt", new BsonDecimal128(Decimal128.Parse("9.99"))) },
+    }),
+    new BsonDocument("$group", new BsonDocument
+    {
+        { "_id", "$cust" },
+        { "total", new BsonDocument("$sum", "$amount") },
+        { "n", new BsonDocument("$sum", 1) },
+        { "avg", new BsonDocument("$avg", 1.0) },
+    }),
+    new BsonDocument("$match", new BsonDocument()),
+    new BsonDocument("$sort", new BsonDocument("total", -1)),
+    new BsonDocument("$limit", 5),
+};
+foreach (var document in collection.Aggregate<BsonDocument>(pipeline).ToEnumerable())
+{
+    Console.WriteLine(document);
+}

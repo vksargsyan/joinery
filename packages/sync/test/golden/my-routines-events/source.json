@@ -1,0 +1,193 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "routines_events_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "routines_events_dev",
+      "tables": [
+        {
+          "name": "acc",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "bal",
+              "ordinal": 2,
+              "dataType": "decimal(10,2)",
+              "nullable": false,
+              "default": "0.00",
+              "autoIncrement": false
+            },
+            {
+              "name": "owner",
+              "ordinal": 3,
+              "dataType": "varchar(40)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "acc_ai",
+              "timing": "AFTER",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER acc_ai AFTER INSERT ON acc FOR EACH ROW\nBEGIN\n  INSERT INTO log (msg) VALUES (CONCAT('new ', NEW.id, ';'));\nEND"
+            },
+            {
+              "name": "acc_bu",
+              "timing": "BEFORE",
+              "events": ["UPDATE"],
+              "definition": "CREATE TRIGGER acc_bu BEFORE UPDATE ON acc FOR EACH ROW\nSET NEW.bal = GREATEST(NEW.bal, 0)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "log",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": true
+            },
+            {
+              "name": "msg",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci",
+            "autoIncrement": "1"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "v_acc",
+          "materialized": false,
+          "definition": "select `acc`.`id` AS `id`,`acc`.`bal` AS `bal` from `acc` where `acc`.`bal` > 0",
+          "columns": ["id", "bal"],
+          "checkOption": "CASCADED",
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v_fee",
+          "materialized": false,
+          "definition": "select `acc`.`id` AS `id`,`fee`(`acc`.`bal`) AS `f` from `acc`",
+          "columns": ["id", "f"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v_owner",
+          "materialized": false,
+          "definition": "select `acc`.`owner` AS `owner`,'it\\'s' AS `lit`,count(0) AS `n` from `acc` group by `acc`.`owner`",
+          "columns": ["owner", "lit", "n"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "INVOKER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        },
+        {
+          "name": "v_rich",
+          "materialized": false,
+          "definition": "select `v_acc`.`id` AS `id` from `v_acc` where `v_acc`.`bal` > 1000",
+          "columns": ["id"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "joinery@localhost"
+          },
+          "indexes": []
+        }
+      ],
+      "routines": [
+        {
+          "name": "audit_all",
+          "kind": "procedure",
+          "signature": "",
+          "language": "SQL",
+          "definition": "CREATE PROCEDURE `audit_all`(IN p_note varchar(100), OUT p_n int)\n    MODIFIES SQL DATA\n    COMMENT 'audits'\nBEGIN\n  DECLARE done int DEFAULT 0;\n  INSERT INTO log (msg) VALUES (CONCAT('audit; ', p_note));\n  SELECT COUNT(*) INTO p_n FROM acc;\nEND",
+          "definer": "joinery@localhost",
+          "comment": "audits"
+        },
+        {
+          "name": "fee",
+          "kind": "function",
+          "signature": "",
+          "returns": "decimal(10,2)",
+          "language": "SQL",
+          "definition": "CREATE FUNCTION `fee`(x decimal(10,2)) RETURNS decimal(10,2)\n    DETERMINISTIC\n    COMMENT 'fee ''calc'''\nRETURN x * 0.02",
+          "definer": "joinery@localhost",
+          "comment": "fee 'calc'"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [
+        {
+          "name": "ev1",
+          "definition": "CREATE EVENT `ev1` ON SCHEDULE EVERY 2 HOUR STARTS '2030-01-01 00:00:00' ON COMPLETION PRESERVE DISABLE COMMENT 'ev' DO DELETE FROM log WHERE id < 0",
+          "enabled": false
+        }
+      ]
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

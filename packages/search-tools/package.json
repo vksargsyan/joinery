@@ -1,0 +1,23 @@
+{
+  "name": "@joinery/search-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Elasticsearch console parser and formatter, lossless JSON, request safety, wire types, capability flags and autocomplete from the open API specification. Pure TypeScript: runs in the renderer too.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "test:integration": "vitest run test/integration --passWithNoTests",
+    "generate:api": "node scripts/generate-api-spec.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,20 @@
+create table d (
+  id uuid primary key,
+  a int,
+  b numeric(10,2),
+  c text,
+  dt date,
+  ts timestamp,
+  iv interval,
+  j jsonb,
+  arr int[],
+  arr2 text[],
+  f float8,
+  bits bit(3),
+  bo boolean,
+  expr int,
+  money_col money,
+  ch char(3),
+  vc varchar(10),
+  tz timestamptz
+);

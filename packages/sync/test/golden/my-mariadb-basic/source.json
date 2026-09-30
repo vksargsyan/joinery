@@ -1,0 +1,101 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.9-MariaDB",
+  "database": "helpdesk_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "tables": [
+        {
+          "name": "tickets",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint(20)",
+              "nullable": false,
+              "default": "(nextval(`ticket_seq`))"
+            },
+            {
+              "name": "subject",
+              "ordinal": 2,
+              "dataType": "varchar(250)",
+              "nullable": false
+            },
+            {
+              "name": "payload",
+              "ordinal": 3,
+              "dataType": "longtext",
+              "nullable": true,
+              "collation": "utf8mb4_bin"
+            },
+            {
+              "name": "opened_at",
+              "ordinal": 4,
+              "dataType": "datetime",
+              "nullable": false,
+              "default": "CURRENT_TIMESTAMP"
+            },
+            {
+              "name": "closed_at",
+              "ordinal": 5,
+              "dataType": "datetime",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "idx_subject",
+              "columns": [
+                {
+                  "name": "subject"
+                }
+              ],
+              "method": "btree",
+              "invisible": true
+            }
+          ],
+          "checks": [
+            {
+              "name": "payload",
+              "expression": "json_valid(`payload`)"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "sequences": [
+        {
+          "name": "invoice_seq",
+          "start": "5000",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "99999999",
+          "cache": "1000",
+          "cycle": true
+        },
+        {
+          "name": "ticket_seq",
+          "start": "1",
+          "increment": "10",
+          "minValue": "1",
+          "maxValue": "9223372036854775806",
+          "cache": "100"
+        }
+      ],
+      "name": "helpdesk_dev"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

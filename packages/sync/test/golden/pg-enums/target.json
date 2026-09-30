@@ -1,0 +1,84 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "tickets",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "nextval('public.tickets_id_seq'::regclass)"
+            },
+            {
+              "name": "state",
+              "ordinal": 2,
+              "dataType": "public.ticket_state",
+              "nullable": false,
+              "default": "'open'::public.ticket_state"
+            },
+            {
+              "name": "prio",
+              "ordinal": 3,
+              "dataType": "public.priority",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "tickets_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [
+        {
+          "name": "tickets_id_seq",
+          "dataType": "integer",
+          "start": "1",
+          "increment": "1",
+          "minValue": "1",
+          "maxValue": "2147483647",
+          "cache": "1",
+          "ownedBy": "tickets.id",
+          "owner": "postgres"
+        }
+      ],
+      "types": [
+        {
+          "name": "priority",
+          "kind": "enum",
+          "values": ["low", "high"],
+          "definition": "CREATE TYPE public.priority AS ENUM ('low', 'high')",
+          "owner": "postgres"
+        },
+        {
+          "name": "ticket_state",
+          "kind": "enum",
+          "values": ["open", "closed"],
+          "definition": "CREATE TYPE public.ticket_state AS ENUM ('open', 'closed')",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

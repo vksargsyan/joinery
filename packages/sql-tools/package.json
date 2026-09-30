@@ -1,0 +1,26 @@
+{
+  "name": "@joinery/sql-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SQL statement splitter, parameters, safety checks, formatter, diagnostics, autocomplete and dialect rules.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "dt-sql-parser": "^4.5.1",
+    "sql-formatter": "^15.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}

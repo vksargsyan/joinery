@@ -1,0 +1,28 @@
+{
+  "name": "@joinery/sync",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Structure diff, data compare and sync script generation.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --testTimeout=120000 --hookTimeout=120000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/sql-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@joinery/driver-mysql": "workspace:*",
+    "@joinery/driver-postgres": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@types/node": "catalog:",
+    "fast-check": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

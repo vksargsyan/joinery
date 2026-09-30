@@ -1,0 +1,16 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "iot",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "iot",
+      "tables": []
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

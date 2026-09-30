@@ -1,0 +1,29 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Limit",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 0.28,
+      "Total Cost": 0.38,
+      "Plan Rows": 3,
+      "Plan Width": 12,
+      "Plans": [
+        {
+          "Node Type": "Index Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Scan Direction": "Backward",
+          "Index Name": "fx_o_pkey",
+          "Relation Name": "fx_o",
+          "Alias": "fx_o",
+          "Startup Cost": 0.28,
+          "Total Cost": 170.28,
+          "Plan Rows": 5000,
+          "Plan Width": 12
+        }
+      ]
+    }
+  }
+]

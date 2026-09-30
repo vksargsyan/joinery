@@ -1,0 +1,35 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "filesort": {
+      "sort_key": "count(0) desc",
+      "temporary_table": {
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "c2",
+              "access_type": "ALL",
+              "possible_keys": ["PRIMARY"],
+              "rows": 10,
+              "filtered": 100
+            }
+          },
+          {
+            "table": {
+              "table_name": "o2",
+              "access_type": "ref",
+              "possible_keys": ["cid"],
+              "key": "cid",
+              "key_length": "5",
+              "used_key_parts": ["cid"],
+              "ref": ["probe.c2.id"],
+              "rows": 10,
+              "filtered": 100,
+              "attached_condition": "o2.v > 5"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

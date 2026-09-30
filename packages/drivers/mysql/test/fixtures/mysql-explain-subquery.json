@@ -1,0 +1,44 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": { "query_cost": "1.20" },
+    "table": {
+      "table_name": "d",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 2,
+      "rows_produced_per_join": 2,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "2.52",
+        "eval_cost": "0.20",
+        "prefix_cost": "2.73",
+        "data_read_per_join": "32"
+      },
+      "used_columns": ["n"],
+      "materialized_from_subquery": {
+        "using_temporary_table": true,
+        "dependent": false,
+        "cacheable": true,
+        "query_block": {
+          "union_result": {
+            "using_temporary_table": true,
+            "table_name": "<union2,3>",
+            "access_type": "ALL",
+            "query_specifications": [
+              {
+                "dependent": false,
+                "cacheable": true,
+                "query_block": { "select_id": 2, "message": "No tables used" }
+              },
+              {
+                "dependent": false,
+                "cacheable": true,
+                "query_block": { "select_id": 3, "message": "No tables used" }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

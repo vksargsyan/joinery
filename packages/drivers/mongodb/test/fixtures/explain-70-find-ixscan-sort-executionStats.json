@@ -1,0 +1,151 @@
+{
+  "explainVersion": "1",
+  "queryPlanner": {
+    "namespace": "joinery_explain_probe.orders",
+    "indexFilterSet": false,
+    "parsedQuery": {
+      "$and": [
+        {
+          "status": {
+            "$eq": "A"
+          }
+        },
+        {
+          "amount": {
+            "$gte": 10
+          }
+        }
+      ]
+    },
+    "queryHash": "54B01C17",
+    "planCacheKey": "859022B0",
+    "optimizationTimeMillis": 0,
+    "maxIndexedOrSolutionsReached": false,
+    "maxIndexedAndSolutionsReached": false,
+    "maxScansToExplodeReached": false,
+    "winningPlan": {
+      "stage": "LIMIT",
+      "limitAmount": 5,
+      "inputStage": {
+        "stage": "PROJECTION_COVERED",
+        "transformBy": {
+          "_id": 0,
+          "amount": 1
+        },
+        "inputStage": {
+          "stage": "IXSCAN",
+          "keyPattern": {
+            "status": 1,
+            "amount": -1
+          },
+          "indexName": "status_amount",
+          "isMultiKey": false,
+          "multiKeyPaths": {
+            "status": [],
+            "amount": []
+          },
+          "isUnique": false,
+          "isSparse": false,
+          "isPartial": false,
+          "indexVersion": 2,
+          "direction": "forward",
+          "indexBounds": {
+            "status": ["[\"A\", \"A\"]"],
+            "amount": ["[inf.0, 10]"]
+          }
+        }
+      }
+    },
+    "rejectedPlans": []
+  },
+  "executionStats": {
+    "executionSuccess": true,
+    "nReturned": 5,
+    "executionTimeMillis": 0,
+    "totalKeysExamined": 5,
+    "totalDocsExamined": 0,
+    "executionStages": {
+      "stage": "LIMIT",
+      "nReturned": 5,
+      "executionTimeMillisEstimate": 0,
+      "works": 6,
+      "advanced": 5,
+      "needTime": 0,
+      "needYield": 0,
+      "saveState": 0,
+      "restoreState": 0,
+      "isEOF": 1,
+      "limitAmount": 5,
+      "inputStage": {
+        "stage": "PROJECTION_COVERED",
+        "nReturned": 5,
+        "executionTimeMillisEstimate": 0,
+        "works": 5,
+        "advanced": 5,
+        "needTime": 0,
+        "needYield": 0,
+        "saveState": 0,
+        "restoreState": 0,
+        "isEOF": 0,
+        "transformBy": {
+          "_id": 0,
+          "amount": 1
+        },
+        "inputStage": {
+          "stage": "IXSCAN",
+          "nReturned": 5,
+          "executionTimeMillisEstimate": 0,
+          "works": 5,
+          "advanced": 5,
+          "needTime": 0,
+          "needYield": 0,
+          "saveState": 0,
+          "restoreState": 0,
+          "isEOF": 0,
+          "keyPattern": {
+            "status": 1,
+            "amount": -1
+          },
+          "indexName": "status_amount",
+          "isMultiKey": false,
+          "multiKeyPaths": {
+            "status": [],
+            "amount": []
+          },
+          "isUnique": false,
+          "isSparse": false,
+          "isPartial": false,
+          "indexVersion": 2,
+          "direction": "forward",
+          "indexBounds": {
+            "status": ["[\"A\", \"A\"]"],
+            "amount": ["[inf.0, 10]"]
+          },
+          "keysExamined": 5,
+          "seeks": 1,
+          "dupsTested": 0,
+          "dupsDropped": 0
+        }
+      }
+    }
+  },
+  "command": {
+    "find": "orders",
+    "filter": {
+      "status": "A",
+      "amount": {
+        "$gte": 10
+      }
+    },
+    "sort": {
+      "amount": -1
+    },
+    "projection": {
+      "_id": 0,
+      "amount": 1
+    },
+    "limit": 5,
+    "$db": "joinery_explain_probe"
+  },
+  "ok": 1
+}

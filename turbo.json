@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "out/**"]
+    },
+    "typecheck": {},
+    "test": {
+      "outputs": []
+    },
+    "test:integration": {
+      "cache": false,
+      "env": ["JOINERY_TEST_*"]
+    }
+  }
+}

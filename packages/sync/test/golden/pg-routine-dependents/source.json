@@ -1,0 +1,196 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "codes",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "bigint",
+              "nullable": true,
+              "default": "public.next_code()",
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "codes_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "name",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "t_score",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "public.score(v)",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_score ON public.t USING btree (public.score(v))"
+            },
+            {
+              "name": "t_tag",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "public.tag(name)",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_tag ON public.t USING btree (public.tag(name))"
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "t_v_check",
+              "expression": "((public.score(v) >= 0))"
+            }
+          ],
+          "triggers": [
+            {
+              "name": "t_trg",
+              "timing": "BEFORE",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER t_trg BEFORE INSERT ON public.t FOR EACH ROW EXECUTE FUNCTION public.trg()"
+            }
+          ],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "tv",
+          "materialized": false,
+          "definition": "SELECT id,\n    public.score(v) AS s\n   FROM public.t",
+          "columns": ["id", "s"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "next_code",
+          "kind": "function",
+          "signature": "",
+          "returns": "bigint",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.next_code()\n RETURNS bigint\n LANGUAGE sql\nAS $function$ select 42::bigint $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "score",
+          "kind": "function",
+          "signature": "integer",
+          "returns": "bigint",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.score(x integer)\n RETURNS bigint\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select x::bigint * 2 $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "tag",
+          "kind": "function",
+          "signature": "text",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.tag(t text)\n RETURNS text\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select upper(t) $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "trg",
+          "kind": "function",
+          "signature": "",
+          "returns": "trigger",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE FUNCTION public.trg()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ begin return new; end $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

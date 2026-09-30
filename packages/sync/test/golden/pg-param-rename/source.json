@@ -1,0 +1,43 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "routines": [
+        {
+          "name": "area",
+          "kind": "function",
+          "signature": "integer, integer",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.area(w integer, h integer)\n RETURNS integer\n LANGUAGE sql\nAS $function$ select w * h $function$\n",
+          "owner": "postgres"
+        },
+        {
+          "name": "greet",
+          "kind": "function",
+          "signature": "text",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.greet(person text)\n RETURNS text\n LANGUAGE sql\nAS $function$ select 'hi ' || person $function$\n",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

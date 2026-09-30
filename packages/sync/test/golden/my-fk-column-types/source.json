@@ -1,0 +1,161 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "fk_column_types_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "fk_column_types_dev",
+      "tables": [
+        {
+          "name": "child",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "parent_id",
+              "ordinal": 2,
+              "dataType": "bigint(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "parent_code",
+              "ordinal": 3,
+              "dataType": "varchar(40)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "k_c",
+              "columns": [
+                {
+                  "name": "parent_code",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            },
+            {
+              "name": "k_p",
+              "columns": [
+                {
+                  "name": "parent_id",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "fk_code",
+              "columns": ["parent_code"],
+              "refTable": "parent",
+              "refColumns": ["code"],
+              "onUpdate": "RESTRICT",
+              "onDelete": "RESTRICT"
+            },
+            {
+              "name": "fk_parent",
+              "columns": ["parent_id"],
+              "refTable": "parent",
+              "refColumns": ["id"],
+              "onUpdate": "RESTRICT",
+              "onDelete": "RESTRICT"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "parent",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint(20)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "varchar(40)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "uq_code",
+              "columns": [
+                {
+                  "name": "code",
+                  "order": "asc"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

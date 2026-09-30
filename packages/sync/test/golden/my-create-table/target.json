@@ -1,0 +1,34 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "shop_prod",
+  "options": { "charset": "utf8mb4", "collation": "utf8mb4_0900_ai_ci" },
+  "schemas": [
+    {
+      "name": "shop_prod",
+      "tables": [
+        {
+          "name": "legacy_imports",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            { "name": "payload", "ordinal": 2, "dataType": "longblob", "nullable": true }
+          ],
+          "primaryKey": { "name": "PRIMARY", "columns": ["id"] },
+          "options": {
+            "engine": "MyISAM",
+            "charset": "latin1",
+            "collation": "latin1_swedish_ci",
+            "autoIncrement": "5210"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,96 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Limit",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 133.12,
+      "Total Cost": 133.13,
+      "Plan Rows": 5,
+      "Plan Width": 11,
+      "Plans": [
+        {
+          "Node Type": "Sort",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 133.12,
+          "Total Cost": 133.24,
+          "Plan Rows": 50,
+          "Plan Width": 11,
+          "Sort Key": ["(count(*)) DESC"],
+          "Plans": [
+            {
+              "Node Type": "Aggregate",
+              "Strategy": "Hashed",
+              "Partial Mode": "Simple",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 131.79,
+              "Total Cost": 132.29,
+              "Plan Rows": 50,
+              "Plan Width": 11,
+              "Group Key": ["c.name"],
+              "Planned Partitions": 0,
+              "Plans": [
+                {
+                  "Node Type": "Hash Join",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Join Type": "Left",
+                  "Startup Cost": 2.12,
+                  "Total Cost": 106.84,
+                  "Plan Rows": 4990,
+                  "Plan Width": 3,
+                  "Inner Unique": true,
+                  "Hash Cond": "(o.cid = c.id)",
+                  "Plans": [
+                    {
+                      "Node Type": "Seq Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Relation Name": "fx_o",
+                      "Alias": "o",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 90.5,
+                      "Plan Rows": 4990,
+                      "Plan Width": 4,
+                      "Filter": "(v > 10)"
+                    },
+                    {
+                      "Node Type": "Hash",
+                      "Parent Relationship": "Inner",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Startup Cost": 1.5,
+                      "Total Cost": 1.5,
+                      "Plan Rows": 50,
+                      "Plan Width": 7,
+                      "Plans": [
+                        {
+                          "Node Type": "Seq Scan",
+                          "Parent Relationship": "Outer",
+                          "Parallel Aware": false,
+                          "Async Capable": false,
+                          "Relation Name": "fx_c",
+                          "Alias": "c",
+                          "Startup Cost": 0.0,
+                          "Total Cost": 1.5,
+                          "Plan Rows": 50,
+                          "Plan Width": 7
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

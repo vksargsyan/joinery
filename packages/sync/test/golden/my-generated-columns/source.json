@@ -1,0 +1,177 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "generated_columns_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "generated_columns_dev",
+      "tables": [
+        {
+          "name": "g",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 4,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "generated": {
+                "expression": "`a` + `b`",
+                "stored": false
+              },
+              "autoIncrement": false
+            },
+            {
+              "name": "s",
+              "ordinal": 5,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "generated": {
+                "expression": "`a` * `b`",
+                "stored": true
+              },
+              "autoIncrement": false
+            },
+            {
+              "name": "name",
+              "ordinal": 6,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "upper_name",
+              "ordinal": 7,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "generated": {
+                "expression": "ucase(`name`)",
+                "stored": true
+              },
+              "autoIncrement": false
+            },
+            {
+              "name": "moved",
+              "ordinal": 8,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "k_v",
+              "columns": [
+                {
+                  "name": "v",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "r",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "first_name",
+              "ordinal": 2,
+              "dataType": "varchar(40)",
+              "nullable": false,
+              "default": "''",
+              "autoIncrement": false
+            },
+            {
+              "name": "last",
+              "ordinal": 3,
+              "dataType": "varchar(40)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

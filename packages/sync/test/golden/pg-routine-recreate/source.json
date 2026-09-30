@@ -1,0 +1,82 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "v",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "triggers": [
+            {
+              "name": "t_audit",
+              "timing": "AFTER",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER t_audit AFTER INSERT ON public.t FOR EACH ROW EXECUTE FUNCTION public.audit_fn()"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "t_fmt",
+          "definition": "SELECT id,\n    public.fmt(id) AS f\n   FROM public.t",
+          "columns": ["id", "f"],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "audit_fn",
+          "kind": "function",
+          "returns": "trigger",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE FUNCTION public.audit_fn()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ begin return new; end $function$\n",
+          "owner": "postgres"
+        },
+        {
+          "name": "fmt",
+          "kind": "function",
+          "signature": "integer",
+          "returns": "character varying",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION public.fmt(x integer)\n RETURNS character varying\n LANGUAGE sql\nAS $function$ select x::text $function$\n",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

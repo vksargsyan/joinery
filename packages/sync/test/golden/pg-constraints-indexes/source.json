@@ -1,0 +1,132 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "docs",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "title",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "body",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "lang",
+              "ordinal": 4,
+              "dataType": "text",
+              "nullable": true
+            },
+            {
+              "name": "score",
+              "ordinal": 5,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "docs_pkey",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "docs_body_hash",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "md5(body)",
+                  "nulls": "last"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "definition": "CREATE UNIQUE INDEX docs_body_hash ON public.docs USING btree (md5(body))"
+            },
+            {
+              "name": "docs_lang",
+              "columns": [
+                {
+                  "name": "lang",
+                  "nulls": "last"
+                },
+                {
+                  "name": "score",
+                  "order": "desc",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "where": "(lang <> 'xx'::text)",
+              "include": ["title"],
+              "comment": "language lookups",
+              "definition": "CREATE INDEX docs_lang ON public.docs USING btree (lang, score DESC NULLS LAST) INCLUDE (title) WHERE (lang <> 'xx'::text)"
+            },
+            {
+              "name": "docs_score_brin",
+              "columns": [
+                {
+                  "name": "score",
+                  "nulls": "last"
+                }
+              ],
+              "method": "brin",
+              "definition": "CREATE INDEX docs_score_brin ON public.docs USING brin (score)"
+            },
+            {
+              "name": "docs_title_lower_idx",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "lower(title)",
+                  "nulls": "last"
+                }
+              ],
+              "method": "btree",
+              "definition": "CREATE INDEX docs_title_lower_idx ON public.docs USING btree (lower(title))"
+            }
+          ],
+          "checks": [
+            {
+              "name": "docs_score_check",
+              "expression": "((score >= 0))"
+            },
+            {
+              "name": "docs_title_len",
+              "expression": "((length(title) < 200))"
+            }
+          ],
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

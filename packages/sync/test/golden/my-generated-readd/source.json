@@ -1,0 +1,156 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "generated_readd_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "generated_readd_dev",
+      "tables": [
+        {
+          "name": "g",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "a",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 3,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "s",
+              "ordinal": 4,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "generated": {
+                "expression": "`a` * `b`",
+                "stored": true
+              },
+              "autoIncrement": false
+            },
+            {
+              "name": "w",
+              "ordinal": 5,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "generated": {
+                "expression": "`a` - `b`",
+                "stored": false
+              },
+              "autoIncrement": false
+            },
+            {
+              "name": "p",
+              "ordinal": 6,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "k_multi",
+              "columns": [
+                {
+                  "name": "a",
+                  "order": "asc"
+                },
+                {
+                  "name": "s",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            },
+            {
+              "name": "k_s",
+              "columns": [
+                {
+                  "name": "s",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            },
+            {
+              "name": "k_w",
+              "columns": [
+                {
+                  "name": "w",
+                  "order": "asc"
+                },
+                {
+                  "name": "a",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "s_pos",
+              "expression": "`s` >= -100"
+            },
+            {
+              "name": "w_chk",
+              "expression": "`w` < 1000 and `a` > -5"
+            }
+          ],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

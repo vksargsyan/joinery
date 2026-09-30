@@ -1,0 +1,95 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "items",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "text",
+              "nullable": true,
+              "collation": "C"
+            },
+            {
+              "name": "qty",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true,
+              "default": "1"
+            },
+            {
+              "name": "price",
+              "ordinal": 4,
+              "dataType": "numeric",
+              "nullable": true
+            },
+            {
+              "name": "total",
+              "ordinal": 5,
+              "dataType": "numeric",
+              "nullable": true
+            },
+            {
+              "name": "tag",
+              "ordinal": 6,
+              "dataType": "text",
+              "nullable": true,
+              "comment": "old comment"
+            },
+            {
+              "name": "gen_old",
+              "ordinal": 7,
+              "dataType": "integer",
+              "nullable": true,
+              "generated": {
+                "expression": "(id + 1)",
+                "stored": true
+              }
+            },
+            {
+              "name": "seq_id",
+              "ordinal": 8,
+              "dataType": "integer",
+              "nullable": false,
+              "identity": {
+                "generation": "by-default",
+                "start": "1",
+                "increment": "1"
+              }
+            }
+          ],
+          "options": {
+            "fillfactor": "90"
+          },
+          "comment": "will go",
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

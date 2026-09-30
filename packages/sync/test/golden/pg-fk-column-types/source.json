@@ -1,0 +1,132 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "child",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "parent_id",
+              "ordinal": 2,
+              "dataType": "bigint",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "parent_code",
+              "ordinal": 3,
+              "dataType": "character varying(40)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "child_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [
+            {
+              "name": "child_parent_code_fkey",
+              "columns": ["parent_code"],
+              "refTable": "parent",
+              "refColumns": ["code"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            },
+            {
+              "name": "child_parent_id_fkey",
+              "columns": ["parent_id"],
+              "refTable": "parent",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION",
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "parent",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "code",
+              "ordinal": 2,
+              "dataType": "character varying(40)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "parent_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [
+            {
+              "name": "parent_code_key",
+              "columns": ["code"]
+            }
+          ],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

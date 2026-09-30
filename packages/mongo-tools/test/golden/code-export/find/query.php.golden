@@ -1,0 +1,40 @@
+<?php
+
+// composer require mongodb/mongodb
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+
+require __DIR__ . '/vendor/autoload.php';
+
+use MongoDB\BSON\Document;
+use MongoDB\BSON\Int64;
+use MongoDB\BSON\Regex;
+use MongoDB\Client;
+
+$uri = getenv('MONGODB_URI');
+if ($uri === false) {
+    fwrite(STDERR, "Set the MONGODB_URI environment variable\n");
+    exit(1);
+}
+
+$client = new Client($uri);
+$collection = $client->selectCollection('shop', 'orders');
+
+$filter = [
+    'status' => ['$in' => ['A', 'D']],
+    'qty' => ['$gte' => 5, '$lt' => new Int64(100)],
+    'item.sku' => new Regex('^ab', 'i'),
+];
+$options = [
+    'projection' => ['status' => 1, 'qty' => 1, '_id' => 0],
+    'sort' => ['qty' => -1, 'status' => 1],
+    'skip' => 10,
+    'limit' => 20,
+    'collation' => ['locale' => 'en', 'strength' => 2, 'numericOrdering' => true],
+    'hint' => ['status' => 1],
+    'maxTimeMS' => 5000,
+];
+
+foreach ($collection->find($filter, $options) as $document) {
+    // Relaxed Extended JSON prints every BSON type (json_encode fails on NaN and Infinity).
+    echo Document::fromPHP($document)->toRelaxedExtendedJSON(), PHP_EOL;
+}

@@ -1,0 +1,10 @@
+create table t (id int primary key, a int, b text, c numeric);
+create view v1 with (security_barrier = true) as select id, a as alpha, b from t where a > 0 with cascaded check option;
+create view v2 as select v1.id, v1.alpha, length(v1.b) as len from v1;
+create materialized view mv as select a, count(*) as n from t group by a with no data;
+create unique index mv_a on mv (a);
+create index mv_n on mv (n desc);
+create view v3 as select id, c from t order by c desc nulls last limit 10;
+create recursive view nums (n) as values (1) union all select n + 1 from nums where n < 10;
+comment on materialized view mv is 'mat';
+comment on column v1.alpha is 'renamed col';

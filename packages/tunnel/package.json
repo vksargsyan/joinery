@@ -1,0 +1,30 @@
+{
+  "name": "@joinery/tunnel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SSH tunnels (multi-hop, shared bastion sessions) and HTTP/SOCKS5 proxies that give drivers a local endpoint.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --passWithNoTests --testTimeout=120000 --hookTimeout=120000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "socks": "^2.8.10",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@joinery/driver-mysql": "workspace:*",
+    "@joinery/driver-postgres": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/ssh2": "^1.15.6",
+    "fast-check": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

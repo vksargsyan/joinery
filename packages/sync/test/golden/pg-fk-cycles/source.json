@@ -1,0 +1,119 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "authors",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "favourite_book",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "authors_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "authors_favourite_fk",
+              "columns": ["favourite_book"],
+              "refTable": "books",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "initially-deferred"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "books",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "author_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": false
+            },
+            {
+              "name": "keep_id",
+              "ordinal": 3,
+              "dataType": "integer",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "books_pkey",
+            "columns": ["id"]
+          },
+          "foreignKeys": [
+            {
+              "name": "books_author_id_fkey",
+              "columns": ["author_id"],
+              "refTable": "authors",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            },
+            {
+              "name": "books_keep_id_fkey",
+              "columns": ["keep_id"],
+              "refTable": "keep",
+              "refColumns": ["id"],
+              "match": "SIMPLE",
+              "deferrable": "not-deferrable"
+            }
+          ],
+          "owner": "postgres"
+        },
+        {
+          "name": "keep",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "keep_pkey",
+            "columns": ["id"]
+          },
+          "owner": "postgres"
+        }
+      ],
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,166 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_prod",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "people",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "m",
+              "ordinal": 2,
+              "dataType": "public.mood",
+              "nullable": true,
+              "default": "'ok'::public.mood",
+              "autoIncrement": false
+            },
+            {
+              "name": "n",
+              "ordinal": 3,
+              "dataType": "public.pos_int",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "e",
+              "ordinal": 4,
+              "dataType": "public.email",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c",
+              "ordinal": 5,
+              "dataType": "public.code",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "p",
+              "ordinal": 6,
+              "dataType": "public.pair",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "t",
+              "ordinal": 7,
+              "dataType": "public.triple[]",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "moods",
+              "ordinal": 8,
+              "dataType": "public.mood[]",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "people_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "people_codes",
+          "materialized": false,
+          "definition": "SELECT id,\n    c\n   FROM public.people",
+          "columns": ["id", "c"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [],
+      "sequences": [],
+      "types": [
+        {
+          "name": "code",
+          "kind": "domain",
+          "values": [],
+          "definition": "CREATE DOMAIN \"public\".\"code\" AS character varying(10)",
+          "owner": "postgres"
+        },
+        {
+          "name": "email",
+          "kind": "domain",
+          "values": [],
+          "definition": "CREATE DOMAIN \"public\".\"email\" AS text CONSTRAINT \"email_check\" CHECK ((VALUE ~~ '%@%'::text))",
+          "owner": "postgres"
+        },
+        {
+          "name": "mood",
+          "kind": "enum",
+          "values": ["sad", "ok", "happy"],
+          "definition": "CREATE TYPE \"public\".\"mood\" AS ENUM ('sad', 'ok', 'happy')",
+          "owner": "postgres"
+        },
+        {
+          "name": "pair",
+          "kind": "composite",
+          "values": [],
+          "definition": "CREATE TYPE \"public\".\"pair\" AS (\"a\" integer, \"b\" character varying(10))",
+          "owner": "postgres"
+        },
+        {
+          "name": "pos_int",
+          "kind": "domain",
+          "values": [],
+          "definition": "CREATE DOMAIN \"public\".\"pos_int\" AS integer CONSTRAINT \"pos_int_check\" CHECK ((VALUE > 0))",
+          "owner": "postgres"
+        },
+        {
+          "name": "triple",
+          "kind": "composite",
+          "values": [],
+          "definition": "CREATE TYPE \"public\".\"triple\" AS (\"x\" integer, \"y\" integer, \"w\" text)",
+          "owner": "postgres"
+        }
+      ],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

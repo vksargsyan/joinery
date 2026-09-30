@@ -1,0 +1,26 @@
+{
+  "name": "@joinery/driver-elasticsearch",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Elasticsearch driver adapter (capability-flagged version differences) over Node's HTTP client: console requests, cluster, index, alias, data stream and document services.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
+  },
+  "dependencies": {
+    "@joinery/core": "workspace:*",
+    "@joinery/driver-sql-base": "workspace:*",
+    "@joinery/search-tools": "workspace:*",
+    "@joinery/tunnel": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

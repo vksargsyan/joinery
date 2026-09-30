@@ -1,0 +1,47 @@
+{
+  "query": "/* select#1 */ select `c`.`name` AS `name`,`o`.`id` AS `id` from `shop`.`customers` `c` join `shop`.`orders` `o` where (`o`.`customer_id` = `c`.`id`)",
+  "inputs": [
+    {
+      "operation": "Table scan on c",
+      "table_name": "c",
+      "access_type": "table",
+      "schema_name": "shop",
+      "used_columns": ["id", "name"],
+      "estimated_rows": 3.0,
+      "estimated_total_cost": 0.55,
+      "actual_rows": 3.0,
+      "actual_loops": 1,
+      "actual_first_row_ms": 0.021,
+      "actual_last_row_ms": 0.025
+    },
+    {
+      "operation": "Index lookup on o using orders_customer_fk (customer_id = c.id)",
+      "table_name": "o",
+      "index_name": "orders_customer_fk",
+      "access_type": "index",
+      "index_access_type": "index_lookup",
+      "schema_name": "shop",
+      "used_columns": ["id", "customer_id"],
+      "key_columns": ["customer_id"],
+      "lookup_condition": "customer_id = c.id",
+      "estimated_rows": 1.0,
+      "estimated_total_cost": 0.283,
+      "actual_rows": 1.0,
+      "actual_loops": 3,
+      "actual_first_row_ms": 0.0087,
+      "actual_last_row_ms": 0.0102
+    }
+  ],
+  "join_type": "inner join",
+  "operation": "Nested loop inner join",
+  "access_type": "join",
+  "join_algorithm": "nested_loop",
+  "estimated_rows": 3.0,
+  "estimated_total_cost": 1.6,
+  "actual_rows": 3.0,
+  "actual_loops": 1,
+  "actual_first_row_ms": 0.044,
+  "actual_last_row_ms": 0.061,
+  "query_type": "select",
+  "json_schema_version": "2.0"
+}

@@ -1,0 +1,7 @@
+{
+  "renames": [
+    { "objectKind": "table", "from": "clients", "to": "customers" },
+    { "objectKind": "column", "table": "customers", "from": "fname", "to": "first_name" },
+    { "objectKind": "view", "from": "client_names", "to": "customer_names" }
+  ]
+}

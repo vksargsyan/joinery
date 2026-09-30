@@ -1,0 +1,42 @@
+// npm install mongodb
+// Set MONGODB_URI to your connection string, e.g. mongodb://localhost:27017
+const { MongoClient, Decimal128, Double } = require('mongodb');
+
+async function main() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) throw new Error('Set the MONGODB_URI environment variable');
+  const client = new MongoClient(uri);
+  try {
+    const collection = client.db('shop').collection('order items');
+    const pipeline = [
+      {
+        $match: {
+          status: 'A',
+          at: { $gte: new Date('2024-01-01T00:00:00.000Z') },
+          price: { $gt: Decimal128.fromString('9.99') },
+        },
+      },
+      {
+        $group: {
+          _id: '$cust',
+          total: { $sum: '$amount' },
+          n: { $sum: 1 },
+          avg: { $avg: new Double(1) },
+        },
+      },
+      { $match: {} },
+      { $sort: { total: -1 } },
+      { $limit: 5 },
+    ];
+    for await (const document of collection.aggregate(pipeline)) {
+      console.log(document);
+    }
+  } finally {
+    await client.close();
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

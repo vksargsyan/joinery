@@ -1,0 +1,180 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "w",
+              "ordinal": 3,
+              "dataType": "text",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "updated",
+              "ordinal": 4,
+              "dataType": "timestamp with time zone",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "t_stmt",
+              "timing": "AFTER",
+              "events": ["INSERT", "DELETE"],
+              "definition": "CREATE TRIGGER t_stmt AFTER INSERT OR DELETE ON public.t FOR EACH STATEMENT EXECUTE FUNCTION public.trg_stmt()"
+            },
+            {
+              "name": "t_trunc",
+              "timing": "AFTER",
+              "events": ["TRUNCATE"],
+              "definition": "CREATE TRIGGER t_trunc AFTER TRUNCATE ON public.t FOR EACH STATEMENT EXECUTE FUNCTION public.trg_stmt()"
+            },
+            {
+              "name": "t_upd",
+              "timing": "BEFORE",
+              "events": ["UPDATE"],
+              "definition": "CREATE TRIGGER t_upd BEFORE UPDATE OF v, w ON public.t FOR EACH ROW WHEN ((old.v IS DISTINCT FROM new.v)) EXECUTE FUNCTION public.trg()"
+            }
+          ],
+          "options": {},
+          "owner": "postgres"
+        },
+        {
+          "name": "u",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "t_id",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "u_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [
+            {
+              "name": "u_t_id_fkey",
+              "columns": ["t_id"],
+              "refTable": "t",
+              "refColumns": ["id"],
+              "onUpdate": "NO ACTION",
+              "onDelete": "NO ACTION",
+              "match": "SIMPLE",
+              "deferrable": "initially-immediate"
+            }
+          ],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "u_ct",
+              "timing": "AFTER",
+              "events": ["INSERT"],
+              "definition": "CREATE CONSTRAINT TRIGGER u_ct AFTER INSERT ON public.u DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.trg_stmt()"
+            }
+          ],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [
+        {
+          "name": "tv",
+          "materialized": false,
+          "definition": "SELECT id,\n    v\n   FROM public.t",
+          "columns": ["id", "v"],
+          "options": {},
+          "indexes": [],
+          "owner": "postgres"
+        }
+      ],
+      "routines": [
+        {
+          "name": "trg",
+          "kind": "function",
+          "signature": "",
+          "returns": "trigger",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE FUNCTION public.trg()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ begin new.updated := now(); return new; end $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "trg_stmt",
+          "kind": "function",
+          "signature": "",
+          "returns": "trigger",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE FUNCTION public.trg_stmt()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ begin return null; end $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

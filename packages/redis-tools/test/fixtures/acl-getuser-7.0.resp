@@ -1,0 +1,26 @@
+*12
+$5
+flags
+*1
+$2
+on
+$9
+passwords
+*1
+$64
+6c904c5190e8b45c2f0af062eefdb2f5b41ce3809b0e6b5bc50aafdd60b290d8
+$8
+commands
+$17
++@all -@dangerous
+$4
+keys
+$6
+~app:*
+$8
+channels
+$2
+&*
+$9
+selectors
+*0

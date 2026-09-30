@@ -1,0 +1,74 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.2",
+  "database": "crm_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "crm_prod",
+      "tables": [
+        {
+          "name": "clients",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "autoIncrement": true
+            },
+            {
+              "name": "fname",
+              "ordinal": 2,
+              "dataType": "varchar(50)",
+              "nullable": false
+            },
+            {
+              "name": "email",
+              "ordinal": 3,
+              "dataType": "varchar(255)",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "indexes": [
+            {
+              "name": "idx_email",
+              "columns": [
+                {
+                  "name": "email"
+                }
+              ],
+              "method": "btree"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "3001"
+          }
+        }
+      ],
+      "views": [
+        {
+          "name": "client_emails",
+          "definition": "select `clients`.`id` AS `id`,`clients`.`email` AS `email` from `clients`",
+          "columns": ["id", "email"],
+          "options": {
+            "algorithm": "UNDEFINED",
+            "security": "DEFINER",
+            "definer": "app@%"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

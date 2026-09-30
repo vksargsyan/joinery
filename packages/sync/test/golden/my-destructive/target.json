@@ -1,0 +1,94 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.0.39",
+  "database": "telemetry_prod",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "telemetry_prod",
+      "tables": [
+        {
+          "name": "metrics",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false
+            },
+            {
+              "name": "kind",
+              "ordinal": 2,
+              "dataType": "enum('cpu','mem','disk','net')",
+              "nullable": false
+            },
+            {
+              "name": "value",
+              "ordinal": 3,
+              "dataType": "double",
+              "nullable": false
+            },
+            {
+              "name": "sampled_at",
+              "ordinal": 4,
+              "dataType": "datetime(6)",
+              "nullable": false
+            },
+            {
+              "name": "host",
+              "ordinal": 5,
+              "dataType": "varchar(255)",
+              "nullable": false
+            },
+            {
+              "name": "counter",
+              "ordinal": 6,
+              "dataType": "int",
+              "nullable": false,
+              "default": "0"
+            },
+            {
+              "name": "raw",
+              "ordinal": 7,
+              "dataType": "json",
+              "nullable": true
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        },
+        {
+          "name": "metrics_2019",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "bigint",
+              "nullable": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ]
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

@@ -1,0 +1,154 @@
+{
+  "engine": "mysql",
+  "serverVersion": "8.4.11",
+  "database": "renames_triggers_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_0900_ai_ci"
+  },
+  "schemas": [
+    {
+      "name": "renames_triggers_dev",
+      "tables": [
+        {
+          "name": "item_history",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": true
+            },
+            {
+              "name": "item_id",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "quantity",
+              "ordinal": 3,
+              "dataType": "int",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "logged_at",
+              "ordinal": 4,
+              "dataType": "datetime",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "item_log_bi",
+              "timing": "BEFORE",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER `item_log_bi` BEFORE INSERT ON `item_history` FOR EACH ROW SET NEW.logged_at = COALESCE(NEW.logged_at, '2000-01-01 00:00:00')"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci",
+            "autoIncrement": "1"
+          }
+        },
+        {
+          "name": "items",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "quantity",
+              "ordinal": 2,
+              "dataType": "int",
+              "nullable": false,
+              "default": "0",
+              "autoIncrement": false
+            },
+            {
+              "name": "price",
+              "ordinal": 3,
+              "dataType": "decimal(10,2)",
+              "nullable": false,
+              "default": "0.00",
+              "autoIncrement": false
+            },
+            {
+              "name": "total",
+              "ordinal": 4,
+              "dataType": "decimal(12,2)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [
+            {
+              "name": "items_ai",
+              "timing": "AFTER",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER `items_ai` AFTER INSERT ON `items` FOR EACH ROW INSERT INTO item_history (item_id, quantity) VALUES (NEW.id, NEW.quantity)"
+            },
+            {
+              "name": "items_bi",
+              "timing": "BEFORE",
+              "events": ["INSERT"],
+              "definition": "CREATE TRIGGER `items_bi` BEFORE INSERT ON `items` FOR EACH ROW SET NEW.total = NEW.quantity * NEW.price"
+            },
+            {
+              "name": "items_bu",
+              "timing": "BEFORE",
+              "events": ["UPDATE"],
+              "definition": "CREATE TRIGGER `items_bu` BEFORE UPDATE ON `items` FOR EACH ROW BEGIN\n  IF NEW.quantity < 0 THEN\n    SET NEW.quantity = 0;\n  END IF;\n  SET NEW.total = NEW.quantity * NEW.price;\nEND"
+            }
+          ],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_0900_ai_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

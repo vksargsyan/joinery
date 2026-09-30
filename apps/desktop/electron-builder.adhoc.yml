@@ -1,0 +1,14 @@
+# Test builds, on any OS: pull request packaging in the Package workflow, `pnpm package`, and
+# macOS releases built without a Developer ID. They carry no update feed, so the app never tries
+# to update itself (src/main/update-policy.ts reports "test build").
+#
+# On macOS the signature is ad-hoc (`electron-builder --config electron-builder.adhoc.yml --mac
+# dmg --universal`), which lets the app run on Apple Silicon; the hardened runtime is off because
+# its library validation rejects ad-hoc signed frameworks, and it only matters for notarised
+# releases.
+extends: ./electron-builder.yml
+publish: null
+mac:
+  identity: '-'
+  hardenedRuntime: false
+  notarize: false

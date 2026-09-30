@@ -1,0 +1,169 @@
+{
+  "engine": "postgres",
+  "serverVersion": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "database": "app_dev",
+  "options": {
+    "encoding": "UTF8",
+    "collation": "C.UTF-8",
+    "ctype": "C.UTF-8"
+  },
+  "schemas": [
+    {
+      "name": "public",
+      "tables": [
+        {
+          "name": "t",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "integer",
+              "nullable": false,
+              "default": "util.add(1, 2)",
+              "autoIncrement": false
+            },
+            {
+              "name": "v",
+              "ordinal": 2,
+              "dataType": "integer",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "t_pkey",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "t_v",
+              "columns": [
+                {
+                  "name": null,
+                  "expression": "util.add(v, v)",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false,
+              "definition": "CREATE INDEX t_v ON public.t USING btree (util.add(v, v))"
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [
+            {
+              "name": "t_v_check",
+              "expression": "((util.add(v, 1) > 0))"
+            }
+          ],
+          "triggers": [],
+          "options": {},
+          "owner": "postgres"
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "comment": "standard public schema",
+      "owner": "pg_database_owner"
+    },
+    {
+      "name": "util",
+      "tables": [],
+      "views": [],
+      "routines": [
+        {
+          "name": "add",
+          "kind": "function",
+          "signature": "integer, integer",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.add(a integer, b integer)\n RETURNS integer\n LANGUAGE sql\n IMMUTABLE PARALLEL SAFE STRICT\nAS $function$ select a + b $function$",
+          "comment": "ints",
+          "owner": "postgres"
+        },
+        {
+          "name": "add",
+          "kind": "function",
+          "signature": "numeric, numeric",
+          "returns": "numeric",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.add(a numeric, b numeric)\n RETURNS numeric\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select a + b $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "cnt",
+          "kind": "function",
+          "signature": "integer[]",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.cnt(VARIADIC xs integer[])\n RETURNS integer\n LANGUAGE sql\nAS $function$ select cardinality(xs) $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "my_sum",
+          "kind": "aggregate",
+          "signature": "integer",
+          "returns": "integer",
+          "language": "internal",
+          "definition": "CREATE AGGREGATE \"util\".\"my_sum\"(integer) (SFUNC = util.sum_state, STYPE = integer, INITCOND = '0')",
+          "owner": "postgres"
+        },
+        {
+          "name": "noop",
+          "kind": "procedure",
+          "signature": "integer",
+          "language": "plpgsql",
+          "definition": "CREATE OR REPLACE PROCEDURE util.noop(INOUT x integer)\n LANGUAGE plpgsql\nAS $procedure$ begin x := x + 1; end $procedure$",
+          "owner": "postgres"
+        },
+        {
+          "name": "secret",
+          "kind": "function",
+          "signature": "",
+          "returns": "text",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.secret()\n RETURNS text\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$ select 'x'::text $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "sum_state",
+          "kind": "function",
+          "signature": "integer, integer",
+          "returns": "integer",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.sum_state(s integer, v integer)\n RETURNS integer\n LANGUAGE sql\n IMMUTABLE\nAS $function$ select coalesce(s, 0) + coalesce(v, 0) $function$",
+          "owner": "postgres"
+        },
+        {
+          "name": "tbl",
+          "kind": "function",
+          "signature": "integer",
+          "returns": "SETOF record",
+          "language": "sql",
+          "definition": "CREATE OR REPLACE FUNCTION util.tbl(n integer DEFAULT 3, OUT i integer, OUT sq integer)\n RETURNS SETOF record\n LANGUAGE sql\n ROWS 10\nAS $function$ select g, g*g from generate_series(1, n) g $function$",
+          "owner": "postgres"
+        }
+      ],
+      "sequences": [],
+      "types": [],
+      "events": [],
+      "owner": "postgres"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "plpgsql",
+      "schema": "pg_catalog",
+      "version": "1.0"
+    }
+  ],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}

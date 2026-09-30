@@ -1,0 +1,269 @@
+{
+  "engine": "mariadb",
+  "serverVersion": "10.11.14-MariaDB-0ubuntu0.24.04.1",
+  "database": "fks_composite_dev",
+  "options": {
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_general_ci"
+  },
+  "schemas": [
+    {
+      "name": "fks_composite_dev",
+      "tables": [
+        {
+          "name": "c",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "pa",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "pb",
+              "ordinal": 3,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "pname",
+              "ordinal": 4,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "self_id",
+              "ordinal": 5,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "fk_name",
+              "columns": [
+                {
+                  "name": "pname",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            },
+            {
+              "name": "k_pab",
+              "columns": [
+                {
+                  "name": "pa",
+                  "order": "asc"
+                },
+                {
+                  "name": "pb",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            },
+            {
+              "name": "k_self",
+              "columns": [
+                {
+                  "name": "self_id",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "fk_name",
+              "columns": ["pname"],
+              "refTable": "p",
+              "refColumns": ["name"],
+              "onUpdate": "RESTRICT",
+              "onDelete": "RESTRICT"
+            },
+            {
+              "name": "fk_p",
+              "columns": ["pa", "pb"],
+              "refTable": "p",
+              "refColumns": ["a", "b"],
+              "onUpdate": "CASCADE",
+              "onDelete": "SET NULL"
+            },
+            {
+              "name": "fk_self",
+              "columns": ["self_id"],
+              "refTable": "c",
+              "refColumns": ["id"],
+              "onUpdate": "RESTRICT",
+              "onDelete": "CASCADE"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "newbie",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "id",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "c_id",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["id"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "fk_new",
+              "columns": [
+                {
+                  "name": "c_id",
+                  "order": "asc"
+                }
+              ],
+              "unique": false,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [
+            {
+              "name": "fk_new",
+              "columns": ["c_id"],
+              "refTable": "c",
+              "refColumns": ["id"],
+              "onUpdate": "RESTRICT",
+              "onDelete": "RESTRICT"
+            }
+          ],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        },
+        {
+          "name": "p",
+          "kind": "table",
+          "columns": [
+            {
+              "name": "a",
+              "ordinal": 1,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "b",
+              "ordinal": 2,
+              "dataType": "int(11)",
+              "nullable": false,
+              "default": null,
+              "autoIncrement": false
+            },
+            {
+              "name": "name",
+              "ordinal": 3,
+              "dataType": "varchar(20)",
+              "nullable": true,
+              "default": null,
+              "autoIncrement": false
+            }
+          ],
+          "primaryKey": {
+            "name": "PRIMARY",
+            "columns": ["a", "b"]
+          },
+          "uniques": [],
+          "indexes": [
+            {
+              "name": "uq_name",
+              "columns": [
+                {
+                  "name": "name",
+                  "order": "asc"
+                }
+              ],
+              "unique": true,
+              "method": "btree",
+              "include": [],
+              "invisible": false
+            }
+          ],
+          "foreignKeys": [],
+          "checks": [],
+          "triggers": [],
+          "options": {
+            "engine": "InnoDB",
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_general_ci"
+          }
+        }
+      ],
+      "views": [],
+      "routines": [],
+      "sequences": [],
+      "types": [],
+      "events": []
+    }
+  ],
+  "extensions": [],
+  "capturedAt": "2026-09-29T10:00:00.000Z"
+}
