@@ -12,14 +12,18 @@ manual dispatch. Every job installs what it built and runs the packaged smoke te
 starts, a query runs against PostgreSQL where the runner has one, and the About box shows the
 version, the update status and the licence report).
 
-| Job             | Runner             | Builds                                                         | Smoke test                                                                              |
-| --------------- | ------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `linux`         | `ubuntu-24.04`     | AppImage, deb, rpm for x64 and arm64; the SBOM and notices     | installed x64 deb against a PostgreSQL service; x64 AppImage with updates off by policy |
-| `linux-arm64`   | `ubuntu-24.04-arm` | (uses `linux`'s packages)                                      | installed arm64 deb against a PostgreSQL service                                        |
-| `windows`       | `windows-2025`     | NSIS (one installer for x64 and arm64), MSI and zip, each arch | NSIS install against the image's PostgreSQL; MSI install with the Group Policy switch   |
-| `windows-arm64` | `windows-11-arm`   | (uses `windows`' packages)                                     | NSIS install, no-server path                                                            |
-| `macos`         | `macos-15`         | universal DMG (and zip for signed releases)                    | installed from the DMG, against Homebrew PostgreSQL                                     |
-| `release`       | `ubuntu-24.04`     | a draft GitHub release with everything above (tags only)       |                                                                                         |
+| Job           | Runner             | Builds                                                         | Smoke test                                                                              |
+| ------------- | ------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `linux`       | `ubuntu-24.04`     | AppImage, deb, rpm for x64 and arm64; the SBOM and notices     | installed x64 deb against a PostgreSQL service; x64 AppImage with updates off by policy |
+| `linux-arm64` | `ubuntu-24.04-arm` | (uses `linux`'s packages)                                      | installed arm64 deb against a PostgreSQL service                                        |
+| `windows`     | `windows-2025`     | NSIS (one installer for x64 and arm64), MSI and zip, each arch | NSIS install against the image's PostgreSQL; MSI install with the Group Policy switch   |
+| `macos`       | `macos-15`         | universal DMG (and zip for signed releases)                    | installed from the DMG, against Homebrew PostgreSQL                                     |
+| `release`     | `ubuntu-24.04`     | a draft GitHub release with everything above (tags only)       |                                                                                         |
+
+The Windows arm64 packages are built but not smoke-tested. On the `windows-11-arm` runner the
+NSIS installer's silent install finished without putting `joinery.exe` under
+`%LOCALAPPDATA%\Programs` (the x64 install of the same installer works), so the job that tested
+it was dropped until that is investigated. Treat the arm64 NSIS install as unverified.
 
 In a release whose updates are on (a signed Windows or macOS build, the Linux deb), the smoke
 test also presses "Check for updates" and waits for the answer from GitHub, which proves that

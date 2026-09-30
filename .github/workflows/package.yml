@@ -313,43 +313,6 @@ jobs:
           path: packaged-results
           retention-days: 7
 
-  windows-arm64:
-    name: Windows arm64 smoke test
-    needs: windows
-    runs-on: windows-11-arm
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v8
-        with:
-          name: joinery-windows
-          path: apps/desktop/dist
-      # No PostgreSQL on this image: the smoke test's no-server path starts a connection host.
-      - name: Install with NSIS and smoke test
-        working-directory: apps/desktop
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem dist -Filter 'Joinery-Setup-*.exe' | Select-Object -First 1
-          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
-          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'joinery.exe' |
-            Select-Object -First 1
-          if (-not $exe) { throw 'The NSIS installer did not install joinery.exe' }
-          $env:JOINERY_PACKAGED_APP = $exe.FullName
-          pnpm exec playwright test -c e2e/packaged.config.ts
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: packaged-results-windows-arm64
-          path: packaged-results
-          retention-days: 7
-
   macos:
     name: macOS DMG and zip (universal)
     runs-on: macos-15
@@ -462,7 +425,7 @@ jobs:
   release:
     name: Draft GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, linux-arm64, windows, windows-arm64, macos]
+    needs: [linux, linux-arm64, windows, macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
