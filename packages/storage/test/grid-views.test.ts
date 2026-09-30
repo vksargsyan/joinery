@@ -117,7 +117,7 @@ describe('grid views', () => {
   it('is created by its own migration on a version 3 store', () => {
     const db = openDatabase(':memory:');
     migrate(db, MIGRATIONS.slice(0, 3));
-    expect(migrate(db).applied).toEqual([4]);
+    expect(migrate(db).applied).toEqual(MIGRATIONS.slice(3).map((m) => m.version));
     const tables = db
       .all("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .map((row) => row['name']);

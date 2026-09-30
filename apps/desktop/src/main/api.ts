@@ -32,6 +32,7 @@ import type { HostProcessFactory } from './host-process';
 import type { JobManager } from './jobs';
 import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
 import { resolveProfile } from './secrets';
+import { erModelHandlers } from './er-models';
 import { metadataHandlers, snippetHandlers } from './metadata';
 import { mongoMainHandlers } from './mongo-api';
 import { transferDbHandlers } from './transfer-db-api';
@@ -316,6 +317,7 @@ export function createMainHandlers<P>(
       },
     },
 
+    erModels: erModelHandlers(store),
     metadata: metadataHandlers(store),
     snippets: snippetHandlers(store),
     ...jobHandlers(services, files),

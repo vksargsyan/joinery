@@ -22,3 +22,4 @@ supersede it with a new one.
 | [0015](0015-er-diagram-viewer.md)            | ER diagrams: a model from the cache, one router, model exports   | Accepted |
 | [0016](0016-er-model-editing.md)             | ER model editing: an edited snapshot, applied as a compare       | Accepted |
 | [0017](0017-search-module.md)                | Search module: documents, SQL, index and cluster administration  | Accepted |
+| [0018](0018-saved-er-models.md)              | Saved ER models: drafts in the store, model files as documents   | Accepted |

@@ -236,11 +236,32 @@ const gridViewsAndAutosave: Migration = {
   },
 };
 
+const erModelDrafts: Migration = {
+  version: 5,
+  name: 'ER model drafts',
+  up(db) {
+    // Unapplied ER model changes (spec §8), one per connection, database and schema: kept
+    // while the user edits, gone once applied or discarded, and with the connection.
+    db.exec(`
+      CREATE TABLE er_model_drafts (
+        profile_id TEXT NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+        database_name TEXT NOT NULL,
+        schema_name TEXT NOT NULL,
+        document TEXT NOT NULL,
+        changes INTEGER NOT NULL,
+        saved_at TEXT NOT NULL,
+        PRIMARY KEY (profile_id, database_name, schema_name)
+      ) STRICT;
+    `);
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   initialSchema,
   historyFullText,
   savedComparisons,
   gridViewsAndAutosave,
+  erModelDrafts,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

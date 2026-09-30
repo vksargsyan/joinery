@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
 import {
@@ -294,14 +294,18 @@ export function jobHandlers(
   };
 }
 
+/** The largest file `dialogs.readFile` reads. */
+const READ_FILE_LIMIT = 64 * 1024 * 1024;
+
 /**
  * `dialogs.saveFile` and `dialogs.openDirectory`: the picked paths become write grants, and
- * `dialogs.writeFile` writes only to a path granted that way.
+ * `dialogs.writeFile` writes only to a path granted that way; `dialogs.readFile` reads only a
+ * file picked with `dialogs.openFile`.
  */
 export function fileDialogHandlers(
   dialogs: FileDialogs,
   grants: FileGrants,
-): Pick<MainHandlers['dialogs'], 'saveFile' | 'openDirectory' | 'writeFile'> {
+): Pick<MainHandlers['dialogs'], 'saveFile' | 'openDirectory' | 'readFile' | 'writeFile'> {
   return {
     saveFile: async (options) => {
       if (!dialogs.saveFile) throw jobsUnavailable();
@@ -314,6 +318,16 @@ export function fileDialogHandlers(
       const path = await dialogs.openDirectory(options);
       if (path !== null) grants.grantDirectory(path);
       return { path };
+    },
+    readFile: async ({ path }) => {
+      grants.checkRead(path);
+      if ((await stat(path)).size > READ_FILE_LIMIT) {
+        throw new JoineryError({
+          code: 'VALIDATION_FAILED',
+          message: 'The file is larger than 64 MB',
+        });
+      }
+      return { text: await readFile(path, 'utf8') };
     },
     writeFile: async (input) => {
       grants.checkWrite(input.path);

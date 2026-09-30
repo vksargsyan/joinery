@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { defineContract } from '../contract';
 import { backupMainContractShape } from './backup';
+import { erModelsMainContractShape } from './er-models';
 import { mongoMainContractShape } from './mongo';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
@@ -52,6 +53,7 @@ import {
   transferPreviewSchema,
   transferProfileSaveSchema,
   transferProfileSchema,
+  readFileInputSchema,
   writeFileInputSchema,
 } from '../schemas/jobs';
 import {
@@ -184,6 +186,8 @@ export const mainContract = defineContract({
      * a folder picked with `openDirectory`), and read only files picked with `openFile`.
      */
     saveFile: { input: saveFileInputSchema, output: z.object({ path: z.string().nullable() }) },
+    /** Reads a text file picked with `openFile` (an ER model file), up to 64 MB. */
+    readFile: { input: readFileInputSchema, output: z.object({ text: z.string() }) },
     /** Writes text or bytes to a path picked with `saveFile`; returns the bytes written. */
     writeFile: {
       input: writeFileInputSchema,
@@ -286,6 +290,8 @@ export const mainContract = defineContract({
   backup: backupMainContractShape,
   /** Auto-update (spec §20): status, check now, restart into the update. */
   updates: updatesMainContractShape,
+  /** Unapplied ER model changes (spec §8). */
+  erModels: erModelsMainContractShape,
 });
 
 export type MainContract = typeof mainContract;
