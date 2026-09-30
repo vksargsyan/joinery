@@ -186,8 +186,12 @@ test('shows the new index in the explorer with its health', async () => {
   await expect(row.getByTestId('health-badge')).toHaveText('green');
   await expect(row).toContainText('2 docs');
   await shot('search-explorer');
-  // Double-click opens a console that searches it.
+  // Double-click opens its documents; the menu opens a console that searches it.
   await row.dblclick();
+  await expect(page.getByTestId('search-documents').filter({ visible: true })).toBeVisible();
+  await row.hover();
+  await row.getByRole('button', { name: 'Actions' }).click();
+  await page.getByRole('menuitem', { name: 'Search in console' }).click();
   await expect(consolePanel().getByTestId('search-console-editor')).toContainText(
     `GET /${index}/_search`,
   );

@@ -32,6 +32,8 @@ export interface SearchCapabilities {
   readonly asyncSearch: boolean;
   /** Composable index templates (`/_index_template`) and component templates. */
   readonly composableTemplates: boolean;
+  /** Cloning an index (`POST /<index>/_clone/<target>`): Elasticsearch 7.4+ and every OpenSearch. */
+  readonly cloneIndex: boolean;
   /** Security APIs: Elasticsearch's `/_security`, or the OpenSearch security plugin's. */
   readonly security: 'elasticsearch' | 'opensearch' | null;
 }
@@ -81,6 +83,7 @@ export function searchCapabilities(facts: SearchServerFacts): SearchCapabilities
       searchAfter: true,
       asyncSearch: plugins.has('opensearch-asynchronous-search'),
       composableTemplates: true,
+      cloneIndex: true,
       security: plugins.has('opensearch-security') ? 'opensearch' : null,
     };
   }
@@ -97,6 +100,7 @@ export function searchCapabilities(facts: SearchServerFacts): SearchCapabilities
     searchAfter: true,
     asyncSearch: xpack && versionAtLeast(version, '7.7'),
     composableTemplates: versionAtLeast(version, '7.8'),
+    cloneIndex: versionAtLeast(version, '7.4'),
     security: xpack && facts.securityEnabled !== false ? 'elasticsearch' : null,
   };
 }

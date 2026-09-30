@@ -8,6 +8,7 @@ import { WELCOME, useSearchConsole, type SearchConsole } from '../../state/searc
 import { autoIndent, statusText, type ConsoleResponseView } from '../../state/search/console-flow';
 import { useTheme } from '../theme';
 import { Button, EnvironmentBadge, Icon, cx } from '../ui';
+import { AggregationView } from './AggregationView';
 import { ConsoleEditor, ResponseViewer } from './ConsoleEditor';
 
 /**
@@ -30,6 +31,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
   const profile = cachedProfile(console.target.profileId);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | undefined>(undefined);
   const [selected, setSelected] = useState<number | undefined>(undefined);
+  const [pane, setPane] = useState<'json' | 'aggregations'>('json');
   const shown = responses[selected ?? responses.length - 1];
 
   const send = (): void => {
@@ -212,8 +214,37 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
               {running ? 'Sending…' : 'Send a request to see its response here.'}
             </p>
           )}
+          {shown?.aggregations !== undefined && (
+            <div
+              className="flex gap-1 border-b border-border bg-panel px-2 pt-1"
+              role="tablist"
+              aria-label="Response view"
+            >
+              {(['json', 'aggregations'] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={pane === id}
+                  className={cx(
+                    '-mb-px rounded-t border border-b-0 px-3 py-0.5 text-xs',
+                    pane === id
+                      ? 'border-border bg-bg'
+                      : 'border-transparent text-muted hover:text-fg',
+                  )}
+                  onClick={() => setPane(id)}
+                >
+                  {id === 'json' ? 'Response' : 'Aggregations'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="min-h-0 flex-1">
-            <ResponseViewer text={shown?.body ?? ''} theme={theme} />
+            {shown?.aggregations !== undefined && pane === 'aggregations' ? (
+              <AggregationView aggregations={shown.aggregations} />
+            ) : (
+              <ResponseViewer text={shown?.body ?? ''} theme={theme} />
+            )}
           </div>
         </section>
       </div>

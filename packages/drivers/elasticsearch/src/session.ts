@@ -25,8 +25,18 @@ import type {
   SearchRequest,
   SearchResponse,
   SearchWriteResult,
+  SearchAllocationExplain,
+  SearchDiskAllocation,
+  SearchResourceInfo,
+  SearchResourceKind,
+  SearchShardInfo,
+  SearchSimulatedDocument,
+  SearchSnapshotInfo,
+  SearchTable,
+  SearchTaskStatus,
 } from '@joinery/search-tools';
 
+import * as admin from './admin';
 import { browseSearch } from './browse';
 import * as cluster from './cluster';
 import { buildSearchClientPlan, type SearchClientPlan } from './config';
@@ -38,6 +48,7 @@ import { SearchHttpClient } from './http';
 import * as indices from './indices';
 import { introspectSearch } from './introspect';
 import { sniffNodes } from './sniff';
+import * as sql from './sql';
 import type {
   ConcurrencyOptions,
   DeleteByQueryOptions,
@@ -45,10 +56,17 @@ import type {
   GetSettingsOptions,
   IndexDocumentOptions,
   ListIndicesOptions,
+  ReindexOptions,
   RequestOptions,
+  ResizeOptions,
   SearchOpOptions,
   SearchPagingOptions,
   SearchSession,
+  SimulatePipelineOptions,
+  SnapshotCreateOptions,
+  SnapshotRestoreOptions,
+  SqlQueryOptions,
+  SqlTranslation,
   WriteOptions,
 } from './types';
 
@@ -299,5 +317,121 @@ export class ElasticSearchSession implements SearchSession {
 
   request(request: SearchRequest, opts?: RequestOptions): Promise<SearchResponse> {
     return sendRequest(this.ctx, request, opts);
+  }
+
+  // SQL and ES|QL
+
+  sql(query: string, opts?: SqlQueryOptions): AsyncIterable<SearchTable> {
+    return sql.sqlQuery(this.ctx, query, opts);
+  }
+
+  translateSql(query: string, opts?: SearchOpOptions): Promise<SqlTranslation> {
+    return sql.translateSql(this.ctx, query, opts);
+  }
+
+  esql(query: string, opts?: SearchOpOptions): Promise<SearchTable> {
+    return sql.esql(this.ctx, query, opts);
+  }
+
+  // Index administration and tasks
+
+  resizeIndex(
+    kind: 'clone' | 'shrink' | 'split',
+    source: string,
+    target: string,
+    opts?: ResizeOptions,
+  ): Promise<void> {
+    return admin.resizeIndex(this.ctx, kind, source, target, opts);
+  }
+
+  startReindex(opts: ReindexOptions): Promise<{ readonly taskId: string }> {
+    return admin.startReindex(this.ctx, opts);
+  }
+
+  getTask(taskId: string, opts?: SearchOpOptions): Promise<SearchTaskStatus> {
+    return admin.getTask(this.ctx, taskId, opts);
+  }
+
+  listTasks(opts?: SearchOpOptions & { readonly actions?: string }): Promise<SearchTaskStatus[]> {
+    return admin.listTasks(this.ctx, opts);
+  }
+
+  cancelTask(taskId: string, opts?: SearchOpOptions): Promise<void> {
+    return admin.cancelTask(this.ctx, taskId, opts);
+  }
+
+  // Cluster allocation
+
+  shards(opts?: SearchOpOptions & { readonly index?: string }): Promise<SearchShardInfo[]> {
+    return admin.shards(this.ctx, opts);
+  }
+
+  allocationExplain(
+    shard?: { readonly index: string; readonly shard: number; readonly primary: boolean },
+    opts?: SearchOpOptions,
+  ): Promise<SearchAllocationExplain> {
+    return admin.allocationExplain(this.ctx, shard, opts);
+  }
+
+  diskAllocation(opts?: SearchOpOptions): Promise<SearchDiskAllocation> {
+    return admin.diskAllocation(this.ctx, opts);
+  }
+
+  // Named resources, pipelines and snapshots
+
+  listResources(
+    kind: SearchResourceKind,
+    opts?: SearchOpOptions & { readonly includeHidden?: boolean },
+  ): Promise<SearchResourceInfo[]> {
+    return admin.listResources(this.ctx, kind, opts);
+  }
+
+  putResource(
+    kind: SearchResourceKind,
+    name: string,
+    body: string,
+    opts?: SearchOpOptions & ConcurrencyOptions,
+  ): Promise<void> {
+    return admin.putResource(this.ctx, kind, name, body, opts);
+  }
+
+  deleteResource(kind: SearchResourceKind, name: string, opts?: SearchOpOptions): Promise<void> {
+    return admin.deleteResource(this.ctx, kind, name, opts);
+  }
+
+  simulatePipeline(
+    pipeline: string | undefined,
+    docs: string,
+    opts?: SimulatePipelineOptions,
+  ): Promise<SearchSimulatedDocument[]> {
+    return admin.simulatePipeline(this.ctx, pipeline, docs, opts);
+  }
+
+  listSnapshots(repository: string, opts?: SearchOpOptions): Promise<SearchSnapshotInfo[]> {
+    return admin.listSnapshots(this.ctx, repository, opts);
+  }
+
+  createSnapshot(
+    repository: string,
+    snapshot: string,
+    opts?: SnapshotCreateOptions,
+  ): Promise<void> {
+    return admin.createSnapshot(this.ctx, repository, snapshot, opts);
+  }
+
+  restoreSnapshot(
+    repository: string,
+    snapshot: string,
+    opts?: SnapshotRestoreOptions,
+  ): Promise<void> {
+    return admin.restoreSnapshot(this.ctx, repository, snapshot, opts);
+  }
+
+  deleteSnapshot(repository: string, snapshot: string, opts?: SearchOpOptions): Promise<void> {
+    return admin.deleteSnapshot(this.ctx, repository, snapshot, opts);
+  }
+
+  verifyRepository(repository: string, opts?: SearchOpOptions): Promise<string[]> {
+    return admin.verifyRepository(this.ctx, repository, opts);
   }
 }

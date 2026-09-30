@@ -1,4 +1,5 @@
 import {
+  aggregationsOf,
   bodyErrorOffset,
   booleanAt,
   formatConsoleRequest,
@@ -96,6 +97,8 @@ export interface ConsoleResponseView {
   readonly errorOffset?: number;
   /** What the response says in a few words: "3 hits", "created", "5 deleted"... */
   readonly summary?: string;
+  /** The `aggregations` of a search response (JSON text), shown as a tree and a table. */
+  readonly aggregations?: string;
 }
 
 const count = new Intl.NumberFormat('en-US');
@@ -183,6 +186,7 @@ export function responseView(
       ? bodyErrorOffset(planned.request, info.line, info.column)
       : undefined;
   const summary = failed ? undefined : summarize(response.body);
+  const aggregations = failed || response.truncated ? undefined : aggregationsOf(response.body);
   return {
     label: planned.label,
     status: response.status,
@@ -201,6 +205,7 @@ export function responseView(
       : {}),
     ...(errorOffset !== undefined ? { errorOffset } : {}),
     ...(summary !== undefined ? { summary } : {}),
+    ...(aggregations !== undefined ? { aggregations } : {}),
   };
 }
 

@@ -7,7 +7,14 @@ import {
 } from '@joinery/core';
 import type { SearchSession, isSearchSession } from '@joinery/driver-elasticsearch';
 import type { HandlersOf, searchHostContractShape } from '@joinery/ipc';
-import { classifyRequest, issuesOf, parseConsole } from '@joinery/search-tools';
+import {
+  classifyRequest,
+  issuesOf,
+  parseConsole,
+  resourcePath,
+  sqlRequest,
+  type SearchResourceKind,
+} from '@joinery/search-tools';
 
 import {
   checkSearchWrite,
@@ -21,9 +28,11 @@ import {
  * JSON text passes through untouched.
  *
  * The write rules (spec §4) are enforced here whatever the page sends (shared/search-writes):
- * read-only profiles refuse every write, destructive operations need the page's `confirmed`
- * on every profile, and production (or confirm-writes) profiles need it for every write. The
- * console's raw requests are classified by method, path and body.
+ * read-only profiles refuse every write, destructive and blocking operations (deletes, close,
+ * force merge, restores, a write block on a resize's source) need the page's `confirmed` on
+ * every profile, and production (or confirm-writes) profiles need it for every write. The
+ * console's raw requests and SQL statements are classified by method, path and body; reads
+ * (searches, SQL SELECT, ES|QL, explanations, simulations) always run.
  */
 
 type SearchHandlers = HandlersOf<typeof searchHostContractShape>;
@@ -206,7 +215,12 @@ export function searchHandlers(context: SearchHandlerContext): SearchHandlers {
         ),
       putSettings: async ({ sessionId, index, body, confirmed }, { signal }) => {
         const s = await session(sessionId);
-        write(confirmed, `Changing the settings of ${index}`);
+        // Turning on a block (write, read, read_only...) is blocking: it always asks.
+        write(
+          confirmed,
+          `Changing the settings of ${index}`,
+          classifyRequest({ method: 'PUT', path: `/${index}/_settings`, body }),
+        );
         await s.putSettings(index, body, { signal });
       },
     },
@@ -216,7 +230,12 @@ export function searchHandlers(context: SearchHandlerContext): SearchHandlers {
         (await session(sessionId)).listAliases(defined({ includeHidden, signal })),
       update: async ({ sessionId, actions, confirmed }, { signal }) => {
         const s = await session(sessionId);
-        write(confirmed, 'Changing aliases');
+        // A remove_index action deletes an index: classified like the request it sends.
+        write(
+          confirmed,
+          'Changing aliases',
+          classifyRequest({ method: 'POST', path: '/_aliases', body: actions }),
+        );
         await s.updateAliases(actions, { signal });
       },
     },
@@ -290,5 +309,144 @@ export function searchHandlers(context: SearchHandlerContext): SearchHandlers {
       write(confirmed, safety.label, safety);
       return s.request(request, defined({ maxBytes, executionId, timeoutMs, signal }));
     },
+
+    sql: {
+      async *query({ sessionId, query, confirmed, ...options }, { signal }) {
+        const s = await session(sessionId);
+        const dialect = s.searchCapabilities.sql;
+        // The OpenSearch plugin runs DELETE statements: classified like the request it sends.
+        if (dialect !== null) {
+          const safety = classifyRequest(sqlRequest(dialect, query));
+          write(confirmed, 'The SQL statement', safety);
+        }
+        yield* s.sql(query, defined({ ...options, signal }));
+      },
+      translate: async ({ sessionId, query }, { signal }) =>
+        (await session(sessionId)).translateSql(query, { signal }),
+    },
+
+    esql: {
+      query: async ({ sessionId, query, executionId }, { signal }) =>
+        (await session(sessionId)).esql(query, defined({ executionId, signal })),
+    },
+
+    indexAdmin: {
+      resize: async (input, { signal }) => {
+        const { sessionId, kind, source, target, confirmed, ...options } = input;
+        const s = await session(sessionId);
+        write(
+          confirmed,
+          `${kind === 'clone' ? 'Cloning' : kind === 'shrink' ? 'Shrinking' : 'Splitting'} ${source} into ${target}`,
+          options.blockSource
+            ? destructive(`blocks writes to ${source} while it is copied`)
+            : WRITE,
+        );
+        await s.resizeIndex(kind, source, target, defined({ ...options, signal }));
+      },
+      reindex: async (input, { signal }) => {
+        const { sessionId, confirmed, ...options } = input;
+        const s = await session(sessionId);
+        write(confirmed, `Reindexing ${options.source.join(', ')} into ${options.dest}`);
+        return s.startReindex(defined({ ...options, signal }));
+      },
+    },
+
+    tasks: {
+      get: async ({ sessionId, taskId }, { signal }) =>
+        (await session(sessionId)).getTask(taskId, { signal }),
+      list: async ({ sessionId, actions }, { signal }) =>
+        (await session(sessionId)).listTasks(defined({ actions, signal })),
+      cancel: async ({ sessionId, taskId, confirmed }, { signal }) => {
+        const s = await session(sessionId);
+        write(confirmed, `Cancelling the task ${taskId}`);
+        await s.cancelTask(taskId, { signal });
+      },
+    },
+
+    allocation: {
+      shards: async ({ sessionId, index }, { signal }) =>
+        (await session(sessionId)).shards(defined({ index, signal })),
+      explain: async ({ sessionId, shard }, { signal }) =>
+        (await session(sessionId)).allocationExplain(shard, { signal }),
+      disk: async ({ sessionId }, { signal }) =>
+        (await session(sessionId)).diskAllocation({ signal }),
+    },
+
+    resources: {
+      list: async ({ sessionId, kind, includeHidden }, { signal }) =>
+        (await session(sessionId)).listResources(kind, defined({ includeHidden, signal })),
+      put: async (input, { signal }) => {
+        const { sessionId, kind, name, body, confirmed, ...options } = input;
+        const s = await session(sessionId);
+        write(confirmed, `Saving the ${RESOURCE_NAMES[kind]} ${name}`);
+        await s.putResource(kind, name, body, defined({ ...options, signal }));
+      },
+      delete: async ({ sessionId, kind, name, confirmed }, { signal }) => {
+        const s = await session(sessionId);
+        const safety = classifyRequest({
+          method: 'DELETE',
+          path: resourcePath(kind, s.searchCapabilities.lifecycle ?? 'ilm', name),
+        });
+        write(confirmed, `Deleting the ${RESOURCE_NAMES[kind]} ${name}`, safety);
+        await s.deleteResource(kind, name, { signal });
+      },
+    },
+
+    pipelines: {
+      simulate: async ({ sessionId, pipeline, docs, id, verbose }, { signal }) =>
+        (await session(sessionId)).simulatePipeline(
+          pipeline,
+          docs,
+          defined({ id, verbose, signal }),
+        ),
+    },
+
+    snapshots: {
+      list: async ({ sessionId, repository }, { signal }) =>
+        (await session(sessionId)).listSnapshots(repository, { signal }),
+      create: async (input, { signal }) => {
+        const { sessionId, repository, snapshot, confirmed, ...options } = input;
+        const s = await session(sessionId);
+        write(confirmed, `Creating the snapshot ${snapshot}`);
+        await s.createSnapshot(repository, snapshot, defined({ ...options, signal }));
+      },
+      restore: async (input, { signal }) => {
+        const { sessionId, repository, snapshot, confirmed, ...options } = input;
+        const s = await session(sessionId);
+        write(
+          confirmed,
+          `Restoring the snapshot ${snapshot}`,
+          classifyRequest({
+            method: 'POST',
+            path: `/_snapshot/${repository}/${snapshot}/_restore`,
+          }),
+        );
+        await s.restoreSnapshot(repository, snapshot, defined({ ...options, signal }));
+      },
+      delete: async ({ sessionId, repository, snapshot, confirmed }, { signal }) => {
+        const s = await session(sessionId);
+        write(
+          confirmed,
+          `Deleting the snapshot ${snapshot}`,
+          destructive('deletes the snapshot (its data in the repository is gone)'),
+        );
+        await s.deleteSnapshot(repository, snapshot, { signal });
+      },
+      verifyRepository: async ({ sessionId, repository, confirmed }, { signal }) => {
+        const s = await session(sessionId);
+        write(confirmed, `Verifying the repository ${repository}`);
+        return s.verifyRepository(repository, { signal });
+      },
+    },
   };
 }
+
+/** What messages call each kind of named resource. */
+const RESOURCE_NAMES: Readonly<Record<SearchResourceKind, string>> = {
+  'index-template': 'index template',
+  'component-template': 'component template',
+  'legacy-template': 'legacy template',
+  'lifecycle-policy': 'lifecycle policy',
+  'ingest-pipeline': 'ingest pipeline',
+  'snapshot-repository': 'snapshot repository',
+};

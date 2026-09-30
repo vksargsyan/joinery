@@ -204,6 +204,152 @@ describe('search handlers', () => {
     ).rejects.toMatchObject({ code: 'READ_ONLY' });
   });
 
+  it('streams SQL pages and runs reads of the query and administration services', async () => {
+    const { client, sessionId, session } = await startHost({ readOnly: true });
+    const pages = [];
+    for await (const page of client.search.sql.query({ sessionId, query: 'SELECT n FROM logs' })) {
+      pages.push(page);
+    }
+    expect(pages.map((p) => p.rows)).toEqual([[['12345678901234567890']], [['2']]]);
+    expect(pages[0]!.more).toBe(true);
+    expect(await client.search.sql.translate({ sessionId, query: 'SELECT 1' })).toMatchObject({
+      target: 'logs',
+    });
+    expect(await client.search.tasks.get({ sessionId, taskId: 'n1:7' })).toMatchObject({
+      id: 'n1:7',
+    });
+    await client.search.pipelines.simulate({ sessionId, id: 'p', docs: '[{}]' });
+    await client.search.resources.list({ sessionId, kind: 'ingest-pipeline' });
+    await client.search.snapshots.list({ sessionId, repository: 'r' });
+    expect(session.calls.map((c) => c.method)).toEqual(
+      expect.arrayContaining([
+        'sql',
+        'translateSql',
+        'getTask',
+        'simulatePipeline',
+        'listResources',
+        'listSnapshots',
+      ]),
+    );
+  });
+
+  it('confirms blocking and destructive administration on every profile', async () => {
+    const { client, sessionId, session } = await startHost();
+    // Blocking the source of a clone asks; a resize without a block is an ordinary write.
+    await expect(
+      client.search.indexAdmin.resize({
+        sessionId,
+        kind: 'clone',
+        source: 'a',
+        target: 'b',
+        blockSource: true,
+      }),
+    ).rejects.toMatchObject({
+      code: 'CONFIRMATION_REQUIRED',
+      hint: expect.stringContaining('blocks writes to a'),
+    });
+    await client.search.indexAdmin.resize({ sessionId, kind: 'clone', source: 'a', target: 'c' });
+    // A settings change that turns on a block asks too; lifting one does not.
+    await expect(
+      client.search.indices.putSettings({
+        sessionId,
+        index: 'a',
+        body: '{"index.blocks.write": true}',
+      }),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+    await client.search.indices.putSettings({
+      sessionId,
+      index: 'a',
+      body: '{"index.blocks.write": null}',
+    });
+    // An alias update that deletes an index (remove_index) asks.
+    await expect(
+      client.search.aliases.update({
+        sessionId,
+        actions: '{"actions": [{"remove_index": {"index": "a"}}]}',
+      }),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+    for (const call of [
+      () =>
+        client.search.snapshots.restore({ sessionId, repository: 'r', snapshot: 's', indices: [] }),
+      () => client.search.snapshots.delete({ sessionId, repository: 'r', snapshot: 's' }),
+      () => client.search.resources.delete({ sessionId, kind: 'index-template', name: 't' }),
+      () => client.search.resources.delete({ sessionId, kind: 'snapshot-repository', name: 'r' }),
+    ]) {
+      await expect(call()).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+    }
+    expect(session.calls.map((c) => c.method)).not.toEqual(
+      expect.arrayContaining(['restoreSnapshot']),
+    );
+    // Creating things, starting a reindex and cancelling a task run on a dev profile.
+    expect(await client.search.indexAdmin.reindex({ sessionId, source: ['a'], dest: 'b' })).toEqual(
+      { taskId: 'n1:7' },
+    );
+    await client.search.resources.put({
+      sessionId,
+      kind: 'ingest-pipeline',
+      name: 'p',
+      body: '{"processors": []}',
+    });
+    await client.search.snapshots.create({ sessionId, repository: 'r', snapshot: 's' });
+    await client.search.tasks.cancel({ sessionId, taskId: 'n1:7' });
+    await client.search.snapshots.restore({
+      sessionId,
+      repository: 'r',
+      snapshot: 's',
+      renamePattern: '(.+)',
+      renameReplacement: 'restored-$1',
+      confirmed: true,
+    });
+    expect(session.calls.map((c) => c.method)).toEqual(
+      expect.arrayContaining([
+        'resizeIndex',
+        'startReindex',
+        'putResource',
+        'createSnapshot',
+        'cancelTask',
+        'restoreSnapshot',
+      ]),
+    );
+  });
+
+  it('refuses administration writes on a read-only profile and asks on production', async () => {
+    const readOnly = await startHost({ readOnly: true });
+    for (const call of [
+      () =>
+        readOnly.client.search.indexAdmin.reindex({
+          sessionId: readOnly.sessionId,
+          source: ['a'],
+          dest: 'b',
+          confirmed: true,
+        }),
+      () =>
+        readOnly.client.search.resources.put({
+          sessionId: readOnly.sessionId,
+          kind: 'index-template',
+          name: 't',
+          body: '{}',
+          confirmed: true,
+        }),
+      () =>
+        readOnly.client.search.tasks.cancel({
+          sessionId: readOnly.sessionId,
+          taskId: 'n1:7',
+          confirmed: true,
+        }),
+    ]) {
+      await expect(call()).rejects.toMatchObject({ code: 'READ_ONLY' });
+    }
+    const production = await startHost({ environment: 'production' });
+    await expect(
+      production.client.search.snapshots.create({
+        sessionId: production.sessionId,
+        repository: 'r',
+        snapshot: 's',
+      }),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+  });
+
   it('answers NOT_SUPPORTED on other engines', async () => {
     const { fakeMongoAdapter } = await import('./fake-mongo-session');
     const host = new ConnectionHost(fakeMongoAdapter(), {

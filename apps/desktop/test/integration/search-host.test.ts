@@ -158,5 +158,96 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)(
       const info = await client.search.clusterInfo({ sessionId });
       expect(info.distribution).toBe(server.engine);
     });
+
+    it('resizes, reindexes as a task, explains allocation and runs SQL through the host', async () => {
+      const { client, sessionId } = await start(server.engine, server.url);
+      const source = `${index}-src`;
+      const clone = `${index}-clone`;
+      const copy = `${index}-copy`;
+      try {
+        await client.search.indices.create({
+          sessionId,
+          name: source,
+          body: '{"settings": {"number_of_replicas": 0}, "mappings": {"properties": {"k": {"type": "keyword"}}}}',
+        });
+        await client.search.documents.bulk({
+          sessionId,
+          ndjson: '{"index":{}}\n{"k":"a"}\n{"index":{}}\n{"k":"b"}\n{"index":{}}\n{"k":"a"}\n',
+          index: source,
+          refresh: true,
+        });
+        // Blocking the source's writes needs the page's confirmation.
+        await expect(
+          client.search.indexAdmin.resize({
+            sessionId,
+            kind: 'clone',
+            source,
+            target: clone,
+            blockSource: true,
+            unblockSource: true,
+          }),
+        ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+        await client.search.indexAdmin.resize({
+          sessionId,
+          kind: 'clone',
+          source,
+          target: clone,
+          blockSource: true,
+          unblockSource: true,
+          confirmed: true,
+        });
+        expect(await client.search.documents.count({ sessionId, target: clone })).toEqual({
+          count: 3,
+        });
+
+        const { taskId } = await client.search.indexAdmin.reindex({
+          sessionId,
+          source: [source],
+          dest: copy,
+        });
+        let task = await client.search.tasks.get({ sessionId, taskId });
+        for (let i = 0; i < 200 && !task.completed; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          task = await client.search.tasks.get({ sessionId, taskId });
+        }
+        expect(task).toMatchObject({ completed: true, progress: { total: 3, created: 3 } });
+
+        const shards = await client.search.allocation.shards({ sessionId, index: source });
+        expect(shards[0]).toMatchObject({ index: source, primary: true, state: 'STARTED' });
+        const explain = await client.search.allocation.explain({
+          sessionId,
+          shard: { index: source, shard: 0, primary: true },
+        });
+        expect(explain.currentState).toBe('started');
+        expect((await client.search.allocation.disk({ sessionId })).nodes.length).toBeGreaterThan(
+          0,
+        );
+
+        const info = await client.search.clusterInfo({ sessionId });
+        if (info.capabilities.sql !== null) {
+          const rows: string[][] = [];
+          for await (const page of client.search.sql.query({
+            sessionId,
+            query: `SELECT k, COUNT(*) AS c FROM "${source}" GROUP BY k ORDER BY k`,
+          })) {
+            rows.push(...page.rows.map((r) => [...r]));
+          }
+          expect(rows).toEqual([
+            ['"a"', '2'],
+            ['"b"', '1'],
+          ]);
+        }
+        const simulated = await client.search.pipelines.simulate({
+          sessionId,
+          pipeline: '{"processors": [{"uppercase": {"field": "k"}}]}',
+          docs: '[{"k": "x"}]',
+        });
+        expect(simulated[0]!.source).toContain('"X"');
+      } finally {
+        await client.search.indices
+          .delete({ sessionId, names: [source, clone, copy], confirmed: true })
+          .catch(() => undefined);
+      }
+    });
   },
 );

@@ -208,6 +208,24 @@ describe('response views', () => {
     // Where Elasticsearch points: just past the unknown name.
     expect(TEXT.slice(view.errorOffset!)).toMatch(/^ \{\}/);
   });
+
+  it('keeps the aggregations of a search, for the tree and table views', () => {
+    const [search] = plannedRequests(TEXT, TEXT.indexOf('POST'));
+    const aggregations = '{"by":{"buckets":[{"key":"a","doc_count":12345678901234567890}]}}';
+    const view = responseView(
+      search!,
+      response(
+        200,
+        `{"hits":{"total":{"value":1,"relation":"eq"},"hits":[]},"aggregations":${aggregations}}`,
+      ),
+    );
+    expect(view.aggregations).toBe(aggregations);
+    expect(responseView(search!, response(200, '{"hits": {}}')).aggregations).toBeUndefined();
+    expect(
+      responseView(search!, response(400, `{"error": "x", "aggregations": ${aggregations}}`))
+        .aggregations,
+    ).toBeUndefined();
+  });
 });
 
 describe('console helpers', () => {

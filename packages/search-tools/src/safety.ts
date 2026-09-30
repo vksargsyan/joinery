@@ -1,11 +1,13 @@
-import { parseJsonTree } from './json';
+import { member, parseJsonTree, type JsonNode } from './json';
 import type { HttpMethod } from './console/parser';
 
 /**
  * What an Elasticsearch or OpenSearch request does, for the write rules (spec §4): whether it
  * can change data or cluster state, and whether it is destructive (it deletes or closes data,
- * or rewrites documents in bulk). The connection host enforces the rules with this, the console
- * and joinery-cli ask with it first. Unknown requests that are not GET or HEAD count as writes.
+ * or rewrites documents in bulk). Blocking operations (a write or read block on an index, set
+ * directly or through its settings) count as destructive too: they always ask. The connection
+ * host enforces the rules with this, the console and joinery-cli ask with it first. Unknown
+ * requests that are not GET or HEAD count as writes.
  */
 
 export interface RequestSafety {
@@ -82,6 +84,46 @@ function bulkDeletes(body: string | undefined): boolean {
   return false;
 }
 
+/** The blocks a settings body turns on ("write", "read_only"...), flat or nested keys alike. */
+export function blocksSetIn(body: string | undefined): string[] {
+  if (body === undefined || body.trim() === '') return [];
+  let root: JsonNode;
+  try {
+    root = parseJsonTree(body);
+  } catch {
+    return [];
+  }
+  const found: string[] = [];
+  const walk = (node: JsonNode, path: string): void => {
+    if (node.type === 'object') {
+      for (const m of node.members) walk(m.value, path === '' ? m.key : `${path}.${m.key}`);
+      return;
+    }
+    const on =
+      (node.type === 'boolean' && node.value) || (node.type === 'string' && node.value === 'true');
+    const match = /(?:^|\.)blocks\.([a-z_]+)$/.exec(path);
+    if (on && match) found.push(match[1]!);
+  };
+  walk(root, '');
+  return found;
+}
+
+/** Whether an `_aliases` body deletes indices (a `remove_index` action). */
+function removesIndices(body: string | undefined): boolean {
+  if (body === undefined) return false;
+  try {
+    const actions = member(parseJsonTree(body), 'actions');
+    return (
+      actions?.type === 'array' &&
+      actions.items.some(
+        (a) => a.type === 'object' && a.members.some((m) => m.key === 'remove_index'),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Classifies a request (see RequestSafety). */
 export function classifyRequest(request: {
   readonly method: HttpMethod | string;
@@ -94,6 +136,10 @@ export function classifyRequest(request: {
   const label = `${method} /${segments.join('/')}`;
   const has = (name: string): boolean => apis.includes(name);
   if (method === 'GET' || method === 'HEAD') return { writes: false, label };
+  // The allocation explain API reads, whatever its method.
+  if (has('_cluster') && segments.includes('allocation') && segments.includes('explain')) {
+    return { writes: false, label };
+  }
 
   if (method === 'DELETE') {
     // Clearing a scroll, a point in time or a stored async search frees server resources only.
@@ -147,6 +193,33 @@ export function classifyRequest(request: {
       label,
     };
   }
+  if (has('_snapshot') && has('_cleanup')) {
+    return {
+      writes: true,
+      destructive: 'deletes repository data that no snapshot refers to',
+      label,
+    };
+  }
+  if (has('_aliases') && removesIndices(request.body)) {
+    return { writes: true, destructive: 'deletes indices (a remove_index action)', label };
+  }
+  if (has('_block')) {
+    return {
+      writes: true,
+      destructive: 'blocks the index: writes (or reads) fail until the block is removed',
+      label,
+    };
+  }
+  if (has('_settings')) {
+    const blocks = blocksSetIn(request.body);
+    if (blocks.length > 0) {
+      return {
+        writes: true,
+        destructive: `blocks the index (${blocks.join(', ')}): it refuses those operations until the block is removed`,
+        label,
+      };
+    }
+  }
   if (apis.some((a) => READ_SEGMENTS.has(a))) {
     // OpenSearch's SQL plugin: `DELETE FROM` is a write when the plugin allows it.
     if ((has('_sql') || has('_plugins')) && /\bdelete\s+from\b/i.test(request.body ?? '')) {
@@ -169,7 +242,14 @@ function deleteReason(segments: readonly string[], apis: readonly string[]): str
   }
   if (apis.includes('_doc') || apis.includes('_create')) return 'deletes the document';
   if (apis.includes('_data_stream')) return 'deletes the data stream and its backing indices';
-  if (apis.includes('_snapshot')) return 'deletes snapshot data';
+  if (apis.includes('_snapshot')) {
+    // DELETE /_snapshot/<repo> unregisters the repository; /_snapshot/<repo>/<snapshot> deletes.
+    const at = segments.indexOf('_snapshot');
+    return segments.length - at > 2
+      ? 'deletes the snapshot (its data in the repository is gone)'
+      : 'unregisters the snapshot repository (its files stay where they are)';
+  }
+  if (apis.includes('_ism')) return 'deletes the ISM policy';
   if (apis.includes('_alias') || apis.includes('_aliases')) return 'removes aliases';
   const api = apis[0]!;
   const known = DELETE_REASONS[api];

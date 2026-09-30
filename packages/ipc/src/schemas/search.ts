@@ -1,6 +1,17 @@
 import {
   HTTP_METHODS,
+  SEARCH_RESOURCE_KINDS,
   type HttpMethod,
+  type SearchAllocationExplain,
+  type SearchDiskAllocation,
+  type SearchResourceInfo,
+  type SearchResourceKind,
+  type SearchShardInfo,
+  type SearchSimulatedDocument,
+  type SearchSnapshotInfo,
+  type SearchTable,
+  type SearchTaskStatus,
+  type SqlTranslation,
   type SearchAliasInfo,
   type SearchBulkItem,
   type SearchBulkResult,
@@ -74,6 +85,7 @@ export const searchCapabilitiesSchema: z.ZodType<SearchCapabilities, SearchCapab
     searchAfter: z.boolean(),
     asyncSearch: z.boolean(),
     composableTemplates: z.boolean(),
+    cloneIndex: z.boolean(),
     security: z.enum(['elasticsearch', 'opensearch']).nullable(),
   },
 );
@@ -230,6 +242,149 @@ export const searchByQueryResultSchema: z.ZodType<SearchByQueryResult, SearchByQ
     timedOut: z.boolean(),
   });
 
+export const searchTableSchema: z.ZodType<SearchTable, SearchTable> = z.object({
+  columns: z.array(z.object({ name: z.string(), type: z.string() })),
+  rows: z.array(z.array(z.string())),
+  cursor: z.string().optional(),
+  more: z.boolean().optional(),
+  total: z.number().optional(),
+  partial: z.boolean().optional(),
+  tookMs: z.number().optional(),
+});
+
+export const searchSqlTranslationSchema: z.ZodType<SqlTranslation, SqlTranslation> = z.object({
+  dsl: z.string().optional(),
+  target: z.string().optional(),
+  raw: z.string(),
+});
+
+export const searchTaskStatusSchema: z.ZodType<SearchTaskStatus, SearchTaskStatus> = z.object({
+  id: z.string(),
+  action: z.string(),
+  description: z.string().optional(),
+  completed: z.boolean(),
+  cancellable: z.boolean(),
+  cancelled: z.boolean(),
+  startedAt: z.string().optional(),
+  runningTimeMs: z.number().optional(),
+  progress: z
+    .object({
+      total: z.number(),
+      created: z.number(),
+      updated: z.number(),
+      deleted: z.number(),
+      noops: z.number(),
+      versionConflicts: z.number(),
+      batches: z.number(),
+    })
+    .optional(),
+  failures: countSchema,
+  error: z.string().optional(),
+});
+
+export const searchShardInfoSchema: z.ZodType<SearchShardInfo, SearchShardInfo> = z.object({
+  index: z.string(),
+  shard: z.number().int().nonnegative(),
+  primary: z.boolean(),
+  state: z.string(),
+  node: z.string().nullable(),
+  docs: z.number().nullable(),
+  storeBytes: z.number().nullable(),
+  unassignedReason: z.string().optional(),
+});
+
+export const searchAllocationExplainSchema: z.ZodType<
+  SearchAllocationExplain,
+  SearchAllocationExplain
+> = z.object({
+  index: z.string(),
+  shard: z.number().int().nonnegative(),
+  primary: z.boolean(),
+  currentState: z.string(),
+  currentNode: z.string().optional(),
+  explanation: z.string().optional(),
+  canAllocate: z.string().optional(),
+  unassignedReason: z.string().optional(),
+  unassignedDetails: z.string().optional(),
+  decisions: z.array(
+    z.object({ node: z.string(), decision: z.string(), reasons: z.array(z.string()) }),
+  ),
+  raw: z.string(),
+});
+
+export const searchDiskAllocationSchema: z.ZodType<SearchDiskAllocation, SearchDiskAllocation> =
+  z.object({
+    thresholdEnabled: z.boolean(),
+    low: z.string(),
+    high: z.string(),
+    floodStage: z.string(),
+    maxHeadroom: z
+      .object({
+        low: z.string().optional(),
+        high: z.string().optional(),
+        floodStage: z.string().optional(),
+      })
+      .optional(),
+    nodes: z.array(
+      z.object({
+        node: z.string(),
+        shards: z.number(),
+        diskUsedBytes: z.number().nullable(),
+        diskAvailableBytes: z.number().nullable(),
+        diskTotalBytes: z.number().nullable(),
+        diskPercent: z.number().nullable(),
+      }),
+    ),
+    unassignedShards: countSchema,
+  });
+
+export const searchResourceKindSchema: z.ZodType<SearchResourceKind, SearchResourceKind> =
+  z.enum(SEARCH_RESOURCE_KINDS);
+
+export const searchResourceInfoSchema: z.ZodType<SearchResourceInfo, SearchResourceInfo> = z.object(
+  {
+    kind: searchResourceKindSchema,
+    name: z.string(),
+    summary: z.array(z.object({ label: z.string(), value: z.string() })),
+    body: z.string(),
+    seqNo: z.number().int().optional(),
+    primaryTerm: z.number().int().optional(),
+  },
+);
+
+export const searchSnapshotInfoSchema: z.ZodType<SearchSnapshotInfo, SearchSnapshotInfo> = z.object(
+  {
+    snapshot: z.string(),
+    uuid: z.string().optional(),
+    state: z.string(),
+    indices: z.array(z.string()),
+    dataStreams: z.array(z.string()),
+    startedAt: z.string().optional(),
+    endedAt: z.string().optional(),
+    durationMs: z.number().optional(),
+    shardsTotal: countSchema,
+    shardsFailed: countSchema,
+  },
+);
+
+export const searchSimulatedDocumentSchema: z.ZodType<
+  SearchSimulatedDocument,
+  SearchSimulatedDocument
+> = z.object({
+  source: z.string().optional(),
+  error: z.string().optional(),
+  dropped: z.boolean(),
+  processors: z.array(
+    z.object({
+      processor: z.string(),
+      tag: z.string().optional(),
+      status: z.string(),
+      error: z.string().optional(),
+      source: z.string().optional(),
+    }),
+  ),
+});
+
 // ---------------------------------------------------------------------------------------------
 // Inputs. Every method names the session it runs on; writes carry the user's confirmation.
 
@@ -332,6 +487,107 @@ export const searchDeleteByQueryInputSchema = z.object({
   conflicts: z.enum(['abort', 'proceed']).optional(),
   confirmed: searchConfirmedSchema,
   ...operationFields,
+});
+
+const queryTextSchema = z
+  .string()
+  .min(1)
+  .max(1024 * 1024);
+
+export const searchSqlQueryInputSchema = z.object({
+  sessionId: idSchema,
+  query: queryTextSchema,
+  /** Rows per page the server's cursor reads; default 1,000. */
+  fetchSize: z.number().int().min(1).max(10_000).optional(),
+  maxRows: z.number().int().min(1).optional(),
+  timeZone: z.string().max(64).optional(),
+  /** OpenSearch's SQL plugin can delete (`DELETE FROM`): that needs a confirmation. */
+  confirmed: searchConfirmedSchema,
+  ...operationFields,
+});
+
+export const searchResizeInputSchema = z.object({
+  sessionId: idSchema,
+  kind: z.enum(['clone', 'shrink', 'split']),
+  source: nameSchema,
+  target: nameSchema,
+  settings: jsonTextSchema.optional(),
+  aliases: jsonTextSchema.optional(),
+  /** Block writes to the source first: blocking, so it needs `confirmed`. */
+  blockSource: z.boolean().optional(),
+  unblockSource: z.boolean().optional(),
+  gatherOnNode: nameSchema.optional(),
+  confirmed: searchConfirmedSchema,
+  ...operationFields,
+});
+
+export const searchReindexInputSchema = z.object({
+  sessionId: idSchema,
+  source: z.array(nameSchema).min(1).max(1_000),
+  dest: nameSchema,
+  query: jsonTextSchema.optional(),
+  pipeline: nameSchema.optional(),
+  conflicts: z.enum(['abort', 'proceed']).optional(),
+  opType: z.enum(['index', 'create']).optional(),
+  maxDocs: z.number().int().positive().optional(),
+  requestsPerSecond: z.number().positive().optional(),
+  slices: z.union([z.number().int().positive(), z.literal('auto')]).optional(),
+  confirmed: searchConfirmedSchema,
+});
+
+/** "node:number", as the Tasks API names a task. */
+export const searchTaskIdSchema = z
+  .string()
+  .min(3)
+  .max(256)
+  .regex(/^[^:/\s]+:\d+$/);
+
+export const searchResourcePutInputSchema = z.object({
+  sessionId: idSchema,
+  kind: searchResourceKindSchema,
+  name: nameSchema,
+  /** The JSON its PUT takes. */
+  body: jsonTextSchema,
+  ifSeqNo: z.number().int().nonnegative().optional(),
+  ifPrimaryTerm: z.number().int().positive().optional(),
+  confirmed: searchConfirmedSchema,
+});
+
+export const searchSnapshotCreateInputSchema = z.object({
+  sessionId: idSchema,
+  repository: nameSchema,
+  snapshot: nameSchema,
+  indices: z.array(nameSchema).max(1_000).optional(),
+  includeGlobalState: z.boolean().optional(),
+  ignoreUnavailable: z.boolean().optional(),
+  waitForCompletion: z.boolean().optional(),
+  confirmed: searchConfirmedSchema,
+  ...operationFields,
+});
+
+export const searchSnapshotRestoreInputSchema = z.object({
+  sessionId: idSchema,
+  repository: nameSchema,
+  snapshot: nameSchema,
+  indices: z.array(nameSchema).max(1_000).optional(),
+  renamePattern: z.string().max(512).optional(),
+  renameReplacement: z.string().max(512).optional(),
+  includeGlobalState: z.boolean().optional(),
+  includeAliases: z.boolean().optional(),
+  waitForCompletion: z.boolean().optional(),
+  /** A restore is destructive: it needs `confirmed` on every profile. */
+  confirmed: searchConfirmedSchema,
+  ...operationFields,
+});
+
+export const searchSimulateInputSchema = z.object({
+  sessionId: idSchema,
+  /** A pipeline body (JSON text), or `id` for a stored pipeline. */
+  pipeline: jsonTextSchema.optional(),
+  id: nameSchema.optional(),
+  /** Documents: a JSON array of sources (or of `{"_source": ...}`), or one document. */
+  docs: jsonTextSchema,
+  verbose: z.boolean().optional(),
 });
 
 export const searchRequestInputSchema = z.object({

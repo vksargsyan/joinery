@@ -222,3 +222,167 @@ export interface SearchByQueryResult {
   readonly took: number;
   readonly timedOut: boolean;
 }
+
+/** A server task (reindex, update or delete by query...) as `GET /_tasks/<id>` reports it. */
+export interface SearchTaskStatus {
+  /** "node:number". */
+  readonly id: string;
+  /** e.g. "indices:data/write/reindex". */
+  readonly action: string;
+  readonly description?: string;
+  readonly completed: boolean;
+  readonly cancellable: boolean;
+  readonly cancelled: boolean;
+  /** ISO timestamp. */
+  readonly startedAt?: string;
+  readonly runningTimeMs?: number;
+  /** Progress of a by-query or reindex task (the `status` object). */
+  readonly progress?: {
+    readonly total: number;
+    readonly created: number;
+    readonly updated: number;
+    readonly deleted: number;
+    readonly noops: number;
+    readonly versionConflicts: number;
+    readonly batches: number;
+  };
+  /** Failures reported in the finished task's response. */
+  readonly failures: number;
+  /** The first failure's or the task error's reason. */
+  readonly error?: string;
+}
+
+/** One shard copy from `_cat/shards`. */
+export interface SearchShardInfo {
+  readonly index: string;
+  readonly shard: number;
+  readonly primary: boolean;
+  /** "STARTED", "INITIALIZING", "RELOCATING" or "UNASSIGNED". */
+  readonly state: string;
+  readonly node: string | null;
+  readonly docs: number | null;
+  readonly storeBytes: number | null;
+  /** Why an unassigned shard is unassigned ("NODE_LEFT", "INDEX_CREATED"...). */
+  readonly unassignedReason?: string;
+}
+
+/** A node's decision in an allocation explanation. */
+export interface SearchAllocationDecision {
+  readonly node: string;
+  /** "yes", "no", "throttle", "worse_balance"... */
+  readonly decision: string;
+  /** The deciders that said no or throttle, as "decider: explanation". */
+  readonly reasons: readonly string[];
+}
+
+/** `POST /_cluster/allocation/explain`, summarised, with the raw reply. */
+export interface SearchAllocationExplain {
+  readonly index: string;
+  readonly shard: number;
+  readonly primary: boolean;
+  readonly currentState: string;
+  readonly currentNode?: string;
+  /** The one-line explanation the server gives (allocate or rebalance explanation). */
+  readonly explanation?: string;
+  /** "yes", "no", "throttled", "awaiting_info", "no_valid_shard_copy"... */
+  readonly canAllocate?: string;
+  readonly unassignedReason?: string;
+  readonly unassignedDetails?: string;
+  readonly decisions: readonly SearchAllocationDecision[];
+  readonly raw: JsonText;
+}
+
+/** One node's disk as `_cat/allocation` reports it. */
+export interface SearchNodeDisk {
+  readonly node: string;
+  readonly shards: number;
+  readonly diskUsedBytes: number | null;
+  readonly diskAvailableBytes: number | null;
+  readonly diskTotalBytes: number | null;
+  readonly diskPercent: number | null;
+}
+
+/** Disk watermarks and each node's disk, for the allocation view. */
+export interface SearchDiskAllocation {
+  /** `cluster.routing.allocation.disk.threshold_enabled`. */
+  readonly thresholdEnabled: boolean;
+  /** The watermark settings as set (e.g. "85%", "0.9", "500mb"). */
+  readonly low: string;
+  readonly high: string;
+  readonly floodStage: string;
+  /**
+   * Elasticsearch 8.5+: on large disks a percentage watermark applies only until this much
+   * space is free (e.g. flood stage at 95% or 100GB free, whichever leaves less).
+   */
+  readonly maxHeadroom?: {
+    readonly low?: string;
+    readonly high?: string;
+    readonly floodStage?: string;
+  };
+  readonly nodes: readonly SearchNodeDisk[];
+  /** Shards no node holds. */
+  readonly unassignedShards: number;
+}
+
+/** The named JSON objects the admin panels edit. */
+export const SEARCH_RESOURCE_KINDS = [
+  'index-template',
+  'component-template',
+  'legacy-template',
+  'lifecycle-policy',
+  'ingest-pipeline',
+  'snapshot-repository',
+] as const;
+export type SearchResourceKind = (typeof SEARCH_RESOURCE_KINDS)[number];
+
+/** One named resource: a template, lifecycle policy, ingest pipeline or snapshot repository. */
+export interface SearchResourceInfo {
+  readonly kind: SearchResourceKind;
+  readonly name: string;
+  /** A few facts for the list ("index patterns", "priority", "phases"...), in display order. */
+  readonly summary: readonly { readonly label: string; readonly value: string }[];
+  /** The JSON its PUT takes, as the server holds it (read-only fields removed). */
+  readonly body: JsonText;
+  /** OpenSearch ISM policies are updated with optimistic concurrency. */
+  readonly seqNo?: number;
+  readonly primaryTerm?: number;
+}
+
+/** One snapshot of a repository. */
+export interface SearchSnapshotInfo {
+  readonly snapshot: string;
+  readonly uuid?: string;
+  /** "SUCCESS", "IN_PROGRESS", "PARTIAL", "FAILED", "INCOMPATIBLE". */
+  readonly state: string;
+  readonly indices: readonly string[];
+  readonly dataStreams: readonly string[];
+  /** ISO timestamps. */
+  readonly startedAt?: string;
+  readonly endedAt?: string;
+  readonly durationMs?: number;
+  readonly shardsTotal: number;
+  readonly shardsFailed: number;
+}
+
+/** One processor's result in a verbose pipeline simulation. */
+export interface SearchSimulatedProcessor {
+  readonly processor: string;
+  readonly tag?: string;
+  /** "success", "error", "error_ignored", "skipped", "dropped". */
+  readonly status: string;
+  readonly error?: string;
+  /** The document after this processor (`_source`, JSON text). */
+  readonly source?: JsonText;
+}
+
+/** One document's way through a simulated ingest pipeline. */
+export interface SearchSimulatedDocument {
+  /** The document after the pipeline (its `_source`, JSON text), when it came through. */
+  readonly source?: JsonText;
+  /** Why the pipeline failed. */
+  readonly error?: string;
+  /** A drop processor removed it. */
+  readonly dropped: boolean;
+  /** With verbose simulation: each processor's result, in order. */
+  readonly processors: readonly SearchSimulatedProcessor[];
+}

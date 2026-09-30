@@ -75,6 +75,56 @@ describe('classifyRequest', () => {
     expect(read('POST', '/orders/%5Fclose').destructive).toContain('closes');
   });
 
+  it('marks blocking operations destructive: blocks set directly or through settings', () => {
+    expect(read('PUT', '/orders/_block/write').destructive).toContain('blocks the index');
+    expect(
+      read('PUT', '/orders/_settings', '{"index": {"blocks": {"write": true}}}').destructive,
+    ).toContain('(write)');
+    expect(
+      read('PUT', '/orders/_settings', '{"index.blocks.read_only": "true"}').destructive,
+    ).toContain('(read_only)');
+    // Lifting a block, or other settings, is an ordinary write.
+    expect(
+      read('PUT', '/orders/_settings', '{"index.blocks.write": null}').destructive,
+    ).toBeUndefined();
+    expect(
+      read('PUT', '/orders/_settings', '{"index": {"refresh_interval": "1s"}}').destructive,
+    ).toBeUndefined();
+  });
+
+  it('marks alias actions that delete indices destructive', () => {
+    expect(
+      read('POST', '/_aliases', '{"actions": [{"add": {"index": "b", "alias": "a"}}]}').destructive,
+    ).toBeUndefined();
+    expect(
+      read(
+        'POST',
+        '/_aliases',
+        '{"actions": [{"add": {"index": "b", "alias": "a"}}, {"remove_index": {"index": "a"}}]}',
+      ).destructive,
+    ).toContain('remove_index');
+  });
+
+  it('reads allocation explanations and names snapshot deletes', () => {
+    expect(read('POST', '/_cluster/allocation/explain', '{"index": "a"}').writes).toBe(false);
+    expect(read('DELETE', '/_snapshot/backups').destructive).toContain('unregisters');
+    expect(read('DELETE', '/_snapshot/backups/nightly').destructive).toContain(
+      'deletes the snapshot',
+    );
+    expect(read('POST', '/_snapshot/backups/_cleanup').destructive).toContain('no snapshot');
+    expect(read('DELETE', '/_plugins/_ism/policies/p').destructive).toBe('deletes the ISM policy');
+    for (const [method, path] of [
+      ['POST', '/orders/_clone/orders-copy'],
+      ['POST', '/orders/_shrink/orders-small'],
+      ['PUT', '/_snapshot/backups/nightly'],
+      ['POST', '/_tasks/n:1/_cancel'],
+    ]) {
+      const safety = read(method!, path!);
+      expect(safety, `${method} ${path}`).toMatchObject({ writes: true });
+      expect(safety.destructive).toBeUndefined();
+    }
+  });
+
   it('treats a SQL DELETE through the OpenSearch plugin as destructive', () => {
     expect(
       read('POST', '/_plugins/_sql', '{"query": "DELETE FROM logs WHERE a = 1"}').destructive,

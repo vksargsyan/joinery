@@ -127,6 +127,45 @@ export function fakeSearchSession(): FakeSearchSession {
       warnings: [],
       truncated: false,
     })),
+    async *sql(...args: unknown[]) {
+      calls.push({ method: 'sql', args });
+      yield {
+        columns: [{ name: 'n', type: 'long' }],
+        rows: [['12345678901234567890']],
+        more: true,
+      };
+      yield { columns: [{ name: 'n', type: 'long' }], rows: [['2']] };
+    },
+    translateSql: record('translateSql', () => ({
+      dsl: '{"size":1000}',
+      target: 'logs',
+      raw: '{"size":1000}',
+    })),
+    esql: record('esql', () => ({ columns: [], rows: [] })),
+    resizeIndex: record('resizeIndex', () => undefined),
+    startReindex: record('startReindex', () => ({ taskId: 'n1:7' })),
+    getTask: record('getTask', (taskId) => ({
+      id: String(taskId),
+      action: 'indices:data/write/reindex',
+      completed: false,
+      cancellable: true,
+      cancelled: false,
+      failures: 0,
+    })),
+    listTasks: record('listTasks', () => []),
+    cancelTask: record('cancelTask', () => undefined),
+    shards: record('shards', () => []),
+    allocationExplain: unused('allocationExplain'),
+    diskAllocation: unused('diskAllocation'),
+    listResources: record('listResources', () => []),
+    putResource: record('putResource', () => undefined),
+    deleteResource: record('deleteResource', () => undefined),
+    simulatePipeline: record('simulatePipeline', () => []),
+    listSnapshots: record('listSnapshots', () => []),
+    createSnapshot: record('createSnapshot', () => undefined),
+    restoreSnapshot: record('restoreSnapshot', () => undefined),
+    deleteSnapshot: record('deleteSnapshot', () => undefined),
+    verifyRepository: record('verifyRepository', () => ['es1']),
   };
   Object.setPrototypeOf(fake, ElasticSearchSession.prototype);
   return fake as unknown as FakeSearchSession;

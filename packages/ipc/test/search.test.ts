@@ -1,4 +1,4 @@
-import type { SearchClusterInfo, SearchPage } from '@joinery/search-tools';
+import type { SearchClusterInfo, SearchPage, SearchTable } from '@joinery/search-tools';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,6 +8,7 @@ import {
   searchClusterInfoSchema,
   searchHostContractShape,
   searchPageSchema,
+  searchTableSchema,
   serve,
   type HandlersOf,
 } from '../src';
@@ -33,6 +34,7 @@ describe('search schemas', () => {
         searchAfter: true,
         asyncSearch: false,
         composableTemplates: true,
+        cloneIndex: true,
         security: null,
       },
     };
@@ -94,6 +96,54 @@ describe('search schemas', () => {
     );
     expect(methods.get('search.documents.search')?.kind).toBe('stream');
     expect(methods.get('search.request')?.kind).toBe('unary');
+  });
+
+  it('names the query and administration services, with SQL pages as a stream', () => {
+    const methods = connectionHostContract.methods;
+    expect([...methods.keys()]).toEqual(
+      expect.arrayContaining([
+        'search.sql.query',
+        'search.sql.translate',
+        'search.esql.query',
+        'search.indexAdmin.resize',
+        'search.indexAdmin.reindex',
+        'search.tasks.get',
+        'search.tasks.cancel',
+        'search.allocation.shards',
+        'search.allocation.explain',
+        'search.allocation.disk',
+        'search.resources.list',
+        'search.resources.put',
+        'search.resources.delete',
+        'search.pipelines.simulate',
+        'search.snapshots.list',
+        'search.snapshots.restore',
+      ]),
+    );
+    expect(methods.get('search.sql.query')?.kind).toBe('stream');
+  });
+
+  it('checks task ids, resource kinds and SQL tables', () => {
+    for (const [path, input] of [
+      ['search.tasks.get', { sessionId: 's', taskId: 'not-a-task' }],
+      ['search.tasks.cancel', { sessionId: 's', taskId: 'n1:1/_cancel' }],
+      ['search.resources.list', { sessionId: 's', kind: 'widgets' }],
+      ['search.indexAdmin.resize', { sessionId: 's', kind: 'merge', source: 'a', target: 'b' }],
+      ['search.indexAdmin.reindex', { sessionId: 's', source: [], dest: 'b' }],
+    ] as const) {
+      expect(() => parseRequest(connectionHostContract, path, input), path).toThrow(
+        expect.objectContaining({ code: 'VALIDATION_FAILED' }),
+      );
+    }
+    expect(
+      parseRequest(connectionHostContract, 'search.tasks.get', { sessionId: 's', taskId: 'n1:42' }),
+    ).toMatchObject({ input: { sessionId: 's', taskId: 'n1:42' } });
+    const table: SearchTable = {
+      columns: [{ name: 'n', type: 'long' }],
+      rows: [['12345678901234567890']],
+      more: true,
+    };
+    expect(searchTableSchema.parse(table)).toEqual(table);
   });
 });
 
