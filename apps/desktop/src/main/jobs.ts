@@ -76,12 +76,15 @@ export interface JobStartExtras {
    * `done` (sync jobs), unchecked.
    */
   readonly onDone?: (job: JobInfo, result: unknown) => void;
+  /** No desktop notification when it ends: its caller tells the user (a scheduled run). */
+  readonly silent?: boolean;
 }
 
 interface LiveJob {
   info: JobInfo;
   readonly startedAt: number;
   readonly onDone?: ((job: JobInfo, result: unknown) => void) | undefined;
+  readonly silent: boolean;
 }
 
 interface PendingRequest {
@@ -179,7 +182,12 @@ export class JobManager {
       log: [],
       target: description.target,
     };
-    const job: LiveJob = { info, startedAt: this.#now(), onDone: extras.onDone };
+    const job: LiveJob = {
+      info,
+      startedAt: this.#now(),
+      onDone: extras.onDone,
+      silent: extras.silent === true,
+    };
     this.#running.set(id, job);
     this.#publish({ type: 'job', job: info });
     let process: JobRunnerProcess;
@@ -435,7 +443,7 @@ export class JobManager {
       // A result that cannot be kept fails its reader, not the job list.
     }
     this.#publish({ type: 'job', job: finished });
-    if (this.#notify && this.#now() - job.startedAt >= this.#notifyAfterMs) {
+    if (this.#notify && !job.silent && this.#now() - job.startedAt >= this.#notifyAfterMs) {
       try {
         this.#notify(finished);
       } catch {

@@ -113,6 +113,7 @@ export class SyncService {
   startStructureCompare(
     input: Pick<StructureCompareInput, 'source' | 'target' | 'options'>,
     resolved: { readonly source: ResolvedProfile; readonly target: ResolvedProfile },
+    options: { readonly silent?: boolean } = {},
   ): string {
     const target = sideOf(input.target);
     const spec: SyncJobSpec = {
@@ -129,6 +130,7 @@ export class SyncService {
     };
     return this.#jobs.start(spec, resolved.target, description, {
       source: resolved.source,
+      silent: options.silent === true,
       onDone: (job, result) => {
         const parsed = this.#parse(job, result);
         if (parsed?.kind !== 'structure' || !parsed.source || !parsed.sourceSnapshot) return;
@@ -248,6 +250,7 @@ export class SyncService {
   startDataCompare(
     input: Pick<DataCompareInput, 'source' | 'target' | 'options' | 'tables'>,
     resolved: { readonly source: ResolvedProfile; readonly target: ResolvedProfile },
+    options: { readonly silent?: boolean } = {},
   ): string {
     const target = sideOf(input.target);
     const spoolDir = mkdtempSync(join(this.#spoolFolder(), 'data-'));
@@ -271,6 +274,7 @@ export class SyncService {
         },
         {
           source: resolved.source,
+          silent: options.silent === true,
           onDone: (job, result) => {
             const parsed = this.#parse(job, result);
             if (parsed?.kind !== 'data') {
