@@ -22,8 +22,10 @@ for (const [engine, url] of SUITES) {
     const USER = `st_u_${suffix}`;
     const ROLE = `st_r_${suffix}`;
     const PASSWORD = `pw-${suffix}'"\\x`;
-    // MariaDB's anonymous ''@'localhost' outranks 'user'@'%' for local connections.
-    const HOST = engine === 'mariadb' ? 'localhost' : '%';
+    // MariaDB's anonymous ''@'localhost' outranks 'user'@'%' for local connections, so there
+    // the accounts are made for the host the server sees this client at ('localhost' locally,
+    // the Docker gateway on CI); set in beforeAll.
+    let HOST = '%';
     const roleRef = engine === 'mariadb' ? { name: ROLE } : { name: ROLE, host: '%' };
     let db: Awaited<ReturnType<typeof withDatabase>>;
     let session: Session;
@@ -41,6 +43,10 @@ for (const [engine, url] of SUITES) {
       await collect(db.session, 'CREATE TABLE archive_log (id INT, msg TEXT) ENGINE=MyISAM');
       await collect(db.session, `INSERT INTO archive_log VALUES (1, 'x')`);
       session = await t.connect({ options: { defaultDatabase: DB } });
+      if (engine === 'mariadb') {
+        const current = String((await rows(session, 'SELECT USER()'))[0]![0]);
+        HOST = current.slice(current.lastIndexOf('@') + 1);
+      }
     });
 
     afterAll(async () => {
