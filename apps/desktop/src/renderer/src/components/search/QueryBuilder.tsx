@@ -9,6 +9,7 @@ import {
   aggregationsFor,
   operatorsFor,
   sortPath,
+  splitList,
   valueInput,
   type DslAggregation,
   type DslAggregationType,
@@ -932,6 +933,15 @@ function ConditionRow(props: {
             {...focus}
           />
         ))}
+      {input === 'value' && field?.kind !== 'boolean' && (
+        <TopValues
+          builder={builder}
+          path={c.field}
+          field={field}
+          label={label}
+          onPick={(text) => set({ value: text })}
+        />
+      )}
       {input === 'list' && (
         <input
           aria-label={`${label} values`}
@@ -944,6 +954,19 @@ function ConditionRow(props: {
           className={cx(CONTROL, 'max-w-[32rem] min-w-40 flex-1')}
           data-testid="search-builder-value"
           {...focus}
+        />
+      )}
+      {input === 'list' && (
+        <TopValues
+          builder={builder}
+          path={c.field}
+          field={field}
+          label={label}
+          picked={splitList(c.value)}
+          onPick={(text) => {
+            const values = splitList(c.value);
+            if (!values.includes(text)) set({ value: [...values, text].join(', ') });
+          }}
         />
       )}
       {input === 'range' && (
@@ -982,6 +1005,9 @@ function ConditionRow(props: {
             className={cx(CONTROL, 'w-28')}
             data-testid="search-builder-upper"
           />
+          {(field?.kind === 'date' || c.format !== '' || c.timeZone !== '') && (
+            <DateOptions condition={c} label={label} onChange={set} />
+          )}
         </span>
       )}
       {input === 'geo' && (
@@ -1010,6 +1036,137 @@ function ConditionRow(props: {
         </span>
       )}
     </div>
+  );
+}
+
+/** A date range's format and time zone: behind a toggle until one is set. */
+function DateOptions(props: {
+  readonly condition: DslCondition;
+  readonly label: string;
+  readonly onChange: (patch: { readonly format?: string; readonly timeZone?: string }) => void;
+}) {
+  const { condition: c, label } = props;
+  const [open, setOpen] = useState(c.format !== '' || c.timeZone !== '');
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="The date format and time zone of the bounds (format, time_zone)"
+        className="rounded px-1 text-[11px] text-muted hover:bg-hover hover:text-fg"
+        data-testid="search-builder-date-options"
+      >
+        Format, zone…
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 border-l border-border pl-1.5">
+      <input
+        aria-label={`${label} date format`}
+        value={c.format}
+        placeholder="format"
+        spellCheck={false}
+        title="How the bounds are written, such as yyyy-MM-dd; empty for the field's format"
+        onChange={(event) => props.onChange({ format: event.target.value })}
+        className={cx(CONTROL, 'w-32')}
+        data-testid="search-builder-format"
+      />
+      <input
+        aria-label={`${label} time zone`}
+        value={c.timeZone}
+        placeholder="UTC"
+        spellCheck={false}
+        title="The time zone of the bounds, such as +01:00 or Europe/Berlin; empty for UTC"
+        onChange={(event) => props.onChange({ timeZone: event.target.value })}
+        className={cx(CONTROL, 'w-28')}
+        data-testid="search-builder-time-zone"
+      />
+    </span>
+  );
+}
+
+/**
+ * A field's most common values (a terms aggregation, read when the menu first opens), to pick
+ * one as the value or add it to the list.
+ */
+function TopValues(props: {
+  readonly builder: DslBuilder;
+  readonly path: string;
+  readonly field: DslField | undefined;
+  readonly label: string;
+  readonly picked?: readonly string[];
+  readonly onPick: (text: string) => void;
+}) {
+  const { builder, path, field } = props;
+  const state = useDslBuilder(builder, (s) => s.topValues[path]);
+  const aggregatable =
+    field !== undefined &&
+    (['keyword', 'number', 'ip', 'date'].includes(field.kind) ||
+      (field.kind === 'text' && field.keyword !== undefined));
+  if (!aggregatable) return null;
+  const max = Math.max(1, ...(state?.values ?? []).map((v) => v.count));
+  return (
+    <DropdownMenu.Root onOpenChange={(open) => open && void builder.loadTopValues(path)}>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label={`Top values of ${props.label}`}
+          title="The most common values in this index"
+          className="flex h-6 items-center gap-0.5 rounded border border-border bg-panel-2 px-1.5 text-[11px] text-muted hover:border-accent hover:text-fg"
+          data-testid="search-builder-top-values"
+        >
+          Top
+          <Icon name="chevron-down" className="h-3 w-3" />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="start"
+          className="z-50 max-h-80 w-72 overflow-auto rounded-md border border-border bg-panel p-1 text-[13px] shadow-xl"
+        >
+          <DropdownMenu.Label className="flex items-center justify-between gap-2 px-2 pt-1 pb-1 text-[10px] font-semibold tracking-wide text-muted uppercase">
+            <span className="truncate">Top values of {sortPath(field, path)}</span>
+            <span>Docs</span>
+          </DropdownMenu.Label>
+          {(state === undefined || state.status === 'loading') && (
+            <p className="px-2 py-1.5 text-xs text-muted">Reading the top values…</p>
+          )}
+          {state?.status === 'error' && (
+            <p role="alert" className="px-2 py-1.5 text-xs text-danger">
+              {state.error}
+            </p>
+          )}
+          {state?.status === 'done' && state.values.length === 0 && (
+            <p className="px-2 py-1.5 text-xs text-muted">No document has a value here.</p>
+          )}
+          {state?.values.map((value) => {
+            const picked = props.picked?.includes(value.text) ?? false;
+            return (
+              <DropdownMenu.Item
+                key={value.text}
+                onSelect={() => props.onPick(value.text)}
+                disabled={picked}
+                data-testid="search-builder-top-value"
+                className="relative flex cursor-default items-center gap-2 overflow-hidden rounded px-2 py-1 outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-hover"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-y-0.5 left-0 rounded-r bg-accent/10"
+                  style={{ width: `${Math.max(4, (value.count / max) * 100)}%` }}
+                />
+                <span className="relative min-w-0 flex-1 truncate font-mono text-xs">
+                  {value.text}
+                </span>
+                <span className="relative text-[11px] text-muted tabular-nums">
+                  {picked ? <Icon name="check" className="h-3 w-3" /> : formatCount(value.count)}
+                </span>
+              </DropdownMenu.Item>
+            );
+          })}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 

@@ -8,6 +8,8 @@ import {
   newRaw,
   newSort,
   readDsl,
+  readTopValues,
+  sortPath,
   uniqueName,
   withOperator,
   type DslAggregation,
@@ -21,9 +23,12 @@ import {
   type DslSortItem,
   type DslTexts,
   type Occur,
+  type TopValue,
 } from '@joinery/search-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
+
+import { errorMessage } from '../../lib/errors';
 
 /**
  * The documents view's query builder (spec §11, ADR 0024): the index's mapped fields to build
@@ -49,6 +54,15 @@ export interface DslBuilderHost {
   /** Calls `listener` after every change of the view's state. */
   readonly subscribe: (listener: () => void) => () => void;
   readonly setTexts: (texts: DslTexts) => void;
+  /** The response body of a `topValuesBody(path)` search on the view's target. */
+  readonly topValues?: (path: string) => Promise<string>;
+}
+
+/** A field's most common values, for its value inputs. */
+export interface TopValuesState {
+  readonly status: 'loading' | 'done' | 'error';
+  readonly values: readonly TopValue[];
+  readonly error: string | undefined;
 }
 
 export interface FieldList {
@@ -71,6 +85,8 @@ export interface DslBuilderState {
   readonly fieldList: FieldList;
   /** The field list's search text (also a path to add that the mapping does not have). */
   readonly search: string;
+  /** Top values read so far, by field path. */
+  readonly topValues: Readonly<Record<string, TopValuesState>>;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -254,6 +270,7 @@ export class DslBuilder {
       pending: undefined,
       fieldList: { status: 'idle', fields: [], error: undefined },
       search: '',
+      topValues: {},
     }));
     this.#unsubscribe = host.subscribe(() => this.#onBarChange());
     this.#onBarChange();
@@ -277,7 +294,7 @@ export class DslBuilder {
 
   /** The mapped fields (from the view's mapping); the bar is read again with their types. */
   setFields(fieldList: FieldList): void {
-    this.#set({ fieldList });
+    this.#set({ fieldList, topValues: {} });
     if (this.state.pending === undefined) {
       this.#synced = undefined;
       this.#sync(this.#host.texts());
@@ -290,6 +307,26 @@ export class DslBuilder {
 
   get #fields(): readonly DslField[] {
     return this.state.fieldList.fields;
+  }
+
+  /**
+   * Reads a field's most common values (a terms aggregation over the view's target), once; a
+   * text field's come from its keyword multi-field.
+   */
+  async loadTopValues(path: string): Promise<void> {
+    const read = this.#host.topValues;
+    const current = this.state.topValues[path];
+    if (!read || current?.status === 'loading' || current?.status === 'done') return;
+    const field = this.field(path);
+    const set = (state: TopValuesState): void =>
+      this.#set({ topValues: { ...this.state.topValues, [path]: state } });
+    set({ status: 'loading', values: [], error: undefined });
+    try {
+      const body = await read(sortPath(field, path));
+      set({ status: 'done', values: readTopValues(body, field?.kind), error: undefined });
+    } catch (error) {
+      set({ status: 'error', values: [], error: errorMessage(error) });
+    }
   }
 
   /** The problem to fix before searching, if the bar does not have the builder's query yet. */

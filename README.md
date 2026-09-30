@@ -112,8 +112,9 @@ What works today:
   bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
   health, data streams and aliases; a Kibana-style console with autocomplete from the open API
   specification; a document grid paged past 10,000 hits with editing, conflict detection and
-  bulk actions; a query builder from the mapping (bool sections, nested groups, sort and
-  aggregations, with typed Query DSL read back) whose aggregations show beside the documents;
+  bulk actions; a query builder from the mapping (bool sections, nested groups, each field's top
+  values, date ranges with their format and time zone, sort and aggregations, with typed Query
+  DSL read back) whose aggregations show beside the documents;
   SQL with Translate to DSL, and ES|QL, with aggregations as a tree or a table;
   index operations, create index, a mapping editor that plans a reindex when a change cannot
   apply in place, and reindex with live progress; cluster health, nodes, shard allocation with
@@ -139,8 +140,7 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: cloud sync and the AI assistant; the embedded mongosh shell for MongoDB. The
-product specification lists the full scope.
+Not built yet: cloud sync. The product specification lists the full scope.
 
 ## Repository layout
 
