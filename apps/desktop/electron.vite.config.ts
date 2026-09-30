@@ -71,6 +71,16 @@ const notices = thirdPartyNotices({
   ],
 });
 
+/** The MongoDB driver's optional peer dependencies (lib/deps.js), none of which the app ships. */
+export const MONGODB_OPTIONAL_PEERS = [
+  'kerberos',
+  'snappy',
+  '@mongodb-js/zstd',
+  'gcp-metadata',
+  'mongodb-client-encryption',
+  '@aws-sdk/credential-providers',
+];
+
 const nodeOutput = {
   format: 'cjs',
   entryFileNames: '[name].cjs',
@@ -94,6 +104,9 @@ export default defineConfig({
         // Optional native or platform-specific modules that the bundled drivers never load here;
         // dt-sql-parser only serves editor diagnostics, which run in the renderer. ssh2 tries its
         // optional native helpers (cpu-features, sshcrypto.node) and falls back to plain JS.
+        // The MongoDB driver requires its optional peers inside try/catch and reports a missing
+        // one when it is needed; bundled instead, Vite stubs them with a module that throws as
+        // the driver's chunk loads in a development build (`pnpm dev`).
         external: [
           'pg-native',
           'cloudflare:sockets',
@@ -101,6 +114,7 @@ export default defineConfig({
           /^dt-sql-parser\//,
           'cpu-features',
           /\.node$/,
+          ...MONGODB_OPTIONAL_PEERS,
         ],
       },
     },
