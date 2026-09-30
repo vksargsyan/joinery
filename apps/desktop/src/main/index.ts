@@ -24,9 +24,15 @@ import {
   type WebContents,
 } from 'electron';
 
+import windowIcon from '../../build/icons/512x512.png?asset';
 import { HELLO_CHANNEL, PORT_CHANNEL, type PortPayload } from '../shared/bridge';
 import { buildContentSecurityPolicy } from '../shared/csp';
-import { createMainHandlers, type MainServices, type OpenFileOptions } from './api';
+import {
+  createMainHandlers,
+  readAppSettings,
+  type MainServices,
+  type OpenFileOptions,
+} from './api';
 import { APP_ENTRY_URL, APP_ORIGIN, APP_SCHEME, createAppProtocolHandler } from './app-protocol';
 import { HostKeyBroker, knownHostsFile } from './host-keys';
 import { utilityJobRunnerFactory } from './job-runner-process';
@@ -43,6 +49,8 @@ import {
 } from './security';
 import { ConnectionSupervisor } from './supervisor';
 import { SyncService } from './sync';
+import { isAllowedUpdateUrl, RELEASES_PAGE } from './update-policy';
+import { AppCommands, createUpdates, type UpdateController, type UpdateSettings } from './updates';
 import { utilityHostFactory } from './utility-host';
 
 /**
@@ -101,6 +109,7 @@ let store: Store | undefined;
 let supervisor: ConnectionSupervisor<MessagePortMain> | undefined;
 let jobs: JobManager | undefined;
 let sync: SyncService | undefined;
+let updates: UpdateController | undefined;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -159,6 +168,14 @@ function start(): void {
   const jobManager = startJobs(openedStore, hostKeys);
   // Data compare jobs spool their rows under the temporary folder, for this app run only.
   sync = new SyncService({ jobs: jobManager, spoolRoot: app.getPath('temp') });
+  // The desktop starts dark and without the editor minimap; users change both in settings.
+  const defaultSettings = {
+    ...DEFAULT_APP_SETTINGS,
+    theme: 'dark' as const,
+    editor: { ...DEFAULT_APP_SETTINGS.editor, minimap: false },
+  };
+  const appCommands = new AppCommands();
+  const updater = startUpdates(readAppSettings(openedStore, defaultSettings));
   const services: MainServices<MessagePortMain> = {
     store: openedStore,
     supervisor: connections,
@@ -184,12 +201,10 @@ function start(): void {
     jobs: jobManager,
     sync,
     previousRun,
-    // The desktop starts dark and without the editor minimap; users change both in settings.
-    defaultSettings: {
-      ...DEFAULT_APP_SETTINGS,
-      theme: 'dark',
-      editor: { ...DEFAULT_APP_SETTINGS.editor, minimap: false },
-    },
+    defaultSettings,
+    updates: updater,
+    appCommands,
+    onSettingsChanged: (settings) => updater.applySettings(settings),
   };
   serveMainContract(services);
 
@@ -199,10 +214,19 @@ function start(): void {
         platform: process.platform,
         appName: app.getName(),
         development: !app.isPackaged,
+        commands: {
+          about: () => appCommands.send('about'),
+          checkForUpdates: () => void updater.check(),
+          releaseNotes: () => {
+            openExternal(updater.status().releaseNotesUrl ?? RELEASES_PAGE).catch(() => undefined);
+          },
+        },
       }),
     ),
   );
+  if (!app.isPackaged) app.dock?.setIcon(windowIcon);
   createMainWindow();
+  void updater.start();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
@@ -275,6 +299,31 @@ function serveMainContract(services: MainServices<MessagePortMain>): void {
 }
 
 /**
+ * Auto-update (spec §20): electron-updater in its own session, which may reach GitHub only.
+ */
+function startUpdates(settings: UpdateSettings): UpdateController {
+  // electron-updater downloads through this partition (its NET_SESSION_NAME).
+  session
+    .fromPartition('electron-updater', { cache: false })
+    .webRequest.onBeforeRequest((details, callback) => {
+      callback({ cancel: !isAllowedUpdateUrl(details.url) });
+    });
+  updates = createUpdates({
+    host: {
+      packaged: app.isPackaged,
+      version: app.getVersion(),
+      platform: process.platform,
+      env: process.env,
+      execPath: process.execPath,
+      resourcesPath: process.resourcesPath,
+    },
+    settings,
+    log: (message) => console.info(`[updates] ${message}`),
+  });
+  return updates;
+}
+
+/**
  * The job runner (spec §3): started on demand, its history kept in the local store, and a
  * desktop notification when a long job ends (spec §14).
  */
@@ -300,6 +349,8 @@ function createMainWindow(): void {
     show: false,
     title: 'Joinery',
     backgroundColor: '#101216',
+    // Windows and macOS take the icon from the executable and the bundle; Linux needs it here.
+    ...(process.platform === 'linux' || !app.isPackaged ? { icon: windowIcon } : {}),
     webPreferences: secureWebPreferences(join(__dirname, '../preload/index.cjs'), !app.isPackaged),
   });
   window.once('ready-to-show', () => window.show());
@@ -311,6 +362,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  updates?.dispose();
   supervisor?.closeAll();
   jobs?.shutdown();
   jobs = undefined;

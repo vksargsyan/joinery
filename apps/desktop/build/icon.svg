@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    The Joinery icon, the one source every app icon is generated from (scripts/icons.ts):
+    a dovetail joint, the amber board's tail locked into the navy board's socket. Two flat
+    colours on a rounded tile, so it reads at 16 px and on light and dark backgrounds.
+  -->
+  <title>Joinery</title>
+  <defs>
+    <clipPath id="tile">
+      <rect width="1024" height="1024" rx="230" />
+    </clipPath>
+    <mask id="joint" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#fff" />
+      <path d="M0 620H372L252 300H772L652 620H1024" fill="none" stroke="#000" stroke-width="28" />
+    </mask>
+  </defs>
+  <g clip-path="url(#tile)" mask="url(#joint)">
+    <rect width="1024" height="1024" fill="#f5a524" />
+    <path d="M0 0H1024V620H652L772 300H252L372 620H0Z" fill="#26407a" />
+  </g>
+</svg>

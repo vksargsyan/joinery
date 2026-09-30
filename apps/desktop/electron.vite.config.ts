@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
 import type { Plugin } from 'vite';
 
+import { thirdPartyNotices } from './scripts/third-party';
 import { buildContentSecurityPolicy } from './src/shared/csp';
 
 const root = import.meta.dirname;
@@ -43,6 +44,22 @@ function contentSecurityPolicy(): Plugin {
   };
 }
 
+/**
+ * Records the npm packages each build ships; the renderer build writes the licence report and
+ * fails on a copyleft or unknown licence. The Electron runtime and Tailwind (whose preflight is
+ * compiled into the CSS) are not modules of any bundle, so they are named here. `reviewed` holds
+ * the licence a person read for a shipped package that declares none (`name@version` → SPDX).
+ */
+const notices = thirdPartyNotices({
+  root,
+  productName: 'Joinery',
+  extra: [
+    { name: 'electron', shippedIn: 'runtime' },
+    { name: 'tailwindcss', shippedIn: 'renderer' },
+  ],
+  reviewed: {},
+});
+
 const nodeOutput = {
   format: 'cjs',
   entryFileNames: '[name].cjs',
@@ -51,6 +68,7 @@ const nodeOutput = {
 
 export default defineConfig({
   main: {
+    plugins: [notices.collect('main')],
     define: {
       __JOINERY_DEV_SCRIPT_HASHES__: JSON.stringify(devScriptHashes),
     },
@@ -77,6 +95,7 @@ export default defineConfig({
     },
   },
   preload: {
+    plugins: [notices.collect('preload')],
     build: {
       rollupOptions: {
         input: { index: resolve(root, 'src/preload/index.ts') },
@@ -86,7 +105,13 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(root, 'src/renderer'),
-    plugins: [react(), tailwindcss(), contentSecurityPolicy()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      contentSecurityPolicy(),
+      notices.collect('renderer'),
+      notices.emit(),
+    ],
     build: {
       rollupOptions: {
         input: resolve(root, 'src/renderer/index.html'),
@@ -95,6 +120,6 @@ export default defineConfig({
       minify: 'esbuild',
       chunkSizeWarningLimit: 8_000,
     },
-    worker: { format: 'es' },
+    worker: { format: 'es', plugins: () => [notices.collect('renderer')] },
   },
 });

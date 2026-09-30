@@ -57,6 +57,7 @@ export * from './schemas/server-tools';
 export * from './schemas/workspace';
 export * from './schemas/backup';
 export * from './schemas/search';
+export * from './schemas/updates';
 
 export {
   connectionHostContract,
@@ -73,3 +74,4 @@ export { syncMainContractShape } from './contracts/sync';
 export { serverToolsHostContractShape } from './contracts/server-tools';
 export { autosaveMainContractShape, gridViewsMainContractShape } from './contracts/workspace';
 export { searchHostContractShape } from './contracts/search';
+export { updatesMainContractShape } from './contracts/updates';

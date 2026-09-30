@@ -216,6 +216,8 @@ export const appSettingsSchema = z.object({
   /** Opt-in only (spec §18). */
   telemetry: z.boolean(),
   updateChannel: z.enum(['stable', 'beta']),
+  /** Check for updates at start-up and every few hours (spec §20); off leaves the menu item. */
+  updateAutoCheck: z.boolean(),
   editor: z.object({
     fontSize: z.number().int().min(8).max(48),
     tabSize: z.number().int().min(1).max(16),
@@ -247,6 +249,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   locale: 'en',
   telemetry: false,
   updateChannel: 'stable',
+  updateAutoCheck: true,
   editor: {
     fontSize: 13,
     tabSize: 2,

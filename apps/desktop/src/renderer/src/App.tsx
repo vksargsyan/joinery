@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { mainApi } from './lib/main-client';
+import { AboutDialog } from './components/AboutDialog';
 import { ConnectionDialog, type ConnectionDialogMode } from './components/ConnectionDialog';
 import { Dock, openQueryTab } from './components/dock';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -17,10 +18,12 @@ import { Sidebar } from './components/Sidebar';
 import { SyncMenu } from './components/sync/SyncMenu';
 import { useTheme } from './components/theme';
 import { Button, Icon } from './components/ui';
+import { UpdateNotice } from './components/UpdateNotice';
 import { useConnections } from './state/connections';
 import { keys, useProfiles } from './state/data';
 import { runningCount, showJobs, useJobs, watchJobs } from './state/jobs';
 import { usePanels } from './state/panels';
+import { openAbout, watchAppCommands, watchUpdates } from './state/updates';
 import { useWorkspace } from './state/workspace';
 
 /**
@@ -61,6 +64,11 @@ export function App() {
 
   useEffect(() => {
     void watchJobs();
+  }, []);
+
+  useEffect(() => {
+    void watchUpdates();
+    void watchAppCommands();
   }, []);
 
   const toggleTheme = async (): Promise<void> => {
@@ -132,6 +140,9 @@ export function App() {
         >
           {theme === 'dark' ? 'Light theme' : 'Dark theme'}
         </Button>
+        <Button size="sm" variant="ghost" onClick={() => openAbout()} aria-label="About Joinery">
+          About
+        </Button>
       </header>
       <div className="flex min-h-0 flex-1">
         <div className="w-72 shrink-0">
@@ -163,6 +174,8 @@ export function App() {
       <TransferDialogs />
       <TransferDbHost />
       <BackupDialogs />
+      <AboutDialog />
+      <UpdateNotice />
       {dialog && <ConnectionDialog mode={dialog} onClose={() => setDialog(undefined)} />}
     </div>
   );

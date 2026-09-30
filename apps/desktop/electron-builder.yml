@@ -1,5 +1,6 @@
-# Packaging (spec §20). Configuration only: signing, notarisation and publishing belong to the
-# release pipeline, which supplies certificates through the environment.
+# Packaging (spec §20): release builds. Signing, notarisation and publishing credentials come
+# from the environment of the Package workflow (docs/releasing.md); without them electron-builder
+# builds unsigned. Test builds use electron-builder.adhoc.yml, which carries no update feed.
 appId: dev.joinery.desktop
 productName: Joinery
 executableName: joinery
@@ -30,7 +31,20 @@ electronFuses:
   # The renderer is served from the app:// protocol, so file:// needs no extra privileges.
   grantFileProtocolExtraPrivileges: false
 
+# The update feed (spec §20): electron-builder writes it into resources/app-update.yml, which
+# turns on electron-updater (src/main/updates.ts), and writes the update metadata next to the
+# installers (latest.yml, latest-mac.yml, latest-linux.yml, latest-linux-arm64.yml; with the
+# github provider a beta version gets latest*.yml too, and the channel comes from GitHub's
+# pre-release flag). CI builds with --publish never; the release job uploads to a draft release.
+publish:
+  provider: github
+  owner: vksargsyan
+  repo: joinery
+  releaseType: draft
+
+# Icons are generated from build/icon.svg by scripts/icons.ts.
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64, arm64]
@@ -39,28 +53,39 @@ win:
     - target: zip
       arch: [x64, arm64]
 nsis:
+  # One installer for both architectures; it installs the one the machine has.
+  artifactName: ${productName}-Setup-${version}.${ext}
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
 msi:
-  # For managed deployment (spec §20).
+  # For managed deployment (spec §20). MSI installs are updated by redeploying, not by the app.
+  artifactName: ${productName}-${version}-${arch}.${ext}
   perMachine: true
 
 mac:
+  icon: build/icon.icns
   category: public.app-category.developer-tools
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   target:
+    # The zip is what Squirrel.Mac updates from; the DMG is for first installs.
     - target: dmg
       arch: universal
     - target: zip
       arch: universal
 
 linux:
+  icon: build/icons
   category: Development
   synopsis: Database manager for MySQL, MariaDB, PostgreSQL and more
+  description: A database manager for MySQL, MariaDB, PostgreSQL, MongoDB and Redis.
+  maintainer: Joinery <https://github.com/vksargsyan/joinery>
+  # The .desktop file is named after package.json's desktopName, which Electron uses as the
+  # window's app id, so docks match running windows to it.
+  syncDesktopName: true
   target:
     - target: AppImage
       arch: [x64, arm64]
@@ -68,7 +93,15 @@ linux:
       arch: [x64, arm64]
     - target: rpm
       arch: [x64, arm64]
-    # Flatpak (spec §20) uses electron-builder's `flatpak` target, which needs flatpak-builder
-    # and the Freedesktop runtime on the build machine; add it once the release runners have them.
-
-publish: null
+    # No Flatpak: electron-builder's `flatpak` target only makes a single-file bundle that
+    # nothing updates, on an end-of-life runtime unless pinned, and needs flatpak-builder and
+    # about a gigabyte of runtimes on the runner. ADR 0013 records the Flathub route instead.
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+# The npm name is scoped (@joinery/desktop), which is no package or file name.
+deb:
+  packageName: joinery
+  artifactName: joinery_${version}_${arch}.${ext}
+rpm:
+  packageName: joinery
+  artifactName: joinery-${version}.${arch}.${ext}

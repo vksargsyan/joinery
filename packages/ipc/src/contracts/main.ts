@@ -6,6 +6,7 @@ import { mongoMainContractShape } from './mongo';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
 import { transferDbMainContractShape } from './transfer-db';
+import { updatesMainContractShape } from './updates';
 import {
   appInfoSchema,
   appSettingsPatchSchema,
@@ -35,6 +36,7 @@ import {
   transientSecretsSchema,
 } from '../schemas/app';
 import { idSchema, taskProgressSchema } from '../schemas/common';
+import { appCommandSchema } from '../schemas/updates';
 import { connectionCheckResultSchema } from '../schemas/driver';
 import {
   autoMatchInputSchema,
@@ -170,6 +172,8 @@ export const mainContract = defineContract({
     info: { input: z.void(), output: appInfoSchema },
     /** Opens an https link in the system browser, after main checks it (spec §18). */
     openExternal: { input: z.object({ url: externalUrlSchema }), output: z.void() },
+    /** Commands from the application menu (About...), for as long as the caller reads. */
+    commands: { input: z.void(), item: appCommandSchema },
   },
   dialogs: {
     /** A native open-file dialog (TLS CA, certificate and key paths); null when cancelled. */
@@ -274,6 +278,8 @@ export const mainContract = defineContract({
   transferDb: transferDbMainContractShape,
   /** Backup file inspection, restore plans and the native tools (spec §14). */
   backup: backupMainContractShape,
+  /** Auto-update (spec §20): status, check now, restart into the update. */
+  updates: updatesMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

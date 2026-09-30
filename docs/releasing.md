@@ -1,0 +1,221 @@
+# Packaging and releasing
+
+How Joinery's installers are built, signed, updated and audited (spec §18 "Signed builds, a
+software bill of materials per release", §20 "Packaging and updates"). The decisions behind it
+are in [ADR 0013](adr/0013-packaging-and-updates.md).
+
+## What the Package workflow builds
+
+`.github/workflows/package.yml` runs on pull requests that touch packaging, on `v*` tags and on
+manual dispatch. Every job installs what it built and runs the packaged smoke tests
+(`apps/desktop/e2e/packaged/*.packaged.ts`: the window loads from `app.asar`, a connection host
+starts, a query runs against PostgreSQL where the runner has one, and the About box shows the
+version, the update status and the licence report).
+
+| Job             | Runner             | Builds                                                         | Smoke test                                                                              |
+| --------------- | ------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `linux`         | `ubuntu-24.04`     | AppImage, deb, rpm for x64 and arm64; the SBOM and notices     | installed x64 deb against a PostgreSQL service; x64 AppImage with updates off by policy |
+| `linux-arm64`   | `ubuntu-24.04-arm` | (uses `linux`'s packages)                                      | installed arm64 deb against a PostgreSQL service                                        |
+| `windows`       | `windows-2025`     | NSIS (one installer for x64 and arm64), MSI and zip, each arch | NSIS install against the image's PostgreSQL; MSI install with the Group Policy switch   |
+| `windows-arm64` | `windows-11-arm`   | (uses `windows`' packages)                                     | NSIS install, no-server path                                                            |
+| `macos`         | `macos-15`         | universal DMG (and zip for signed releases)                    | installed from the DMG, against Homebrew PostgreSQL                                     |
+| `release`       | `ubuntu-24.04`     | a draft GitHub release with everything above (tags only)       |                                                                                         |
+
+In a release whose updates are on (a signed Windows or macOS build, the Linux deb), the smoke
+test also presses "Check for updates" and waits for the answer from GitHub, which proves that
+electron-updater loads from the archive.
+
+Two configurations:
+
+- `apps/desktop/electron-builder.adhoc.yml`: **test builds** (pull requests, branch runs,
+  `pnpm --filter @joinery/desktop package`). Unsigned, ad-hoc signed on macOS, and without an
+  update feed, so the app never tries to update itself; its About box says "test build".
+- `apps/desktop/electron-builder.yml`: **release builds** (a `v*` tag). It carries the update
+  feed (`publish` → GitHub Releases of `vksargsyan/joinery`), which electron-builder writes into
+  `resources/app-update.yml`, and the update metadata next to the installers: `latest.yml`
+  (Windows), `latest-mac.yml`, `latest-linux.yml` and `latest-linux-arm64.yml`. CI always runs
+  electron-builder with `--publish never`; the `release` job uploads.
+
+**Flatpak is not built.** electron-builder's `flatpak` target makes a single-file bundle that no
+update channel reaches (electron-updater cannot replace it and there is no Flatpak repository),
+defaults to the end-of-life Freedesktop 20.08 runtime, and needs flatpak-builder plus about a
+gigabyte of runtime, SDK and Electron base app on the runner for every build. Flatpak users are
+better served by a Flathub listing that repackages the released x64 and arm64 builds; ADR 0013
+has the outline.
+
+## Cutting a release
+
+1. Set the version in `apps/desktop/package.json`: `1.4.0` for stable, `1.4.0-beta.1` for beta.
+2. Tag the commit `v<version>` and push the tag. (A manual run of the workflow with the tag
+   selected rebuilds a release; its `rollout` input sets the staged rollout.)
+3. The workflow builds, signs where the secrets exist, smoke-tests, then creates a **draft**
+   release with the installers, the update metadata, `SHA256SUMS.txt`, the SBOM and the notices.
+   It fails if the tag does not match the version. A version with a pre-release part becomes a
+   GitHub pre-release.
+4. Review the draft (notes, assets) and publish it. Installed apps see it on their next check.
+
+Channels follow GitHub's release types, not file names: electron-builder writes `latest*.yml`
+for every version when publishing to GitHub. The **stable** channel follows GitHub's latest
+release, which is never a pre-release; the **beta** channel takes the newest release of either
+kind (it asks for `beta*.yml` first and falls back to `latest*.yml`). Leaving beta never
+downgrades: the app stays on its beta until a newer stable ships.
+`apps/desktop/test/update-feed.test.ts` checks these rules against electron-updater itself.
+
+Protect the `v*` tag pattern (Settings → Rules) so that only maintainers can start a release:
+the signing secrets are only used in tag runs.
+
+## Signing and notarisation secrets
+
+Each is used only in release runs, only when present, and never printed. Without them the
+release is still built: unsigned on Windows (it then refuses to update itself) and ad-hoc
+signed on macOS (without an update feed). Pull requests never see them.
+
+**macOS** (Developer ID Application certificate, notarisation through an App Store Connect API
+key):
+
+| Secret                       | Contents                                                          |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `MAC_CERTIFICATE_P12_BASE64` | the Developer ID Application certificate and key, `.p12`, base64  |
+| `MAC_CERTIFICATE_PASSWORD`   | the `.p12` password                                               |
+| `APPLE_API_KEY_P8`           | the text of the App Store Connect API key (`AuthKey_XXXXXXXX.p8`) |
+| `APPLE_API_KEY_ID`           | its key id                                                        |
+| `APPLE_API_ISSUER`           | its issuer id                                                     |
+
+`base64 -i DeveloperID.p12 | pbcopy` gives the certificate value. electron-builder imports the
+certificate into a temporary keychain, signs with the hardened runtime and
+`build/entitlements.mac.plist`, and notarises with notarytool; the job then checks
+`stapler validate` and `spctl --assess`. The certificate without the API key is not used: an
+app signed but not notarised is refused by Gatekeeper anyway.
+
+**Windows**, either a code-signing certificate:
+
+| Secret                           | Contents                                |
+| -------------------------------- | --------------------------------------- |
+| `WINDOWS_CERTIFICATE_PFX_BASE64` | the certificate and key, `.pfx`, base64 |
+| `WINDOWS_CERTIFICATE_PASSWORD`   | the `.pfx` password                     |
+
+or Azure Trusted Signing (for certificates kept in an HSM):
+
+| Name                              | Kind     | Contents                                                      |
+| --------------------------------- | -------- | ------------------------------------------------------------- |
+| `AZURE_TENANT_ID`                 | secret   | the service principal's tenant                                |
+| `AZURE_CLIENT_ID`                 | secret   | its client id                                                 |
+| `AZURE_CLIENT_SECRET`             | secret   | its client secret                                             |
+| `AZURE_TRUSTED_SIGNING_ENDPOINT`  | variable | e.g. `https://weu.codesigning.azure.net`                      |
+| `AZURE_TRUSTED_SIGNING_ACCOUNT`   | variable | the code signing account name                                 |
+| `AZURE_TRUSTED_SIGNING_PROFILE`   | variable | the certificate profile name                                  |
+| `AZURE_TRUSTED_SIGNING_PUBLISHER` | variable | the certificate's subject common name (the updater checks it) |
+
+With either, the build sets `forceCodeSigning`, so a signing failure fails the release instead of
+shipping unsigned. The publisher name ends up in `app-update.yml`; electron-updater checks each
+downloaded installer's Authenticode signature against it.
+
+## Auto-update
+
+`apps/desktop/src/main/updates.ts` runs electron-updater in the main process, in its own session
+that may only reach GitHub over https. Updates download in the background; the window then shows
+"Joinery x.y.z is ready" with Restart now, Release notes and Later. Help → Check for Updates (the
+app menu on macOS) checks at once; the About box (Help → About, or the header's About button)
+holds the channel, "Check for updates automatically" and the status. Automatic checks run 30 s
+after start-up and every 4 hours. Development runs and the e2e tests (unpackaged) and test
+builds (no feed) never check or prompt.
+
+What verifies an update: the SHA-512 of every download, from the release's metadata, on every
+platform; on Windows the Authenticode publisher of the installer; on macOS Squirrel.Mac's check
+that the new app satisfies the running app's code signature. Linux packages carry no signature
+electron-updater could check, so they rely on the metadata's hash over https from GitHub.
+
+The updater stays off, and the About box says why, when: it is a development run; an
+administrator's policy turns it off; the build is a test build (no feed); a Windows build has no
+code-signing publisher; or the installation is one it cannot replace. It replaces NSIS installs,
+macOS app bundles and AppImages (also when the app quits), and deb and rpm installs (only on
+"Restart now", because they ask for the administrator password through the desktop's graphical
+sudo prompt). MSI installs, the Windows zip and unpacked folders are updated by installing the
+new version.
+
+### Staged rollout
+
+A release's update metadata can carry `stagingPercentage`: each install keeps a random id in its
+user data directory (`.updaterId`) and takes the update only when the id falls within the
+percentage, so the same machines stay in as it grows. Set it when building with the manual
+run's `rollout` input or the repository variable `JOINERY_ROLLOUT_PERCENT` (default 100, which
+omits the field). To change it on a published release:
+
+```sh
+tag=v1.4.0
+mkdir rollout && cd rollout
+gh release download "$tag" -R vksargsyan/joinery -p 'latest*.yml'
+pnpm --filter @joinery/desktop rollout 50 "$PWD"                     # 100 = everyone, 0 = halt
+gh release upload "$tag" -R vksargsyan/joinery --clobber latest*.yml
+```
+
+Setting 0 halts a rollout that went wrong; installs that already updated keep the new version.
+`SHA256SUMS.txt` covers the installers only, so it stays valid.
+
+### Managed fleets: the policy switch
+
+Administrators turn updates off (and can pin the channel) machine-wide. Any source turning
+updates off wins; a pinned channel greys out the user's choice. Every source can only be written
+by an administrator, except the environment variable, which can only turn updates off.
+
+| Platform       | Where                                                                                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows        | `HKLM\SOFTWARE\Policies\Joinery`: `DisableUpdates` (REG_DWORD, 1 = off), `UpdateChannel` (REG_SZ, `stable`/`beta`), e.g. from Group Policy or Intune                                     |
+| macOS          | a configuration profile for the preference domain `dev.joinery.desktop` (`/Library/Managed Preferences/dev.joinery.desktop.plist`): `DisableUpdates` (boolean), `UpdateChannel` (string) |
+| macOS, Linux   | a JSON file: `/Library/Application Support/Joinery/policy.json`, `/etc/joinery/policy.json`                                                                                              |
+| Every platform | the environment variable `JOINERY_DISABLE_UPDATES=1` (a system-wide variable for a fleet)                                                                                                |
+
+Windows has no policy file: standard users may create folders under `%ProgramData%`, so a file
+there would let any user switch updates off for everyone on the machine.
+
+The JSON file:
+
+```json
+{ "disableUpdates": true, "updateChannel": "stable" }
+```
+
+A policy file that exists but cannot be read as a policy turns updates off. MSI deployments are
+not updated by the app in any case; the switch also covers NSIS installs and the other
+platforms.
+
+```bat
+reg add HKLM\SOFTWARE\Policies\Joinery /v DisableUpdates /t REG_DWORD /d 1 /f
+```
+
+## SBOM and licence notices
+
+- **Licence report and check**: the renderer build (`scripts/third-party.ts`, a Vite plugin)
+  records every npm package whose code ends up in `out/` (main, preload, renderer, workers),
+  plus Electron and Tailwind's compiled CSS, and writes `out/renderer/third-party.json` and
+  `THIRD_PARTY_NOTICES.txt` with each package's licence and NOTICE texts. The About box's
+  "Third-party licences" tab lists them; Chromium's and Node.js's licences ship next to the
+  executable (`LICENSES.chromium.html`). **Every build fails** (`electron-vite build`, so CI,
+  the e2e tests and packaging) when a shipped package is AGPL, GPL, LGPL or SSPL only, or when
+  its licence is unknown: none declared, `UNLICENSED`, or `SEE LICENSE IN <file>`. For an unknown
+  one, read the package's licence and record it under `reviewed` in
+  `apps/desktop/electron.vite.config.ts` (`'name@version': 'MIT'`).
+- **SBOM**: `pnpm --filter @joinery/desktop sbom` (after a build) writes a CycloneDX 1.6 JSON
+  bill of materials of the desktop app from `pnpm-lock.yaml`: every package in the app's
+  dependency closure with its version, purl, integrity hash, licence and dependency graph.
+  Packages the app ships are `required`, build tools `excluded`, first-party workspace packages
+  are listed too. `SOURCE_DATE_EPOCH` fixes its timestamp. The `linux` job generates it on every
+  run; a release attaches it as `joinery-<version>.cdx.json`, next to the notices.
+
+## Icons
+
+Every icon comes from `apps/desktop/build/icon.svg` (a dovetail joint): `pnpm --filter
+@joinery/desktop icons` renders `icon.icns` (macOS, with Apple's margin), `icon.ico` (16–256 px),
+`icons/<n>x<n>.png` (Linux, and the window icon) and `icon.png`. The outputs are committed; a
+unit test fails when they no longer match the SVG.
+
+## Local builds
+
+```sh
+pnpm --filter @joinery/desktop package                     # test build for this OS, in apps/desktop/dist
+cd apps/desktop && pnpm exec electron-builder --config electron-builder.adhoc.yml --linux AppImage deb rpm --x64
+JOINERY_PACKAGED_APP=$PWD/dist/linux-unpacked/joinery xvfb-run -a pnpm exec playwright test -c e2e/packaged.config.ts
+```
+
+The rpm target needs `rpmbuild` (`apt install rpm`). An AppImage runs without FUSE with
+`APPIMAGE_EXTRACT_AND_RUN=1`. A deb can be tried without installing it: `dpkg-deb -x` it into a
+folder and point `JOINERY_PACKAGED_APP` at `opt/Joinery/joinery` inside.

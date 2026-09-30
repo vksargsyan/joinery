@@ -151,10 +151,14 @@ Run the desktop app in development:
 pnpm --filter @joinery/desktop dev
 ```
 
-Build installers for the current OS with `pnpm --filter @joinery/desktop package` (output in
-`apps/desktop/dist`). The Package workflow builds an ad-hoc signed universal macOS DMG and
-smoke-tests it after installing it; until releases are signed with a Developer ID, macOS asks
-you to allow the app in System Settings → Privacy & Security the first time it opens.
+Build a test installer for the current OS with `pnpm --filter @joinery/desktop package` (output
+in `apps/desktop/dist`). The Package workflow builds and smoke-tests the installers of every
+platform: AppImage, deb and rpm (x64, arm64), NSIS, MSI and zip (x64, arm64), and a universal
+macOS DMG. A `v*` tag builds a release, signed and notarised when the signing secrets are set,
+with auto-update (stable and beta channels, staged rollout, a policy switch for managed fleets),
+a CycloneDX SBOM and third-party licence notices, into a draft GitHub release; see
+[docs/releasing.md](docs/releasing.md). Test builds are not signed: macOS asks you to allow them
+in System Settings → Privacy & Security the first time they open.
 
 Build and use the CLI:
 

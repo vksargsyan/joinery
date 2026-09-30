@@ -1,21 +1,36 @@
 import type { MenuItemConstructorOptions } from 'electron';
 
+/** What the app's own menu items do (spec §20: About with the licence report, updates). */
+export interface MenuCommands {
+  readonly about: () => void;
+  readonly checkForUpdates: () => void;
+  readonly releaseNotes: () => void;
+}
+
 /**
- * The application menu: standard roles only (the Edit roles make copy and paste work on macOS).
- * Reload and developer tools exist only in development builds.
+ * The application menu: standard roles (the Edit roles make copy and paste work on macOS), and
+ * with `commands` the About box and Check for Updates, in the app menu on macOS and under Help
+ * elsewhere. Reload and developer tools exist only in development builds.
  */
 export function menuTemplate(options: {
   readonly platform: string;
   readonly appName: string;
   readonly development: boolean;
+  readonly commands?: MenuCommands;
 }): MenuItemConstructorOptions[] {
   const mac = options.platform === 'darwin';
+  const commands = options.commands;
   const template: MenuItemConstructorOptions[] = [];
   if (mac) {
     template.push({
       label: options.appName,
       submenu: [
-        { role: 'about' },
+        commands ? { label: `About ${options.appName}`, click: commands.about } : { role: 'about' },
+        ...(commands
+          ? ([
+              { label: 'Check for Updates…', click: commands.checkForUpdates },
+            ] satisfies MenuItemConstructorOptions[])
+          : []),
         { type: 'separator' },
         { role: 'hide' },
         { role: 'hideOthers' },
@@ -62,5 +77,20 @@ export function menuTemplate(options: {
       ? [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }]
       : [{ role: 'minimize' }, { role: 'close' }],
   });
+  if (commands) {
+    template.push({
+      role: 'help',
+      submenu: [
+        { label: 'Release Notes', click: commands.releaseNotes },
+        ...(mac
+          ? []
+          : ([
+              { label: 'Check for Updates…', click: commands.checkForUpdates },
+              { type: 'separator' },
+              { label: `About ${options.appName}`, click: commands.about },
+            ] satisfies MenuItemConstructorOptions[])),
+      ],
+    });
+  }
   return template;
 }

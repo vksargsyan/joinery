@@ -17,3 +17,4 @@ supersede it with a new one.
 | [0010](0010-search-engines.md)               | Elasticsearch and OpenSearch: one driver on our own HTTP client  | Accepted |
 | [0011](0011-server-tools.md)                 | Server tools: neutral vocabulary, statements built in the host   | Accepted |
 | [0012](0012-excel-xml-zip-formats.md)        | Excel, XML and ZIP written on node:zlib, without a library       | Accepted |
+| [0013](0013-packaging-and-updates.md)        | Packaging, auto-update and licence audit on electron-builder     | Accepted |

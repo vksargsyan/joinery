@@ -29,6 +29,7 @@ import {
   serverToolsHostContractShape,
   transferDbMainContractShape,
   backupMainContractShape,
+  updatesMainContractShape,
   parseRequest,
   syncMainContractShape,
   safeProfileSchema,
@@ -448,6 +449,7 @@ describe('mainContract never hands a secret to the renderer', () => {
           versions: { node: '22' },
         }),
         openExternal: notUsed,
+        commands: notUsed,
       },
       dialogs: { openFile: notUsed, saveFile: notUsed, openDirectory: notUsed },
       hostKeys: { prompts: notUsed, answer: notUsed },
@@ -467,6 +469,7 @@ describe('mainContract never hands a secret to the renderer', () => {
       autosave: unusedHandlers(autosaveMainContractShape),
       transferDb: unusedHandlers(transferDbMainContractShape),
       backup: unusedHandlers(backupMainContractShape),
+      updates: unusedHandlers(updatesMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -613,6 +616,7 @@ describe('desktop additions', () => {
       app: {
         info: notUsed,
         openExternal: () => {},
+        commands: notUsed,
       },
       dialogs: {
         openFile: () => ({ path: null }),
@@ -636,6 +640,7 @@ describe('desktop additions', () => {
       autosave: unusedHandlers(autosaveMainContractShape),
       transferDb: unusedHandlers(transferDbMainContractShape),
       backup: unusedHandlers(backupMainContractShape),
+      updates: unusedHandlers(updatesMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

@@ -1,81 +1,27 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { expect, test } from '@playwright/test';
 
-import { chromium, expect, test, type Browser, type Page } from '@playwright/test';
+import { EXECUTABLE, launchPackaged, type PackagedApp } from './launch';
 
 /**
- * A smoke test of the packaged app. Its fuses turn off the Node inspector that Playwright's
- * Electron launcher attaches to, so the app is started directly and driven through the
- * renderer's DevTools port. It checks that the window loads from app.asar and that a connection
- * host starts from inside the archive; with JOINERY_TEST_POSTGRES_URL it also runs a query.
+ * A smoke test of the packaged app: the window loads from app.asar and a connection host starts
+ * from inside the archive; with JOINERY_TEST_POSTGRES_URL it also runs a query.
  *
  *   JOINERY_PACKAGED_APP=dist/linux-unpacked/joinery playwright test -c e2e/packaged.config.ts
  */
 
-const EXECUTABLE = process.env['JOINERY_PACKAGED_APP'];
 const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
 
 test.skip(!EXECUTABLE, 'Set JOINERY_PACKAGED_APP to the packaged executable');
 
-let child: ChildProcess | undefined;
-let browser: Browser | undefined;
-let userData: string | undefined;
+let app: PackagedApp | undefined;
 
 test.afterAll(async () => {
-  await browser?.close();
-  if (child && child.exitCode === null && child.signalCode === null) {
-    const exited = new Promise((resolve) => child?.once('exit', resolve));
-    child.kill();
-    await exited;
-  }
-  if (userData) rmSync(userData, { recursive: true, force: true });
+  await app?.close();
 });
 
-/** Starts the packaged app with a throwaway user data directory and returns its window. */
-async function launch(executable: string): Promise<Page> {
-  userData = mkdtempSync(join(tmpdir(), 'joinery-packaged-'));
-  const args = ['--remote-debugging-port=0'];
-  // Chromium refuses to start its sandbox as root (a CI or dev container); see e2e/app.ts.
-  if (process.getuid?.() === 0 || process.env['JOINERY_E2E_NO_SANDBOX'] === '1') {
-    args.push('--no-sandbox');
-  }
-  const app = spawn(executable, args, {
-    env: { ...process.env, JOINERY_USER_DATA_DIR: userData },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  child = app;
-  const endpoint = await new Promise<string>((resolve, reject) => {
-    let output = '';
-    const timer = setTimeout(
-      () => reject(new Error(`No DevTools endpoint within 60 s:\n${output}`)),
-      60_000,
-    );
-    const onData = (chunk: Buffer): void => {
-      output += chunk.toString();
-      const match = /DevTools listening on (ws:\/\/\S+)/.exec(output);
-      if (match?.[1]) {
-        clearTimeout(timer);
-        resolve(match[1]);
-      }
-    };
-    app.stdout.on('data', onData);
-    app.stderr.on('data', onData);
-    app.once('exit', (code, signal) => {
-      clearTimeout(timer);
-      reject(new Error(`The app exited (${code ?? signal}) before it was ready:\n${output}`));
-    });
-  });
-  browser = await chromium.connectOverCDP(endpoint);
-  const context = browser.contexts()[0];
-  if (!context) throw new Error('The app has no browser context');
-  const page = context.pages().find((open) => open.url().startsWith('app://'));
-  return page ?? (await context.waitForEvent('page'));
-}
-
 test('starts, loads its window from the archive and runs a connection host', async () => {
-  const page = await launch(EXECUTABLE!);
+  app = await launchPackaged(EXECUTABLE!);
+  const { page } = app;
 
   await page.getByRole('button', { name: 'New connection' }).click();
   const dialog = page.getByRole('dialog', { name: 'New connection' });

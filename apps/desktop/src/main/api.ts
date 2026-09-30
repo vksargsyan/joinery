@@ -9,6 +9,7 @@ import {
   DEFAULT_APP_SETTINGS,
   appSettingsPatchSchema,
   appSettingsSchema,
+  type AppCommand,
   type AppInfo,
   type AppSettings,
   type AppSettingsPatch,
@@ -40,6 +41,7 @@ import type { ConnectionSupervisor } from './supervisor';
 import type { SyncService } from './sync';
 import { syncHandlers } from './sync-api';
 import { autosaveHandlers, gridViewHandlers } from './workspace-api';
+import { subscriptionStream, updateHandlers, type UpdatesService } from './updates';
 
 /**
  * The main contract's handlers (spec §3): profiles, folders, secrets, connections, history,
@@ -80,6 +82,14 @@ export interface MainServices<P> {
   readonly sync?: SyncService;
   /** How the app's previous run ended (`unclean` after a crash), for editor restore. */
   readonly previousRun?: PreviousRun['ended'];
+  /** Auto-update (spec §20); without it the status reports updates off. */
+  readonly updates?: UpdatesService;
+  /** Commands from the application menu for the page (About). */
+  readonly appCommands?: {
+    subscribe(listener: (command: AppCommand) => void): () => void;
+  };
+  /** Told the full settings after every change (the updater follows its channel). */
+  readonly onSettingsChanged?: (settings: AppSettings) => void;
 }
 
 /** What differs per window: where its ports go and which window owns its dialogs. */
@@ -102,6 +112,7 @@ function mergeSettings(base: AppSettings, patch: AppSettingsPatch): AppSettings 
       locale: patch.locale,
       telemetry: patch.telemetry,
       updateChannel: patch.updateChannel,
+      updateAutoCheck: patch.updateAutoCheck,
     }),
     editor: { ...base.editor, ...stripUndefined(patch.editor ?? {}) },
     results: { ...base.results, ...stripUndefined(patch.results ?? {}) },
@@ -111,6 +122,17 @@ function mergeSettings(base: AppSettings, patch: AppSettingsPatch): AppSettings 
 
 function stripUndefined<T extends object>(value: T): Partial<T> {
   return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
+
+/** The stored settings over the defaults, so settings added later get their default. */
+export function readAppSettings(
+  store: Pick<Store, 'settings'>,
+  defaults: AppSettings,
+): AppSettings {
+  const stored = store.settings.get(SETTINGS_KEY, appSettingsPatchSchema);
+  if (stored === undefined) return defaults;
+  const merged = appSettingsSchema.safeParse(mergeSettings(defaults, stored));
+  return merged.success ? merged.data : defaults;
 }
 
 export function createMainHandlers<P>(
@@ -127,13 +149,7 @@ export function createMainHandlers<P>(
     return profile;
   };
 
-  // Stored settings are a patch over the defaults, so settings added later get their default.
-  const readSettings = (): AppSettings => {
-    const stored = store.settings.get(SETTINGS_KEY, appSettingsPatchSchema);
-    if (stored === undefined) return defaults;
-    const merged = appSettingsSchema.safeParse(mergeSettings(defaults, stored));
-    return merged.success ? merged.data : defaults;
-  };
+  const readSettings = (): AppSettings => readAppSettings(store, defaults);
 
   return {
     profiles: {
@@ -249,6 +265,7 @@ export function createMainHandlers<P>(
       set: (patch) => {
         const next = appSettingsSchema.parse(mergeSettings(readSettings(), patch));
         store.settings.set(SETTINGS_KEY, next);
+        services.onSettingsChanged?.(next);
         return next;
       },
     },
@@ -261,6 +278,11 @@ export function createMainHandlers<P>(
         }
         await services.openExternal(url);
       },
+      commands: (_input, { signal }) =>
+        subscriptionStream<AppCommand>(
+          (listener) => services.appCommands?.subscribe(listener) ?? (() => undefined),
+          signal,
+        ),
     },
 
     dialogs: {
@@ -303,6 +325,7 @@ export function createMainHandlers<P>(
     autosave: autosaveHandlers(store, services.previousRun ?? 'none'),
     transferDb: transferDbHandlers(services),
     backup: backupMainHandlers(services, files),
+    updates: updateHandlers(services.updates, () => services.appInfo().version),
   };
 }
 
