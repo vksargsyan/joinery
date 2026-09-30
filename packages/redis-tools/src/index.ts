@@ -108,7 +108,14 @@ export {
   type LevelGroups,
   type NamespaceEntry,
 } from './namespace';
-export { aggregateByPattern, keyPattern, type KeySample, type PatternStats } from './patterns';
+export {
+  OTHER_PATTERNS,
+  PatternAggregator,
+  aggregateByPattern,
+  keyPattern,
+  type KeySample,
+  type PatternStats,
+} from './patterns';
 export {
   NIL,
   RespError,
@@ -184,3 +191,29 @@ export {
   type JsonValue,
   type ValueFormat,
 } from './values';
+export {
+  RdbError,
+  intsetCount,
+  listpackCount,
+  listpackFieldTtls,
+  lzfDecompress,
+  moduleTypeName,
+  readRdb,
+  ziplistCount,
+  zipmapCount,
+  type RdbHandlers,
+  type RdbKey,
+  type RdbReadOptions,
+  type RdbSummary,
+} from './rdb';
+export {
+  EXPIRY_BUCKETS,
+  analyzeRdb,
+  type ExpiryBucket,
+  type RdbAnalysis,
+  type RdbAnalysisOptions,
+  type RdbDatabaseStats,
+  type RdbGroupStats,
+  type RdbKeyInfo,
+  type RdbTypeStats,
+} from './rdb-analysis';

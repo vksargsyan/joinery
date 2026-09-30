@@ -296,6 +296,34 @@ describe('JobManager', () => {
     await expect(answer).rejects.toMatchObject({ code: 'TIMEOUT' });
   });
 
+  it('runs a long request with progress, no time limit and cancel', async () => {
+    const { manager, runners } = setup({ requestTimeoutMs: 100 });
+    const controller = new AbortController();
+    const progress: unknown[] = [];
+    const answer = manager.request(
+      { kind: 'rdb-analyze', input: { path: '/data/dump.rdb' } },
+      { timeoutMs: null, signal: controller.signal, onProgress: (p) => progress.push(p) },
+    );
+    const runner = runners[0]!;
+    const { requestId } = runner.ofType('request')[0]!;
+    runner.emit({ type: 'request-progress', requestId, progress: { bytes: 10, total: 100 } });
+    expect(progress).toEqual([{ bytes: 10, total: 100 }]);
+    // Well past the usual limit, it still waits.
+    vi.advanceTimersByTime(60_000);
+    expect(runner.ofType('cancel-request')).toHaveLength(0);
+    controller.abort();
+    expect(runner.ofType('cancel-request')).toEqual([{ type: 'cancel-request', requestId }]);
+    runner.emit({
+      type: 'response',
+      requestId,
+      error: { code: 'CANCELLED', message: 'Analysis cancelled' },
+    });
+    await expect(answer).rejects.toMatchObject({ code: 'CANCELLED' });
+    // The runner is idle again, so it shuts down.
+    vi.advanceTimersByTime(1_000);
+    expect(runner.ofType('shutdown')).toHaveLength(1);
+  });
+
   it('asks about SSH host keys of a job with its profile name', async () => {
     const verify = vi.fn<HostKeyVerification['verify']>(async () => ({
       decision: 'trust' as const,

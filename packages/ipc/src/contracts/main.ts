@@ -5,6 +5,7 @@ import { backupMainContractShape } from './backup';
 import { erModelsMainContractShape } from './er-models';
 import { schedulesMainContractShape } from './schedules';
 import { mongoMainContractShape } from './mongo';
+import { redisDumpMainContractShape } from './redis-dump';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
 import { transferDbMainContractShape } from './transfer-db';
@@ -295,6 +296,8 @@ export const mainContract = defineContract({
   erModels: erModelsMainContractShape,
   /** Scheduled backups, SQL files, exports and comparisons, and their runs. */
   schedules: schedulesMainContractShape,
+  /** Redis and Valkey RDB files, analysed offline. */
+  redisDump: redisDumpMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

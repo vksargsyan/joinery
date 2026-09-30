@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { formatCount } from '../../lib/format';
 import { destructive } from '../../../../shared/redis-safety';
 import { loadChildren, pathKey, toggleNode, useExplorer } from '../../state/explorer';
+import { openDumpAnalysis } from '../../state/redis/dump';
 import { namespacePattern } from '../../state/redis/key-browser';
 import { openTransferFrom } from '../../state/transfer-db/api';
 import {
@@ -92,6 +93,17 @@ export function RedisTree(props: { readonly profile: StoredProfile; readonly dep
                 />
               </div>
             ))}
+            {/* Offline: a dump file, from this server or any other. */}
+            <div role="treeitem" aria-selected={false}>
+              <Row
+                depth={depth + 1}
+                expandable={false}
+                expanded={false}
+                onToggle={() => openDumpAnalysis()}
+                onActivate={() => openDumpAnalysis()}
+                label={<span className="truncate">Dump analysis</span>}
+              />
+            </div>
           </div>
         )}
       </div>

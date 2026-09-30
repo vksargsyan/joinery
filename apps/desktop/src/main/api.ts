@@ -39,6 +39,7 @@ import { metadataHandlers, snippetHandlers } from './metadata';
 import { mongoMainHandlers } from './mongo-api';
 import { transferDbHandlers } from './transfer-db-api';
 import { backupMainHandlers } from './backup-api';
+import { redisDumpHandlers } from './redis-dump-api';
 import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
 import type { SyncService } from './sync';
@@ -344,6 +345,7 @@ export function createMainHandlers<P>(
     autosave: autosaveHandlers(store, services.previousRun ?? 'none'),
     transferDb: transferDbHandlers(services),
     backup: backupMainHandlers(services, files),
+    redisDump: redisDumpHandlers(services, files),
     updates: updateHandlers(services.updates, () => services.appInfo().version),
   };
 }

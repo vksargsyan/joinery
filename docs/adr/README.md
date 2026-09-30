@@ -26,3 +26,4 @@ supersede it with a new one.
 | [0019](0019-scheduler.md)                      | Scheduler: jobs run from main while Joinery is open              | Accepted |
 | [0020](0020-parquet.md)                        | Parquet on hyparquet and hyparquet-writer, streamed by row group | Accepted |
 | [0021](0021-confirm-closing-with-schedules.md) | Closing with schedules on asks first, instead of a tray          | Accepted |
+| [0022](0022-rdb-dump-analysis.md)              | Redis dump analysis: a streaming RDB reader in the job runner    | Accepted |
