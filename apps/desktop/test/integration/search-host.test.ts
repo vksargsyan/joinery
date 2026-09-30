@@ -21,8 +21,6 @@ import { ConnectionHost } from '../../src/connection-host/host';
  */
 
 const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
-/** The configured server, for describe.each: none without JOINERY_TEST_ELASTICSEARCH_URL. */
-const SERVERS: readonly { readonly url: string }[] = ES_URL ? [{ url: ES_URL }] : [];
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 
@@ -76,7 +74,8 @@ afterAll(async () => {
   await Promise.all(hosts.map((host) => host.shutdown()));
 });
 
-describe.skipIf(SERVERS.length === 0).each(SERVERS)('through the connection host', (server) => {
+describe.skipIf(ES_URL === undefined)('through the connection host', () => {
+  const server = { url: ES_URL ?? '' };
   const index = `joinery-host-${randomBytes(4).toString('hex')}`;
 
   it('creates an index, writes and pages documents, and cleans up under the write rules', async () => {
