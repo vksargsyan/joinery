@@ -765,6 +765,16 @@ describe('round trips', () => {
             }),
           );
     const json = queryArb(3);
+    // Found by the property: a must of match_all built { match_all } once, then nothing.
+    const wrapped = readDsl(
+      { query: '{"bool":{"must":[{"match_all":{}}]}}', sort: '', aggs: '' },
+      FIELDS,
+    );
+    if (!wrapped.ok) throw new Error('the wrapped match_all should read');
+    const settled = buildDsl(wrapped.model, FIELDS);
+    if (!settled.ok) throw new Error('the wrapped match_all should build');
+    expect(settled.texts.query).toBe('');
+    expect(again(settled.texts)).toEqual(settled.texts);
     fc.assert(
       fc.property(json, (query) => {
         const once = readDsl({ query: JSON.stringify(query), sort: '', aggs: '' }, FIELDS);

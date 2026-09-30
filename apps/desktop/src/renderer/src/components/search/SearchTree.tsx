@@ -16,7 +16,8 @@ import {
   searchText,
   type SearchObject,
 } from '../../state/search/explorer';
-import { MenuItem, Row } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
+import { Row } from '../Sidebar';
 import { Icon, cx } from '../ui';
 import { CreateIndexDialog } from './CreateIndexDialog';
 import { openSearchConsole, openSearchTool } from './open';

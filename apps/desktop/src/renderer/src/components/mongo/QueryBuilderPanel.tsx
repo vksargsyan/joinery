@@ -21,7 +21,7 @@ import {
   type OrGroup,
   type ValueType,
 } from '../../state/mongo/query-builder-model';
-import { MenuItem } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
 import { Button, Icon, cx } from '../ui';
 import { Segmented, SmallSelect } from './parts';
 

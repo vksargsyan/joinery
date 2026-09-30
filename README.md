@@ -20,6 +20,10 @@ What works today:
   modes (off by default; a URI's sslmode, rediss://, https:// or mongodb+srv:// turns it on);
   passwords saved in the OS keychain, remembered for the session, or asked every time; URI and
   pgpass import; encrypted profile export; stepwise Test Connection.
+- **Explorer**: a side bar with search and a filter by engine, environment and state; a click on
+  a database, schema or folder lists its objects in the Objects tab with rows, sizes, engine,
+  dates and comments (documents, sizes and indexes for MongoDB); a click on a table or
+  collection opens its data.
 - **SSH tunnels and proxies**: SSH with password, private key (OpenSSH, PEM, PuTTY converted on
   import) or ssh-agent, jump hosts and keep-alives, one SSH session shared by a connection's
   tabs; SOCKS5 and HTTP proxies; MongoDB replica sets, Redis Sentinel and Cluster reached node by

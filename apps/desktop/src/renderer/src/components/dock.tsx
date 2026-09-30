@@ -38,6 +38,7 @@ import { disposeSearchPanel } from '../state/search/panels';
 import { disposeErDiagram } from '../state/er-diagram/panels';
 import { disposeSchedulesPanel } from '../state/schedules';
 import { disposeDumpAnalysis } from '../state/redis/dump';
+import { disposeObjectsPanel } from '../state/objects-view';
 import { disposeQueryBuilder } from '../state/query-builder/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
@@ -45,6 +46,7 @@ import { createTab, useWorkspace } from '../state/workspace';
 import { TableDesignerPanel } from './designer/TableDesignerPanel';
 import { EngineIcon } from './EngineIcon';
 import { QueryPanel } from './QueryPanel';
+import { ObjectsPanel } from './ObjectsPanel';
 import { RedisPanel } from './redis/RedisPanel';
 import { MongoPanel } from './mongo/MongoPanel';
 import { SyncPanel } from './sync/SyncPanel';
@@ -186,6 +188,7 @@ function disposePanel(id: string): void {
   else if (info.kind === 'er-diagram') disposeErDiagram(id);
   else if (info.kind === 'schedules') disposeSchedulesPanel(id);
   else if (info.kind === 'redis-dump') disposeDumpAnalysis(id);
+  else if (info.kind === 'objects') disposeObjectsPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -407,6 +410,10 @@ function RedisDumpHost() {
   return <DumpAnalysisPanel />;
 }
 
+function ObjectsHost() {
+  return <ObjectsPanel />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -483,6 +490,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         erDiagram: ErDiagramHost,
         schedules: SchedulesHost,
         redisDump: RedisDumpHost,
+        objects: ObjectsHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}

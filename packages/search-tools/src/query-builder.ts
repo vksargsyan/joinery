@@ -720,6 +720,9 @@ class Writer {
         members.push(['minimum_should_match', /^-?\d+$/.test(msm) ? msm : quoteJson(msm)]);
       query = obj([['bool', obj(members)]]);
     }
+    // At the root, a query that is only match_all (a lone clause, or a group holding nothing
+    // else) is no query, as reading one back makes it: one read and build settle the text.
+    if (root && group.path === '' && query !== undefined && isMatchAll(query)) query = undefined;
     if (group.path === '') return query;
     if (!/\S/.test(group.path)) return this.issue(group.id, 'Choose the nested field');
     const field = this.field(group.path);
@@ -1254,6 +1257,11 @@ function readBool(r: Reader, body: JsonNode, path: string): DslGroup | undefined
     if (!MINIMUM_SHOULD_MATCH.test(minimumShouldMatch.trim())) return undefined;
   }
   return { ...newGroup(path), clauses, minimumShouldMatch };
+}
+
+/** `{"match_all": {}}`, however it is spaced. */
+function isMatchAll(text: string): boolean {
+  return text.replace(/\s+/g, '') === '{"match_all":{}}';
 }
 
 /** A query as a group: a bool's clauses, nothing for match_all, else one must clause. */

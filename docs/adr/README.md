@@ -33,3 +33,4 @@ supersede it with a new one.
 | [0026](0026-window-chrome-and-engine-icons.md)   | The window's chrome as VS Code draws it; an icon per database engine | Accepted |
 | [0027](0027-connection-sidebar-interactions.md)  | The connection side bar as Navicat's: double-click, search, filter   | Accepted |
 | [0028](0028-connection-dialog-steps-and-tabs.md) | The connection dialog in two steps and tabs; TLS off by default      | Accepted |
+| [0029](0029-objects-view.md)                     | The Objects view as Navicat's; a click on a table opens it           | Accepted |

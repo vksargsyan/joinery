@@ -135,13 +135,31 @@ test('browses databases, collections, views and indexes', async () => {
   await expect(treeRow('customers')).toBeVisible();
   await treeRow('Views').click();
   await expect(treeRow('big_orders')).toBeVisible();
-  await treeRow('orders').click();
+  // A click on a collection opens its documents; the chevron expands it.
+  await treeRow('orders').locator('[data-tree-chevron]').click();
   await treeRow('Indexes').first().click();
   await expect(treeRow('_id_')).toBeVisible();
 });
 
+test('lists a database’s collections in the Objects view; a click on one opens it', async () => {
+  await treeRow(db).click();
+  const objects = page.getByRole('grid', { name: 'Objects' });
+  const names = objects.getByRole('row').locator('[role="gridcell"]:first-child');
+  await expect(names).toContainText(['customers', 'orders']);
+  await expect(objects.getByRole('columnheader', { name: 'Documents' })).toBeVisible();
+  await expect(
+    objects.getByRole('row').filter({ has: page.getByText('orders', { exact: true }) }),
+  ).toContainText('150');
+  await expect(page.getByTestId('objects-status')).toContainText('collections');
+  // The click also toggled it in the tree (it was open, so it folded); the chevron reopens it.
+  await expect(page.getByRole('treeitem', { name: NAME }).getByText('Collections')).toHaveCount(0);
+  await treeRow(db).locator('[data-tree-chevron]').click();
+  await expect(treeRow('orders')).toBeVisible();
+});
+
 test('opens a collection and pages its documents as the view scrolls', async () => {
-  await treeRow('orders').dblclick();
+  // One click opens the documents.
+  await treeRow('orders').click();
   await expect(panel()).toBeVisible();
   const loaded = panel().getByTestId('mongo-loaded');
   await expect(loaded).toHaveText('100 documents loaded');
