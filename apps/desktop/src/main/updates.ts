@@ -91,6 +91,8 @@ export interface UpdateControllerOptions {
   readonly checkIntervalMs?: number;
   readonly now?: () => Date;
   readonly log?: (message: string) => void;
+  /** Called just before the app quits to install a downloaded update. */
+  readonly beforeInstall?: () => void;
 }
 
 /** The page-facing side of the updater, as the main contract's handlers use it. */
@@ -213,6 +215,7 @@ export class UpdateController implements UpdatesService {
     if (this.#state.state !== 'ready' || !this.#updater) {
       throw new JoineryError({ code: 'NOT_FOUND', message: 'No update is ready to install' });
     }
+    this.#options.beforeInstall?.();
     void this.#updater.then((updater) => updater.quitAndInstall());
   }
 
@@ -454,6 +457,7 @@ export function createUpdates(options: {
   readonly host: UpdateHost;
   readonly settings: UpdateSettings;
   readonly log: (message: string) => void;
+  readonly beforeInstall?: () => void;
 }): UpdateController {
   const quiet = (): void => undefined;
   return new UpdateController({
@@ -474,6 +478,7 @@ export function createUpdates(options: {
       error: (message: unknown) => options.log(`updater: ${updateErrorMessage(message)}`),
     }),
     log: options.log,
+    ...(options.beforeInstall !== undefined ? { beforeInstall: options.beforeInstall } : {}),
   });
 }
 

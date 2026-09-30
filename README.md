@@ -128,14 +128,14 @@ What works today:
   set up with Schedule… where each is run once. Each run writes a new file named from a template
   and can keep only the newest N; comparisons keep a report when they find differences. Missed
   runs are caught up once or skipped; notifications go out when a run fails or finds
-  differences; on Windows and Linux Joinery stays in the tray to run them.
+  differences; closing Joinery with schedules on asks first.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: Parquet, cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
-RediSearch and offline RDB analysis; a query builder for Elasticsearch; schedules that run while
-Joinery is closed. The product specification lists the full scope.
+Not built yet: cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
+RediSearch and offline RDB analysis; a query builder for Elasticsearch. The product specification
+lists the full scope.
 
 ## Repository layout
 
