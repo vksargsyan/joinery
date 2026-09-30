@@ -237,6 +237,10 @@ export const appSettingsSchema = z.object({
     /** Open connections past which connection hosts are pooled into shared hosts (spec §3). */
     hostPoolCap: z.number().int().min(1).max(64),
   }),
+  schedules: z.object({
+    /** Ask before Joinery closes while schedules are on: they run only while it is open. */
+    confirmClose: z.boolean(),
+  }),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
@@ -260,6 +264,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   },
   results: { pageSize: 1000, rowLimit: 10_000 },
   connections: { hostPoolCap: 8 },
+  schedules: { confirmClose: true },
 };
 
 export const appInfoSchema = z.object({

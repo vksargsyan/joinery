@@ -124,6 +124,7 @@ function mergeSettings(base: AppSettings, patch: AppSettingsPatch): AppSettings 
     editor: { ...base.editor, ...stripUndefined(patch.editor ?? {}) },
     results: { ...base.results, ...stripUndefined(patch.results ?? {}) },
     connections: { ...base.connections, ...stripUndefined(patch.connections ?? {}) },
+    schedules: { ...base.schedules, ...stripUndefined(patch.schedules ?? {}) },
   };
 }
 
@@ -140,6 +141,17 @@ export function readAppSettings(
   if (stored === undefined) return defaults;
   const merged = appSettingsSchema.safeParse(mergeSettings(defaults, stored));
   return merged.success ? merged.data : defaults;
+}
+
+/** Saves a change to the settings over what is stored; returns the settings now in force. */
+export function writeAppSettings(
+  store: Pick<Store, 'settings'>,
+  defaults: AppSettings,
+  patch: AppSettingsPatch,
+): AppSettings {
+  const next = appSettingsSchema.parse(mergeSettings(readAppSettings(store, defaults), patch));
+  store.settings.set(SETTINGS_KEY, next);
+  return next;
 }
 
 export function createMainHandlers<P>(
@@ -270,8 +282,7 @@ export function createMainHandlers<P>(
     settings: {
       get: () => readSettings(),
       set: (patch) => {
-        const next = appSettingsSchema.parse(mergeSettings(readSettings(), patch));
-        store.settings.set(SETTINGS_KEY, next);
+        const next = writeAppSettings(store, defaults, patch);
         services.onSettingsChanged?.(next);
         return next;
       },
