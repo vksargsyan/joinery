@@ -11,7 +11,6 @@ import type { Folder, StoredProfile } from '@joinery/ipc';
 import { useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { useState, type KeyboardEvent, type ReactNode } from 'react';
-import { create } from 'zustand';
 
 import { errorMessage } from '../lib/errors';
 import { mainApi } from '../lib/main-client';
@@ -19,23 +18,19 @@ import { connect, disconnect, useConnections } from '../state/connections';
 import { keys, useFolders, useProfiles } from '../state/data';
 import { confirm } from '../state/dialogs';
 import {
-  isDesignableTable,
   loadChildren,
-  newTableLocation,
   opensData,
   pathKey,
   resetExplorer,
-  selectStatementFor,
-  tableLocation,
-  tablesFolderPath,
   toggleNode,
   useExplorer,
 } from '../state/explorer';
 import { refreshObjects } from '../state/metadata';
+import { objectsPathFor } from '../state/objects-model';
+import { showObjects, useObjectsView } from '../state/objects-view';
 import {
   clearSidebarFilter,
   filterActive,
-  matchParts,
   setSidebarFilter,
   setSidebarSearch,
   toggled,
@@ -43,21 +38,27 @@ import {
   visibleTree,
 } from '../state/sidebar-filter';
 import { hasServerTools, openServerTools } from '../state/server-tools/panels';
-import type { DesignerTarget } from '../state/designer';
-import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
-import { openDataCompare, openStructureCompare } from '../state/sync/panels';
+import { openRunSqlFile } from '../state/transfer-dialogs';
 import { openTransferFrom } from '../state/transfer-db/api';
 import { openErDiagram } from '../state/er-diagram/panels';
 import { openQueryBuilder } from '../state/query-builder/panels';
 import { EngineIcon } from './EngineIcon';
+import { Highlighted } from './Highlighted';
+import { MenuItem } from './MenuItem';
+import {
+  CompareItems,
+  DropTableHost,
+  ObjectMenuItems,
+  hasObjectMenu,
+  openObjectData,
+} from './ObjectMenu';
 import { BackupMenuItems } from './backup/BackupDialogs';
-import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
 import { RedisTree, openRedisTool } from './redis/RedisTree';
 import { SearchTree } from './search/SearchTree';
-import { openQueryTab, openTableData, openTableDesigner } from './dock';
+import { openQueryTab } from './dock';
 import type { ConnectionDialogMode } from './ConnectionDialog';
-import { Button, EnvironmentBadge, Icon, cx, type IconName } from './ui';
+import { Button, EnvironmentBadge, Icon, cx } from './ui';
 
 /**
  * The connections sidebar (spec §4, §5): profiles grouped by folder with their environment, and
@@ -70,23 +71,6 @@ import { Button, EnvironmentBadge, Icon, cx, type IconName } from './ui';
  * creates connections and folders and closes every open connection; the search and the filter
  * at the bottom narrow the list (state/sidebar-filter.ts).
  */
-
-/** The table the "Drop table…" review is open for. */
-const useDropRequest = create<{
-  readonly target?: DesignerTarget & { readonly name: string };
-}>()(() => ({}));
-
-function DropTableHost() {
-  const target = useDropRequest((state) => state.target);
-  if (!target) return null;
-  return (
-    <DropTableDialog
-      target={target}
-      onClose={() => useDropRequest.setState({ target: undefined })}
-      onDropped={() => undefined}
-    />
-  );
-}
 
 export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) => void }) {
   const profiles = useProfiles();
@@ -229,19 +213,6 @@ export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) =
       <SearchBar />
       <DropTableHost />
     </aside>
-  );
-}
-
-/** A name with the search's match in rust (Kiln's tree filter highlight). */
-function Highlighted(props: { readonly text: string; readonly search: string }) {
-  const parts = matchParts(props.text, props.search);
-  if (!parts) return <>{props.text}</>;
-  return (
-    <>
-      {parts.before}
-      <mark className="bg-transparent font-semibold text-rust">{parts.match}</mark>
-      {parts.after}
-    </>
   );
 }
 
@@ -784,45 +755,35 @@ function ObjectNode(props: {
 }) {
   const { node, profile, dialect } = props;
   const expanded = useExplorer((s) => s.expanded[profile.id]?.[pathKey(node.path)] === true);
-  const table = isDesignableTable(node, dialect) ? tableLocation(node, dialect) : undefined;
-  const newTable = newTableLocation(node, dialect);
-  const openData = (): void => {
-    if (table) {
-      openTableData({ profileId: profile.id, ...table });
-      return;
-    }
-    if (!opensData(node)) return;
-    openQueryTab({
-      profileId: profile.id,
-      title: node.name,
-      text: selectStatementFor(node, dialect),
-      run: true,
-    });
-  };
-  const designTarget = (
-    name: string | null,
-    location = table ?? newTable,
-  ): DesignerTarget | undefined =>
-    location && {
-      profileId: profile.id,
-      database: location.database,
-      schema: location.schema,
-      name,
-      tablesPath: tablesFolderPath({ ...location, name: '' }, dialect),
-    };
+  const openData = (): void => openObjectData(profile, node, dialect);
+  const listsObjects = objectsPathFor(node, dialect) !== undefined;
+  const shown = useObjectsView(
+    (s) =>
+      s.location?.profileId === profile.id && pathKey(s.location.source) === pathKey(node.path),
+  );
   return (
     <div
       role="treeitem"
       aria-expanded={node.hasChildren ? expanded : undefined}
-      aria-selected={false}
+      aria-selected={shown}
     >
       <Row
         depth={props.depth}
         expandable={node.hasChildren}
         expanded={expanded}
         onToggle={() => toggleNode(profile.id, node)}
-        onActivate={opensData(node) ? openData : undefined}
-        title={opensData(node) ? 'Double-click to open the rows' : undefined}
+        // A click opens a table's data (the chevron expands it), and shows a container's
+        // objects in the Objects view as it expands.
+        clickToggles={!opensData(node)}
+        onSelect={
+          opensData(node)
+            ? openData
+            : listsObjects
+              ? () => showObjects(profile.id, node, dialect)
+              : undefined
+        }
+        selected={shown}
+        title={opensData(node) ? 'Click to open the rows' : undefined}
         label={
           <span className="flex min-w-0 items-center gap-1.5">
             <Icon
@@ -841,204 +802,8 @@ function ObjectNode(props: {
           </span>
         }
         menu={
-          opensData(node) || node.hasChildren || newTable ? (
-            <>
-              {table ? (
-                <>
-                  <MenuItem icon="table" onSelect={openData}>
-                    Open data
-                  </MenuItem>
-                  <MenuItem
-                    icon="design"
-                    onSelect={() => openTableDesigner(designTarget(table.name)!)}
-                  >
-                    Design table
-                  </MenuItem>
-                  <MenuItem
-                    icon="import"
-                    onSelect={() => openImportWizard(profile, table, table.name)}
-                  >
-                    Import data…
-                  </MenuItem>
-                  <MenuItem
-                    icon="export"
-                    onSelect={() =>
-                      openExportTables(
-                        profile,
-                        table,
-                        [table.name],
-                        tablesFolderPath(table, dialect),
-                      )
-                    }
-                  >
-                    Export…
-                  </MenuItem>
-                  <MenuItem
-                    icon="wrench"
-                    onSelect={() =>
-                      openServerTools(profile, {
-                        tab: 'maintenance',
-                        focus: {
-                          database: table.database,
-                          container: table.schema,
-                          name: table.name,
-                        },
-                      })
-                    }
-                  >
-                    Maintenance…
-                  </MenuItem>
-                  <MenuItem
-                    icon="transfer"
-                    onSelect={() =>
-                      openTransferFrom(profile, {
-                        database: table.database,
-                        schema: table.schema,
-                        objects: [table.name],
-                      })
-                    }
-                  >
-                    Transfer data to…
-                  </MenuItem>
-                </>
-              ) : (
-                opensData(node) && (
-                  <MenuItem icon="table" onSelect={openData}>
-                    Open rows
-                  </MenuItem>
-                )
-              )}
-              {newTable && (
-                <>
-                  <MenuItem
-                    icon="table-new"
-                    onSelect={() => openTableDesigner(designTarget(null, newTable)!)}
-                  >
-                    New table…
-                  </MenuItem>
-                  <MenuItem
-                    icon="import"
-                    onSelect={() => openImportWizard(profile, newTable, null)}
-                  >
-                    Import into new table…
-                  </MenuItem>
-                  <MenuItem
-                    icon="export"
-                    onSelect={() =>
-                      openExportTables(
-                        profile,
-                        newTable,
-                        [],
-                        tablesFolderPath({ ...newTable, name: '' }, dialect),
-                      )
-                    }
-                  >
-                    Export tables…
-                  </MenuItem>
-                  <MenuItem
-                    icon="transfer"
-                    onSelect={() =>
-                      openTransferFrom(profile, {
-                        database: newTable.database,
-                        schema: newTable.schema,
-                      })
-                    }
-                  >
-                    Transfer data to…
-                  </MenuItem>
-                </>
-              )}
-              {node.kind === 'database' && (
-                <MenuItem icon="file-run" onSelect={() => openRunSqlFile(profile, node.name)}>
-                  Run SQL file…
-                </MenuItem>
-              )}
-              {node.kind === 'database' && node.path.length === 1 && (
-                <MenuItem
-                  icon="builder"
-                  onSelect={() => openQueryBuilder({ profileId: profile.id, database: node.name })}
-                >
-                  New query builder
-                </MenuItem>
-              )}
-              {node.kind === 'database' && node.path.length === 1 && (
-                <MenuItem
-                  icon="diagram"
-                  onSelect={() => openErDiagram({ profileId: profile.id, database: node.name })}
-                >
-                  ER diagram
-                </MenuItem>
-              )}
-              {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
-                <MenuItem
-                  icon="builder"
-                  onSelect={() =>
-                    openQueryBuilder({
-                      profileId: profile.id,
-                      database: node.path[0],
-                      schema: node.name,
-                    })
-                  }
-                >
-                  New query builder
-                </MenuItem>
-              )}
-              {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
-                <MenuItem
-                  icon="diagram"
-                  onSelect={() =>
-                    openErDiagram({
-                      profileId: profile.id,
-                      database: node.path[0],
-                      schema: node.name,
-                    })
-                  }
-                >
-                  ER diagram
-                </MenuItem>
-              )}
-              {node.kind === 'database' && node.path.length === 1 && (
-                <CompareItems source={{ profileId: profile.id, database: node.name }} />
-              )}
-              {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
-                <CompareItems
-                  source={{
-                    profileId: profile.id,
-                    database: node.path[0] ?? '',
-                    schemas: node.name,
-                  }}
-                />
-              )}
-              {((node.kind === 'database' && node.path.length === 1) ||
-                (node.kind === 'schema' && node.path.length === 2)) && (
-                <BackupMenuItems
-                  profile={profile}
-                  location={{ database: node.path[0], schema: node.path[1] }}
-                  restore={node.kind === 'database'}
-                />
-              )}
-              {node.hasChildren && (
-                <MenuItem icon="refresh" onSelect={() => refreshObjects(profile.id, node.path)}>
-                  Refresh
-                </MenuItem>
-              )}
-              {table && (
-                <>
-                  <DropdownMenu.Separator className="my-1 h-px bg-border" />
-                  <MenuItem
-                    icon="trash"
-                    danger
-                    onSelect={() =>
-                      useDropRequest.setState({
-                        target: { ...designTarget(table.name)!, name: table.name },
-                      })
-                    }
-                  >
-                    Drop table…
-                  </MenuItem>
-                </>
-              )}
-            </>
+          hasObjectMenu(node, dialect) ? (
+            <ObjectMenuItems node={node} profile={profile} dialect={dialect} />
           ) : undefined
         }
       />
@@ -1053,27 +818,6 @@ function ObjectNode(props: {
         </div>
       )}
     </div>
-  );
-}
-
-/** "Compare structure with…" and "Compare data with…" (spec §13), from this source. */
-function CompareItems(props: {
-  readonly source: {
-    readonly profileId: string;
-    readonly database: string;
-    readonly schemas?: string;
-  };
-}) {
-  return (
-    <>
-      <DropdownMenu.Separator className="my-1 h-px bg-border" />
-      <MenuItem icon="compare" onSelect={() => openStructureCompare({ source: props.source })}>
-        Compare structure with…
-      </MenuItem>
-      <MenuItem icon="compare-rows" onSelect={() => openDataCompare({ source: props.source })}>
-        Compare data with…
-      </MenuItem>
-    </>
   );
 }
 
@@ -1094,6 +838,13 @@ export function Row(props: {
   readonly clickToggles?: boolean;
   /** Work in progress (a connection opening): a spinner in place of the actions button. */
   readonly busy?: boolean;
+  /**
+   * Also on a click (not the chevron's): the Objects view shows what the node holds. Added to
+   * the toggle, never instead of it.
+   */
+  readonly onSelect?: (() => void) | undefined;
+  /** The node the Objects view shows. */
+  readonly selected?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const clickToggles = props.clickToggles ?? true;
@@ -1119,7 +870,10 @@ export function Row(props: {
         break;
       case 'Enter':
         if (props.onActivate) props.onActivate();
-        else props.onToggle();
+        else {
+          if (clickToggles) props.onToggle();
+          props.onSelect?.();
+        }
         break;
       default:
         return;
@@ -1131,9 +885,15 @@ export function Row(props: {
       data-tree-row
       tabIndex={0}
       title={props.title}
-      className="group flex h-[22px] cursor-default items-center gap-1 pr-1 text-[13px] text-muted hover:bg-list-hover hover:text-fg focus:bg-list-focus focus:text-fg focus:outline focus:outline-1 focus:-outline-offset-1 focus:outline-focus"
+      className={cx(
+        'group flex h-[22px] cursor-default items-center gap-1 pr-1 text-[13px] hover:bg-list-hover hover:text-fg focus:bg-list-focus focus:text-fg focus:outline focus:outline-1 focus:-outline-offset-1 focus:outline-focus',
+        props.selected ? 'bg-list-active text-fg' : 'text-muted',
+      )}
       style={{ paddingLeft: 6 + props.depth * 14 }}
-      onClick={clickToggles ? props.onToggle : undefined}
+      onClick={() => {
+        if (clickToggles) props.onToggle();
+        props.onSelect?.();
+      }}
       onDoubleClick={props.onActivate}
       onKeyDown={onKeyDown}
       onContextMenu={
@@ -1148,8 +908,9 @@ export function Row(props: {
       <span
         data-tree-chevron
         className="flex w-4 shrink-0 justify-center text-muted"
+        // The chevron only folds: the row's own click may do more (select, show objects).
         onClick={
-          !clickToggles && props.expandable
+          props.expandable && (!clickToggles || props.onSelect)
             ? (event) => {
                 event.stopPropagation();
                 props.onToggle();
@@ -1157,7 +918,9 @@ export function Row(props: {
             : undefined
         }
         onDoubleClick={
-          !clickToggles && props.expandable ? (event) => event.stopPropagation() : undefined
+          props.expandable && (!clickToggles || props.onSelect)
+            ? (event) => event.stopPropagation()
+            : undefined
         }
       >
         {props.expandable && (
@@ -1207,30 +970,5 @@ export function Row(props: {
         </DropdownMenu.Root>
       )}
     </div>
-  );
-}
-
-/** A menu item, with its glyph when it has one (every tree menu's items do). */
-export function MenuItem(props: {
-  readonly children: ReactNode;
-  readonly onSelect: () => void;
-  readonly danger?: boolean;
-  readonly disabled?: boolean;
-  readonly icon?: IconName;
-}) {
-  return (
-    <DropdownMenu.Item
-      onSelect={props.onSelect}
-      disabled={props.disabled}
-      className={cx(
-        'flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active',
-        props.danger && 'text-danger',
-      )}
-    >
-      {props.icon !== undefined && (
-        <Icon name={props.icon} className={props.danger ? 'text-danger' : 'text-muted'} />
-      )}
-      {props.children}
-    </DropdownMenu.Item>
   );
 }

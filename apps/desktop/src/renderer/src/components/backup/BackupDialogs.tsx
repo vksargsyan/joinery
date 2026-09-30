@@ -8,7 +8,7 @@ import {
   useBackupDialogs,
   type BackupLocation,
 } from '../../state/backup/dialogs';
-import { MenuItem } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
 import { BackupDialog } from './BackupDialog';
 import { RestoreDialog } from './RestoreDialog';
 

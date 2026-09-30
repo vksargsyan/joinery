@@ -35,7 +35,7 @@ import {
 } from '../../state/search/query-builder';
 import { useSearchView } from '../../state/search/view';
 import { Segmented, SmallSelect } from '../mongo/parts';
-import { MenuItem } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
 import { Button, cx, Icon, TAB } from '../ui';
 import { openSearchConsole } from './open';
 

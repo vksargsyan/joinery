@@ -18,7 +18,8 @@ import {
   type RedisTool,
 } from '../../state/redis/panels';
 import { BackupMenuItems } from '../backup/BackupDialogs';
-import { MenuItem, Row } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
+import { Row } from '../Sidebar';
 import { Icon } from '../ui';
 import { TypeBadge } from './common';
 

@@ -17,7 +17,8 @@ export type PanelKind =
   | 'query-builder'
   | 'er-diagram'
   | 'schedules'
-  | 'redis-dump';
+  | 'redis-dump'
+  | 'objects';
 
 export interface PanelInfo {
   readonly id: string;

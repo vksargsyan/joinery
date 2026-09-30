@@ -138,7 +138,8 @@ test('draws the whole database, then one schema', async () => {
 });
 
 test('a sales schema diagram shows the referenced table as a stub', async () => {
-  await treeRow(database!.name).click();
+  // The chevron only expands; a click on the row would also bring the Objects tab forward.
+  await treeRow(database!.name).locator('[data-tree-chevron]').click();
   await treeRow('sales').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'ER diagram' }).click();
   const view = diagram();
