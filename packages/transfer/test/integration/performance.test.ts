@@ -29,8 +29,11 @@ import { ScratchDatabases, configuredServers, query } from './helpers';
 
 const SERVERS = configuredServers();
 const ROWS = 200_000;
-/** Loose floor for CI; the target is 50,000 rows/s on a developer machine. */
-const MIN_ROWS_PER_SECOND = 10_000;
+/**
+ * Loose floor for CI (hosted runners have measured from about 8,700 to 12,800 rows/s); the
+ * target is 50,000 rows/s on a developer machine.
+ */
+const MIN_ROWS_PER_SECOND = 5_000;
 /** Live heap growth allowed while streaming 20 MB: a few batches, never the file. */
 const MAX_HEAP_GROWTH = 32 * 1024 * 1024;
 
