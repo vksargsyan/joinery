@@ -1,3 +1,4 @@
+import { DropdownMenu } from 'radix-ui';
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { formatCount } from '../../lib/format';
@@ -12,6 +13,7 @@ import { useQueryBuilder, type QueryEditorMode } from '../../state/mongo/query-b
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
+import { MenuItem } from '../MenuItem';
 import { Pager } from '../Pager';
 import { ViewModeSwitch, type ViewModeOption } from '../ViewModeSwitch';
 import { DOCUMENT_PAGE_SIZES, queryTotal } from '../../state/mongo/pages';
@@ -193,77 +195,84 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
   );
 }
 
-/** The collection's tool panels: aggregation, indexes, schema, options, change stream. */
+/**
+ * The collection's tools under one menu: aggregation (from the current filter), SQL, indexes,
+ * schema analysis, options and the change stream, each with its glyph and what it does.
+ */
 function CollectionTools({ view }: { readonly view: CollectionView }) {
   const { profileId, db, collection, kind } = view.target;
   const target = { profileId, db, collection };
   const filter = useCollectionState(view, (s) => s.fields.filter);
+  const item = (label: string, hint: string) => (
+    <span className="flex min-w-0 flex-col">
+      <span>{label}</span>
+      <span className="text-[11px] text-faint">{hint}</span>
+    </span>
+  );
   return (
-    <>
-      <Button
-        size="sm"
-        variant="ghost"
-        title="Open the aggregation editor, starting from the current filter"
-        onClick={() =>
-          openMongoTool({
-            tool: 'aggregation',
-            target: {
-              ...target,
-              ...(filter.trim() !== '' ? { text: `[{ $match: ${filter.trim()} }]` } : {}),
-            },
-          })
-        }
-      >
-        <Icon name="filter" className="h-3.5 w-3.5" />
-        Aggregate
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        title="Query the collection with SQL in a new tab"
-        onClick={() => openMongoSql({ profileId, db, collection })}
-      >
-        <Icon name="query" className="h-3.5 w-3.5" />
-        SQL
-      </Button>
-      {kind !== 'view' && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => openMongoTool({ tool: 'indexes', target })}
-        >
-          <Icon name="key" className="h-3.5 w-3.5" />
-          Indexes
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <Button size="sm" variant="ghost" title="Aggregation, SQL, indexes, schema, options, watch">
+          <Icon name="wrench" className="h-3.5 w-3.5" />
+          Tools
+          <Icon name="chevron-down" className="h-3 w-3" />
         </Button>
-      )}
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => openMongoTool({ tool: 'schema', target: { ...target, kind } })}
-      >
-        <Icon name="chart" className="h-3.5 w-3.5" />
-        Schema
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => openMongoTool({ tool: 'options', target })}>
-        <Icon name="design" className="h-3.5 w-3.5" />
-        Options
-      </Button>
-      {kind !== 'view' && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() =>
-            openMongoTool({
-              tool: 'changes',
-              target: { profileId, scope: { kind: 'collection', ns: { db, collection } } },
-            })
-          }
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="start"
+          sideOffset={4}
+          aria-label="Collection tools"
+          className="z-50 min-w-64 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
-          <Icon name="pulse" className="h-3.5 w-3.5" />
-          Watch
-        </Button>
-      )}
-    </>
+          <MenuItem
+            icon="filter"
+            onSelect={() =>
+              openMongoTool({
+                tool: 'aggregation',
+                target: {
+                  ...target,
+                  ...(filter.trim() !== '' ? { text: `[{ $match: ${filter.trim()} }]` } : {}),
+                },
+              })
+            }
+          >
+            {item('Aggregate', 'A pipeline, starting from the current filter')}
+          </MenuItem>
+          <MenuItem icon="query" onSelect={() => openMongoSql({ profileId, db, collection })}>
+            {item('SQL', 'Query the collection with SQL in a new tab')}
+          </MenuItem>
+          <DropdownMenu.Separator className="my-1 h-px bg-border" />
+          {kind !== 'view' && (
+            <MenuItem icon="key" onSelect={() => openMongoTool({ tool: 'indexes', target })}>
+              {item('Indexes', 'Create, hide and drop indexes')}
+            </MenuItem>
+          )}
+          <MenuItem
+            icon="chart"
+            onSelect={() => openMongoTool({ tool: 'schema', target: { ...target, kind } })}
+          >
+            {item('Schema', 'The fields, their types and how often they occur')}
+          </MenuItem>
+          <MenuItem icon="design" onSelect={() => openMongoTool({ tool: 'options', target })}>
+            {item('Options', 'Validation, collation and the collection’s settings')}
+          </MenuItem>
+          {kind !== 'view' && (
+            <MenuItem
+              icon="pulse"
+              onSelect={() =>
+                openMongoTool({
+                  tool: 'changes',
+                  target: { profileId, scope: { kind: 'collection', ns: { db, collection } } },
+                })
+              }
+            >
+              {item('Watch', 'Follow inserts, updates and deletes as they happen')}
+            </MenuItem>
+          )}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
