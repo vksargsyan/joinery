@@ -3,6 +3,7 @@ import { JoineryError } from '@joinery/core';
 import { CsvParser, type CsvDialect, type CsvField, type CsvParseOptions } from './csv';
 import { openInput, peekSource, type ByteSource } from './io';
 import { JsonLinesParser, JsonStreamParser, type JsonElements } from './json';
+import { readParquet } from './parquet';
 import { emptyParts, toBatch, widen, headerNames, type BatchParts } from './rows';
 import { decodeSource, detectEncoding } from './text';
 import type { RowBatch, SourceCell } from './types';
@@ -15,11 +16,11 @@ export { emptyParts, headerNames, widen, type BatchParts } from './rows';
 /**
  * Readers (spec §12): bytes in, batches of rows out. `readRows` detects gzip and the text
  * encoding when not told, decodes incrementally and parses with the incremental CSV, JSON or
- * XML parser, or streams the worksheet of an xlsx workbook, so memory stays flat whatever the
- * file size. Batches follow the source's chunks.
+ * XML parser, or streams the worksheet of an xlsx workbook or the row groups of a Parquet file,
+ * so memory stays flat whatever the file size. Batches follow the source's chunks.
  */
 
-export type RowFormat = 'csv' | 'tsv' | 'json' | 'jsonl' | 'xlsx' | 'xml';
+export type RowFormat = 'csv' | 'tsv' | 'json' | 'jsonl' | 'xlsx' | 'xml' | 'parquet';
 
 export interface CsvReadOptions extends Partial<CsvDialect> {
   /** The first record holds column names (default true). */
@@ -170,6 +171,10 @@ export async function* readRows(
 ): AsyncGenerator<RowBatch> {
   if (options.format === 'xlsx') {
     yield* workbookRows(source, options);
+    return;
+  }
+  if (options.format === 'parquet') {
+    yield* readParquet(source, options.decompress ?? 'auto');
     return;
   }
   const input = await openInput(source, options.decompress ?? 'auto');

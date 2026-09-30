@@ -3,12 +3,13 @@
  *
  * One pipeline for the wizards, scheduled jobs and joinery-cli: byte sources and sinks with
  * backpressure, optional gzip and ZIP; incremental CSV/TSV, JSON, JSON Lines and XML readers
- * and a streaming Excel (.xlsx) reader; preview with format, encoding, dialect, header, sheet,
- * row path and type detection; column mapping and conversions; batched, parameterised imports
- * in five modes; streaming exports to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL INSERTs, SQL
- * with DDL, HTML and Markdown; and "run SQL file". Never imports Electron: it runs in the job
- * runner utility process and in the CLI. ZIP, XML and xlsx are written here on node:zlib
- * (ADR 0012), with no third-party dependency.
+ * and streaming Excel (.xlsx) and Parquet readers; preview with format, encoding, dialect,
+ * header, sheet, row path and type detection; column mapping and conversions; batched,
+ * parameterised imports in five modes; streaming exports to CSV, TSV, JSON, JSON Lines, Excel,
+ * XML, Parquet, SQL INSERTs, SQL with DDL, HTML and Markdown; and "run SQL file". Never imports
+ * Electron: it runs in the job runner utility process and in the CLI. ZIP, XML and xlsx are
+ * written here on node:zlib (ADR 0012), with no third-party dependency; Parquet's encodings
+ * come from hyparquet and hyparquet-writer (ADR 0020).
  */
 
 export { EXPORT_FORMATS, FILE_FORMATS, isJsonText, jsonText } from './types';
@@ -92,6 +93,17 @@ export {
 } from './xlsx-write';
 export type { XlsxExportOptions } from './xlsx-write';
 
+export {
+  PARQUET_COMPRESSIONS,
+  ParquetFileWriter,
+  isParquet,
+  lz4Block,
+  openParquet,
+  parquetColumnPlan,
+  readParquet,
+} from './parquet';
+export type { ParquetCompression, ParquetExportOptions, ParquetFile } from './parquet';
+
 export { OUTPUT_ENCODINGS, decodeSource, detectEncoding } from './text';
 export type { DetectedEncoding, OutputEncoding } from './text';
 
@@ -123,7 +135,7 @@ export {
   previewSource,
   sniffFormat,
 } from './detect';
-export type { PreviewOptions, SourcePreview } from './detect';
+export type { ParquetSummary, PreviewOptions, SourcePreview } from './detect';
 
 export {
   ConversionError,

@@ -513,6 +513,12 @@ export function sqlTypeFor(column: InferredColumn, dialect: SqlDialect): string 
       return pg ? 'uuid' : 'char(36)';
     case 'json':
       return pg ? 'jsonb' : 'json';
+    case 'time': {
+      const digits = column.fractionalDigits ?? 0;
+      return digits > 0 ? `time(${digits})` : 'time';
+    }
+    case 'binary':
+      return pg ? 'bytea' : 'longblob';
     default: {
       if (pg) return 'text';
       if (column.maxLength <= 255) return 'varchar(255)';
