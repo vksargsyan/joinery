@@ -81,7 +81,10 @@ What works today:
   types and conflict detection, bulk update and delete with a matched-count preview, visual
   explain that flags collection scans, an aggregation editor with per-stage previews, an index
   manager, schema analysis exported as JSON Schema or applied as a validator, collection and view
-  options, a change stream viewer, a GridFS browser, users and roles, and a command console.
+  options, a change stream viewer, a GridFS browser, users and roles, and a command console. A
+  SQL tab translates a SELECT to find() or aggregate() as it is typed, runs it, and opens it in
+  the collection view or the aggregation editor; any query exports as a Node.js, Python, Java,
+  C#, Go or PHP program for the official driver.
 - **Redis and Valkey**: standalone, Sentinel and Cluster with ACL users; a SCAN-based key browser
   with a namespace tree, type filters and lazy memory sizes (cluster-wide in Cluster mode);
   editors for strings, hashes, lists, sets, sorted sets, streams (groups and pending entries),
@@ -112,10 +115,9 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis,
   Elasticsearch and OpenSearch too; backup and restore for every engine.
 
-Not built yet: the scheduler, Parquet, ER modelling for SQL, cloud sync and the AI assistant; for
-MongoDB the embedded mongosh shell, and SQL translation and code export in the app (the library
-has them); RediSearch and offline RDB analysis; a query builder for Elasticsearch and
-OpenSearch. The product specification lists the full scope.
+Not built yet: the scheduler, Parquet, ER modelling for SQL, cloud sync and the AI assistant; the
+embedded mongosh shell for MongoDB; RediSearch and offline RDB analysis; a query builder for
+Elasticsearch and OpenSearch. The product specification lists the full scope.
 
 ## Repository layout
 
