@@ -4,6 +4,9 @@ import {
   bulkDeleteLines,
   bulkUpdateLines,
   classifyRequest,
+  dslFields,
+  formatConsoleRequest,
+  formatJson,
   flatRecord,
   mappingFields,
   parseJsonTree,
@@ -26,12 +29,14 @@ import {
   editDocumentState,
   type DocumentEditorState,
 } from './document-editor';
+import { DslBuilder } from './query-builder';
 import { BASE_STATE, SearchView, type SearchViewState } from './view';
 
 /**
  * The document grid of an index, alias or data stream (spec §11): a search (a Query DSL clause
- * or a Lucene query string, and a sort) whose hits load a page at a time as the grid scrolls,
- * with each `_source` flattened into dotted columns. Deep pages come from a point in time with
+ * or a Lucene query string, a sort and aggregations, typed or built with the query builder)
+ * whose hits load a page at a time as the grid scrolls, with each `_source` flattened into
+ * dotted columns, and whose aggregations show beside them. Deep pages come from a point in time with
  * search_after (a scroll where there is none), never from/size, so paging past 10,000 hits
  * works. Documents are created, edited with optimistic concurrency (a conflict shows the stored
  * version) and deleted; selected rows are deleted or updated through `_bulk`, and pasted NDJSON
@@ -64,6 +69,8 @@ export interface DocumentsState extends SearchViewState {
   readonly queryText: string;
   /** The sort as JSON (`[{"date": "desc"}]`); empty for index order. */
   readonly sortText: string;
+  /** Aggregations as JSON (`{"by_status": {"terms": {"field": "status"}}}`); empty for none. */
+  readonly aggsText: string;
   readonly issue: string | undefined;
   readonly pageSize: number;
   readonly running: boolean;
@@ -75,6 +82,10 @@ export interface DocumentsState extends SearchViewState {
   readonly total: SearchPage['total'];
   readonly exactCount: number | undefined;
   readonly paging: SearchPage['paging'] | undefined;
+  /** The last search's aggregation results (JSON text). */
+  readonly aggregations: string | undefined;
+  /** What the panel shows under the query bar. */
+  readonly resultTab: 'documents' | 'aggregations';
   readonly tookMs: number | undefined;
   readonly error: string | undefined;
   /** Field columns (dotted paths), after the `_id` (and `_index`) columns. */
@@ -97,7 +108,7 @@ export function queryClause(text: string): string | undefined {
 }
 
 /** The search body of the query bar (JSON text), or throws what is wrong with it. */
-export function searchBody(queryText: string, sortText: string): string {
+export function searchBody(queryText: string, sortText: string, aggsText = ''): string {
   const members: string[] = [];
   let query: string | undefined;
   try {
@@ -115,11 +126,25 @@ export function searchBody(queryText: string, sortText: string): string {
     }
     members.push(`"sort": ${sort}`);
   }
+  const aggs = aggsText.trim();
+  if (aggs !== '') {
+    let node;
+    try {
+      node = parseJsonTree(aggs);
+    } catch (error) {
+      throw new Error(`The aggregations are not valid JSON: ${errorMessage(error)}`, {
+        cause: error,
+      });
+    }
+    if (node.type !== 'object') throw new Error('The aggregations are a JSON object');
+    members.push(`"aggs": ${aggs}`);
+  }
   return `{${members.join(', ')}}`;
 }
 
 export class DocumentsView extends SearchView<DocumentsState> {
   readonly target: DocumentsTarget;
+  readonly builder: DslBuilder;
   #records: ReadonlyMap<string, FlatField>[] = [];
   #mapped: string[] = [];
   #stream: RpcStream<SearchPage> | undefined;
@@ -131,6 +156,7 @@ export class DocumentsView extends SearchView<DocumentsState> {
       ...BASE_STATE,
       queryText: '',
       sortText: '',
+      aggsText: '',
       issue: undefined,
       pageSize: DOCUMENT_PAGE_SIZE,
       running: false,
@@ -141,6 +167,8 @@ export class DocumentsView extends SearchView<DocumentsState> {
       total: undefined,
       exactCount: undefined,
       paging: undefined,
+      aggregations: undefined,
+      resultTab: 'documents',
       tookMs: undefined,
       error: undefined,
       columns: [],
@@ -149,6 +177,21 @@ export class DocumentsView extends SearchView<DocumentsState> {
       bulk: undefined,
     });
     this.target = target;
+    this.builder = new DslBuilder({
+      texts: () => ({
+        query: this.state.queryText,
+        sort: this.state.sortText,
+        aggs: this.state.aggsText,
+      }),
+      subscribe: (listener) => this.store.subscribe(listener),
+      setTexts: (texts) =>
+        this.set({
+          queryText: texts.query,
+          sortText: texts.sort,
+          aggsText: texts.aggs,
+          issue: undefined,
+        }),
+    });
   }
 
   /** Several indices can answer (an alias, a data stream, a pattern): show `_index`. */
@@ -166,18 +209,32 @@ export class DocumentsView extends SearchView<DocumentsState> {
     await this.search();
   }
 
-  /** Mapped fields become the first columns, so empty ones show too. */
+  /** Mapped fields become the first columns, so empty ones show too, and the builder's fields. */
   async #loadMapping(): Promise<void> {
+    this.builder.setFields({ status: 'loading', fields: [], error: undefined });
     try {
-      const mapping = await this.call((host, sessionId) =>
-        host.search.indices.getMapping({ sessionId, index: this.target.target }),
+      const mapping = mappingFields(
+        await this.call((host, sessionId) =>
+          host.search.indices.getMapping({ sessionId, index: this.target.target }),
+        ),
       );
-      this.#mapped = mappingFields(mapping)
+      this.#mapped = mapping
         .filter((f) => !f.multiField && f.type !== 'object' && f.type !== 'nested')
         .map((f) => f.path);
-    } catch {
+      this.builder.setFields({ status: 'done', fields: dslFields(mapping), error: undefined });
+    } catch (error) {
       this.#mapped = [];
+      this.builder.setFields({
+        status: 'error',
+        fields: dslFields([]),
+        error: errorMessage(error),
+      });
     }
+  }
+
+  /** Reads the mapping again (the builder's field list). */
+  async reloadFields(): Promise<void> {
+    await this.#loadMapping();
   }
 
   setQueryText(text: string): void {
@@ -186,6 +243,14 @@ export class DocumentsView extends SearchView<DocumentsState> {
 
   setSortText(text: string): void {
     this.set({ sortText: text, issue: undefined });
+  }
+
+  setAggsText(text: string): void {
+    this.set({ aggsText: text, issue: undefined });
+  }
+
+  setResultTab(resultTab: DocumentsState['resultTab']): void {
+    this.set({ resultTab });
   }
 
   setPageSize(size: number): void {
@@ -207,9 +272,14 @@ export class DocumentsView extends SearchView<DocumentsState> {
 
   /** Runs the query bar's search from the first page. */
   async search(): Promise<void> {
+    const pending = this.builder.pendingIssue();
+    if (pending !== undefined) {
+      this.set({ issue: `Finish the query first: ${pending}` });
+      return;
+    }
     let body: string;
     try {
-      body = searchBody(this.state.queryText, this.state.sortText);
+      body = searchBody(this.state.queryText, this.state.sortText, this.state.aggsText);
     } catch (error) {
       this.set({ issue: errorMessage(error) });
       return;
@@ -228,6 +298,7 @@ export class DocumentsView extends SearchView<DocumentsState> {
       total: undefined,
       exactCount: undefined,
       paging: undefined,
+      aggregations: undefined,
       columns: this.#columnsFor([]).columns,
     });
     patchPanel(this.id, { busy: true });
@@ -292,6 +363,7 @@ export class DocumentsView extends SearchView<DocumentsState> {
       truncatedColumns: truncated,
       hasMore: page.hits.length >= this.state.pageSize,
       ...(page.total !== undefined ? { total: page.total } : {}),
+      ...(page.aggregations !== undefined ? { aggregations: page.aggregations } : {}),
       paging: page.paging,
     });
   }
@@ -696,7 +768,18 @@ export class DocumentsView extends SearchView<DocumentsState> {
     this.set({ bulk: undefined });
   }
 
+  /** The search as a console request, to go on with it there. */
+  consoleText(): string {
+    const body = searchBody(this.state.queryText, this.state.sortText, this.state.aggsText);
+    return formatConsoleRequest({
+      method: 'GET',
+      path: `/${this.target.target}/_search`,
+      ...(body !== '{}' ? { body: formatJson(body) } : {}),
+    });
+  }
+
   override async dispose(): Promise<void> {
+    this.builder.dispose();
     this.#runId++;
     await this.#closeStream();
     await super.dispose();
