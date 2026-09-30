@@ -5,6 +5,8 @@ import {
   capabilitiesFor,
   compareVersions,
   connectionProfileSchema,
+  hasWeakTls,
+  isLocalEndpoint,
   parseServerVersion,
   requiresWriteConfirmation,
   rowAt,
@@ -66,9 +68,9 @@ describe('connection profiles', () => {
     updatedAt: now,
   } as const;
 
-  it('applies safe defaults', () => {
+  it('applies the defaults: TLS off until stated, no sign-in', () => {
     const profile = connectionProfileSchema.parse(base);
-    expect(profile.tls.mode).toBe('verify-full');
+    expect(profile.tls.mode).toBe('disable');
     expect(profile.auth).toEqual({ method: 'none' });
     expect(profile.presentation.environment).toBe('dev');
     expect(profile.options.connectTimeoutMs).toBe(10_000);
@@ -106,6 +108,67 @@ describe('connection profiles', () => {
     expect(secretRefsOf(profile).map((r) => r.id)).toEqual(['sec-1', 'sec-2']);
     expect(profile.ssh?.hops[0]?.port).toBe(22);
     expect(requiresWriteConfirmation(profile)).toBe(true);
+  });
+});
+
+describe('the weak-TLS warning', () => {
+  const profile = (patch: object) =>
+    connectionProfileSchema.parse({
+      id: 'p',
+      name: 'P',
+      engine: 'postgres',
+      endpoint: { kind: 'host', host: 'db.example.com', port: 5432 },
+      createdAt: now,
+      updatedAt: now,
+      ...patch,
+    });
+  const hop = { host: 'bastion', user: 'ops', auth: { method: 'agent' } };
+
+  it('shows for a remote server without verified TLS', () => {
+    expect(hasWeakTls(profile({}))).toBe(true);
+    expect(hasWeakTls(profile({ tls: { mode: 'require' } }))).toBe(true);
+    expect(hasWeakTls(profile({ tls: { mode: 'verify-full' } }))).toBe(false);
+  });
+
+  it('does not show for localhost, a socket or loopback behind an SSH tunnel', () => {
+    for (const host of ['localhost', '127.0.0.1', '127.1.2.3', '::1', 'db.localhost']) {
+      const local = profile({ endpoint: { kind: 'host', host, port: 5432 } });
+      expect(isLocalEndpoint(local), host).toBe(true);
+      expect(hasWeakTls(local), host).toBe(false);
+    }
+    expect(hasWeakTls(profile({ endpoint: { kind: 'socket', path: '/tmp' } }))).toBe(false);
+    const tunnelled = profile({
+      endpoint: { kind: 'host', host: '127.0.0.1', port: 5432 },
+      ssh: { hops: [hop] },
+    });
+    expect(hasWeakTls(tunnelled)).toBe(false);
+    expect(
+      hasWeakTls(
+        profile({
+          engine: 'elasticsearch',
+          endpoint: { kind: 'urls', urls: ['http://localhost:9200', 'http://127.0.0.1:9201'] },
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('shows for loopback reached through a proxy, and for a mixed host list', () => {
+    const proxied = profile({
+      endpoint: { kind: 'host', host: 'localhost', port: 5432 },
+      proxy: { kind: 'socks5', host: 'proxy', port: 1080 },
+    });
+    expect(hasWeakTls(proxied)).toBe(true);
+    const mixed = profile({
+      engine: 'mongodb',
+      endpoint: {
+        kind: 'hosts',
+        hosts: [
+          { host: 'localhost', port: 27017 },
+          { host: 'db2.example.com', port: 27017 },
+        ],
+      },
+    });
+    expect(hasWeakTls(mixed)).toBe(true);
   });
 });
 

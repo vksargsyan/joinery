@@ -48,8 +48,9 @@ export interface ParsedConnectionUri {
  * `redis+sentinel://`, `unix://`) and Elasticsearch (`http://`, `https://`).
  *
  * TLS settings stated by the URI (sslmode, ssl-mode, ssl, tls, rediss://, https://) are mapped
- * to the profile's TLS mode; when the URI says nothing, the profile keeps Joinery's safe default
- * (verify-full). Error messages never quote the URI, which may contain a password.
+ * to the profile's TLS mode. mongodb+srv:// implies TLS (verify-full), as in MongoDB drivers;
+ * otherwise, when the URI says nothing, the profile keeps Joinery's default (TLS off). Error
+ * messages never quote the URI, which may contain a password.
  */
 export function parseConnectionUri(
   uri: string,
@@ -559,7 +560,7 @@ function buildMongo(parts: UriParts, params: Params): BuiltProfile {
   if (tlsFlag !== undefined && !parseBoolean(tlsFlag, 'tls')) mode = 'disable';
   else if (insecure || invalidCerts) mode = 'require';
   else if (invalidHosts) mode = 'verify-ca';
-  else if (tlsFlag !== undefined) mode = 'verify-full';
+  else if (tlsFlag !== undefined || srv) mode = 'verify-full';
   const certificateKey = params.take('tlsCertificateKeyFile', 'sslPEMKeyFile');
   const tls = tlsDraft(mode, params.take('tlsCAFile', 'sslCA'), certificateKey, certificateKey);
 

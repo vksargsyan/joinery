@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 
 export interface LaunchedApp {
   readonly app: ElectronApplication;
@@ -47,4 +52,14 @@ export async function launchApp(
 export async function openNewConnection(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Connection actions' }).click();
   await page.getByRole('menuitem', { name: 'New connection' }).click();
+}
+
+/** On the new connection dialog's first step, picks the engine and goes on to the form. */
+export async function chooseEngine(dialog: Locator, engine: string): Promise<void> {
+  await dialog.getByRole('radio', { name: engine, exact: true }).dblclick();
+}
+
+/** Opens a tab of the connection dialog's form (General, Advanced, TLS, SSH, Proxy). */
+export async function connectionTab(dialog: Locator, tab: string): Promise<void> {
+  await dialog.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
 }

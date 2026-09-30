@@ -85,8 +85,11 @@ export const tlsModeSchema = z.enum(['disable', 'require', 'verify-ca', 'verify-
 export type TlsMode = z.infer<typeof tlsModeSchema>;
 
 export const tlsSchema = z.object({
-  /** Default is verify-full; anything weaker shows a persistent warning in the UI. */
-  mode: tlsModeSchema.default('verify-full'),
+  /**
+   * Off unless stated (most servers a connection is made for have none); anything short of
+   * verify-full shows a persistent warning in the UI.
+   */
+  mode: tlsModeSchema.default('disable'),
   caPath: z.string().optional(),
   certPath: z.string().optional(),
   keyPath: z.string().optional(),
@@ -185,7 +188,7 @@ export const connectionProfileSchema = z
     engine: engineIdSchema,
     endpoint: endpointSchema,
     auth: authSchema.default({ method: 'none' }),
-    tls: tlsSchema.default({ mode: 'verify-full' }),
+    tls: tlsSchema.default({ mode: 'disable' }),
     ssh: sshTunnelSchema.optional(),
     proxy: proxySchema.optional(),
     options: connectionOptionsSchema.default(connectionOptionsSchema.parse({})),
@@ -230,7 +233,51 @@ export function requiresWriteConfirmation(profile: ConnectionProfile): boolean {
   return profile.presentation.environment === 'production' || profile.presentation.confirmWrites;
 }
 
-/** TLS verification is off or partial, so the UI must show a persistent warning. */
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+function isLoopback(host: string): boolean {
+  const name = host.toLowerCase();
+  return LOOPBACK.has(name) || name.endsWith('.localhost') || /^127(\.\d{1,3}){3}$/.test(name);
+}
+
+/**
+ * The database is reached without crossing a network in the clear: a Unix socket, or loopback
+ * addresses only, directly or as the far end of an SSH tunnel (whose own leg is encrypted). A
+ * proxy without a tunnel carries the traffic over the network, so it is not local.
+ */
+export function isLocalEndpoint(profile: ConnectionProfile): boolean {
+  if (profile.proxy !== undefined && profile.ssh === undefined) return false;
+  const { endpoint } = profile;
+  switch (endpoint.kind) {
+    case 'socket':
+      return true;
+    case 'host':
+      return isLoopback(endpoint.host);
+    case 'hosts':
+      return endpoint.hosts.every((host) => isLoopback(host.host));
+    case 'sentinel':
+      return endpoint.sentinels.every((host) => isLoopback(host.host));
+    case 'cluster':
+      return endpoint.seeds.every((host) => isLoopback(host.host));
+    case 'urls':
+      return endpoint.urls.every((url) => {
+        try {
+          return isLoopback(new URL(url.includes('://') ? url : `http://${url}`).hostname);
+        } catch {
+          return false;
+        }
+      });
+    case 'uri':
+    case 'srv':
+    case 'cloudId':
+      return false;
+  }
+}
+
+/**
+ * TLS verification is off or partial on a connection that crosses a network, so the UI must show
+ * a persistent warning. A local server (localhost, a socket) has nothing to intercept.
+ */
 export function hasWeakTls(profile: ConnectionProfile): boolean {
-  return profile.tls.mode !== 'verify-full';
+  return profile.tls.mode !== 'verify-full' && !isLocalEndpoint(profile);
 }

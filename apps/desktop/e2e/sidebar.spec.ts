@@ -36,7 +36,6 @@ async function create(uri: string, name: string, storage?: string): Promise<void
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name', { exact: true }).fill(name);
-  await dialog.getByLabel('TLS', { exact: true }).selectOption('disable');
   if (storage) await dialog.getByLabel('Password storage').selectOption(storage);
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();

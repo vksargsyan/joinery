@@ -153,6 +153,12 @@ export function Modal(props: {
   readonly children: ReactNode;
   readonly footer?: ReactNode;
   readonly role?: 'dialog' | 'alertdialog';
+  /** Next to the title, outside its accessible name (a badge, an icon). */
+  readonly titleAside?: ReactNode;
+  /** Tabs at the foot of the header, on its border. */
+  readonly tabs?: ReactNode;
+  /** The body's size and padding, when it must not follow its content (a tabbed dialog). */
+  readonly bodyClassName?: string;
 }) {
   return (
     <RadixDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
@@ -167,15 +173,21 @@ export function Modal(props: {
           )}
           {...(props.description === undefined ? { 'aria-describedby': undefined } : {})}
         >
-          <div className="border-b border-border px-5 py-3">
-            <RadixDialog.Title className="text-sm font-semibold">{props.title}</RadixDialog.Title>
+          <div className={cx('border-b border-border px-5', props.tabs ? 'pt-3' : 'py-3')}>
+            <div className="flex items-center gap-2">
+              <RadixDialog.Title className="text-sm font-semibold">{props.title}</RadixDialog.Title>
+              {props.titleAside}
+            </div>
             {props.description !== undefined && (
               <RadixDialog.Description className="mt-1 text-xs text-muted">
                 {props.description}
               </RadixDialog.Description>
             )}
+            {props.tabs !== undefined && <div className="mt-2">{props.tabs}</div>}
           </div>
-          <div className="min-h-0 flex-1 overflow-auto px-5 py-4">{props.children}</div>
+          <div className={cx('min-h-0 overflow-auto', props.bodyClassName ?? 'flex-1 px-5 py-4')}>
+            {props.children}
+          </div>
           {props.footer !== undefined && (
             <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
               {props.footer}
@@ -244,7 +256,8 @@ export function Icon({
     | 'connection-new'
     | 'folder-new'
     | 'disconnect'
-    | 'plug';
+    | 'plug'
+    | 'link';
   readonly className?: string;
 }) {
   // Kiln Glyphs' drawing: a 16px grid, 1.3 strokes with round caps and joins, closed shapes
@@ -527,6 +540,12 @@ export function Icon({
       </>
     ),
     // A plug in its socket: connected.
+    link: (
+      <>
+        <path d="M6.9 9.1a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.9.9" />
+        <path d="M9.1 6.9a2.6 2.6 0 0 0-3.7 0L3.2 9.1a2.6 2.6 0 0 0 3.7 3.7l.9-.9" />
+      </>
+    ),
     plug: (
       <>
         <path

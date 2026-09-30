@@ -15,9 +15,11 @@ administration. Data moves between engines with transfers, backups and restores.
 
 What works today:
 
-- **Connections**: profiles with host/port, socket or URI endpoints; the four TLS modes (default
-  verify-full); passwords saved in the OS keychain, remembered for the session, or asked every
-  time; URI and pgpass import; encrypted profile export; stepwise Test Connection.
+- **Connections**: a new connection starts with its engine, then a tabbed form (General,
+  Advanced, TLS, SSH, Proxy); profiles with host/port, socket or URI endpoints; the four TLS
+  modes (off by default; a URI's sslmode, rediss://, https:// or mongodb+srv:// turns it on);
+  passwords saved in the OS keychain, remembered for the session, or asked every time; URI and
+  pgpass import; encrypted profile export; stepwise Test Connection.
 - **SSH tunnels and proxies**: SSH with password, private key (OpenSSH, PEM, PuTTY converted on
   import) or ssh-agent, jump hosts and keep-alives, one SSH session shared by a connection's
   tabs; SOCKS5 and HTTP proxies; MongoDB replica sets, Redis Sentinel and Cluster reached node by

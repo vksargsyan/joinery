@@ -98,8 +98,8 @@ Targets:
   connection URI: postgres://user:pass@host:5432/db, mysql://user@host/db, mariadb://...
   URI passwords are used for that run only and never stored. Otherwise the password comes
   from the profile's saved secret, JOINERY_PASSWORD_<PROFILE> or JOINERY_PASSWORD, or a
-  hidden prompt. TLS defaults to verify-full unless the URI says otherwise (?sslmode=...)
-  or --tls is given.
+  hidden prompt. TLS is off unless the URI says otherwise (?sslmode=..., rediss://,
+  https://, mongodb+srv://) or --tls is given.
 
   An http:// or https:// URL is an Elasticsearch node: https://elastic@es.example.com:9200. It logs in with the URL's user and password, or
   with the API key in JOINERY_API_KEY; the scheme decides TLS (--tls sets the https mode).
@@ -968,7 +968,7 @@ Examples:
       )
       .option('--read-only', 'lock the profile read-only: writes are refused')
       .option('--confirm-writes', 'ask before every write')
-      .addOption(tlsOption().default(undefined, 'what the URI says, else verify-full'))
+      .addOption(tlsOption().default(undefined, 'what the URI says, else disable'))
       .addOption(
         new Option('--engine <engine>', 'for mysql:// URIs of MariaDB servers').choices([
           'mysql',
