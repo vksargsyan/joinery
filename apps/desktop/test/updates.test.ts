@@ -270,6 +270,15 @@ describe('updateErrorMessage', () => {
     expect(updateErrorMessage(new Error('No published versions on GitHub'))).toBe(
       'No release was found on the update server',
     );
+    // A repository with no production release, as a release's first smoke test sees it: the
+    // provider wraps the "latest version" error in a feed error with another code.
+    const wrapped = Object.assign(
+      new Error(
+        'Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/vksargsyan/joinery/releases/latest), please ensure a production release exists: HttpError: 406 \n    at GitHubProvider.getLatestTagName,\nXML:\n<feed/>',
+      ),
+      { code: 'ERR_UPDATER_INVALID_RELEASE_FEED' },
+    );
+    expect(updateErrorMessage(wrapped)).toBe('No release was found on the update server');
     expect(
       updateErrorMessage(
         Object.assign(new Error('x'), { code: 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' }),

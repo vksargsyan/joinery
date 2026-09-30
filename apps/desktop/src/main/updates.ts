@@ -101,7 +101,13 @@ export interface UpdatesService {
   install(): void;
 }
 
-/** One line of an updater error, without stacks or feed dumps. */
+/**
+ * One line of an updater error, without stacks or feed dumps. A repository with no production
+ * release yet is not a failure: electron-updater's GitHub provider reports it as
+ * ERR_UPDATER_LATEST_VERSION_NOT_FOUND, but wraps that in ERR_UPDATER_INVALID_RELEASE_FEED
+ * ("Cannot parse releases feed: Error: Unable to find latest version on GitHub...") when it
+ * happens while reading the feed, so the message is checked too.
+ */
 export function updateErrorMessage(error: unknown): string {
   const code =
     typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : '';
@@ -109,7 +115,8 @@ export function updateErrorMessage(error: unknown): string {
   if (
     code === 'ERR_UPDATER_LATEST_VERSION_NOT_FOUND' ||
     code === 'ERR_UPDATER_NO_PUBLISHED_VERSIONS' ||
-    message.startsWith('No published versions')
+    message.startsWith('No published versions') ||
+    message.includes('Unable to find latest version on GitHub')
   ) {
     return 'No release was found on the update server';
   }
