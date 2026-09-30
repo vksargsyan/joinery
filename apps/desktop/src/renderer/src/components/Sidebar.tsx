@@ -57,7 +57,7 @@ import { RedisTree, openRedisTool } from './redis/RedisTree';
 import { SearchTree } from './search/SearchTree';
 import { openQueryTab, openTableData, openTableDesigner } from './dock';
 import type { ConnectionDialogMode } from './ConnectionDialog';
-import { Button, EnvironmentBadge, Icon, cx } from './ui';
+import { Button, EnvironmentBadge, Icon, cx, type IconName } from './ui';
 
 /**
  * The connections sidebar (spec §4, §5): profiles grouped by folder with their environment, and
@@ -66,7 +66,7 @@ import { Button, EnvironmentBadge, Icon, cx } from './ui';
  * (spec §7, §8); views and other relations open their rows in a query tab.
  *
  * As in Navicat, a click selects a connection and a double-click (or Enter) connects it, with a
- * spinner by its name while it connects; only a connected one has a chevron. The header's menu
+ * spinner in place of its actions button while it connects; only a connected one has a chevron. The header's menu
  * creates connections and folders and closes every open connection; the search and the filter
  * at the bottom narrow the list (state/sidebar-filter.ts).
  */
@@ -146,20 +146,22 @@ export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) =
               align="end"
               className="z-50 min-w-56 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
             >
-              <MenuItem onSelect={() => props.onEdit({ kind: 'create' })}>
-                <IconLabel icon="connection-new">New connection</IconLabel>
+              <MenuItem icon="connection-new" onSelect={() => props.onEdit({ kind: 'create' })}>
+                New connection
               </MenuItem>
-              <MenuItem onSelect={() => void newFolder()}>
-                <IconLabel icon="folder-new">New folder</IconLabel>
+              <MenuItem icon="folder-new" onSelect={() => void newFolder()}>
+                New folder
               </MenuItem>
               <DropdownMenu.Separator className="my-1 h-px bg-border" />
-              <MenuItem disabled={open.length === 0} onSelect={() => void closeAll()}>
-                <IconLabel icon="disconnect">
-                  Close all connections
-                  {open.length > 0 && (
-                    <span className="ml-auto text-xs text-faint">{open.length}</span>
-                  )}
-                </IconLabel>
+              <MenuItem
+                icon="disconnect"
+                disabled={open.length === 0}
+                onSelect={() => void closeAll()}
+              >
+                Close all connections
+                {open.length > 0 && (
+                  <span className="ml-auto text-xs text-faint">{open.length}</span>
+                )}
               </MenuItem>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
@@ -227,19 +229,6 @@ export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) =
       <SearchBar />
       <DropTableHost />
     </aside>
-  );
-}
-
-/** An icon and its label in a menu item. */
-function IconLabel(props: {
-  readonly icon: Parameters<typeof Icon>[0]['name'];
-  readonly children: ReactNode;
-}) {
-  return (
-    <span className="flex w-full items-center gap-2">
-      <Icon name={props.icon} className="text-muted" />
-      {props.children}
-    </span>
   );
 }
 
@@ -386,8 +375,8 @@ function FilterMenu() {
             Connected only
           </DropdownMenu.CheckboxItem>
           <DropdownMenu.Separator className="my-1 h-px bg-border" />
-          <MenuItem disabled={!active} onSelect={() => clearSidebarFilter()}>
-            <IconLabel icon="close">Clear the filter</IconLabel>
+          <MenuItem icon="close" disabled={!active} onSelect={() => clearSidebarFilter()}>
+            Clear the filter
           </MenuItem>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -468,11 +457,16 @@ function FolderItem(props: {
         }
         menu={
           <>
-            <MenuItem onSelect={() => props.onEdit({ kind: 'create', folderId: props.folder.id })}>
+            <MenuItem
+              icon="connection-new"
+              onSelect={() => props.onEdit({ kind: 'create', folderId: props.folder.id })}
+            >
               New connection here
             </MenuItem>
-            <MenuItem onSelect={() => setRenaming(true)}>Rename</MenuItem>
-            <MenuItem danger onSelect={() => void remove()}>
+            <MenuItem icon="edit" onSelect={() => setRenaming(true)}>
+              Rename
+            </MenuItem>
+            <MenuItem icon="trash" danger onSelect={() => void remove()}>
               Delete folder
             </MenuItem>
           </>
@@ -575,6 +569,7 @@ function ProfileItem(props: {
         expandable={connected}
         expanded={expanded}
         clickToggles={false}
+        busy={connecting}
         onToggle={() => {
           if (!connected) return;
           setExpanded(!expanded);
@@ -602,14 +597,6 @@ function ProfileItem(props: {
             <span className="truncate" data-testid="profile-name">
               <Highlighted text={profile.name} search={props.search} />
             </span>
-            {connecting && (
-              <span
-                role="status"
-                aria-label="Connecting"
-                data-testid="profile-connecting"
-                className="h-3 w-3 shrink-0 animate-spin rounded-full border-[1.5px] border-rust/25 border-t-rust"
-              />
-            )}
             {(connection?.status === 'lost' || connection?.status === 'failed') && (
               <span
                 aria-hidden="true"
@@ -643,7 +630,7 @@ function ProfileItem(props: {
           <>
             {connected ? (
               <>
-                <MenuItem onSelect={() => void newQuery()}>
+                <MenuItem icon="query" onSelect={() => void newQuery()}>
                   {profile.engine === 'redis'
                     ? 'Open CLI'
                     : profile.engine === 'elasticsearch'
@@ -651,32 +638,50 @@ function ProfileItem(props: {
                       : 'New query tab'}
                 </MenuItem>
                 {isSqlEngine(profile.engine) && (
-                  <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
+                  <MenuItem icon="file-run" onSelect={() => openRunSqlFile(profile)}>
+                    Run SQL file…
+                  </MenuItem>
                 )}
                 {isSqlEngine(profile.engine) && (
-                  <MenuItem onSelect={() => openQueryBuilder({ profileId: profile.id })}>
+                  <MenuItem
+                    icon="builder"
+                    onSelect={() => openQueryBuilder({ profileId: profile.id })}
+                  >
                     New query builder
                   </MenuItem>
                 )}
                 {isSqlEngine(profile.engine) && (
-                  <MenuItem onSelect={() => openErDiagram({ profileId: profile.id })}>
+                  <MenuItem
+                    icon="diagram"
+                    onSelect={() => openErDiagram({ profileId: profile.id })}
+                  >
                     ER diagram
                   </MenuItem>
                 )}
                 {hasServerTools(profile.engine) && (
-                  <MenuItem onSelect={() => openServerTools(profile)}>Server tools</MenuItem>
+                  <MenuItem icon="server" onSelect={() => openServerTools(profile)}>
+                    Server tools
+                  </MenuItem>
                 )}
                 {(isSqlEngine(profile.engine) ||
                   profile.engine === 'mongodb' ||
                   profile.engine === 'redis') && (
-                  <MenuItem onSelect={() => openTransferFrom(profile)}>Transfer data to…</MenuItem>
+                  <MenuItem icon="transfer" onSelect={() => openTransferFrom(profile)}>
+                    Transfer data to…
+                  </MenuItem>
                 )}
                 <BackupMenuItems profile={profile} />
-                <MenuItem onSelect={() => refreshObjects(profile.id, [])}>Refresh objects</MenuItem>
-                <MenuItem onSelect={() => void close()}>Disconnect</MenuItem>
+                <MenuItem icon="refresh" onSelect={() => refreshObjects(profile.id, [])}>
+                  Refresh objects
+                </MenuItem>
+                <MenuItem icon="disconnect" onSelect={() => void close()}>
+                  Disconnect
+                </MenuItem>
               </>
             ) : (
-              <MenuItem onSelect={() => void open()}>Connect</MenuItem>
+              <MenuItem icon="plug" onSelect={() => void open()}>
+                Connect
+              </MenuItem>
             )}
             {isSqlEngine(profile.engine) && (
               <CompareItems
@@ -687,11 +692,13 @@ function ProfileItem(props: {
               />
             )}
             <DropdownMenu.Separator className="my-1 h-px bg-border" />
-            <MenuItem onSelect={() => props.onEdit({ kind: 'edit', profile })}>Edit…</MenuItem>
-            <MenuItem onSelect={() => props.onEdit({ kind: 'duplicate', profile })}>
+            <MenuItem icon="edit" onSelect={() => props.onEdit({ kind: 'edit', profile })}>
+              Edit…
+            </MenuItem>
+            <MenuItem icon="copy" onSelect={() => props.onEdit({ kind: 'duplicate', profile })}>
               Duplicate…
             </MenuItem>
-            <MenuItem danger onSelect={() => void remove()}>
+            <MenuItem icon="trash" danger onSelect={() => void remove()}>
               Delete
             </MenuItem>
           </>
@@ -838,14 +845,23 @@ function ObjectNode(props: {
             <>
               {table ? (
                 <>
-                  <MenuItem onSelect={openData}>Open data</MenuItem>
-                  <MenuItem onSelect={() => openTableDesigner(designTarget(table.name)!)}>
+                  <MenuItem icon="table" onSelect={openData}>
+                    Open data
+                  </MenuItem>
+                  <MenuItem
+                    icon="design"
+                    onSelect={() => openTableDesigner(designTarget(table.name)!)}
+                  >
                     Design table
                   </MenuItem>
-                  <MenuItem onSelect={() => openImportWizard(profile, table, table.name)}>
+                  <MenuItem
+                    icon="import"
+                    onSelect={() => openImportWizard(profile, table, table.name)}
+                  >
                     Import data…
                   </MenuItem>
                   <MenuItem
+                    icon="export"
                     onSelect={() =>
                       openExportTables(
                         profile,
@@ -858,6 +874,7 @@ function ObjectNode(props: {
                     Export…
                   </MenuItem>
                   <MenuItem
+                    icon="wrench"
                     onSelect={() =>
                       openServerTools(profile, {
                         tab: 'maintenance',
@@ -872,6 +889,7 @@ function ObjectNode(props: {
                     Maintenance…
                   </MenuItem>
                   <MenuItem
+                    icon="transfer"
                     onSelect={() =>
                       openTransferFrom(profile, {
                         database: table.database,
@@ -884,17 +902,28 @@ function ObjectNode(props: {
                   </MenuItem>
                 </>
               ) : (
-                opensData(node) && <MenuItem onSelect={openData}>Open rows</MenuItem>
+                opensData(node) && (
+                  <MenuItem icon="table" onSelect={openData}>
+                    Open rows
+                  </MenuItem>
+                )
               )}
               {newTable && (
                 <>
-                  <MenuItem onSelect={() => openTableDesigner(designTarget(null, newTable)!)}>
+                  <MenuItem
+                    icon="table-new"
+                    onSelect={() => openTableDesigner(designTarget(null, newTable)!)}
+                  >
                     New table…
                   </MenuItem>
-                  <MenuItem onSelect={() => openImportWizard(profile, newTable, null)}>
+                  <MenuItem
+                    icon="import"
+                    onSelect={() => openImportWizard(profile, newTable, null)}
+                  >
                     Import into new table…
                   </MenuItem>
                   <MenuItem
+                    icon="export"
                     onSelect={() =>
                       openExportTables(
                         profile,
@@ -907,6 +936,7 @@ function ObjectNode(props: {
                     Export tables…
                   </MenuItem>
                   <MenuItem
+                    icon="transfer"
                     onSelect={() =>
                       openTransferFrom(profile, {
                         database: newTable.database,
@@ -919,12 +949,13 @@ function ObjectNode(props: {
                 </>
               )}
               {node.kind === 'database' && (
-                <MenuItem onSelect={() => openRunSqlFile(profile, node.name)}>
+                <MenuItem icon="file-run" onSelect={() => openRunSqlFile(profile, node.name)}>
                   Run SQL file…
                 </MenuItem>
               )}
               {node.kind === 'database' && node.path.length === 1 && (
                 <MenuItem
+                  icon="builder"
                   onSelect={() => openQueryBuilder({ profileId: profile.id, database: node.name })}
                 >
                   New query builder
@@ -932,6 +963,7 @@ function ObjectNode(props: {
               )}
               {node.kind === 'database' && node.path.length === 1 && (
                 <MenuItem
+                  icon="diagram"
                   onSelect={() => openErDiagram({ profileId: profile.id, database: node.name })}
                 >
                   ER diagram
@@ -939,6 +971,7 @@ function ObjectNode(props: {
               )}
               {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
                 <MenuItem
+                  icon="builder"
                   onSelect={() =>
                     openQueryBuilder({
                       profileId: profile.id,
@@ -952,6 +985,7 @@ function ObjectNode(props: {
               )}
               {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
                 <MenuItem
+                  icon="diagram"
                   onSelect={() =>
                     openErDiagram({
                       profileId: profile.id,
@@ -984,12 +1018,15 @@ function ObjectNode(props: {
                 />
               )}
               {node.hasChildren && (
-                <MenuItem onSelect={() => refreshObjects(profile.id, node.path)}>Refresh</MenuItem>
+                <MenuItem icon="refresh" onSelect={() => refreshObjects(profile.id, node.path)}>
+                  Refresh
+                </MenuItem>
               )}
               {table && (
                 <>
                   <DropdownMenu.Separator className="my-1 h-px bg-border" />
                   <MenuItem
+                    icon="trash"
                     danger
                     onSelect={() =>
                       useDropRequest.setState({
@@ -1030,10 +1067,10 @@ function CompareItems(props: {
   return (
     <>
       <DropdownMenu.Separator className="my-1 h-px bg-border" />
-      <MenuItem onSelect={() => openStructureCompare({ source: props.source })}>
+      <MenuItem icon="compare" onSelect={() => openStructureCompare({ source: props.source })}>
         Compare structure with…
       </MenuItem>
-      <MenuItem onSelect={() => openDataCompare({ source: props.source })}>
+      <MenuItem icon="compare-rows" onSelect={() => openDataCompare({ source: props.source })}>
         Compare data with…
       </MenuItem>
     </>
@@ -1055,6 +1092,8 @@ export function Row(props: {
   readonly title?: string | undefined;
   /** A click on the row toggles it (the default); otherwise only the chevron does. */
   readonly clickToggles?: boolean;
+  /** Work in progress (a connection opening): a spinner in place of the actions button. */
+  readonly busy?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const clickToggles = props.clickToggles ?? true;
@@ -1132,11 +1171,24 @@ export function Row(props: {
             <button
               type="button"
               aria-label="Actions"
-              className="rounded-sm p-0.5 text-muted opacity-0 group-hover:opacity-100 group-focus:opacity-100 hover:bg-hover hover:text-fg focus:opacity-100 data-[state=open]:opacity-100"
+              className={cx(
+                'rounded-sm p-0.5 text-muted group-hover:opacity-100 group-focus:opacity-100 hover:bg-hover hover:text-fg focus:opacity-100 data-[state=open]:opacity-100',
+                !props.busy && 'opacity-0',
+              )}
               onClick={(event) => event.stopPropagation()}
               onDoubleClick={(event) => event.stopPropagation()}
             >
-              <Icon name="more" />
+              {props.busy ? (
+                <span
+                  aria-hidden="true"
+                  data-testid="row-busy"
+                  className="flex h-4 w-4 items-center justify-center"
+                >
+                  <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-rust/25 border-t-rust" />
+                </span>
+              ) : (
+                <Icon name="more" />
+              )}
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
@@ -1158,21 +1210,26 @@ export function Row(props: {
   );
 }
 
+/** A menu item, with its glyph when it has one (every tree menu's items do). */
 export function MenuItem(props: {
   readonly children: ReactNode;
   readonly onSelect: () => void;
   readonly danger?: boolean;
   readonly disabled?: boolean;
+  readonly icon?: IconName;
 }) {
   return (
     <DropdownMenu.Item
       onSelect={props.onSelect}
       disabled={props.disabled}
       className={cx(
-        'cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active',
+        'flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active',
         props.danger && 'text-danger',
       )}
     >
+      {props.icon !== undefined && (
+        <Icon name={props.icon} className={props.danger ? 'text-danger' : 'text-muted'} />
+      )}
       {props.children}
     </DropdownMenu.Item>
   );

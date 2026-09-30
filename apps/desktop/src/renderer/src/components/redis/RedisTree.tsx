@@ -239,8 +239,10 @@ function TreeNode(props: {
           }
           menu={
             <>
-              <MenuItem onSelect={open}>Open value</MenuItem>
-              <MenuItem danger onSelect={() => void remove()}>
+              <MenuItem icon="open" onSelect={open}>
+                Open value
+              </MenuItem>
+              <MenuItem icon="trash" danger onSelect={() => void remove()}>
                 Delete key…
               </MenuItem>
             </>
@@ -291,9 +293,12 @@ function TreeNode(props: {
         }
         menu={
           <>
-            <MenuItem onSelect={() => browse(pattern)}>Browse keys</MenuItem>
+            <MenuItem icon="key" onSelect={() => browse(pattern)}>
+              Browse keys
+            </MenuItem>
             {node.kind !== 'namespace' && (
               <MenuItem
+                icon="query"
                 onSelect={() =>
                   openRedisPanel({
                     profileId: profile.id,
@@ -308,6 +313,7 @@ function TreeNode(props: {
             )}
             {clusterNode === undefined && (
               <MenuItem
+                icon="transfer"
                 onSelect={() =>
                   openTransferFrom(profile, {
                     ...(database !== undefined ? { database: String(database) } : {}),
@@ -327,7 +333,9 @@ function TreeNode(props: {
               }}
               restore={node.kind !== 'namespace'}
             />
-            <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>Refresh</MenuItem>
+            <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, node.path)}>
+              Refresh
+            </MenuItem>
           </>
         }
       />

@@ -4,8 +4,9 @@ import { launchApp, openNewConnection, type LaunchedApp } from './app';
 
 /**
  * The connections side bar, as Navicat's: a click selects a connection and a double-click
- * connects it, with a spinner while it connects and a chevron only once connected; the header's
- * menu creates folders and closes every connection; the search and the filter narrow the list.
+ * connects it, with a spinner in place of its actions button meanwhile and a chevron once
+ * connected; the header's menu creates folders and closes every connection; the search and the
+ * filter narrow the list.
  */
 
 const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
@@ -65,9 +66,9 @@ test('a click selects a connection; a double-click connects it, with a spinner m
   await row(NAME).dblclick();
   const prompt = page.getByRole('dialog', { name: `Connect to ${NAME}` });
   await expect(prompt).toBeVisible();
-  await expect(page.getByTestId('profile-connecting')).toHaveCount(1);
+  await expect(page.getByTestId('row-busy')).toHaveCount(1);
   await prompt.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByTestId('profile-connecting')).toHaveCount(0);
+  await expect(page.getByTestId('row-busy')).toHaveCount(0);
   await expect(profile(NAME).getByText('Not connected', { exact: true })).toBeAttached();
 
   // Enter connects too; once connected the chevron shows, and it folds the tree.
@@ -76,7 +77,7 @@ test('a click selects a connection; a double-click connects it, with a spinner m
   await prompt.getByLabel('Password').fill(decodeURIComponent(new URL(PG_URL!).password));
   await prompt.getByLabel('Password').press('Enter');
   await expect(profile(NAME).getByText('Connected', { exact: true })).toBeAttached();
-  await expect(page.getByTestId('profile-connecting')).toHaveCount(0);
+  await expect(page.getByTestId('row-busy')).toHaveCount(0);
   await expect(profile(NAME)).toHaveAttribute('aria-expanded', 'true');
   await row(NAME).locator('[data-tree-chevron]').click();
   await expect(profile(NAME)).toHaveAttribute('aria-expanded', 'false');

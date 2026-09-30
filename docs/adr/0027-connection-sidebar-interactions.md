@@ -16,12 +16,15 @@ settled answers for these.
 
 - A click selects a connection. A double-click, or Enter, connects it; on a connected one it
   folds or unfolds the tree.
-- While it connects, a small rust spinner shows next to its name (also while the password prompt
-  is open).
+- While it connects, a small rust spinner takes the place of its actions button ("…"), also
+  while the password prompt is open.
 - Only a connected connection has a chevron, and the chevron folds its tree. A lost or failed one
   shows a red dot.
 - The engine icon is dimmed until the connection is open. The green status dot is gone; a
   connection's own colour still shows as a dot.
+
+**Menus:** every item of the tree's menus (connections, folders, objects, MongoDB, Redis and
+Elasticsearch nodes) has its own glyph in the Kiln Glyphs manner, as the header's menu does.
 
 **The header** keeps the "Connections" title and a kebab menu at its right. The menu has three
 items, each with its own glyph:
