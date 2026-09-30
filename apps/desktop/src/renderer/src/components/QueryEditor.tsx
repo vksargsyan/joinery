@@ -8,6 +8,7 @@ import { bindModel, registerSqlLanguage, unbindModel } from '../lib/sql-language
 import { noteEditor } from '../state/autosave';
 import { explainQuery } from '../state/explain/run';
 import { openMetadata, useMetadataStatus } from '../state/metadata';
+import { openQueryBuilderFromTab } from '../state/query-builder/panels';
 import { runQuery } from '../state/runner';
 import { getTab, runtimeOf, useWorkspace } from '../state/workspace';
 
@@ -140,6 +141,12 @@ export function QueryEditor(props: {
       label: 'Explain Analyze Selection or Statement at Cursor',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyE],
       run: () => void explainQuery(tabId, { analyze: true }),
+    });
+    editor.addAction({
+      id: 'joinery.queryBuilder',
+      label: 'Open in Query Builder',
+      contextMenuGroupId: 'navigation',
+      run: () => void openQueryBuilderFromTab(tabId),
     });
     editor.addAction({
       id: 'joinery.format',

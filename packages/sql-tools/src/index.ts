@@ -54,3 +54,42 @@ export type {
 export { signatureHelp } from './completion/signature';
 export type { SignatureHelp } from './completion/signature';
 export type { FunctionSignature, SignatureParameter } from './completion/functions';
+
+export {
+  AGGREGATE_FUNCTIONS,
+  COMPARISON_OPERATORS,
+  CRITERIA_OPERATORS,
+  JOIN_TYPES,
+  emptyGroup,
+  emptyQueryModel,
+  operatorInfo,
+  operatorsFor,
+  referenceName,
+} from './query-model/model';
+export type {
+  AggregateFunction,
+  ColumnExpr,
+  ComparisonOperator,
+  Condition,
+  CriteriaGroup,
+  CriteriaOperator,
+  Criterion,
+  CustomCondition,
+  GroupItem,
+  JoinCondition,
+  JoinType,
+  OperatorArity,
+  OperatorInfo,
+  OrderItem,
+  QueryExpr,
+  QueryIssue,
+  QueryJoin,
+  QueryModel,
+  QueryTable,
+  SelectItem,
+} from './query-model/model';
+export { generateQuery } from './query-model/generate';
+export type { GeneratedQuery } from './query-model/generate';
+export { parseQuery } from './query-model/parse';
+export type { QueryParseOptions, QueryParseResult } from './query-model/parse';
+export { checkFragment } from './query-model/tokens';

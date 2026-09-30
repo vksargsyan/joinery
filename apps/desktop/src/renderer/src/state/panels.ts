@@ -7,7 +7,14 @@ import { create } from 'zustand';
  */
 
 export type PanelKind =
-  'table-data' | 'table-designer' | 'redis' | 'mongo' | 'sync' | 'server-tools' | 'search';
+  | 'table-data'
+  | 'table-designer'
+  | 'redis'
+  | 'mongo'
+  | 'sync'
+  | 'server-tools'
+  | 'search'
+  | 'query-builder';
 
 export interface PanelInfo {
   readonly id: string;

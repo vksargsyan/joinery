@@ -34,6 +34,7 @@ import { disposeMongoPanel } from '../state/mongo/panels';
 import { disposeSyncPanel } from '../state/sync/panels';
 import { disposeServerToolsPanel } from '../state/server-tools/panels';
 import { disposeSearchPanel } from '../state/search/panels';
+import { disposeQueryBuilder } from '../state/query-builder/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
@@ -46,6 +47,7 @@ import { openMongoConsole } from './mongo/open';
 import { ServerToolsPanel } from './server-tools/ServerToolsPanel';
 import { openSearchConsole } from './search/open';
 import { SearchPanel } from './search/SearchPanel';
+import { QueryBuilderPanel } from './query-builder/QueryBuilderPanel';
 import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
 
@@ -172,6 +174,7 @@ function disposePanel(id: string): void {
   else if (info.kind === 'sync') disposeSyncPanel(id);
   else if (info.kind === 'server-tools') disposeServerToolsPanel(id);
   else if (info.kind === 'search') disposeSearchPanel(id);
+  else if (info.kind === 'query-builder') disposeQueryBuilder(id);
   else void disposeDesigner(id);
 }
 
@@ -183,6 +186,8 @@ export function openQueryTab(options: {
   /** Where the caret starts in `text`. */
   readonly cursor?: number;
   readonly run?: boolean;
+  /** The database the tab's session connects to; the connection's own when unset. */
+  readonly database?: string;
 }): string {
   // A MongoDB connection's "query tab" is its command console (spec §9).
   const engine = cachedProfile(options.profileId)?.engine;
@@ -194,6 +199,7 @@ export function openQueryTab(options: {
     title: options.title,
     ...(options.text === undefined ? {} : { text: options.text }),
     ...(options.cursor === undefined ? {} : { cursor: options.cursor }),
+    ...(options.database === undefined ? {} : { database: options.database }),
   });
   if (options.run) pendingRuns.add(tabId);
   dockApi?.addPanel<QueryPanelParams>({
@@ -346,6 +352,10 @@ function SearchPanelHost(props: IDockviewPanelProps<PanelParams>) {
   return <SearchPanel panelId={props.params.panelId} />;
 }
 
+function QueryBuilderHost(props: IDockviewPanelProps<PanelParams>) {
+  return <QueryBuilderPanel panelId={props.params.panelId} />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -412,6 +422,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         sync: SyncPanelHost,
         serverTools: ServerToolsPanelHost,
         search: SearchPanelHost,
+        queryBuilder: QueryBuilderHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}

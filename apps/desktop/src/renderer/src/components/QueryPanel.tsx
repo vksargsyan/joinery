@@ -8,6 +8,7 @@ import { dismissRestored, useRestored } from '../state/autosave';
 import { connect, useConnections } from '../state/connections';
 import { cachedProfile, useProfiles, useSettings } from '../state/data';
 import { explainQuery } from '../state/explain/run';
+import { openQueryBuilderFromTab } from '../state/query-builder/panels';
 import { naturalLayout, reconcileLayout } from '../state/grid-layout';
 import { resultSource } from '../state/result-sources';
 import { cancelQuery, commit, fetchMore, rollback, runQuery, setAutoCommit } from '../state/runner';
@@ -228,6 +229,14 @@ function Toolbar({ tab, canAnalyze }: { readonly tab: QueryTab; readonly canAnal
         <Icon name="format" className="h-3.5 w-3.5" />
         Format
       </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => openQueryBuilderFromTab(tab.id)}
+        title="Open the selection, or the statement at the cursor, in the visual query builder"
+      >
+        Open in query builder
+      </Button>
       <span className="mx-1 h-5 w-px bg-border" />
       <label className="flex items-center gap-1.5 text-xs" title="Commit after every statement">
         <input
@@ -270,7 +279,8 @@ function Toolbar({ tab, canAnalyze }: { readonly tab: QueryTab; readonly canAnal
   );
 }
 
-function Results({
+/** The result sets, plan and messages of a query tab (also shown under a query builder). */
+export function Results({
   tab,
   theme,
   dialect,

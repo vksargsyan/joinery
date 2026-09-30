@@ -68,7 +68,9 @@ export async function ensureSession(
   }
   const host = connection.host;
   if (!host) throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
-  const { sessionId } = await host.openSession({});
+  const { sessionId } = await host.openSession(
+    tab.database === undefined ? {} : { database: tab.database },
+  );
   runtime.host = host;
   runtime.sessionId = sessionId;
   runtime.generation = connection.generation;

@@ -77,6 +77,8 @@ export interface QueryTab {
   readonly rowLimit: number;
   readonly errorMarker?: { readonly start: number; readonly end: number; readonly message: string };
   readonly explain?: ExplainTabState | undefined;
+  /** The database the tab's session connects to; the connection's own when unset. */
+  readonly database?: string | undefined;
 }
 
 interface WorkspaceState {
@@ -197,8 +199,11 @@ export function createTab(options: {
   readonly title: string;
   readonly text?: string;
   readonly cursor?: number;
+  /** An id to use (a panel that runs its queries through this tab); a new one otherwise. */
+  readonly id?: string;
+  readonly database?: string;
 }): string {
-  const id = newId();
+  const id = options.id ?? newId();
   const tab: QueryTab = {
     id,
     profileId: options.profileId,
@@ -213,6 +218,7 @@ export function createTab(options: {
     messages: [],
     activePane: 'messages',
     rowLimit: DEFAULT_ROW_LIMIT,
+    ...(options.database === undefined ? {} : { database: options.database }),
   };
   useWorkspace.setState((state) => ({
     tabs: { ...state.tabs, [id]: tab },

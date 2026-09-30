@@ -18,4 +18,5 @@ supersede it with a new one.
 | [0011](0011-server-tools.md)                 | Server tools: neutral vocabulary, statements built in the host   | Accepted |
 | [0012](0012-excel-xml-zip-formats.md)        | Excel, XML and ZIP written on node:zlib, without a library       | Accepted |
 | [0013](0013-packaging-and-updates.md)        | Packaging, auto-update and licence audit on electron-builder     | Accepted |
+| [0014](0014-visual-query-builder.md)         | Query builder: a query model on our lexer, run as a query tab    | Accepted |
 | [0017](0017-search-module.md)                | Search module: documents, SQL, index and cluster administration  | Accepted |

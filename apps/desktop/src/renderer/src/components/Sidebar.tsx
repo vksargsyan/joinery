@@ -29,6 +29,7 @@ import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
 import { openDataCompare, openStructureCompare } from '../state/sync/panels';
 import { openTransferFrom } from '../state/transfer-db/api';
+import { openQueryBuilder } from '../state/query-builder/panels';
 import { BackupMenuItems } from './backup/BackupDialogs';
 import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
@@ -384,6 +385,11 @@ function ProfileItem(props: {
                 {isSqlEngine(profile.engine) && (
                   <MenuItem onSelect={() => openRunSqlFile(profile)}>Run SQL file…</MenuItem>
                 )}
+                {isSqlEngine(profile.engine) && (
+                  <MenuItem onSelect={() => openQueryBuilder({ profileId: profile.id })}>
+                    New query builder
+                  </MenuItem>
+                )}
                 {hasServerTools(profile.engine) && (
                   <MenuItem onSelect={() => openServerTools(profile)}>Server tools</MenuItem>
                 )}
@@ -642,6 +648,26 @@ function ObjectNode(props: {
               {node.kind === 'database' && (
                 <MenuItem onSelect={() => openRunSqlFile(profile, node.name)}>
                   Run SQL file…
+                </MenuItem>
+              )}
+              {node.kind === 'database' && node.path.length === 1 && (
+                <MenuItem
+                  onSelect={() => openQueryBuilder({ profileId: profile.id, database: node.name })}
+                >
+                  New query builder
+                </MenuItem>
+              )}
+              {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
+                <MenuItem
+                  onSelect={() =>
+                    openQueryBuilder({
+                      profileId: profile.id,
+                      database: node.path[0],
+                      schema: node.name,
+                    })
+                  }
+                >
+                  New query builder
                 </MenuItem>
               )}
               {node.kind === 'database' && node.path.length === 1 && (
