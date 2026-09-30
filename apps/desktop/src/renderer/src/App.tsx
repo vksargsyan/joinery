@@ -13,6 +13,7 @@ import { TransferDialogs } from './components/jobs/TransferDialogs';
 import { TransferDbHost } from './components/transfer-db/TransferDbDialog';
 import { BackupDialogs } from './components/backup/BackupDialogs';
 import { Prompts } from './components/Prompts';
+import { ScheduleDialog } from './components/schedules/ScheduleDialog';
 import { openRedisTool } from './components/redis/RedisTree';
 import { Sidebar } from './components/Sidebar';
 import { SyncMenu } from './components/sync/SyncMenu';
@@ -23,6 +24,7 @@ import { useConnections } from './state/connections';
 import { keys, useProfiles } from './state/data';
 import { runningCount, showJobs, useJobs, watchJobs } from './state/jobs';
 import { usePanels } from './state/panels';
+import { openSchedulesPanel } from './state/schedules';
 import { openAbout, watchAppCommands, watchUpdates } from './state/updates';
 import { useWorkspace } from './state/workspace';
 
@@ -116,6 +118,9 @@ export function App() {
           History
         </Button>
         <SyncMenu />
+        <Button size="sm" variant="ghost" onClick={() => openSchedulesPanel()}>
+          Schedules
+        </Button>
         <Button
           size="sm"
           variant={jobsOpen ? 'secondary' : 'ghost'}
@@ -170,6 +175,7 @@ export function App() {
         />
       )}
       <Prompts />
+      <ScheduleDialog />
       <HostKeyPrompts />
       <TransferDialogs />
       <TransferDbHost />

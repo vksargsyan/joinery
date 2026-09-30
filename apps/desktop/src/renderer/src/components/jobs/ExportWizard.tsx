@@ -7,10 +7,12 @@ import {
   EXPORT_FORMAT_LABELS,
   EXPORT_STEPS,
   ExportWizard,
+  buildExportJob,
   combinable,
   exportSettingsOf,
   textFormat,
   exportStepProblem,
+  suggestedName,
   writesOneFile,
   type ExportSource,
   type ExportStep,
@@ -19,6 +21,7 @@ import {
 } from '../../state/export-wizard';
 import { loadChildren, pathKey, useExplorer } from '../../state/explorer';
 import { startJob } from '../../state/jobs';
+import { editSchedule, exportDraft } from '../../state/schedules';
 import { SelectField, TextField } from '../designer/fields';
 import { Button, Modal } from '../ui';
 import { SavedSettings, StepBar } from './shared';
@@ -86,6 +89,17 @@ export function ExportWizardDialog(props: {
   const run = async (): Promise<void> => {
     if (await wizard.run()) props.onClose();
   };
+  // A scheduled query cannot be asked for its parameters: it runs as written, without them.
+  const hasParams = source.kind === 'query' && (source.params?.length ?? 0) > 0;
+  const schedule = (): void => {
+    const job = buildExportJob({ ...state, path: state.path ?? suggestedName(state) });
+    const name =
+      source.kind === 'query'
+        ? `Export ${source.profileName} query`
+        : `Export ${state.selected.length === 1 ? state.selected[0] : `${state.selected.length} tables`}`;
+    editSchedule(exportDraft(job, { profileName: source.profileName }, name));
+    props.onClose();
+  };
   const title =
     source.kind === 'query' ? 'Export query results' : `Export tables of ${source.schema}`;
   return (
@@ -110,13 +124,26 @@ export function ExportWizardDialog(props: {
             <Button onClick={() => wizard.back()}>Back</Button>
           )}
           {state.step === 'destination' ? (
-            <Button
-              variant="primary"
-              onClick={() => void run()}
-              disabled={problem !== undefined || state.busy !== undefined}
-            >
-              Export
-            </Button>
+            <>
+              <Button
+                onClick={schedule}
+                disabled={hasParams || state.busy !== undefined}
+                title={
+                  hasParams
+                    ? 'A query with parameters cannot run on a schedule: no one is there to fill them in'
+                    : 'Export on a schedule instead, a new file each run'
+                }
+              >
+                Schedule…
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => void run()}
+                disabled={problem !== undefined || state.busy !== undefined}
+              >
+                Export
+              </Button>
+            </>
           ) : (
             <Button
               variant="primary"

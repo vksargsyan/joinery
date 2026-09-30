@@ -16,6 +16,7 @@ import {
   useSyncPanels,
 } from '../../state/sync/panels';
 import { Button, Modal } from '../ui';
+import { comparisonDraft, editSchedule } from '../../state/schedules';
 
 /**
  * The window's Compare menu (spec §13): a new structure or data compare, and the saved
@@ -149,6 +150,19 @@ export function SavedComparisonsDialog(props: { readonly onClose: () => void }) 
               }}
             >
               Open
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                editSchedule(comparisonDraft(comparison));
+                props.onClose();
+              }}
+              disabled={
+                comparison.source.profileId === null || comparison.target.profileId === null
+              }
+              title="Run this comparison on a schedule and keep a report when it finds differences"
+            >
+              Schedule…
             </Button>
             <Button size="sm" variant="ghost" onClick={() => void remove(comparison)}>
               Delete

@@ -36,6 +36,7 @@ import { disposeSyncPanel } from '../state/sync/panels';
 import { disposeServerToolsPanel } from '../state/server-tools/panels';
 import { disposeSearchPanel } from '../state/search/panels';
 import { disposeErDiagram } from '../state/er-diagram/panels';
+import { disposeSchedulesPanel } from '../state/schedules';
 import { disposeQueryBuilder } from '../state/query-builder/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
@@ -50,6 +51,7 @@ import { ServerToolsPanel } from './server-tools/ServerToolsPanel';
 import { openSearchConsole } from './search/open';
 import { SearchPanel } from './search/SearchPanel';
 import { ErDiagramPanel } from './er-diagram/ErDiagramPanel';
+import { SchedulesPanel } from './schedules/SchedulesPanel';
 import { QueryBuilderPanel } from './query-builder/QueryBuilderPanel';
 import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
@@ -179,6 +181,7 @@ function disposePanel(id: string): void {
   else if (info.kind === 'search') disposeSearchPanel(id);
   else if (info.kind === 'query-builder') disposeQueryBuilder(id);
   else if (info.kind === 'er-diagram') disposeErDiagram(id);
+  else if (info.kind === 'schedules') disposeSchedulesPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -390,6 +393,10 @@ function ErDiagramHost(props: IDockviewPanelProps<PanelParams>) {
   return <ErDiagramPanel panelId={props.params.panelId} />;
 }
 
+function SchedulesHost() {
+  return <SchedulesPanel />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -458,6 +465,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         search: SearchPanelHost,
         queryBuilder: QueryBuilderHost,
         erDiagram: ErDiagramHost,
+        schedules: SchedulesHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}
