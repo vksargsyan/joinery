@@ -1,6 +1,6 @@
 import { newId } from '@joinery/core';
 import { utf8Text, type CommandSuggestion } from '@joinery/redis-tools';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import { errorInfo, errorMessage } from '../../lib/errors';
 import { formatDuration } from '../../lib/format';
@@ -63,6 +63,15 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
   const [picked, setPicked] = useState(false);
   const history = useMemo(() => new CliHistory(), []);
   const input = useRef<HTMLTextAreaElement>(null);
+  // Where the caret goes once the new line has rendered (after a completion or a history
+  // step). Placed before the next keystroke can arrive: a later frame could land mid-typing
+  // and move the caret back into what was typed.
+  const caret = useRef<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (caret.current === undefined) return;
+    input.current?.setSelectionRange(caret.current, caret.current);
+    caret.current = undefined;
+  });
   const log = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | undefined>(undefined);
   const title = usePanels((s) => s.panels[panelId]?.title ?? '');
@@ -241,9 +250,7 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
     setCursor(next.cursor);
     setHighlight(0);
     setPicked(false);
-    requestAnimationFrame(() => {
-      input.current?.setSelectionRange(next.cursor, next.cursor);
-    });
+    caret.current = next.cursor;
   };
 
   const setFromHistory = (text: string | undefined): void => {
@@ -251,7 +258,7 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
     setLine(text);
     setCursor(text.length);
     setPopup(false);
-    requestAnimationFrame(() => input.current?.setSelectionRange(text.length, text.length));
+    caret.current = text.length;
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {

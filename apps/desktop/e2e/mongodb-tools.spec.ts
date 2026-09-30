@@ -482,5 +482,6 @@ test('creates a view from the stage cards', async () => {
   await expect(dialog).toBeHidden();
   await treeRow('Views').click();
   await expect(treeRow('open_orders')).toBeVisible();
-  expect(await direct!.count({ db, collection: 'open_orders' })).toBe(30);
+  // Read on another connection: the new view can take a moment to show there.
+  await expect.poll(() => direct!.count({ db, collection: 'open_orders' })).toBe(30);
 });
