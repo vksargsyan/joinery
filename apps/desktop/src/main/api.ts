@@ -33,6 +33,8 @@ import type { JobManager } from './jobs';
 import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
 import { resolveProfile } from './secrets';
 import { erModelHandlers } from './er-models';
+import { scheduleHandlers, type ScheduleEvents } from './schedules-api';
+import type { Scheduler } from './scheduler';
 import { metadataHandlers, snippetHandlers } from './metadata';
 import { mongoMainHandlers } from './mongo-api';
 import { transferDbHandlers } from './transfer-db-api';
@@ -81,6 +83,9 @@ export interface MainServices<P> {
   readonly jobs?: JobManager;
   /** Structure and data compare on the job runner (spec §13); without it they are refused. */
   readonly sync?: SyncService;
+  /** Runs scheduled jobs while Joinery is open; absent in tests that do not need it. */
+  readonly scheduler?: Scheduler;
+  readonly scheduleEvents?: ScheduleEvents;
   /** How the app's previous run ended (`unclean` after a crash), for editor restore. */
   readonly previousRun?: PreviousRun['ended'];
   /** Auto-update (spec §20); without it the status reports updates off. */
@@ -318,6 +323,7 @@ export function createMainHandlers<P>(
     },
 
     erModels: erModelHandlers(store),
+    schedules: scheduleHandlers(services, files),
     metadata: metadataHandlers(store),
     snippets: snippetHandlers(store),
     ...jobHandlers(services, files),

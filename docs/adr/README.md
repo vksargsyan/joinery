@@ -23,3 +23,4 @@ supersede it with a new one.
 | [0016](0016-er-model-editing.md)             | ER model editing: an edited snapshot, applied as a compare       | Accepted |
 | [0017](0017-search-module.md)                | Search module: documents, SQL, index and cluster administration  | Accepted |
 | [0018](0018-saved-er-models.md)              | Saved ER models: drafts in the store, model files as documents   | Accepted |
+| [0019](0019-scheduler.md)                    | Scheduler: jobs run from main while Joinery is open              | Accepted |

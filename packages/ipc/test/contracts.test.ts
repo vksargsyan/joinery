@@ -31,6 +31,7 @@ import {
   backupMainContractShape,
   updatesMainContractShape,
   erModelsMainContractShape,
+  schedulesMainContractShape,
   parseRequest,
   syncMainContractShape,
   safeProfileSchema,
@@ -478,6 +479,7 @@ describe('mainContract never hands a secret to the renderer', () => {
       backup: unusedHandlers(backupMainContractShape),
       updates: unusedHandlers(updatesMainContractShape),
       erModels: unusedHandlers(erModelsMainContractShape),
+      schedules: unusedHandlers(schedulesMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -652,6 +654,7 @@ describe('desktop additions', () => {
       backup: unusedHandlers(backupMainContractShape),
       updates: unusedHandlers(updatesMainContractShape),
       erModels: unusedHandlers(erModelsMainContractShape),
+      schedules: unusedHandlers(schedulesMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

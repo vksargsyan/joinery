@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { defineContract } from '../contract';
 import { backupMainContractShape } from './backup';
 import { erModelsMainContractShape } from './er-models';
+import { schedulesMainContractShape } from './schedules';
 import { mongoMainContractShape } from './mongo';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
@@ -292,6 +293,8 @@ export const mainContract = defineContract({
   updates: updatesMainContractShape,
   /** Unapplied ER model changes (spec §8). */
   erModels: erModelsMainContractShape,
+  /** Scheduled backups, SQL files, exports and comparisons, and their runs. */
+  schedules: schedulesMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

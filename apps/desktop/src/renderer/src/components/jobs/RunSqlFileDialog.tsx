@@ -5,6 +5,7 @@ import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';
 import { confirm } from '../../state/dialogs';
 import { startJob } from '../../state/jobs';
+import { editSchedule, sqlDraft } from '../../state/schedules';
 import type { RunSqlFileTarget } from '../../state/transfer-dialogs';
 import { Button, Modal } from '../ui';
 import { formatBytes } from './shared';
@@ -92,6 +93,39 @@ export function RunSqlFileDialog(props: {
     }
   };
 
+  /** Runs the file on a schedule instead: confirmed now, for every run, on write-guarded connections. */
+  const schedule = async (): Promise<void> => {
+    if (!path) return;
+    let confirmed = false;
+    if (target.confirmWrites) {
+      const ok = await confirm({
+        title: 'Run this SQL file on a schedule?',
+        message: `Every run executes the file as it is then on "${target.profileName}"${
+          target.database ? ` (${target.database})` : ''
+        }, without asking again, and any statement may write.`,
+        confirmLabel: 'Schedule it',
+        danger: target.production,
+      });
+      if (!ok) return;
+      confirmed = true;
+    }
+    editSchedule(
+      sqlDraft(
+        {
+          kind: 'run-sql-file',
+          profileId: target.profileId,
+          ...(target.database !== undefined ? { database: target.database } : {}),
+          path,
+          onError,
+          ...(preview ? { encoding: preview.encoding } : {}),
+          ...(confirmed ? { confirmed: true } : {}),
+        },
+        { profileName: target.profileName },
+      ),
+    );
+    props.onClose();
+  };
+
   return (
     <Modal
       open
@@ -109,6 +143,13 @@ export function RunSqlFileDialog(props: {
           </span>
           <Button variant="ghost" onClick={props.onClose}>
             Cancel
+          </Button>
+          <Button
+            onClick={() => void schedule()}
+            disabled={!path || busy}
+            title="Run this file on a schedule instead"
+          >
+            Schedule…
           </Button>
           <Button variant="primary" onClick={() => void run()} disabled={!path || busy}>
             Run

@@ -7,15 +7,18 @@ import {
   DEFAULT_APP_SETTINGS,
   type Server,
 } from '@joinery/ipc';
-import { openStore, type Store } from '@joinery/storage';
+import { openStore, type ScheduleRecord, type ScheduleRun, type Store } from '@joinery/storage';
 import {
   BrowserWindow,
   Menu,
   MessageChannelMain,
   Notification,
+  Tray,
   app,
   dialog,
   ipcMain,
+  nativeImage,
+  powerMonitor,
   protocol,
   safeStorage,
   session,
@@ -38,6 +41,9 @@ import { HostKeyBroker, knownHostsFile } from './host-keys';
 import { utilityJobRunnerFactory } from './job-runner-process';
 import { JobManager } from './jobs';
 import { notificationFor, settingsJobHistory, type SaveFileOptions } from './jobs-api';
+import { executeSchedule } from './schedule-tasks';
+import { Scheduler, type TaskOutcome } from './scheduler';
+import { ScheduleEvents } from './schedules-api';
 import { menuTemplate } from './menu';
 import { createSafeStorageSealer } from './sealer';
 import {
@@ -100,6 +106,9 @@ if (!app.requestSingleInstanceLock()) {
     if (window) {
       if (window.isMinimized()) window.restore();
       window.focus();
+    } else if (app.isReady()) {
+      // Running in the tray for its schedules: opening Joinery again opens its window.
+      createMainWindow();
     }
   });
   void app.whenReady().then(start);
@@ -110,6 +119,9 @@ let supervisor: ConnectionSupervisor<MessagePortMain> | undefined;
 let jobs: JobManager | undefined;
 let sync: SyncService | undefined;
 let updates: UpdateController | undefined;
+let scheduler: Scheduler | undefined;
+let tray: Tray | undefined;
+let quitting = false;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -168,6 +180,18 @@ function start(): void {
   const jobManager = startJobs(openedStore, hostKeys);
   // Data compare jobs spool their rows under the temporary folder, for this app run only.
   sync = new SyncService({ jobs: jobManager, spoolRoot: app.getPath('temp') });
+  const scheduleEvents = new ScheduleEvents();
+  const syncService = sync;
+  scheduler = new Scheduler({
+    store: openedStore.schedules,
+    execute: (schedule) =>
+      executeSchedule({ store: openedStore, jobs: jobManager, sync: syncService }, schedule),
+    notify: notifySchedule,
+    onEvent: (event) => {
+      scheduleEvents.publish(event);
+      refreshTray();
+    },
+  });
   // The desktop starts dark and without the editor minimap; users change both in settings.
   const defaultSettings = {
     ...DEFAULT_APP_SETTINGS,
@@ -200,6 +224,8 @@ function start(): void {
     keysDir: join(app.getPath('userData'), 'ssh-keys'),
     jobs: jobManager,
     sync,
+    scheduler,
+    scheduleEvents,
     previousRun,
     defaultSettings,
     updates: updater,
@@ -227,6 +253,10 @@ function start(): void {
   if (!app.isPackaged) app.dock?.setIcon(windowIcon);
   createMainWindow();
   void updater.start();
+  // Schedules run while Joinery is open; a sleep or a clock change is checked at once.
+  scheduler.start();
+  powerMonitor.on('resume', () => scheduler?.wake());
+  powerMonitor.on('unlock-screen', () => scheduler?.wake());
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });
@@ -357,11 +387,88 @@ function createMainWindow(): void {
   void window.loadURL(devServerUrl ?? APP_ENTRY_URL);
 }
 
+/** A scheduled run's desktop notification, as its schedule says (failures by default). */
+function notifySchedule(schedule: ScheduleRecord, run: ScheduleRun, outcome: TaskOutcome): void {
+  if (!Notification.isSupported() || schedule.notify === 'never') return;
+  const failed = run.status === 'failed';
+  if (schedule.notify === 'failures' && !failed && !outcome.attention) return;
+  const notification = new Notification({
+    title: failed
+      ? `Scheduled run failed: ${schedule.name}`
+      : outcome.attention
+        ? `${schedule.name}: worth a look`
+        : `${schedule.name} finished`,
+    body: run.message ?? (failed ? 'The run failed' : 'Done'),
+  });
+  notification.on('click', () => showMainWindow());
+  notification.show();
+}
+
+function showMainWindow(): void {
+  const [window] = BrowserWindow.getAllWindows();
+  if (!window) {
+    createMainWindow();
+    return;
+  }
+  if (window.isMinimized()) window.restore();
+  window.focus();
+}
+
+/**
+ * Windows and Linux: with schedules on, closing the last window keeps Joinery running in the
+ * tray, to run them; the tray opens it again, pauses the schedules or quits. macOS apps keep
+ * running without windows already, in the Dock.
+ */
+function showTray(): void {
+  if (!tray) {
+    tray = new Tray(nativeImage.createFromPath(windowIcon).resize({ width: 16, height: 16 }));
+    tray.setToolTip('Joinery: running your schedules');
+    tray.on('click', () => showMainWindow());
+  }
+  refreshTray();
+}
+
+function refreshTray(): void {
+  if (!tray) return;
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Open Joinery', click: () => showMainWindow() },
+      {
+        label: 'Pause schedules',
+        type: 'checkbox',
+        checked: scheduler?.paused ?? false,
+        click: (item) => scheduler?.setPaused(item.checked),
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit Joinery',
+        click: () => {
+          quitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+}
+
+app.on('browser-window-created', () => {
+  tray?.destroy();
+  tray = undefined;
+});
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform === 'darwin') return;
+  if (!quitting && scheduler?.hasEnabled()) {
+    showTray();
+    return;
+  }
+  app.quit();
 });
 
 app.on('before-quit', () => {
+  quitting = true;
+  scheduler?.stop();
+  scheduler = undefined;
   updates?.dispose();
   supervisor?.closeAll();
   jobs?.shutdown();

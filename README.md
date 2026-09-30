@@ -121,13 +121,19 @@ What works today:
   on PostgreSQL; VACUUM, ANALYZE, REINDEX, CLUSTER, OPTIMIZE, CHECK, REPAIR, compact and
   validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
   setParameter. Every change shows its exact statement first.
+- **Schedules**: backups, SQL files, exports and saved comparisons run on a schedule while
+  Joinery is open (every N minutes or hours, times on chosen weekdays, or days of the month),
+  set up with Schedule… where each is run once. Each run writes a new file named from a template
+  and can keep only the newest N; comparisons keep a report when they find differences. Missed
+  runs are caught up once or skipped; notifications go out when a run fails or finds
+  differences; on Windows and Linux Joinery stays in the tray to run them.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: the scheduler, Parquet, cloud sync and the AI assistant; the embedded mongosh
-shell for MongoDB; RediSearch and offline RDB analysis; a query builder for Elasticsearch. The
-product specification lists the full scope.
+Not built yet: Parquet, cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
+RediSearch and offline RDB analysis; a query builder for Elasticsearch; schedules that run while
+Joinery is closed. The product specification lists the full scope.
 
 ## Repository layout
 

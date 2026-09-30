@@ -15,7 +15,8 @@ export type PanelKind =
   | 'server-tools'
   | 'search'
   | 'query-builder'
-  | 'er-diagram';
+  | 'er-diagram'
+  | 'schedules';
 
 export interface PanelInfo {
   readonly id: string;
