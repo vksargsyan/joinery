@@ -460,7 +460,7 @@ function JsonResults({ results }: { readonly results: DocumentResults }) {
               aria-checked={style === option}
               className={cx(
                 'px-2 py-0.5',
-                style === option ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                style === option ? 'bg-badge text-fg' : 'hover:bg-hover',
               )}
               onClick={() => results.setJsonStyle(option)}
             >

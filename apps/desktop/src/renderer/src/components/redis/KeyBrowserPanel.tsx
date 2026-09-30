@@ -251,7 +251,7 @@ export function KeyBrowserPanel(props: {
               aria-checked={state.view === view}
               className={cx(
                 'h-7 px-2 text-xs',
-                state.view === view ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                state.view === view ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => controller.setView(view)}
             >

@@ -43,7 +43,7 @@ export function ColumnsPopover(props: {
           sideOffset={4}
           aria-label="Columns"
           data-testid="columns-popover"
-          className="z-50 flex max-h-[70vh] w-72 flex-col rounded border border-border bg-panel text-[13px] shadow-xl"
+          className="z-50 flex max-h-[70vh] w-72 flex-col rounded border border-border bg-raised text-[13px] shadow-widget"
         >
           <ul className="min-h-0 flex-1 overflow-auto p-1" aria-label="Columns">
             {layout.columns.map((column) => {
@@ -169,7 +169,7 @@ export function HeaderMenu(props: {
         <DropdownMenu.Content
           align="start"
           aria-label={`Column ${props.label}`}
-          className="z-50 min-w-48 rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+          className="z-50 min-w-48 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
           <DropdownMenu.Label className="truncate px-2 py-1 font-mono text-[11px] text-muted">
             {props.label}
@@ -209,7 +209,7 @@ function Item(props: {
     <DropdownMenu.Item
       disabled={props.disabled}
       onSelect={props.onSelect}
-      className="cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-hover"
+      className="cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active"
     >
       {props.children}
     </DropdownMenu.Item>

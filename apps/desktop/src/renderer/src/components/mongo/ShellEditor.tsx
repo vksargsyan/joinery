@@ -1,7 +1,7 @@
 import 'monaco-editor/languages/definitions/javascript/register';
 import { useEffect, useRef } from 'react';
 
-import { monaco } from '../../lib/monaco';
+import { EDITOR_FONT, monaco } from '../../lib/monaco';
 
 /**
  * A Monaco editor for mongosh text (documents, command documents, find() text, updates), with
@@ -42,6 +42,7 @@ export function ShellEditor(props: {
       latest.current.language ?? 'javascript',
     );
     const editor = monaco.editor.create(element, {
+      ...EDITOR_FONT,
       model,
       theme: latest.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
       automaticLayout: true,

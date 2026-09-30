@@ -377,7 +377,7 @@ function Results(props: { readonly model: StructureCompare; readonly onApply: ()
                 aria-selected={tab === name}
                 className={cx(
                   'rounded px-2 py-0.5 text-xs',
-                  tab === name ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                  tab === name ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
                 )}
                 onClick={() => setTab(name)}
               >

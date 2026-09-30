@@ -165,7 +165,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
               aria-checked={tab === option}
               className={cx(
                 'px-2 py-0.5 text-xs',
-                tab === option ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                tab === option ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => view.setTab(option)}
             >

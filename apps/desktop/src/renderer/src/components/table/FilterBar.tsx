@@ -69,7 +69,7 @@ export function FilterBar(props: { readonly view: TableView }) {
               aria-checked={mode === m}
               className={cx(
                 'px-2 py-0.5',
-                mode === m ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                mode === m ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => view.setFilterMode(m)}
             >

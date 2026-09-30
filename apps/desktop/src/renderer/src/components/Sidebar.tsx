@@ -820,7 +820,7 @@ export function Row(props: {
       data-tree-row
       tabIndex={0}
       title={props.title}
-      className="group flex h-7 cursor-default items-center gap-1 pr-1 text-[13px] hover:bg-hover focus:bg-hover focus:outline-none"
+      className="group flex h-[22px] cursor-default items-center gap-1 pr-1 text-[13px] text-muted hover:bg-list-hover hover:text-fg focus:bg-list-focus focus:text-fg focus:outline focus:outline-1 focus:-outline-offset-1 focus:outline-focus"
       style={{ paddingLeft: 6 + props.depth * 14 }}
       onClick={props.onToggle}
       onDoubleClick={props.onActivate}
@@ -846,7 +846,7 @@ export function Row(props: {
             <button
               type="button"
               aria-label="Actions"
-              className="rounded p-0.5 text-muted opacity-0 group-hover:opacity-100 group-focus:opacity-100 hover:bg-panel-2 focus:opacity-100 data-[state=open]:opacity-100"
+              className="rounded-sm p-0.5 text-muted opacity-0 group-hover:opacity-100 group-focus:opacity-100 hover:bg-hover hover:text-fg focus:opacity-100 data-[state=open]:opacity-100"
               onClick={(event) => event.stopPropagation()}
               onDoubleClick={(event) => event.stopPropagation()}
             >
@@ -856,7 +856,7 @@ export function Row(props: {
           <DropdownMenu.Portal>
             <DropdownMenu.Content
               align="start"
-              className="z-50 min-w-44 rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+              className="z-50 min-w-44 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
               // The menu is portalled, but React events still bubble to the row: a click on an
               // item would toggle the row and menu keys would move through the tree.
               onClick={(event) => event.stopPropagation()}
@@ -881,7 +881,7 @@ export function MenuItem(props: {
     <DropdownMenu.Item
       onSelect={props.onSelect}
       className={cx(
-        'cursor-default rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover',
+        'cursor-default rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active',
         props.danger && 'text-danger',
       )}
     >

@@ -47,10 +47,7 @@ export function AggregationView(props: { readonly aggregations: string }) {
               type="button"
               role="radio"
               aria-checked={mode === option}
-              className={cx(
-                'px-2 py-0.5',
-                mode === option ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
-              )}
+              className={cx('px-2 py-0.5', mode === option ? 'bg-badge text-fg' : 'hover:bg-hover')}
               onClick={() => setMode(option)}
             >
               {option === 'tree' ? 'Tree' : 'Table'}

@@ -8,19 +8,26 @@ import {
   type SelectHTMLAttributes,
 } from 'react';
 
-/** Small building blocks shared by the app: buttons, fields, badges and the dialog frame. */
+/**
+ * Small building blocks shared by the app: buttons, fields, badges and the dialog frame, in the
+ * Kiln design system's VS Code geometry (26px controls, 2px corners). Rust is the only fill: one
+ * primary per view; a destructive action is a secondary button with red text, never a red fill.
+ */
 
 export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'quiet' | 'danger';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-accent text-accent-fg hover:brightness-110 border-transparent',
-  secondary: 'bg-panel-2 text-fg hover:bg-hover border-border',
-  ghost: 'bg-transparent text-fg hover:bg-hover border-transparent',
-  danger: 'bg-danger text-white hover:brightness-110 border-transparent',
+  primary: 'bg-accent text-accent-fg hover:bg-accent-hover border-transparent',
+  secondary: 'bg-hover text-fg hover:bg-pressed border-transparent',
+  ghost: 'bg-transparent text-fg hover:bg-hover active:bg-pressed border-transparent',
+  /** Chrome (the title bar): muted until hovered. */
+  quiet:
+    'bg-transparent text-muted hover:bg-hover hover:text-fg active:bg-pressed border-transparent',
+  danger: 'bg-hover text-danger hover:bg-pressed border-transparent',
 };
 
 export const Button = forwardRef<
@@ -32,9 +39,9 @@ export const Button = forwardRef<
       ref={ref}
       type={type ?? 'button'}
       className={cx(
-        'inline-flex items-center justify-center gap-1.5 rounded border font-medium whitespace-nowrap',
-        'disabled:cursor-not-allowed disabled:opacity-50',
-        size === 'sm' ? 'h-7 px-2 text-xs' : 'h-8 px-3 text-[13px]',
+        'inline-flex items-center justify-center gap-1.5 rounded-sm border whitespace-nowrap',
+        'focus-visible:outline-offset-2 disabled:cursor-default disabled:opacity-40',
+        size === 'sm' ? 'h-[22px] px-2 text-xs' : 'h-[26px] px-[13px] text-[13px]',
         VARIANTS[variant],
         className,
       )}
@@ -49,9 +56,9 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       <input
         ref={ref}
         className={cx(
-          'h-8 w-full rounded border border-border bg-panel-2 px-2 text-[13px] text-fg',
-          'placeholder:text-muted focus:border-accent focus:outline-none',
-          'aria-[invalid=true]:border-danger',
+          'h-[26px] w-full rounded-sm border border-border bg-deep px-1.5 text-[13px] text-fg',
+          'placeholder:text-faint focus:border-focus focus:outline-none',
+          'aria-[invalid=true]:border-danger disabled:opacity-40',
           className,
         )}
         {...props}
@@ -66,8 +73,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
       <select
         ref={ref}
         className={cx(
-          'h-8 w-full rounded border border-border bg-panel-2 px-2 text-[13px] text-fg',
-          'focus:border-accent focus:outline-none',
+          'h-[26px] w-full rounded-sm border border-border bg-deep px-1 text-[13px] text-fg',
+          'focus:border-focus focus:outline-none disabled:opacity-40',
           className,
         )}
         {...props}
@@ -119,7 +126,7 @@ export function EnvironmentBadge({ environment }: { readonly environment: Enviro
   return (
     <span
       className={cx(
-        'rounded px-1.5 py-px text-[10px] font-semibold tracking-wide uppercase',
+        'rounded-sm px-1.5 py-px text-[10px] font-semibold tracking-wide uppercase',
         ENVIRONMENT_CLASSES[environment],
       )}
     >
@@ -142,12 +149,12 @@ export function Modal(props: {
   return (
     <RadixDialog.Root open={props.open} onOpenChange={props.onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
         <RadixDialog.Content
           role={props.role ?? 'dialog'}
           className={cx(
             'fixed top-1/2 left-1/2 z-50 flex max-h-[90vh] -translate-x-1/2 -translate-y-1/2 flex-col',
-            'rounded-lg border border-border bg-panel text-fg shadow-2xl',
+            'rounded-md border border-border bg-raised text-fg shadow-widget',
             props.width ?? 'w-[520px]',
           )}
           {...(props.description === undefined ? { 'aria-describedby': undefined } : {})}

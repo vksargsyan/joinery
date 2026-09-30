@@ -128,7 +128,7 @@ export function Segmented<T extends string>(props: {
           disabled={props.disabled}
           className={cx(
             'px-2 py-0.5 text-xs disabled:opacity-50',
-            props.value === option.value ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+            props.value === option.value ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
           )}
           onClick={() => props.onChange(option.value)}
         >

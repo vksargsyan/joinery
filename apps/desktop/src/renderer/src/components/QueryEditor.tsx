@@ -3,7 +3,7 @@ import { formatSql } from '@joinery/sql-tools';
 import { useEffect, useRef } from 'react';
 
 import { syntaxDiagnostics } from '../lib/language';
-import { languageFor, monaco } from '../lib/monaco';
+import { EDITOR_FONT, languageFor, monaco } from '../lib/monaco';
 import { bindModel, registerSqlLanguage, unbindModel } from '../lib/sql-language';
 import { noteEditor } from '../state/autosave';
 import { explainQuery } from '../state/explain/run';
@@ -76,6 +76,7 @@ export function QueryEditor(props: {
     if (!element) return;
     const model = modelFor(tabId, initialText, dialect);
     const editor = monaco.editor.create(element, {
+      ...EDITOR_FONT,
       model,
       theme: props.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
       automaticLayout: true,

@@ -138,14 +138,14 @@ export function QueryPanel(props: { readonly tabId: string }) {
           role="separator"
           aria-orientation="horizontal"
           aria-label="Resize editor and results"
-          className="h-1 cursor-row-resize border-y border-border bg-panel hover:bg-accent/40"
+          className="h-1 cursor-row-resize border-y border-border bg-panel hover:bg-focus"
           onPointerDown={startResize}
         />
         <div className="min-h-0 flex-1">
           <Results tab={tab} theme={theme} dialect={dialect} />
         </div>
       </div>
-      <footer className="flex items-center gap-2 border-t border-border bg-panel px-3 py-0.5 text-[11px] text-muted">
+      <footer className="flex h-[22px] shrink-0 items-center gap-2 border-t border-border bg-panel px-2 text-xs text-muted">
         <span className="flex items-center gap-1.5">
           <EnvironmentBadge environment={profile.presentation.environment} />
           {profile.name}
