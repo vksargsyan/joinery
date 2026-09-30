@@ -34,6 +34,7 @@ import {
   type ModelState,
   type RelationPatch,
 } from './edit';
+import { modelDocument } from './document';
 import { modelScript, validateModel, type ModelIssue, type ModelScript } from './forward';
 import type { Point } from '../query-builder/layout';
 import type { ErDiagramView } from './view';
@@ -45,7 +46,8 @@ import type { ErDiagramView } from './view';
  * which shows the structure compare's script and runs it on the connection with the same
  * write-safety rules as the table designer. The live schema is not reread while editing: if
  * it changes on the server, the editor says so, and the script still says only what the model
- * changes.
+ * changes. Unapplied changes are kept as a draft in the local store a moment after each
+ * change, so closing the diagram or the app loses nothing; applying or discarding drops it.
  */
 
 export interface EditorState {
@@ -61,9 +63,13 @@ export interface EditorState {
   readonly applying: boolean;
   /** A column whose name field should take the focus (just added). */
   readonly focusColumn: { readonly table: string; readonly column: string } | undefined;
+  /** Whether the changes are kept in the store for later. */
+  readonly kept: 'none' | 'pending' | 'kept' | 'failed';
 }
 
 const HISTORY = 200;
+/** How long after the last change the draft is written. */
+const PERSIST_DELAY_MS = 500;
 
 export class ErModelEditor {
   readonly view: ErDiagramView;
@@ -73,22 +79,39 @@ export class ErModelEditor {
   readonly store: StoreApi<EditorState>;
   #past: ModelState[] = [];
   #future: ModelState[] = [];
+  #persistTimer: ReturnType<typeof setTimeout> | undefined;
+  /** A draft is kept in the store for this model's place. */
+  #drafted: boolean;
+  #persistFailed = false;
+  #offLayout: (() => void) | undefined;
+  #closed = false;
 
-  constructor(view: ErDiagramView, base: SchemaSnapshot, context: EditContext) {
+  /**
+   * `model` is where editing resumes (a restored draft, an opened model file); the live
+   * structure otherwise. `drafted` says a draft of it is in the store already.
+   */
+  constructor(
+    view: ErDiagramView,
+    base: SchemaSnapshot,
+    context: EditContext,
+    options: { readonly model?: ModelState; readonly drafted?: boolean } = {},
+  ) {
     this.view = view;
     this.base = base;
     this.context = context;
-    const model = startModel(base, context);
+    this.#drafted = options.drafted ?? false;
+    const model = options.model ?? startModel(base, context);
     this.store = createStore<EditorState>()(() => ({
       model,
       changes: modelChanges(model, base, context),
-      issues: [],
+      issues: validateModel(model, base, context, base.serverVersion),
       canUndo: false,
       canRedo: false,
       stale: false,
       review: undefined,
       applying: false,
       focusColumn: undefined,
+      kept: options.drafted ? 'kept' : 'none',
     }));
   }
 
@@ -103,7 +126,7 @@ export class ErModelEditor {
   // -------------------------------------------------------------------------------------------
   // Changing the model
 
-  /** Shows a model state: marks, validation, the canvas and the panel's unsaved flag. */
+  /** Shows a model state: marks, validation and the canvas, and keeps the draft. */
   #show(model: ModelState, extra: Partial<EditorState> = {}): void {
     const changes = modelChanges(model, this.base, this.context);
     this.#set({
@@ -114,8 +137,112 @@ export class ErModelEditor {
       canRedo: this.#future.length > 0,
       ...extra,
     });
-    patchPanel(this.view.id, { dirty: changes.count > 0 });
+    this.#schedulePersist();
     void this.view.showModel(model.snapshot);
+  }
+
+  /** Draws the model it starts from, and keeps its draft as the boxes move. */
+  begin(): void {
+    void this.view.showModel(this.state.model.snapshot);
+    this.#offLayout = this.view.store.subscribe((state, previous) => {
+      if (
+        state.positions !== previous.positions ||
+        state.hidden !== previous.hidden ||
+        state.display !== previous.display ||
+        state.includeViews !== previous.includeViews
+      ) {
+        this.#schedulePersist();
+      }
+    });
+    // An opened model file is kept as a draft at once; a restored draft is there already.
+    if (!this.#drafted && this.state.changes.count > 0) this.#schedulePersist();
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // The draft
+
+  /** Where the draft is kept: the connection, the database the model started from, the schema. */
+  get draftKey(): { profileId: string; database: string; schema: string } {
+    return {
+      profileId: this.view.target.profileId,
+      database: this.base.database,
+      schema: this.context.schema,
+    };
+  }
+
+  #schedulePersist(): void {
+    if (this.#closed) return;
+    clearTimeout(this.#persistTimer);
+    this.#persistTimer = setTimeout(() => void this.#persist(), PERSIST_DELAY_MS);
+    if (this.state.changes.count > 0) this.#set({ kept: 'pending' });
+  }
+
+  /** Keeps the model as a draft, or drops the draft once the model changes nothing. */
+  async #persist(): Promise<void> {
+    this.#persistTimer = undefined;
+    const { model, changes } = this.state;
+    try {
+      if (changes.count === 0) {
+        if (this.#drafted) await mainApi().erModels.deleteDraft(this.draftKey);
+        this.#drafted = false;
+        this.#set({ kept: 'none' });
+        return;
+      }
+      const document = modelDocument({
+        model,
+        context: this.context,
+        base: this.base,
+        layout: this.view.currentLayout(),
+        diagramSchema: this.view.diagramSchema(),
+        savedAt: new Date().toISOString(),
+      });
+      await mainApi().erModels.putDraft({ ...this.draftKey, document, changes: changes.count });
+      this.#drafted = true;
+      this.#persistFailed = false;
+      if (!this.#closed) this.#set({ kept: 'kept' });
+    } catch (error) {
+      // Said once: the model itself is intact while the panel is open.
+      if (!this.#persistFailed) {
+        this.view.note({
+          kind: 'error',
+          text: `The changes could not be kept for later: ${errorMessage(error)}`,
+        });
+      }
+      this.#persistFailed = true;
+      this.#set({ kept: 'failed' });
+    }
+  }
+
+  /** Writes a pending draft now (the panel is closing). */
+  flush(): void {
+    if (this.#persistTimer === undefined) return;
+    clearTimeout(this.#persistTimer);
+    void this.#persist();
+  }
+
+  /** Stops keeping drafts and drops the stored one (applied or discarded). */
+  async #forget(): Promise<void> {
+    this.#close();
+    if (!this.#drafted) return;
+    this.#drafted = false;
+    try {
+      await mainApi().erModels.deleteDraft(this.draftKey);
+    } catch {
+      // A stale draft is offered again next time; nothing is lost.
+    }
+  }
+
+  #close(): void {
+    this.#closed = true;
+    clearTimeout(this.#persistTimer);
+    this.#persistTimer = undefined;
+    this.#offLayout?.();
+  }
+
+  /** The panel closed: write a pending draft and stop listening. */
+  dispose(): void {
+    this.flush();
+    this.#close();
   }
 
   /**
@@ -293,6 +420,7 @@ export class ErModelEditor {
   /** Discards the model and shows the live structure again. */
   discard(): void {
     this.#set({ review: undefined });
+    void this.#forget();
     this.view.stopEditing();
   }
 
@@ -326,6 +454,7 @@ export class ErModelEditor {
       if (outcome.ok) {
         const count = script.operations.length;
         this.#set({ review: undefined });
+        await this.#forget();
         this.view.stopEditing();
         this.view.note({
           kind: 'success',

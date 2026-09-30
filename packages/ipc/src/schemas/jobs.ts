@@ -521,6 +521,9 @@ export const saveFileInputSchema = openFileInputSchema.extend({
 
 export const openDirectoryInputSchema = z.object({ title: z.string().max(200).optional() });
 
+/** A text file picked with `dialogs.openFile`, for `dialogs.readFile`. */
+export const readFileInputSchema = z.object({ path: z.string().min(1).max(4096) });
+
 /** The largest file `dialogs.writeFile` takes, as text or as base64 (an exported image). */
 export const WRITE_FILE_LIMIT = 64 * 1024 * 1024;
 

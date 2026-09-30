@@ -1,6 +1,7 @@
 import type { RepositoryContext } from './internal/context';
 import { migrate } from './migrations';
 import { SavedComparisonRepository } from './repositories/comparisons';
+import { ErModelDraftRepository } from './repositories/er-model-drafts';
 import { EditorAutosaveRepository } from './repositories/editor-autosave';
 import { FolderRepository } from './repositories/folders';
 import { GridViewRepository } from './repositories/grid-views';
@@ -40,6 +41,8 @@ export interface Store {
   readonly settings: SettingsRepository;
   /** Saved structure and data comparisons (spec §13). */
   readonly comparisons: SavedComparisonRepository;
+  /** Unapplied ER model changes (spec §8). */
+  readonly erModelDrafts: ErModelDraftRepository;
   /** Saved table views: column layout, sort and filter per profile and table (spec §7). */
   readonly gridViews: GridViewRepository;
   /** Unsaved editor buffers and the app's run marker, for crash restore (spec §18). */
@@ -79,6 +82,7 @@ export function createStore(db: SqliteDatabase, options: StoreOptions): Store {
     metadataCache: new MetadataCacheRepository(context),
     settings: new SettingsRepository(context),
     comparisons: new SavedComparisonRepository(context),
+    erModelDrafts: new ErModelDraftRepository(context),
     gridViews: new GridViewRepository(context),
     autosave: new EditorAutosaveRepository(context),
     close() {

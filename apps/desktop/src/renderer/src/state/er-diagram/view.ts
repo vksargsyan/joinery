@@ -1,4 +1,5 @@
-import { isSqlEngine, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
+import { isSqlEngine, type SchemaSnapshot, type SqlDialect, type SqlEngineId } from '@joinery/core';
+import type { ErModelDraftSummary } from '@joinery/ipc';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -7,7 +8,6 @@ import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';
 import { cachedProfile } from '../data';
 import { loadSnapshot, metadataCache } from '../metadata';
-import { patchPanel } from '../panels';
 import { layoutBoxes, type LayoutBox, type LayoutEdge, type Point } from '../query-builder/layout';
 import {
   boxSize,
@@ -22,6 +22,17 @@ import {
   type ErDiagram,
   type ErTable,
 } from './model';
+import {
+  documentLayout,
+  documentText,
+  modelDocument,
+  parseModelFile,
+  rebaseModel,
+  restoreDraft,
+  sameFamily,
+  type DiagramLayout,
+} from './document';
+import { startModel, type EditContext, type ModelState } from './edit';
 import { ErModelEditor } from './editor';
 import { diagramMermaid } from './mermaid';
 import { diagramSvg } from './svg';
@@ -69,6 +80,8 @@ export interface ErState {
   readonly selectedRelation: string | undefined;
   /** The model being edited, while editing. */
   readonly editor: ErModelEditor | undefined;
+  /** Unapplied model changes kept for this database's schemas. */
+  readonly drafts: readonly ErModelDraftSummary[];
   /** Bumped when the canvas should fit the diagram (after a layout) or a table. */
   readonly fit: { readonly seq: number; readonly table?: string };
   readonly laying: boolean;
@@ -83,6 +96,26 @@ export type Rasterise = (
   height: number,
   scale: number,
 ) => Promise<Uint8Array>;
+
+const ENGINE_NAMES: Readonly<Record<SqlEngineId, string>> = {
+  postgres: 'PostgreSQL',
+  mysql: 'MySQL',
+  mariadb: 'MariaDB',
+};
+
+/** "just now", "5 minutes ago", "yesterday", "on 3 September". */
+export function savedWhen(iso: string): string {
+  const seconds = (Date.now() - Date.parse(iso)) / 1000;
+  if (!Number.isFinite(seconds) || seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  return `on ${new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}`;
+}
 
 /** Space between the diagram and tables placed beside it. */
 const NEW_GAP = 120;
@@ -117,6 +150,8 @@ export class ErDiagramView {
   readonly store: StoreApi<ErState>;
   #loadSeq = 0;
   #live: SchemaSnapshot | undefined;
+  /** The shown schema's draft is resumed once, when the diagram first finds it. */
+  #resumed = false;
 
   constructor(id: string, target: ErTarget) {
     this.id = id;
@@ -135,6 +170,7 @@ export class ErDiagramView {
       selected: undefined,
       selectedRelation: undefined,
       editor: undefined,
+      drafts: [],
       fit: { seq: 0 },
       laying: false,
       exporting: false,
@@ -184,6 +220,7 @@ export class ErDiagramView {
           : undefined;
       this.#set({ schemas, schema });
       await this.#show(snapshot);
+      await this.#listDrafts();
     } catch (error) {
       if (seq !== this.#loadSeq) return;
       this.#set({ status: 'error', error: errorMessage(error) });
@@ -283,22 +320,234 @@ export class ErDiagramView {
   /** Starts editing the shown schema as a model. */
   startEditing(): void {
     const blocker = this.editBlocker();
-    const profile = cachedProfile(this.target.profileId);
-    if (blocker || !this.#live || !profile || !isSqlEngine(profile.engine) || this.state.editor) {
+    const engine = this.#engine();
+    if (blocker || !this.#live || !engine || this.state.editor) {
       if (blocker) this.note({ kind: 'error', text: blocker });
       return;
     }
     const schema = this.target.dialect === 'postgres' ? this.state.schema! : this.#live.database;
-    const editor = new ErModelEditor(this, this.#live, { engine: profile.engine, schema });
-    this.#set({ editor, notice: undefined });
+    this.#startEditor(this.#live, { engine, schema });
+    this.#set({ notice: undefined });
+  }
+
+  #engine(): SqlEngineId | undefined {
+    const engine = cachedProfile(this.target.profileId)?.engine;
+    return engine !== undefined && isSqlEngine(engine) ? engine : undefined;
+  }
+
+  #startEditor(
+    base: SchemaSnapshot,
+    context: EditContext,
+    options: { readonly model?: ModelState; readonly drafted?: boolean } = {},
+  ): ErModelEditor {
+    this.state.editor?.dispose();
+    const editor = new ErModelEditor(this, base, context, options);
+    this.#set({ editor });
+    editor.begin();
+    if (this.#live && base !== this.#live) editor.liveChanged(this.#live);
+    return editor;
   }
 
   /** Leaves editing (after Discard or Apply) and draws the live structure again. */
   stopEditing(): void {
-    if (!this.state.editor) return;
+    const editor = this.state.editor;
+    if (!editor) return;
+    editor.dispose();
     this.#set({ editor: undefined, selectedRelation: undefined });
-    patchPanel(this.id, { dirty: false });
     if (this.#live) void this.#show(this.#live);
+    void this.#listDrafts();
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Drafts and model files
+
+  /** The schema this diagram's table ids use: the PostgreSQL schema, else the database. */
+  diagramSchema(schema = this.state.schema): string {
+    return this.target.dialect === 'postgres' ? (schema ?? '') : (this.#live?.database ?? '');
+  }
+
+  /** Where the boxes are and what the diagram shows, for a model document. */
+  currentLayout(): DiagramLayout {
+    const { positions, hidden, display, includeViews } = this.state;
+    return { positions, hidden, display, includeViews };
+  }
+
+  #applyLayout(layout: DiagramLayout): void {
+    this.#set({
+      positions: { ...layout.positions },
+      hidden: new Set(layout.hidden),
+      display: layout.display,
+      includeViews: layout.includeViews,
+      selected: undefined,
+      selectedRelation: undefined,
+      fit: { seq: this.state.fit.seq + 1 },
+    });
+  }
+
+  /** The database's drafts, for the banner; resumes the shown schema's once. */
+  async #listDrafts(): Promise<void> {
+    const live = this.#live;
+    if (!live) return;
+    let drafts: readonly ErModelDraftSummary[];
+    try {
+      drafts = await mainApi().erModels.listDrafts({
+        profileId: this.target.profileId,
+        database: live.database,
+      });
+    } catch {
+      return;
+    }
+    this.#set({ drafts });
+    const shown = this.target.dialect === 'postgres' ? this.state.schema : live.database;
+    const mine = drafts.find((draft) => draft.schema === shown);
+    if (mine && !this.state.editor && !this.#resumed) {
+      this.#resumed = true;
+      await this.resumeDraft(mine.schema);
+    }
+  }
+
+  /** Reopens a schema's unapplied changes where they were left. */
+  async resumeDraft(schema: string): Promise<void> {
+    const live = this.#live;
+    const engine = this.#engine();
+    if (!live || !engine) return;
+    try {
+      const draft = await mainApi().erModels.getDraft({
+        profileId: this.target.profileId,
+        database: live.database,
+        schema,
+      });
+      if (!draft) {
+        this.note({ kind: 'error', text: 'The unapplied changes could not be read' });
+        return;
+      }
+      const { base, model } = restoreDraft(draft.document);
+      if (this.target.dialect === 'postgres') this.#set({ schema });
+      this.#applyLayout(documentLayout(draft.document, this.diagramSchema(schema)));
+      this.#startEditor(base, { engine, schema }, { model, drafted: true });
+      this.note({
+        kind: 'info',
+        text: `Restored your unapplied changes to ${schema} (${draft.changes} ${draft.changes === 1 ? 'table' : 'tables'}, ${savedWhen(draft.savedAt)})`,
+      });
+    } catch (error) {
+      this.note({
+        kind: 'error',
+        text: `The unapplied changes could not be read: ${errorMessage(error)}`,
+      });
+    }
+  }
+
+  /** Drops a schema's unapplied changes without opening them. */
+  async discardDraft(schema: string): Promise<void> {
+    const live = this.#live;
+    if (!live) return;
+    try {
+      await mainApi().erModels.deleteDraft({
+        profileId: this.target.profileId,
+        database: live.database,
+        schema,
+      });
+    } finally {
+      await this.#listDrafts();
+    }
+  }
+
+  /** Saves the shown schema, as edited or as it is live, as a model file. */
+  async saveModelFile(): Promise<void> {
+    const live = this.#live;
+    const engine = this.#engine();
+    const editor = this.state.editor;
+    if (!live || !engine) return;
+    const schema =
+      editor?.context.schema ??
+      (this.target.dialect === 'postgres' ? this.state.schema : live.database);
+    if (schema === undefined) {
+      this.note({ kind: 'error', text: 'Choose a schema to save it as a model' });
+      return;
+    }
+    const context: EditContext = { engine, schema };
+    const document = modelDocument({
+      model: editor?.state.model ?? startModel(live, context),
+      context,
+      layout: this.currentLayout(),
+      diagramSchema: this.diagramSchema(),
+      savedAt: new Date().toISOString(),
+    });
+    const stem = [live.database, this.target.dialect === 'postgres' ? schema : undefined]
+      .filter(Boolean)
+      .join('-')
+      .replace(/[^\w.-]+/g, '_');
+    try {
+      const { path } = await mainApi().dialogs.saveFile({
+        title: 'Save the ER model',
+        defaultName: `${stem || 'model'}.model.json`,
+        filters: [{ name: 'Joinery ER model', extensions: ['json'] }],
+      });
+      if (path === null) return;
+      await mainApi().dialogs.writeFile({ path, text: documentText(document) });
+      this.note({ kind: 'success', text: `Saved the model to ${path}` });
+    } catch (error) {
+      this.note({ kind: 'error', text: `The model could not be saved: ${errorMessage(error)}` });
+    }
+  }
+
+  /**
+   * Opens a model file on this diagram's database: the model becomes what the schema should
+   * look like here, in edit mode, to review and apply. The file's schema is used when the
+   * diagram shows every schema and the database has it.
+   */
+  async openModelFile(): Promise<void> {
+    const live = this.#live;
+    const engine = this.#engine();
+    if (!live || !engine) return;
+    try {
+      const { path } = await mainApi().dialogs.openFile({
+        title: 'Open an ER model',
+        filters: [{ name: 'Joinery ER model', extensions: ['json'] }],
+      });
+      if (path === null) return;
+      const { text } = await mainApi().dialogs.readFile({ path });
+      const parsed = parseModelFile(text);
+      if (!parsed.ok) {
+        this.note({ kind: 'error', text: parsed.message });
+        return;
+      }
+      const { document } = parsed;
+      if (!sameFamily(document.engine, engine)) {
+        this.note({
+          kind: 'error',
+          text: `The model is for ${ENGINE_NAMES[document.engine]}; this connection is ${ENGINE_NAMES[engine]}`,
+        });
+        return;
+      }
+      let schema = this.target.dialect === 'postgres' ? this.state.schema : live.database;
+      if (schema === undefined && live.schemas.some((s) => s.name === document.schema)) {
+        schema = document.schema;
+      }
+      if (schema === undefined) {
+        this.note({
+          kind: 'error',
+          text: `Choose the schema to open the model in (it was ${document.schema})`,
+        });
+        return;
+      }
+      const context: EditContext = { engine, schema };
+      const model = rebaseModel(document, live, context);
+      if (this.target.dialect === 'postgres') this.#set({ schema });
+      this.#applyLayout(documentLayout(document, this.diagramSchema(schema)));
+      const editor = this.#startEditor(live, context, { model });
+      const name = path.split(/[\\/]/).pop() ?? path;
+      const count = editor.state.changes.count;
+      this.note({
+        kind: 'info',
+        text:
+          count === 0
+            ? `Opened ${name}: ${schema} already matches it`
+            : `Opened ${name}: it changes ${count} ${count === 1 ? 'table' : 'tables'} of ${schema}. Review before applying.`,
+      });
+    } catch (error) {
+      this.note({ kind: 'error', text: `The model could not be opened: ${errorMessage(error)}` });
+    }
   }
 
   /** Reads the structure again from the server. */
