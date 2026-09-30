@@ -12,6 +12,11 @@ import type {
   PatternStats,
   RedisBytes,
   RedisReply,
+  SearchFieldSuggestion,
+  SearchIndexDefinition,
+  SearchIndexInfo,
+  SearchKeyType,
+  SearchResult,
   SlowlogEntry,
 } from '@joinery/redis-tools';
 
@@ -413,6 +418,38 @@ export interface ConfigValues {
   readonly denied: boolean;
 }
 
+/** FT.SEARCH options. */
+export interface SearchQueryOptions {
+  readonly offset?: number;
+  /** Documents per page (default 10). */
+  readonly limit?: number;
+  readonly sortBy?: string;
+  readonly sortDescending?: boolean;
+  /** Fields to return (default all); ignored with `noContent`. */
+  readonly returnFields?: readonly string[];
+  readonly withScores?: boolean;
+  /** Keys only. */
+  readonly noContent?: boolean;
+  /** No stemming of the query terms. */
+  readonly verbatim?: boolean;
+  /** Query dialect (1 to 4; 2 for PARAMS and vector queries). */
+  readonly dialect?: number;
+  /** Named parameters ($name) for dialect 2 and later. */
+  readonly params?: Readonly<Record<string, string>>;
+  readonly timeoutMs?: number;
+  readonly node?: string;
+}
+
+export interface SearchQueryResult extends SearchResult {
+  readonly durationMs: number;
+}
+
+export interface SearchSuggestOptions {
+  /** Keys to read (default 50, at most 500). */
+  readonly sample?: number;
+  readonly node?: string;
+}
+
 export interface BigKeyOptions {
   /** Keys to sample at most (default 5000). */
   readonly sampleSize?: number;
@@ -755,6 +792,35 @@ export interface RedisSession extends Session {
   /** MONITOR on its own connection. Costly for the server: the UI warns before starting it. */
   monitor(options?: MonitorOptions): Promise<MonitorStream>;
   bigKeys(options?: BigKeyOptions): Promise<BigKeyReport>;
+  /** RediSearch: index names (FT._LIST). NOT_SUPPORTED without the search module. */
+  searchIndexes(options?: { readonly node?: string }): Promise<string[]>;
+  searchInfo(index: string, options?: { readonly node?: string }): Promise<SearchIndexInfo>;
+  searchQuery(
+    index: string,
+    query: string,
+    options?: SearchQueryOptions,
+  ): Promise<SearchQueryResult>;
+  searchExplain(
+    index: string,
+    query: string,
+    options?: { readonly dialect?: number; readonly node?: string },
+  ): Promise<string>;
+  searchCreate(
+    definition: SearchIndexDefinition,
+    options?: { readonly node?: string },
+  ): Promise<void>;
+  /** FT.DROPINDEX; `deleteDocuments` (DD) deletes the indexed keys too. */
+  searchDrop(
+    index: string,
+    deleteDocuments: boolean,
+    options?: { readonly node?: string },
+  ): Promise<void>;
+  /** Fields for a new index, from sample keys under a prefix. */
+  searchSuggest(
+    keyType: SearchKeyType,
+    prefix: string,
+    options?: SearchSuggestOptions,
+  ): Promise<SearchFieldSuggestion[]>;
   aclList(): Promise<string[]>;
   aclUsers(): Promise<string[]>;
   aclGetUser(name: string): Promise<AclUser | null>;

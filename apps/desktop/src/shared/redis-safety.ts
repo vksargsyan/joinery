@@ -148,6 +148,9 @@ const DESTRUCTIVE: Readonly<Record<string, string>> = {
   'CLUSTER SETSLOT': 'changes the cluster topology',
   'CLUSTER FLUSHSLOTS': 'changes the cluster topology',
   'CLUSTER REPLICATE': 'changes the cluster topology',
+  'FT.DROPINDEX': 'drops a search index (with DD, its documents too)',
+  'FT.DROP': 'drops a search index and its documents',
+  'FT.ALIASDEL': 'removes a search index alias',
 };
 
 /** Writes that the catalog flags do not show (admin commands that change server state). */
@@ -168,6 +171,16 @@ const WRITES = new Set([
   'MODULE LOAD',
   'MODULE LOADEX',
   'LATENCY RESET',
+  'FT.CREATE',
+  'FT.ALTER',
+  'FT.ALIASADD',
+  'FT.ALIASUPDATE',
+  'FT.SYNUPDATE',
+  'FT.DICTADD',
+  'FT.DICTDEL',
+  'FT.SUGADD',
+  'FT.SUGDEL',
+  'FT.CONFIG SET',
 ]);
 
 /** Commands with REPLACE that overwrite an existing key when given it. */
@@ -205,6 +218,19 @@ export function classifyRedisCommand(
 
 /** Reads that need no catalog to be recognised (for servers that refuse COMMAND DOCS / INFO). */
 const KNOWN_READS = new Set([
+  'FT.SEARCH',
+  'FT.AGGREGATE',
+  'FT.INFO',
+  'FT._LIST',
+  'FT.EXPLAIN',
+  'FT.EXPLAINCLI',
+  'FT.PROFILE',
+  'FT.SPELLCHECK',
+  'FT.TAGVALS',
+  'FT.SYNDUMP',
+  'FT.DICTDUMP',
+  'FT.SUGGET',
+  'FT.SUGLEN',
   'GET',
   'MGET',
   'GETRANGE',

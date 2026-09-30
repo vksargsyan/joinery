@@ -105,7 +105,9 @@ What works today:
   MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
   Sentinel/Cluster topology. Dump analysis reads an RDB file offline (Redis 2 to 8.6, Valkey 7
   to 9, module types included): keys by type, encoding, expiry, database and pattern, and the
-  largest keys, whatever the file's size.
+  largest keys, whatever the file's size. Search indexes (RediSearch, the Redis Query Engine;
+  valkey-search): list, query with sort, paging, scores and FT.EXPLAIN, read the schema and the
+  FT.CREATE that rebuilds it, create an index with fields suggested from sample keys, drop one.
 - **Elasticsearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
   bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
   health, data streams and aliases; a Kibana-style console with autocomplete from the open API
@@ -135,8 +137,8 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
-RediSearch; a query builder for Elasticsearch. The product specification lists the full scope.
+Not built yet: cloud sync and the AI assistant; the embedded mongosh shell for MongoDB; a query
+builder for Elasticsearch. The product specification lists the full scope.
 
 ## Repository layout
 

@@ -270,6 +270,81 @@ test('shows the INFO dashboard and the slow log', async () => {
   await expect(slowlog.getByRole('table', { name: 'Slow log entries' })).toBeVisible();
 });
 
+test('creates a search index from suggested fields, queries it and drops it', async () => {
+  const supported = await redis!.searchIndexes().then(
+    () => true,
+    () => false,
+  );
+  test.skip(!supported, 'The server has no search module (Redis 8, Redis Stack, valkey-search)');
+  const index = `${segment}_books`;
+  for (const [id, title, year, tags] of [
+    ['1', 'Dune', '1965', 'scifi,classic'],
+    ['2', 'Neuromancer', '1984', 'scifi,cyberpunk'],
+    ['3', 'Emma', '1815', 'classic,romance'],
+  ] as const) {
+    await redisCommand(
+      redis!,
+      'HSET',
+      `${prefix}book:${id}`,
+      'title',
+      title,
+      'year',
+      year,
+      'tags',
+      tags,
+    );
+  }
+
+  await openTool(NAME, 'Search indexes');
+  const panel = visible('redis-search');
+  await panel.getByRole('button', { name: 'New index…' }).first().click();
+  const dialog = page.getByTestId('search-create-dialog');
+  await dialog.getByLabel('Index name').fill(index);
+  await dialog.getByLabel('Key prefixes').fill(`${prefix}book:`);
+  await dialog.getByRole('button', { name: 'Suggest from keys' }).click();
+  const rows = dialog.getByTestId('search-field-row');
+  await expect(rows).toHaveCount(3);
+  await expect(
+    rows.filter({ has: page.locator('input[value="year"]') }).getByLabel('Type'),
+  ).toHaveValue('NUMERIC');
+  await expect(
+    rows.filter({ has: page.locator('input[value="tags"]') }).getByLabel('Type'),
+  ).toHaveValue('TAG');
+  await expect(page.getByTestId('search-create-preview')).toContainText(
+    `FT.CREATE ${index} ON HASH PREFIX 1 ${prefix}book: SCHEMA`,
+  );
+  await shot('redis-search-create');
+  await page.getByTestId('search-create').click();
+  await expect(dialog).toBeHidden();
+
+  // The new index opens on its query view, every document listed.
+  const header = panel.getByTestId('search-header');
+  await expect(header).toContainText(index);
+  await expect(panel.getByTestId('search-figures')).toContainText('3 documents');
+  await expect(panel.getByTestId('search-total')).toHaveText('3 documents match');
+  await panel.getByTestId('search-query').fill('@tags:{scifi}');
+  await panel.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(panel.getByTestId('search-total')).toHaveText('2 documents match');
+  await expect(panel.getByTestId('search-document').first()).toContainText(`${prefix}book:`);
+  await panel.getByRole('button', { name: 'Explain' }).click();
+  await expect(panel.getByTestId('search-explain')).toContainText('TAG:@tags');
+  await shot('redis-search-query');
+
+  await panel.getByRole('button', { name: /^Schema/ }).click();
+  await expect(panel.getByTestId('search-field')).toHaveCount(3);
+  await expect(panel.getByTestId('search-create-command')).toContainText(
+    'SCHEMA tags TAG title TEXT year NUMERIC SORTABLE',
+  );
+
+  await panel.getByRole('button', { name: 'Drop…' }).click();
+  await panel.getByRole('menuitem', { name: /Drop the index and its documents/ }).click();
+  const confirm = page.getByRole('alertdialog');
+  await expect(confirm).toContainText(`FT.DROPINDEX ${index} DD`);
+  await confirm.getByRole('button', { name: 'Drop' }).click();
+  await expect(panel.getByTestId('search-index').filter({ hasText: index })).toHaveCount(0);
+  expect(await redisText(redis!, 'EXISTS', `${prefix}book:1`)).toBe('0');
+});
+
 test('analyses an RDB dump file offline', async () => {
   const dump = join(
     import.meta.dirname,

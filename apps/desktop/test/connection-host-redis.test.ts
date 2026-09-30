@@ -292,6 +292,51 @@ describe('redis write rules in the host', () => {
     ).toEqual({ killed: true });
   });
 
+  it('creates a search index as a write and drops one only when confirmed', async () => {
+    const definition = {
+      name: 'books',
+      keyType: 'HASH' as const,
+      prefixes: ['book:'],
+      fields: [{ identifier: 'title', type: 'TEXT' as const }],
+    };
+    const dev = await startHost();
+    await dev.client.redis.search.create({ sessionId: dev.sessionId, definition });
+    await expect(
+      dev.client.redis.search.drop({
+        sessionId: dev.sessionId,
+        index: 'books',
+        deleteDocuments: true,
+      }),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_REQUIRED' });
+    await dev.client.redis.search.drop({
+      sessionId: dev.sessionId,
+      index: 'books',
+      deleteDocuments: true,
+      confirmed: true,
+    });
+    expect(
+      dev
+        .session()
+        .calls.filter((c) => c.method.startsWith('search'))
+        .map((c) => c.args.slice(0, 2)),
+    ).toEqual([
+      [definition, {}],
+      ['books', true],
+    ]);
+
+    const readOnly = await startHost({ readOnly: true });
+    await expect(
+      readOnly.client.redis.search.create({ sessionId: readOnly.sessionId, definition }),
+    ).rejects.toMatchObject({ code: 'READ_ONLY' });
+    // The definition is checked before anything runs.
+    await expect(
+      dev.client.redis.search.create({
+        sessionId: dev.sessionId,
+        definition: { ...definition, fields: [] },
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
   it('checks the generic execute of a Redis session too', async () => {
     const readOnly = await startHost({ readOnly: true });
     const stream = readOnly.client.execute({

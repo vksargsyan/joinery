@@ -163,6 +163,13 @@ class NodeLocator {
 }
 
 /** Resolves when `signal` aborts (never, without one). */
+/** An options object without its undefined members (zod's optional fields may carry them). */
+function definedOnly<T extends object>(value: T): { [K in keyof T]: Exclude<T[K], undefined> } {
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as {
+    [K in keyof T]: Exclude<T[K], undefined>;
+  };
+}
+
 function aborted(signal: AbortSignal): Promise<'aborted'> {
   return new Promise((resolve) => {
     if (signal.aborted) resolve('aborted');
@@ -498,6 +505,37 @@ export function redisHandlers(deps: RedisHostDeps): HandlersOf<typeof redisHostC
       } finally {
         await stream.close();
       }
+    },
+    search: {
+      list: ({ sessionId, node }) => redis(sessionId).searchIndexes(nodeOption(node)),
+      info: ({ sessionId, index, node }) => redis(sessionId).searchInfo(index, nodeOption(node)),
+      query: ({ sessionId, index, query, ...options }) =>
+        redis(sessionId).searchQuery(index, query, definedOnly(options)),
+      explain: ({ sessionId, index, query, dialect, node }) =>
+        redis(sessionId).searchExplain(index, query, {
+          ...(dialect !== undefined ? { dialect } : {}),
+          ...nodeOption(node),
+        }),
+      create: async ({ sessionId, definition, node, confirmed }) => {
+        guard(WRITE, confirmed);
+        await redis(sessionId).searchCreate(definition, nodeOption(node));
+      },
+      drop: async ({ sessionId, index, deleteDocuments, node, confirmed }) => {
+        guard(
+          destructive(
+            deleteDocuments
+              ? 'drops the search index and deletes every document it indexed'
+              : 'drops the search index',
+          ),
+          confirmed,
+        );
+        await redis(sessionId).searchDrop(index, deleteDocuments, nodeOption(node));
+      },
+      suggest: ({ sessionId, keyType, prefix, sample, node }) =>
+        redis(sessionId).searchSuggest(keyType, prefix, {
+          ...(sample !== undefined ? { sample } : {}),
+          ...nodeOption(node),
+        }),
     },
     bigKeys: ({ sessionId, ...options }, { signal, progress }) =>
       redis(sessionId).bigKeys({

@@ -349,6 +349,14 @@ export class FakeRedisSession {
     return true;
   }
 
+  async searchCreate(definition: unknown, options?: unknown): Promise<void> {
+    this.#record('searchCreate', definition, options);
+  }
+
+  async searchDrop(index: string, deleteDocuments: boolean, options?: unknown): Promise<void> {
+    this.#record('searchDrop', index, deleteDocuments, options);
+  }
+
   async aclSetUser(name: string, rules: readonly string[]): Promise<void> {
     this.#record('aclSetUser', name, rules);
   }

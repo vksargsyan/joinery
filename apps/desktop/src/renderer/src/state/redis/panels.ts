@@ -37,7 +37,8 @@ export type RedisTool =
   | 'monitor'
   | 'bigkeys'
   | 'acl'
-  | 'topology';
+  | 'topology'
+  | 'search';
 
 export const TOOL_TITLES: Readonly<Record<RedisTool, string>> = {
   keys: 'Keys',
@@ -53,6 +54,7 @@ export const TOOL_TITLES: Readonly<Record<RedisTool, string>> = {
   bigkeys: 'Big keys',
   acl: 'ACL users',
   topology: 'Topology',
+  search: 'Search indexes',
 };
 
 /** What a Redis panel shows. */
