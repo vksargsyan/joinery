@@ -85,7 +85,12 @@ key):
 | `APPLE_API_KEY_ID`           | its key id                                                        |
 | `APPLE_API_ISSUER`           | its issuer id                                                     |
 
-`base64 -i DeveloperID.p12 | pbcopy` gives the certificate value. electron-builder imports the
+`apps/desktop/scripts/set-mac-signing-secrets.sh DeveloperID.p12 AuthKey_XXXXXXXXXX.p8` checks
+both files first (a Developer ID Application certificate, not expired, with its private key; an
+API key that reads as one; a key id and an issuer id of the right shape), then stores the five
+secrets with `gh`, asking for the password and the issuer id rather than taking them as
+arguments; `--check` checks without storing. By hand, `base64 -i DeveloperID.p12 | pbcopy` gives
+the certificate value. electron-builder imports the
 certificate into a temporary keychain, signs with the hardened runtime and
 `build/entitlements.mac.plist`, and notarises with notarytool; the job then checks
 `stapler validate` and `spctl --assess`. The certificate without the API key is not used: an
