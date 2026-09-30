@@ -32,8 +32,15 @@ With the Kiln design system (ADR 0025), the app is to follow VS Code's UI signat
 - **The right** holds the window's actions as icons with tooltips: new query, history, compare,
   schedules, jobs (with Kiln's solid rust count badge), and the theme switch (sun or moon). They
   keep their accessible names.
+- **Windows and Linux menu bar:** the native menu bar hides with the native title bar there, so
+  the title bar draws the application menu at its left (File, Edit, View, Window, Help), as VS
+  Code does. It has the same items as the native menu (`shared/window-menu.ts`, checked against
+  `main/menu.ts`, which keeps the accelerators working). Each item runs in main through
+  `app.menu`, except About, which the page opens.
 - **About** lives in the application menu only (macOS app menu, Help elsewhere), as it already
-  did; the page's button is gone.
+  did; the page's button is gone. Tests that drive only the page open it from the Windows
+  and Linux menu bar; on macOS they use the page's `#about` link, since they cannot reach the
+  native menu.
 - **The app's name:** a development run renames Electron's bundle before starting
   (`scripts/dev-app-name.ts`, macOS only). It sets `CFBundleName` and `CFBundleDisplayName` to
   the product name, so the menu, the Dock and the app switcher say "Joinery" as a packaged build
