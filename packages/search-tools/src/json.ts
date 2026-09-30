@@ -424,6 +424,37 @@ export function compactJson(text: string): string {
   return parts.join('');
 }
 
+/**
+ * JSON on one line, a space after each colon and comma (`{"term": {"a": 1}}`), for a query bar.
+ * Tokens are copied as written.
+ */
+export function inlineJson(text: string): string {
+  const node = parseJsonTree(text);
+  const parts: string[] = [];
+  const write = (value: JsonNode): void => {
+    if (value.type === 'object') {
+      parts.push('{');
+      value.members.forEach((m, i) => {
+        if (i > 0) parts.push(', ');
+        parts.push(text.slice(m.keyStart, keyEnd(text, m)), ': ');
+        write(m.value);
+      });
+      parts.push('}');
+    } else if (value.type === 'array') {
+      parts.push('[');
+      value.items.forEach((item, i) => {
+        if (i > 0) parts.push(', ');
+        write(item);
+      });
+      parts.push(']');
+    } else {
+      parts.push(text.slice(value.start, value.end));
+    }
+  };
+  write(node);
+  return parts.join('');
+}
+
 function keyEnd(text: string, m: JsonMember): number {
   return readJsonString(text, m.keyStart).end;
 }
