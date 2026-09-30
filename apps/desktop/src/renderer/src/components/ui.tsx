@@ -228,6 +228,8 @@ export function Icon({
     | 'jobs'
     | 'sun'
     | 'moon'
+    | 'folder-move'
+    | 'folder-up'
     | 'view-grid'
     | 'view-form'
     | 'view-json'
@@ -522,6 +524,23 @@ export function Icon({
         <rect x="8.4" y="7" width="5.6" height="3" rx="0.8" />
         <rect x="8.4" y="11" width="5.6" height="3" rx="0.8" />
         <path d="M4.6 5.2v7.3h3.8M4.6 8.5h3.8" />
+      </>
+    ),
+    // A connection going into a folder.
+    'folder-move': (
+      <>
+        <path
+          d="M1.75 4.2a1 1 0 0 1 1-1h3.3l1.6 1.6h5.6a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1z"
+          {...wash}
+        />
+        <path d="M5.2 9h5.2M8.6 7.2 10.4 9l-1.8 1.8" />
+      </>
+    ),
+    // Out of every folder: the top level.
+    'folder-up': (
+      <>
+        <path d="M1.75 4.2a1 1 0 0 1 1-1h3.3l1.6 1.6h5.6a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1z" />
+        <path d="M8 11.2V7.2M6.3 8.9 8 7.2l1.7 1.7" />
       </>
     ),
     kebab: (

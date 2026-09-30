@@ -109,6 +109,20 @@ export function reloadChildren(profileId: string, matches: (path: string[]) => b
   });
 }
 
+/** Whether a connection's own tree is open (kept here, so it survives a move to a folder). */
+export function useProfileExpanded(profileId: string): boolean {
+  return useExplorer((state) => state.expanded[profileId]?.[pathKey([])] === true);
+}
+
+export function setProfileExpanded(profileId: string, expanded: boolean): void {
+  useExplorer.setState((current) => ({
+    expanded: {
+      ...current.expanded,
+      [profileId]: { ...current.expanded[profileId], [pathKey([])]: expanded },
+    },
+  }));
+}
+
 /** Forgets the tree of a connection (disconnect, delete). */
 export function resetExplorer(profileId: string): void {
   sessions.delete(profileId);

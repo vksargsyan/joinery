@@ -86,8 +86,14 @@ test('a click selects a connection; a double-click connects it, with a spinner m
 });
 
 test('the actions menu makes a folder and closes every open connection', async () => {
+  // A new folder is named in place: its name is selected, ready to type over.
   await actions('New folder');
-  await expect(page.getByRole('tree').getByText('Folder 1', { exact: true })).toBeVisible();
+  const naming = page.getByRole('tree').getByRole('textbox');
+  await expect(naming).toBeFocused();
+  await expect(naming).toHaveValue('Folder 1');
+  await naming.fill('Staging');
+  await naming.press('Enter');
+  await expect(page.getByRole('tree').getByText('Staging', { exact: true })).toBeVisible();
 
   await actions('Close all connections');
   await expect(profile(NAME).getByText('Not connected', { exact: true })).toBeAttached();
@@ -98,6 +104,36 @@ test('the actions menu makes a folder and closes every open connection', async (
     'data-disabled',
   );
   await page.keyboard.press('Escape');
+});
+
+test('the menu moves a connection into a folder, a new one, and back to the top level', async () => {
+  // A folder's tree item: the one whose own row carries the name.
+  const folder = (name: string) =>
+    page.getByRole('treeitem').filter({
+      has: page.locator(':scope > [data-tree-row]').getByText(name, { exact: true }),
+    });
+  const moveTo = async (item: string): Promise<void> => {
+    await row(CACHE).hover();
+    await profile(CACHE).getByRole('button', { name: 'Actions' }).first().click();
+    await page.getByRole('menuitem', { name: 'Move to folder' }).click();
+    await page.getByRole('menuitem', { name: item }).click();
+  };
+
+  await moveTo('Staging');
+  await expect(folder('Staging').getByRole('treeitem', { name: CACHE })).toBeVisible();
+
+  // A new folder from the same menu: made, named in place, and the connection goes in.
+  await moveTo('New folder');
+  const naming = page.getByRole('tree').getByRole('textbox');
+  await expect(naming).toHaveValue('Folder 2');
+  await naming.fill('Caches');
+  await naming.press('Enter');
+  await expect(folder('Caches').getByRole('treeitem', { name: CACHE })).toBeVisible();
+  await expect(folder('Staging').getByRole('treeitem', { name: CACHE })).toHaveCount(0);
+
+  await moveTo('Top level');
+  await expect(folder('Caches').getByRole('treeitem', { name: CACHE })).toHaveCount(0);
+  await expect(profile(CACHE)).toBeVisible();
 });
 
 test('the search and the filter narrow the list', async () => {

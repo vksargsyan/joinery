@@ -10,7 +10,7 @@ import {
 import type { Folder, StoredProfile } from '@joinery/ipc';
 import { useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { errorMessage } from '../lib/errors';
 import { mainApi } from '../lib/main-client';
@@ -22,9 +22,12 @@ import {
   opensData,
   pathKey,
   resetExplorer,
+  setProfileExpanded,
   toggleNode,
   useExplorer,
+  useProfileExpanded,
 } from '../state/explorer';
+import { createFolder, moveToFolder, takeFolderRename, useFolderRename } from '../state/folders';
 import { refreshObjects } from '../state/metadata';
 import { objectsPathFor } from '../state/objects-model';
 import { showObjects, useObjectsView } from '../state/objects-view';
@@ -44,7 +47,7 @@ import { openErDiagram } from '../state/er-diagram/panels';
 import { openQueryBuilder } from '../state/query-builder/panels';
 import { EngineIcon } from './EngineIcon';
 import { Highlighted } from './Highlighted';
-import { MenuItem } from './MenuItem';
+import { MenuItem, MenuSub } from './MenuItem';
 import {
   CompareItems,
   DropTableHost,
@@ -75,7 +78,6 @@ import { Button, EnvironmentBadge, Icon, cx } from './ui';
 export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) => void }) {
   const profiles = useProfiles();
   const folders = useFolders();
-  const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const view = useSidebarView();
   const statuses = useConnections((state) => state.byProfile);
@@ -84,10 +86,8 @@ export function Sidebar(props: { readonly onEdit: (mode: ConnectionDialogMode) =
   const open = Object.values(statuses).filter((c) => c.status === 'ready' || c.status === 'lost');
 
   const newFolder = async (): Promise<void> => {
-    const name = `Folder ${(folders.data?.length ?? 0) + 1}`;
     try {
-      await mainApi().folders.save({ name });
-      await queryClient.invalidateQueries({ queryKey: keys.folders });
+      await createFolder();
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -367,6 +367,13 @@ function FolderItem(props: {
   const [userOpen, setOpen] = useState(true);
   const open = userOpen || props.forceOpen;
   const [renaming, setRenaming] = useState(false);
+  // A folder just made is named in place.
+  const renameRequested = useFolderRename((s) => s.folderId === props.folder.id);
+  useEffect(() => {
+    if (!renameRequested) return;
+    takeFolderRename();
+    setRenaming(true);
+  }, [renameRequested]);
   const queryClient = useQueryClient();
   const rename = async (name: string): Promise<void> => {
     setRenaming(false);
@@ -411,10 +418,17 @@ function FolderItem(props: {
           renaming ? (
             <input
               autoFocus
+              aria-label="Folder name"
               defaultValue={props.folder.name}
               className="w-full rounded border border-accent bg-panel-2 px-1 text-[13px]"
+              // The name is selected, ready to type over.
+              onFocus={(event) => event.currentTarget.select()}
               onBlur={(event) => void rename(event.target.value)}
+              // Keys and clicks stay in the field: the row would fold and move the tree's focus.
+              onClick={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => {
+                event.stopPropagation();
                 if (event.key === 'Enter') void rename(event.currentTarget.value);
                 if (event.key === 'Escape') setRenaming(false);
               }}
@@ -473,7 +487,16 @@ function ProfileItem(props: {
   const connection = useConnections((state) => state.byProfile[profile.id]);
   const rootNodes = useExplorer((state) => state.children[profile.id]?.[pathKey([])]);
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const expanded = useProfileExpanded(profile.id);
+  const setExpanded = (next: boolean): void => setProfileExpanded(profile.id, next);
+  const folders = useFolders();
+  const move = async (folderId: string | null): Promise<void> => {
+    try {
+      await moveToFolder(profile, folderId);
+    } catch (e) {
+      props.onError(`${profile.name}: ${errorMessage(e)}`);
+    }
+  };
   const connected = connection?.status === 'ready';
   const connecting = connection?.status === 'connecting';
 
@@ -669,6 +692,42 @@ function ProfileItem(props: {
             <MenuItem icon="copy" onSelect={() => props.onEdit({ kind: 'duplicate', profile })}>
               Duplicate…
             </MenuItem>
+            <MenuSub icon="folder-move" label="Move to folder">
+              <MenuItem
+                icon="folder-up"
+                disabled={profile.presentation.folderId === null}
+                onSelect={() => void move(null)}
+              >
+                Top level
+              </MenuItem>
+              {[...(folders.data ?? [])]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((folder) => {
+                  const here = folder.id === profile.presentation.folderId;
+                  return (
+                    <MenuItem
+                      key={folder.id}
+                      icon="folder"
+                      disabled={here}
+                      onSelect={() => void move(folder.id)}
+                    >
+                      <span className="flex-1 truncate">{folder.name}</span>
+                      {here && <Icon name="check" className="h-3.5 w-3.5 text-rust" />}
+                    </MenuItem>
+                  );
+                })}
+              <DropdownMenu.Separator className="my-1 h-px bg-border" />
+              <MenuItem
+                icon="folder-new"
+                onSelect={() =>
+                  void createFolder()
+                    .then((folder) => move(folder.id))
+                    .catch((e: unknown) => props.onError(errorMessage(e)))
+                }
+              >
+                New folder
+              </MenuItem>
+            </MenuSub>
             <MenuItem icon="trash" danger onSelect={() => void remove()}>
               Delete
             </MenuItem>

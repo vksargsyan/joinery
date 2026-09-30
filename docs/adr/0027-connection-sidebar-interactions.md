@@ -34,6 +34,14 @@ items, each with its own glyph:
 - Close all connections, with the count of open ones; disabled when none are open. A connection
   still connecting is left to finish.
 
+**Folders** (`state/folders.ts`):
+
+- A connection's menu has "Move to folder". It offers the top level, each folder (the current one
+  ticked), and a new folder, which the connection goes into.
+- A new folder, made from either menu, is named in place: its name is selected, ready to type
+  over.
+- A connection's open tree stays open when it moves.
+
 **The bottom of the side bar** holds the search and the filter (`state/sidebar-filter.ts`):
 
 - **Search:** matches connection and folder names, ignoring case. The match shows in bold rust,
