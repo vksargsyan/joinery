@@ -3,7 +3,7 @@ import { nodeContext } from './node-context';
 import { runCli } from './program';
 import { silenceSqliteWarning } from './warnings';
 
-// Must run before the first tick: node:sqlite's warning is emitted on it.
+// Must run before the store opens: node:sqlite loads then, and warns on the next tick.
 silenceSqliteWarning();
 
 // A reader that goes away (`| head`) must not crash the process; the sink stops writing.

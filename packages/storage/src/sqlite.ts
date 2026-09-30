@@ -1,11 +1,16 @@
 import { chmodSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { DatabaseSync, type StatementSync } from 'node:sqlite';
+import type { DatabaseSync, StatementSync } from 'node:sqlite';
 
 /**
  * The SQLite access layer (ADR 0002). Repositories talk to this small synchronous interface
  * only; this file is the one place that touches `node:sqlite`, so moving to better-sqlite3 later
  * means one new implementation of `SqliteDatabase`.
+ *
+ * `node:sqlite` is loaded when the first database opens, not imported: Node warns that SQLite
+ * is experimental as the module loads, and a program that hides the warning (the CLI) can only
+ * do so once its own code runs. A static import loads it while the program's imports are still
+ * being linked, and the other modules loading from disk let the warning out before then.
  */
 
 /** A value SQLite binds or returns. BLOBs come back as Uint8Array. */
@@ -84,7 +89,8 @@ export function openDatabase(location: string, options: OpenDatabaseOptions = {}
     mkdirSync(dirname(location), { recursive: true });
     created = !existsSync(location);
   }
-  const db = new DatabaseSync(location, { readOnly, enableForeignKeyConstraints: true });
+  const { DatabaseSync: Database } = process.getBuiltinModule('node:sqlite');
+  const db = new Database(location, { readOnly, enableForeignKeyConstraints: true });
   try {
     db.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     db.exec('PRAGMA foreign_keys = ON');
