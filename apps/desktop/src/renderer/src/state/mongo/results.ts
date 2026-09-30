@@ -52,6 +52,8 @@ export interface ResultsState {
   readonly drill: Drill | undefined;
   /** Tree view: expanded nodes, by `nodeKey`. */
   readonly expanded: Readonly<Record<string, boolean>>;
+  /** Table view: fields shown first, in this order (a SQL query's select list). */
+  readonly columnOrder: readonly string[];
 }
 
 /** Sub-document levels flattened into columns when `flatten` is on. */
@@ -106,9 +108,10 @@ export function tableOf(
   values: readonly BsonValue[],
   drill: Drill | undefined,
   flatten: boolean,
+  columnOrder: readonly string[] = [],
 ): TableView {
   const expandDepth = flatten ? FLATTEN_DEPTH : 0;
-  if (!drill) return tableView(values, { expandDepth });
+  if (!drill) return tableView(values, { expandDepth, columnOrder });
   const document = values[drill.document];
   if (document === undefined) return { columns: [], rows: [], truncatedColumns: false };
   const view = tableView([document], { path: drill.path, expandDepth });
@@ -141,6 +144,7 @@ export class DocumentResults {
       flatten: initial.flatten ?? true,
       drill: undefined,
       expanded: {},
+      columnOrder: [],
     }));
   }
 
@@ -162,8 +166,11 @@ export class DocumentResults {
     return this.#parsed;
   }
 
-  /** Starts a new result: no documents, loading, drill and expansion reset. */
-  begin(fetchMore?: () => Promise<void>): void {
+  /**
+   * Starts a new result: no documents, loading, drill and expansion reset. `columnOrder` puts
+   * those fields first in the table (a SQL query's select list).
+   */
+  begin(fetchMore?: () => Promise<void>, columnOrder: readonly string[] = []): void {
     this.#fetchMore = fetchMore;
     this.#set({
       documents: [],
@@ -173,6 +180,7 @@ export class DocumentResults {
       error: undefined,
       drill: undefined,
       expanded: {},
+      columnOrder,
     });
   }
 

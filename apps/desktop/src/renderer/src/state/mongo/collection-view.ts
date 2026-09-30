@@ -22,6 +22,7 @@ import { confirm } from '../dialogs';
 import { patchPanel } from '../panels';
 import { SessionLane } from '../session-lane';
 import { BulkFlow, bulkState, type BulkKind, type BulkState } from './bulk-flow';
+import type { CodeExportRequest } from './code-export';
 import { EditorFlow, cloneState, editState, insertState, type EditorState } from './editor-flow';
 import { namespaceReference } from './explorer';
 import {
@@ -217,6 +218,43 @@ export class CollectionView {
       extras: parsed.extras,
       issues: {},
     });
+  }
+
+  /**
+   * The query in the bar as code export takes it; undefined, with a notice, while a field does
+   * not parse.
+   */
+  exportRequest(): CodeExportRequest | undefined {
+    const s = this.state;
+    if (s.findIssue || Object.keys(s.issues).length > 0) {
+      this.#set({ notice: { kind: 'error', text: 'Fix the query first.' } });
+      return undefined;
+    }
+    try {
+      return {
+        target: {
+          kind: 'find',
+          collection: this.target.collection,
+          query: modelOf(s.fields, s.extras),
+        },
+        database: this.target.db,
+      };
+    } catch (error) {
+      this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
+      return undefined;
+    }
+  }
+
+  /** Replaces the query with `fields` (a query opened from elsewhere) and runs it. */
+  async applyFields(fields: QueryFields): Promise<void> {
+    this.#set({
+      fields,
+      extras: {},
+      issues: checkFields(fields),
+      findText: findTextOf(this.target.collection, fields) ?? this.state.findText,
+      findIssue: undefined,
+    });
+    await this.run();
   }
 
   /** Clears the query and runs it again. */

@@ -7,8 +7,17 @@ import type { SqlRow, SqliteDatabase } from '../sqlite';
 
 const timestampSchema = z.iso.datetime({ offset: true });
 
-/** Editors whose buffers autosave: SQL query tabs, the MongoDB console and shell, the Redis CLI. */
-export const AUTOSAVE_KINDS = ['sql', 'mongo-console', 'mongo-shell', 'redis-cli'] as const;
+/**
+ * Editors whose buffers autosave: SQL query tabs, the MongoDB console, shell and SQL tabs, the
+ * Redis CLI.
+ */
+export const AUTOSAVE_KINDS = [
+  'sql',
+  'mongo-console',
+  'mongo-shell',
+  'mongo-sql',
+  'redis-cli',
+] as const;
 export type AutosaveKind = (typeof AUTOSAVE_KINDS)[number];
 
 /** The largest buffer kept, in UTF-16 code units (a big script, not a data dump). */

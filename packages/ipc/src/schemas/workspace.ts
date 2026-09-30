@@ -69,7 +69,13 @@ export const gridViewSaveInputSchema = gridViewTableSchema.extend({
 export type GridViewSaveInput = z.input<typeof gridViewSaveInputSchema>;
 
 /** Editors whose buffers autosave. */
-export const autosaveKindSchema = z.enum(['sql', 'mongo-console', 'mongo-shell', 'redis-cli']);
+export const autosaveKindSchema = z.enum([
+  'sql',
+  'mongo-console',
+  'mongo-shell',
+  'mongo-sql',
+  'redis-cli',
+]);
 export type AutosaveKind = z.infer<typeof autosaveKindSchema>;
 
 /** An editor tab's buffer and where it runs; never results, never secrets. */

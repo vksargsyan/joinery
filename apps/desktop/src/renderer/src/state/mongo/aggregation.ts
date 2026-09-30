@@ -12,6 +12,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';
 import { confirm } from '../dialogs';
+import type { CodeExportRequest } from './code-export';
 import { patchPanel } from '../panels';
 import { SessionLane } from '../session-lane';
 import type { ExplainState, Notice } from './collection-view';
@@ -353,6 +354,30 @@ export class AggregationEditor {
     }
     try {
       return pipelineEjson(this.state.stages);
+    } catch (error) {
+      this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
+      return undefined;
+    }
+  }
+
+  /**
+   * The enabled stages as code export takes them; undefined, with a notice, while the pipeline
+   * does not parse.
+   */
+  exportRequest(): CodeExportRequest | undefined {
+    if (this.state.mode === 'text' && this.state.textIssue) {
+      this.#set({ notice: { kind: 'error', text: 'Fix the pipeline text first.' } });
+      return undefined;
+    }
+    try {
+      return {
+        target: {
+          kind: 'aggregate',
+          collection: this.target.collection,
+          pipeline: pipelineDocuments(this.state.stages),
+        },
+        database: this.target.db,
+      };
     } catch (error) {
       this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
       return undefined;

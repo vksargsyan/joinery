@@ -1,6 +1,7 @@
-import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { formatCount } from '../../lib/format';
+import type { CodeExportRequest } from '../../state/mongo/code-export';
 import {
   PAGE_SIZE,
   useCollectionState,
@@ -12,9 +13,10 @@ import { useQueryBuilder, type QueryEditorMode } from '../../state/mongo/query-b
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
+import { CodeExportDialog } from './CodeExportDialog';
 import { BulkDialog, DocumentEditorDialog } from './DocumentDialogs';
 import { ExplainView } from './ExplainView';
-import { openMongoTool } from './open';
+import { openMongoSql, openMongoTool } from './open';
 import { Segmented } from './parts';
 import { QueryBuilderPanel } from './QueryBuilderPanel';
 import { ResultViews } from './ResultViews';
@@ -38,6 +40,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
   const writable = view.target.kind !== 'view' && !readOnlyProfile;
   const editable = writable && active?.projection === undefined;
   const { db, collection } = view.target;
+  const [exporting, setExporting] = useState<CodeExportRequest | undefined>();
 
   return (
     <div
@@ -78,6 +81,14 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           title="Show the chosen plan without running the query"
         >
           Plan only
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setExporting(view.exportRequest())}
+          title="Export the query as Node.js, Python, Java, C#, Go or PHP code"
+        >
+          Export code…
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
         <Button
@@ -194,6 +205,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
       <Footer view={view} />
       <DocumentEditorDialog view={view} theme={theme} />
       <BulkDialog view={view} theme={theme} />
+      <CodeExportDialog request={exporting} onClose={() => setExporting(undefined)} />
     </div>
   );
 }
@@ -220,6 +232,14 @@ function CollectionTools({ view }: { readonly view: CollectionView }) {
         }
       >
         Aggregate
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        title="Query the collection with SQL in a new tab"
+        onClick={() => openMongoSql({ profileId, db, collection })}
+      >
+        SQL
       </Button>
       {kind !== 'view' && (
         <Button

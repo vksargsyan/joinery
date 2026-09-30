@@ -9,12 +9,14 @@ import { CollectionView, type CollectionTarget } from './collection-view';
 import { MongoConsole, type ConsoleTarget } from './console';
 import { GridFsBrowser, type GridFsTarget } from './gridfs';
 import { IndexManager, type IndexManagerTarget } from './indexes';
+import type { QueryFields } from './query-bar';
 import { SchemaPanelState, type SchemaTarget } from './schema';
+import { SqlQuery, type SqlQueryTarget } from './sql-query';
 import { UsersRoles, type UsersRolesTarget } from './users';
 
 /**
- * The MongoDB module's dock panels: collection views, command consoles and the tool panels
- * (aggregation editor, index manager, schema analysis, collection options, change streams,
+ * The MongoDB module's dock panels: collection views, command consoles, SQL tabs and the tool
+ * panels (aggregation editor, index manager, schema analysis, collection options, change streams,
  * GridFS, users and roles). The dock renders them all through one `mongo` panel component; this
  * registry holds each panel's state object and disposes it (closing its session) when the
  * panel closes.
@@ -23,6 +25,7 @@ import { UsersRoles, type UsersRolesTarget } from './users';
 export type MongoPanel =
   | CollectionView
   | MongoConsole
+  | SqlQuery
   | AggregationEditor
   | IndexManager
   | SchemaPanelState
@@ -43,10 +46,14 @@ export function collectionKey(target: CollectionTarget): string {
 }
 
 /**
- * Creates the state of a collection view and registers its panel; returns the panel id, or the
- * open view's id when the collection is already open (`opened: false`).
+ * Creates the state of a collection view and registers its panel, its query bar starting from
+ * `fields`; returns the panel id, or the open view's id when the collection is already open
+ * (`opened: false`).
  */
-export function createCollectionPanel(target: CollectionTarget): {
+export function createCollectionPanel(
+  target: CollectionTarget,
+  fields?: QueryFields,
+): {
   readonly id: string;
   readonly opened: boolean;
 } {
@@ -55,7 +62,7 @@ export function createCollectionPanel(target: CollectionTarget): {
   if (open) return { id: open.id, opened: false };
   const id = newId();
   registerPanel({ id, kind: 'mongo', profileId: target.profileId, title: target.collection, key });
-  const view = new CollectionView(id, target);
+  const view = new CollectionView(id, target, fields);
   panels.set(id, view);
   void view.init();
   return { id, opened: true };
@@ -68,6 +75,16 @@ export function createConsolePanel(target: ConsoleTarget, title: string): string
   const console = new MongoConsole(id, target);
   panels.set(id, console);
   void console.init();
+  return id;
+}
+
+/** Creates a SQL tab's state and registers its panel. */
+export function createSqlPanel(target: SqlQueryTarget, title: string): string {
+  const id = newId();
+  registerPanel({ id, kind: 'mongo', profileId: target.profileId, title });
+  const query = new SqlQuery(id, target);
+  panels.set(id, query);
+  void query.init();
   return id;
 }
 

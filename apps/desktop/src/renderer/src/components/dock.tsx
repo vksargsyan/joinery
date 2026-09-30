@@ -31,6 +31,7 @@ import {
 } from '../state/panels';
 import { disposeRedisPanel, openRedisPanel } from '../state/redis/panels';
 import { disposeMongoPanel } from '../state/mongo/panels';
+import { looksLikeSql } from '../state/mongo/sql-query';
 import { disposeSyncPanel } from '../state/sync/panels';
 import { disposeServerToolsPanel } from '../state/server-tools/panels';
 import { disposeSearchPanel } from '../state/search/panels';
@@ -43,7 +44,7 @@ import { QueryPanel } from './QueryPanel';
 import { RedisPanel } from './redis/RedisPanel';
 import { MongoPanel } from './mongo/MongoPanel';
 import { SyncPanel } from './sync/SyncPanel';
-import { openMongoConsole } from './mongo/open';
+import { openMongoConsole, openMongoSql } from './mongo/open';
 import { ServerToolsPanel } from './server-tools/ServerToolsPanel';
 import { openSearchConsole } from './search/open';
 import { SearchPanel } from './search/SearchPanel';
@@ -189,9 +190,24 @@ export function openQueryTab(options: {
   /** The database the tab's session connects to; the connection's own when unset. */
   readonly database?: string;
 }): string {
-  // A MongoDB connection's "query tab" is its command console (spec §9).
+  // A MongoDB connection's "query tab" is its command console (spec §9), or a SQL tab for a
+  // SELECT (a query history entry of one).
   const engine = cachedProfile(options.profileId)?.engine;
-  if (engine === 'mongodb') return openMongoConsole(options);
+  if (engine === 'mongodb') {
+    if (
+      options.text !== undefined &&
+      options.database !== undefined &&
+      looksLikeSql(options.text)
+    ) {
+      return openMongoSql({
+        profileId: options.profileId,
+        db: options.database,
+        text: options.text,
+        title: `${options.database} SQL`,
+      });
+    }
+    return openMongoConsole(options);
+  }
   // An Elasticsearch / OpenSearch connection's "query tab" is its console (spec §11).
   if (engine === 'elasticsearch' || engine === 'opensearch') return openSearchConsole(options);
   const tabId = createTab({
@@ -231,6 +247,17 @@ registerRestorer('mongo-console', (entry, profile) =>
     ...(entry.database === null ? {} : { database: entry.database }),
     text: entry.text,
   }),
+);
+// A SQL tab always runs on a database; a buffer without one is left in the store.
+registerRestorer('mongo-sql', (entry, profile) =>
+  entry.database === null
+    ? undefined
+    : openMongoSql({
+        profileId: profile.id,
+        db: entry.database,
+        text: entry.text,
+        ...(entry.title ? { title: entry.title } : {}),
+      }),
 );
 registerRestorer('redis-cli', (entry, profile) => {
   const database = entry.database === null ? undefined : Number(entry.database);

@@ -303,11 +303,12 @@ function TableResults(props: {
   const version = useResults(results, (s) => s.version);
   const drill = useResults(results, (s) => s.drill);
   const flatten = useResults(results, (s) => s.flatten);
+  const columnOrder = useResults(results, (s) => s.columnOrder);
   const view = useMemo(
-    () => tableOf(results.values(), drill, flatten),
-    // Rebuilt when the documents, the drill or the flattening change.
+    () => tableOf(results.values(), drill, flatten, columnOrder),
+    // Rebuilt when the documents, the drill, the flattening or the column order change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [results, version, drill, flatten],
+    [results, version, drill, flatten, columnOrder],
   );
   const crumbs = crumbsOf(drill);
   const actions = drill ? undefined : props.actions;

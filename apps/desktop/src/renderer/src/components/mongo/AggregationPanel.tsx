@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { formatCount } from '../../lib/format';
+import type { CodeExportRequest } from '../../state/mongo/code-export';
 import {
   useAggregation,
   type AggregationEditor,
@@ -9,6 +10,7 @@ import {
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon } from '../ui';
+import { CodeExportDialog } from './CodeExportDialog';
 import { ExplainView } from './ExplainView';
 import { NameDialog, NoticeBanner, RulesBanners, Segmented, SmallSelect } from './parts';
 import { ResultViews } from './ResultViews';
@@ -39,6 +41,7 @@ export function AggregationPanel({ editor }: { readonly editor: AggregationEdito
   const saved = useAggregation(editor, (s) => s.saved);
   const current = useAggregation(editor, (s) => s.current);
   const [naming, setNaming] = useState(false);
+  const [exporting, setExporting] = useState<CodeExportRequest | undefined>();
   const { db, collection } = editor.target;
 
   return (
@@ -68,6 +71,14 @@ export function AggregationPanel({ editor }: { readonly editor: AggregationEdito
         </Button>
         <Button size="sm" variant="ghost" onClick={() => void editor.explain('queryPlanner')}>
           Plan only
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setExporting(editor.exportRequest())}
+          title="Export the enabled stages as Node.js, Python, Java, C#, Go or PHP code"
+        >
+          Export code…
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
         <Segmented
@@ -223,6 +234,7 @@ export function AggregationPanel({ editor }: { readonly editor: AggregationEdito
           {tab === 'explain' ? <ExplainView explain={explain} /> : <RunResults editor={editor} />}
         </div>
       </div>
+      <CodeExportDialog request={exporting} onClose={() => setExporting(undefined)} />
       <NameDialog
         open={naming}
         title="Save the pipeline"

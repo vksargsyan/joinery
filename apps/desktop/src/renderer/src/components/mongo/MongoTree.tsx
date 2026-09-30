@@ -23,7 +23,7 @@ import { BackupMenuItems } from '../backup/BackupDialogs';
 import { MenuItem, Row } from '../Sidebar';
 import { Icon } from '../ui';
 import { MongoCreateDialogs } from './CreateDialogs';
-import { openMongoCollection, openMongoConsole, openMongoTool } from './open';
+import { openMongoCollection, openMongoConsole, openMongoSql, openMongoTool } from './open';
 
 /**
  * A MongoDB connection's object tree (spec §5): databases, then collections, views, time series
@@ -184,6 +184,9 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
         <MenuItem onSelect={() => openMongoTool({ tool: 'aggregation', target })}>
           Aggregate…
         </MenuItem>
+        <MenuItem onSelect={() => openMongoSql({ profileId, db, collection: object.name })}>
+          Query with SQL
+        </MenuItem>
         {object.kind !== 'view' && (
           <MenuItem onSelect={() => openMongoTool({ tool: 'indexes', target })}>Indexes</MenuItem>
         )}
@@ -238,6 +241,7 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
   if (node.kind === 'database') {
     return (
       <>
+        <MenuItem onSelect={() => openMongoSql({ profileId, db })}>New SQL query</MenuItem>
         {!readOnly && (
           <>
             <MenuItem onSelect={() => openCreateCollection(profileId, db)}>
