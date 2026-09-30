@@ -104,6 +104,24 @@ async function admin(engine: Engine, sql: string, database?: string): Promise<vo
   if (result.code !== 0) throw new Error(`admin SQL failed (${result.code}): ${result.stderr}`);
 }
 
+/**
+ * Resolves once another connection runs a statement containing `marker` (polled with the CLI),
+ * or rejects after `timeoutMs`.
+ */
+async function statementRunning(engine: Engine, marker: string, timeoutMs = 20_000) {
+  const sql =
+    engine.name === 'postgres'
+      ? `SELECT count(*) AS n FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND state = 'active' AND query LIKE '%${marker}%'`
+      : `SELECT COUNT(*) AS n FROM information_schema.PROCESSLIST WHERE ID <> CONNECTION_ID() AND INFO LIKE '%${marker}%'`;
+  const deadline = performance.now() + timeoutMs;
+  while (performance.now() < deadline) {
+    const result = await joinery(['query', urlFor(engine), '--format', 'csv', '-e', sql]);
+    if (result.code === 0 && /^n\r?\n[1-9]/m.test(result.stdout)) return;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`The statement ${marker} did not start within ${timeoutMs} ms`);
+}
+
 const DIGITS =
   '(SELECT 0 AS d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9)';
 
@@ -420,14 +438,21 @@ SELECT id, name, price FROM items ORDER BY id;
   });
 
   it('exits 130 quickly when Ctrl+C interrupts a long statement', async () => {
-    const sql = pg ? 'select pg_sleep(30)' : 'SELECT SLEEP(30)';
+    // The alias marks the statement, so the test can see it running on the server.
+    const marker = `jcli_sigint_${RUN_ID}`;
+    const sql = pg ? `select pg_sleep(30) as ${marker}` : `SELECT SLEEP(30) AS ${marker}`;
     let sentAt = 0;
     const result = await joinery(['query', urlFor(engine), '-e', sql], {
       onSpawn: (child) => {
-        setTimeout(() => {
-          sentAt = performance.now();
-          child.kill('SIGINT');
-        }, 1500);
+        // Ctrl+C once the statement runs: a fixed delay raced the CLI's start on busy runners,
+        // and a SIGINT before it listens ends the process by the signal instead of exit 130.
+        void statementRunning(engine, marker).then(
+          () => {
+            sentAt = performance.now();
+            child.kill('SIGINT');
+          },
+          () => child.kill('SIGKILL'),
+        );
       },
     });
     expect(result.code, result.stderr).toBe(130);
