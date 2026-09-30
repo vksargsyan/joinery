@@ -677,20 +677,20 @@ function TableNode(props: NodeProps<TableNodeType>) {
         title={table.comment}
         style={{ width: data.width, height: data.height }}
         className={cx(
-          'er-table relative flex flex-col overflow-hidden rounded-lg border bg-panel text-xs text-fg',
+          'er-table relative flex flex-col overflow-hidden rounded-md border bg-raised text-xs text-fg',
           'transition-[opacity,box-shadow,border-color] duration-150',
           table.external && 'border-dashed',
           data.tone === 'selected'
-            ? 'border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_28%,transparent),0_12px_32px_-12px_rgba(0,0,0,.55)]'
+            ? 'border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_28%,transparent)]'
             : data.problems.length > 0
               ? 'border-danger/70 shadow-[0_0_0_3px_color-mix(in_srgb,var(--danger)_18%,transparent)]'
               : data.match
                 ? 'border-warning shadow-[0_0_0_3px_color-mix(in_srgb,var(--warning)_25%,transparent)]'
                 : data.mark === 'new'
-                  ? 'border-success/70 shadow-[0_8px_24px_-14px_rgba(0,0,0,.6)]'
+                  ? 'border-success/70'
                   : data.tone === 'related'
-                    ? 'border-accent/60 shadow-[0_8px_24px_-14px_rgba(0,0,0,.6)]'
-                    : 'border-border shadow-[0_1px_2px_rgba(0,0,0,.18),0_8px_24px_-16px_rgba(0,0,0,.5)]',
+                    ? 'border-accent/60'
+                    : 'border-border',
           data.tone === 'dimmed' && 'opacity-30',
         )}
       >
@@ -738,7 +738,7 @@ function TableNode(props: NodeProps<TableNodeType>) {
           </span>
           {data.problems.length > 0 && (
             <span
-              className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-bold text-white"
+              className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-bold text-accent-fg"
               title={data.problems.join('\n')}
               aria-label={`${data.problems.length} ${data.problems.length === 1 ? 'problem' : 'problems'}`}
             >

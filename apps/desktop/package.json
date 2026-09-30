@@ -10,7 +10,7 @@
   "type": "module",
   "main": "./out/main/index.cjs",
   "scripts": {
-    "dev": "install-electron && electron-vite dev",
+    "dev": "install-electron && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/dev-app-name.ts && electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",

@@ -69,6 +69,8 @@ export const updateStatusSchema = z.object({
 });
 export type UpdateStatus = z.infer<typeof updateStatusSchema>;
 
-/** Commands the application menu sends to the page. */
-export const appCommandSchema = z.object({ command: z.enum(['about']) });
+/** Commands from main: the menu's About, and the window entering or leaving full screen. */
+export const appCommandSchema = z.object({
+  command: z.enum(['about', 'enter-full-screen', 'leave-full-screen']),
+});
 export type AppCommand = z.infer<typeof appCommandSchema>;

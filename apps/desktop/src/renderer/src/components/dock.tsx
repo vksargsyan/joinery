@@ -43,6 +43,7 @@ import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
 import { TableDesignerPanel } from './designer/TableDesignerPanel';
+import { EngineIcon } from './EngineIcon';
 import { QueryPanel } from './QueryPanel';
 import { RedisPanel } from './redis/RedisPanel';
 import { MongoPanel } from './mongo/MongoPanel';
@@ -322,6 +323,7 @@ function RestoredMarker({ id }: { readonly id: string }) {
 function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
   const tabId = props.params.tabId;
   const tab = useWorkspace((state) => state.tabs[tabId]);
+  const engine = tab ? cachedProfile(tab.profileId)?.engine : undefined;
   return (
     <div
       className="flex h-full items-center gap-1.5 px-2 text-[13px]"
@@ -335,6 +337,7 @@ function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
       {tab?.running && (
         <span aria-label="Running" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
       )}
+      {engine && <EngineIcon engine={engine} className="h-3.5 w-3.5" />}
       <span className="max-w-48 truncate">{tab?.title ?? props.api.title}</span>
       <RestoredMarker id={tabId} />
       {tab?.inTransaction && (
@@ -408,6 +411,8 @@ function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
   const title = info?.title ?? props.api.title ?? '';
+  // A tab on a connection carries its engine's icon, like the connection in the tree.
+  const engine = info?.profileId !== undefined ? cachedProfile(info.profileId)?.engine : undefined;
   return (
     <div
       className="flex h-full items-center gap-1.5 px-2 text-[13px]"
@@ -421,7 +426,11 @@ function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
       {info?.busy && (
         <span aria-label="Working" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
       )}
-      <Icon name="table" className="h-3.5 w-3.5 text-muted" />
+      {engine ? (
+        <EngineIcon engine={engine} className="h-3.5 w-3.5" />
+      ) : (
+        <Icon name="table" className="h-3.5 w-3.5 text-muted" />
+      )}
       <span className="max-w-48 truncate">{title}</span>
       <RestoredMarker id={panelId} />
       {info?.dirty && (

@@ -18,7 +18,7 @@ import {
   statusText,
   useUpdates,
 } from '../state/updates';
-import { Button, Field, Input, Modal, Select } from './ui';
+import { Button, Field, Input, Modal, Select, TAB } from './ui';
 
 /**
  * The About box (spec §20): version and runtime, the update preferences (channel, automatic
@@ -70,11 +70,7 @@ function About() {
       >
         <Tabs.List aria-label="About sections" className="flex gap-0.5 border-b border-border">
           {(['updates', 'licences'] as const).map((value) => (
-            <Tabs.Trigger
-              key={value}
-              value={value}
-              className="rounded-t px-2.5 py-1 text-xs text-muted data-[state=active]:bg-panel-2 data-[state=active]:text-fg"
-            >
+            <Tabs.Trigger key={value} value={value} className={TAB}>
               {value === 'updates' ? 'Updates' : 'Third-party licences'}
             </Tabs.Trigger>
           ))}

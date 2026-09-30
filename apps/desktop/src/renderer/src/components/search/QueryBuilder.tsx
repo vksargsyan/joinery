@@ -36,7 +36,7 @@ import {
 import { useSearchView } from '../../state/search/view';
 import { Segmented, SmallSelect } from '../mongo/parts';
 import { MenuItem } from '../Sidebar';
-import { Button, Icon, cx } from '../ui';
+import { Button, cx, Icon, TAB } from '../ui';
 import { openSearchConsole } from './open';
 
 /**
@@ -220,21 +220,11 @@ export function QueryBuilderPanel({ view }: { readonly view: DocumentsView }) {
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
               data-testid={`search-builder-tab-${t.id}`}
-              className={cx(
-                '-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-xs transition-colors outline-none focus-visible:bg-hover',
-                tab === t.id
-                  ? 'border-accent font-medium text-fg'
-                  : 'border-transparent text-muted hover:text-fg',
-              )}
+              className={TAB}
             >
               {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span
-                  className={cx(
-                    'min-w-4 rounded-full px-1 text-center text-[10px] tabular-nums',
-                    tab === t.id ? 'bg-badge text-fg' : 'bg-panel-2 text-muted',
-                  )}
-                >
+                <span className="min-w-4 rounded-full bg-badge px-1 text-center text-[10px] font-semibold text-rust tabular-nums">
                   {t.count}
                 </span>
               )}

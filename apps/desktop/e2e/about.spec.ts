@@ -45,8 +45,14 @@ async function clickMenuItem(app: ElectronApplication, label: string): Promise<v
 }
 
 test('shows the version, runtime and why a development run does not update', async () => {
-  await page.getByRole('button', { name: 'About Joinery' }).click();
+  // About lives in the application menu only. Until the page listens to the menu (just after
+  // launch), a click on it goes nowhere, so click again until the box opens.
+  await expect(page.getByRole('button', { name: 'About Joinery' })).toHaveCount(0);
   const dialog = page.getByRole('dialog', { name: 'About Joinery' });
+  await expect(async () => {
+    await clickMenuItem(launched.app, 'About Joinery');
+    await expect(dialog).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await expect(dialog.getByTestId('about-version')).toHaveText(`Version ${VERSION}`);
   await expect(dialog.getByText(/Electron \d+.*Chromium .*Node\.js/)).toBeVisible();
   await expect(dialog.getByTestId('update-status')).toHaveText(

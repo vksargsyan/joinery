@@ -273,7 +273,10 @@ function TreeNode(props: {
         title="Double-click to open the key browser"
         label={
           <span className="flex min-w-0 items-center gap-1.5">
-            <Icon name={node.kind === 'namespace' ? 'folder' : 'database'} className="text-muted" />
+            <Icon
+              name={node.kind === 'namespace' ? 'folder' : 'database'}
+              className={node.kind === 'namespace' ? 'text-muted' : 'text-lilac'}
+            />
             <span className="truncate font-mono text-[12.5px]">{node.name}</span>
             {keys !== undefined && (
               <span

@@ -107,7 +107,14 @@ function SearchIcon({ name }: { readonly name: SearchIconName }) {
     ),
   };
   return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 shrink-0 text-muted">
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0 text-muted"
+    >
       {paths[name]}
     </svg>
   );

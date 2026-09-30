@@ -5,6 +5,7 @@ import {
   mainContract,
   serve,
   DEFAULT_APP_SETTINGS,
+  type AppSettings,
   type Server,
 } from '@joinery/ipc';
 import { openStore, type ScheduleRecord, type ScheduleRun, type Store } from '@joinery/storage';
@@ -16,6 +17,7 @@ import {
   app,
   dialog,
   ipcMain,
+  nativeTheme,
   powerMonitor,
   protocol,
   safeStorage,
@@ -44,6 +46,7 @@ import { executeSchedule } from './schedule-tasks';
 import { Scheduler, type TaskOutcome } from './scheduler';
 import { ScheduleEvents } from './schedules-api';
 import { menuTemplate } from './menu';
+import { effectiveTheme, titleBarOverlay, windowChrome } from './window-chrome';
 import { QuitGuard } from './quit-guard';
 import { createSafeStorageSealer } from './sealer';
 import {
@@ -121,6 +124,9 @@ let sync: SyncService | undefined;
 let updates: UpdateController | undefined;
 let scheduler: Scheduler | undefined;
 let quitGuard: QuitGuard<BrowserWindow> | undefined;
+/** The theme setting the window chrome follows, and where full-screen changes are sent. */
+let themeSetting: AppSettings['theme'] = 'dark';
+let windowCommands: AppCommands | undefined;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -195,6 +201,8 @@ function start(): void {
     editor: { ...DEFAULT_APP_SETTINGS.editor, minimap: false },
   };
   const appCommands = new AppCommands();
+  windowCommands = appCommands;
+  themeSetting = readAppSettings(openedStore, defaultSettings).theme;
   const activeScheduler = scheduler;
   quitGuard = new QuitGuard<BrowserWindow>({
     platform: process.platform,
@@ -262,7 +270,11 @@ function start(): void {
     defaultSettings,
     updates: updater,
     appCommands,
-    onSettingsChanged: (settings) => updater.applySettings(settings),
+    onSettingsChanged: (settings) => {
+      updater.applySettings(settings);
+      themeSetting = settings.theme;
+      for (const window of BrowserWindow.getAllWindows()) applyChrome(window);
+    },
   };
   serveMainContract(services);
 
@@ -291,6 +303,10 @@ function start(): void {
   powerMonitor.on('unlock-screen', () => scheduler?.wake());
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+  });
+  // "System" follows the OS appearance, in the window controls too.
+  nativeTheme.on('updated', () => {
+    for (const window of BrowserWindow.getAllWindows()) applyChrome(window);
   });
 }
 
@@ -404,6 +420,14 @@ function startJobs(openedStore: Store, hostKeys: HostKeyBroker): JobManager {
   return jobs;
 }
 
+/** The chrome's colours for the current theme (the Windows and Linux controls overlay). */
+function applyChrome(window: BrowserWindow): void {
+  const theme = effectiveTheme(themeSetting, nativeTheme.shouldUseDarkColors);
+  const chrome = windowChrome(process.platform, theme);
+  window.setBackgroundColor(chrome.backgroundColor!);
+  if (process.platform !== 'darwin') window.setTitleBarOverlay(titleBarOverlay(theme));
+}
+
 function createMainWindow(): void {
   const window = new BrowserWindow({
     width: 1440,
@@ -412,12 +436,18 @@ function createMainWindow(): void {
     minHeight: 600,
     show: false,
     title: 'Joinery',
-    backgroundColor: '#101216',
+    ...windowChrome(
+      process.platform,
+      effectiveTheme(themeSetting, nativeTheme.shouldUseDarkColors),
+    ),
     // Windows and macOS take the icon from the executable and the bundle; Linux needs it here.
     ...(process.platform === 'linux' || !app.isPackaged ? { icon: windowIcon } : {}),
     webPreferences: secureWebPreferences(join(__dirname, '../preload/index.cjs'), !app.isPackaged),
   });
   window.once('ready-to-show', () => window.show());
+  // The title bar leaves room for the traffic lights, which macOS hides in full screen.
+  window.on('enter-full-screen', () => windowCommands?.send('enter-full-screen'));
+  window.on('leave-full-screen', () => windowCommands?.send('leave-full-screen'));
   // Windows and Linux quit with their last window: with schedules on, ask first.
   window.on('close', (event) => {
     const last = BrowserWindow.getAllWindows().every((other) => other === window);

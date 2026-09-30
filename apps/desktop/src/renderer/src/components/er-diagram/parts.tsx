@@ -48,16 +48,16 @@ export function isEditable(table: ErTable): boolean {
   return !table.external && table.kind !== 'view' && table.kind !== 'materialized-view';
 }
 
-/** Schema colours for diagrams of several schemas: readable on both themes. */
+/** Schema colours for diagrams of several schemas: the Kiln glazes, set for each theme. */
 const SCHEMA_COLORS = [
-  '#4f8cff',
-  '#a371f7',
-  '#2fb3a4',
-  '#e3a008',
-  '#f06292',
-  '#56b6f7',
-  '#ff8a4c',
-  '#8bc34a',
+  'var(--k-cobalt)',
+  'var(--k-lilac)',
+  'var(--k-teal)',
+  'var(--k-ochre)',
+  'var(--k-peach)',
+  'var(--k-celadon)',
+  'var(--k-rust)',
+  'var(--k-red)',
 ];
 
 /** The colour of a table's header stripe: the accent, or its schema's colour. */

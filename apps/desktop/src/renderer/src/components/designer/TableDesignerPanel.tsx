@@ -10,7 +10,7 @@ import {
   type TableDesigner,
 } from '../../state/designer';
 import { openTableData } from '../dock';
-import { Button, Icon, cx } from '../ui';
+import { Button, cx, Icon, TAB } from '../ui';
 import { ColumnsTab } from './ColumnsTab';
 import {
   ChecksTab,
@@ -232,11 +232,7 @@ function Designer({ designer }: { readonly designer: TableDesigner }) {
           className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-panel px-1"
         >
           {tabs.map((t) => (
-            <Tabs.Trigger
-              key={t}
-              value={t}
-              className="rounded-t px-2.5 py-1 text-xs whitespace-nowrap text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
-            >
+            <Tabs.Trigger key={t} value={t} className={TAB}>
               {TAB_LABELS[t]}
               {(counts.get(t) ?? 0) > 0 && (
                 <span className="ml-1 rounded bg-danger/20 px-1 text-danger">{counts.get(t)}</span>

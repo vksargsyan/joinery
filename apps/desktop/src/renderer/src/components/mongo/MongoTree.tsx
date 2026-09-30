@@ -90,7 +90,14 @@ function MongoIcon({ name }: { readonly name: MongoIconName }) {
     ),
   };
   return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 shrink-0 text-muted">
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0 text-muted"
+    >
       {paths[name]}
     </svg>
   );
@@ -99,7 +106,7 @@ function MongoIcon({ name }: { readonly name: MongoIconName }) {
 function iconFor(node: BrowseNode) {
   switch (node.kind) {
     case 'database':
-      return <Icon name="database" className="text-muted" />;
+      return <Icon name="database" className="text-lilac" />;
     case 'collection':
       return <MongoIcon name="collection" />;
     case 'view':

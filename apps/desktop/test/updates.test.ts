@@ -1,5 +1,5 @@
 import { JoineryError } from '@joinery/core';
-import type { UpdateStatus } from '@joinery/ipc';
+import type { AppCommand, UpdateStatus } from '@joinery/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { menuTemplate } from '../src/main/menu';
@@ -300,7 +300,7 @@ describe('streams and handlers', () => {
       for await (const value of subscriptionStream(
         (listener) => commands.subscribe(listener),
         abort.signal,
-        [{ command: 'about' as const }],
+        [{ command: 'about' } as AppCommand],
       )) {
         seen.push(value.command);
         if (seen.length === 2) abort.abort();

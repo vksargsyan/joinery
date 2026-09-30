@@ -9,7 +9,9 @@ export function KindIcon(props: { readonly kind: ScheduleKind; readonly classNam
     viewBox: '0 0 16 16',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 1.4,
+    strokeWidth: 1.3,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
     'aria-hidden': true,
     className: cx('h-4 w-4 shrink-0', props.className),
   } as const;

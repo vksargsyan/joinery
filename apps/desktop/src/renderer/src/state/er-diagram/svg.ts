@@ -1,3 +1,4 @@
+import { BISQUE } from '../../lib/kiln';
 import { markerId, markerSvg } from './markers';
 import {
   BOX,
@@ -34,20 +35,22 @@ export interface SvgPalette {
   readonly unique: string;
 }
 
+/** Exported diagrams are set in Kiln Bisque, the light theme: they go into documents. */
 export const LIGHT_PALETTE: SvgPalette = {
-  background: '#ffffff',
-  box: '#ffffff',
-  header: '#f1f3f6',
-  border: '#c9ced6',
-  text: '#15181d',
-  muted: '#6b7280',
-  line: '#7b8494',
-  primaryKey: '#b45309',
-  foreignKey: '#2563eb',
-  unique: '#1a7f37',
+  background: BISQUE.bg,
+  box: BISQUE.bgRaised,
+  header: BISQUE.bgDeep,
+  border: BISQUE.borderStrong,
+  text: BISQUE.fg,
+  muted: BISQUE.muted,
+  line: BISQUE.punct,
+  primaryKey: BISQUE.ochre,
+  foreignKey: BISQUE.cobalt,
+  unique: BISQUE.celadon,
 };
 
-const FONT = "Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
+const FONT =
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Helvetica, Arial, sans-serif";
 const MARGIN = 40;
 const CAPTION = 28;
 
