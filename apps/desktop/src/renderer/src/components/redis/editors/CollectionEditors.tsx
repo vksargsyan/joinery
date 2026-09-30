@@ -419,7 +419,7 @@ export function ZSetEditor() {
               aria-checked={reverse === desc}
               className={cx(
                 'h-7 px-2 text-xs',
-                reverse === desc ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                reverse === desc ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => setReverse(desc)}
             >

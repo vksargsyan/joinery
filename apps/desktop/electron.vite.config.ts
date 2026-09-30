@@ -58,6 +58,17 @@ const notices = thirdPartyNotices({
     { name: 'tailwindcss', shippedIn: 'renderer' },
   ],
   reviewed: {},
+  // The Kiln code faces: Rec Mono Duotone and Linear, from Arrow Type's Recursive 1.085.
+  assets: [
+    {
+      name: 'Rec Mono (Recursive)',
+      version: '1.085',
+      licence: 'OFL-1.1',
+      homepage: 'https://github.com/arrowtype/recursive',
+      licenceFile: 'src/renderer/src/assets/fonts/OFL.txt',
+      shippedIn: 'renderer',
+    },
+  ],
 });
 
 const nodeOutput = {

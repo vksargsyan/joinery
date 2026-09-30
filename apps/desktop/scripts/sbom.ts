@@ -147,6 +147,8 @@ export interface ShippedPackage {
   readonly version: string;
   readonly licence: string;
   readonly homepage?: string;
+  /** `asset`: a bundled file that is not an npm package (a font), outside the lockfile. */
+  readonly source?: 'asset';
 }
 
 const SPDX_IDS = new Set([
@@ -163,6 +165,7 @@ const SPDX_IDS = new Set([
   'MIT',
   'MIT-0',
   'MPL-2.0',
+  'OFL-1.1',
   'Python-2.0',
   'Unlicense',
   'WTFPL',
@@ -214,7 +217,10 @@ export interface SbomInput {
 /** The CycloneDX 1.6 document. */
 export function buildSbom(input: SbomInput): Record<string, unknown> {
   const closure = closureOf(input.lock, input.importer);
-  const shipped = new Map(input.shipped.map((p) => [keyOf(p), p]));
+  const assets = input.shipped.filter((p) => p.source === 'asset');
+  const shipped = new Map(
+    input.shipped.filter((p) => p.source !== 'asset').map((p) => [keyOf(p), p]),
+  );
   // A shipped package the lockfile does not explain would be missing from the bill.
   const unexplained = [...shipped.keys()].filter((key) => !closure.packages.has(key));
   if (unexplained.length > 0) {
@@ -267,6 +273,12 @@ export function buildSbom(input: SbomInput): Record<string, unknown> {
       };
     });
 
+  const assetComponents = assets.map((p) => {
+    const component = assetComponent(p);
+    refOf.set(`asset:${keyOf(p)}`, component['bom-ref'] as string);
+    return component;
+  });
+
   // Every component gets an entry, those without dependencies too.
   const dependencies = [...refOf.entries()]
     .map(([key, ref]) => ({
@@ -308,8 +320,26 @@ export function buildSbom(input: SbomInput): Record<string, unknown> {
           : { externalReferences: [{ type: 'vcs', url: input.app.repository }] }),
       },
     },
-    components: [...workspaceComponents, ...components],
+    components: [...workspaceComponents, ...components, ...assetComponents],
     dependencies,
+  };
+}
+
+/** A bundled asset (a font) as a generic component: it is shipped, and has no npm purl. */
+function assetComponent(p: ShippedPackage): Record<string, unknown> {
+  const ref = `pkg:generic/${encodeURIComponent(p.name.toLowerCase())}@${encodeURIComponent(p.version)}`;
+  const licences = cdxLicences(p.licence);
+  return {
+    type: 'library',
+    'bom-ref': ref,
+    name: p.name,
+    version: p.version,
+    purl: ref,
+    scope: 'required',
+    ...(licences ? { licenses: licences } : {}),
+    ...(p.homepage === undefined
+      ? {}
+      : { externalReferences: [{ type: 'website', url: p.homepage }] }),
   };
 }
 

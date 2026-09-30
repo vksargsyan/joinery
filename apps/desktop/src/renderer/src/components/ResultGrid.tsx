@@ -17,6 +17,7 @@ import {
   setWidth,
   type ColumnLayout,
 } from '../state/grid-layout';
+import { BISQUE, CODE_FONT, TENMOKU, withAlpha, type KilnPalette } from '../lib/kiln';
 import { cellText, suggestColumnWidths } from '../state/results';
 import { bufferOf, type ResultView } from '../state/workspace';
 import { HeaderMenu, type HeaderMenuAt } from './table/ColumnMenus';
@@ -29,44 +30,47 @@ import { HeaderMenu, type HeaderMenuAt } from './table/ColumnMenus';
  * the layout, one array lookup per cell.
  */
 
-export const DARK: Partial<Theme> = {
-  accentColor: '#4f8cff',
-  accentLight: 'rgba(79, 140, 255, 0.18)',
-  textDark: '#e6e8ec',
-  textMedium: '#b4bcc8',
-  textLight: '#8a93a3',
-  textBubble: '#e6e8ec',
-  bgIconHeader: '#98a2b3',
-  fgIconHeader: '#101216',
-  textHeader: '#c8ced8',
-  textHeaderSelected: '#ffffff',
-  bgCell: '#101216',
-  bgCellMedium: '#161a20',
-  bgHeader: '#161a20',
-  bgHeaderHasFocus: '#1d222a',
-  bgHeaderHovered: '#1d222a',
-  bgBubble: '#1d222a',
-  bgBubbleSelected: '#2b313c',
-  bgSearchResult: '#4a3f10',
-  borderColor: 'rgba(255, 255, 255, 0.08)',
-  horizontalBorderColor: 'rgba(255, 255, 255, 0.05)',
-  drilldownBorder: 'rgba(255, 255, 255, 0.2)',
-  linkColor: '#7aa7ff',
-  headerFontStyle: '600 12px',
-  baseFontStyle: '12px',
-  fontFamily: "'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
-};
+/**
+ * The grids in the Kiln palette: cells on the working surface, headers on the chrome ground,
+ * the selection a rust wash with a rust outline, search hits ochre, links cobalt, NULL `faint`.
+ */
+function gridTheme(p: KilnPalette): Partial<Theme> {
+  return {
+    accentColor: p.rust,
+    accentFg: p.onAccent,
+    accentLight: p.listActive,
+    textDark: p.fg,
+    textMedium: p.muted,
+    textLight: p.faint,
+    textBubble: p.fg,
+    bgIconHeader: p.muted,
+    fgIconHeader: p.bgDeep,
+    textHeader: p.muted,
+    textGroupHeader: p.muted,
+    textHeaderSelected: p.fg,
+    bgCell: p.bg,
+    bgCellMedium: p.lineHighlight,
+    bgHeader: p.bgDeep,
+    bgHeaderHasFocus: p.bgHover,
+    bgHeaderHovered: p.bgHover,
+    bgBubble: p.bgRaised,
+    bgBubbleSelected: p.bgActive,
+    bgSearchResult: p.findMatch,
+    borderColor: p.border,
+    horizontalBorderColor: withAlpha(p.border, 0.6),
+    drilldownBorder: p.borderStrong,
+    linkColor: p.cobalt,
+    headerFontStyle: '600 12px',
+    baseFontStyle: '12px',
+    fontFamily: CODE_FONT,
+  };
+}
 
-export const LIGHT: Partial<Theme> = {
-  accentColor: '#2f6fec',
-  accentLight: 'rgba(47, 111, 236, 0.14)',
-  headerFontStyle: '600 12px',
-  baseFontStyle: '12px',
-  fontFamily: "'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace",
-};
+export const DARK: Partial<Theme> = gridTheme(TENMOKU);
+export const LIGHT: Partial<Theme> = gridTheme(BISQUE);
 
-const NULL_THEME_DARK: Partial<Theme> = { textDark: '#6b7485' };
-const NULL_THEME_LIGHT: Partial<Theme> = { textDark: '#9aa2ae' };
+const NULL_THEME_DARK: Partial<Theme> = { textDark: TENMOKU.faint };
+const NULL_THEME_LIGHT: Partial<Theme> = { textDark: BISQUE.faint };
 
 /** Layout keys of a result's columns: their positions (a result can repeat a column name). */
 export function resultColumnKeys(view: ResultView): string[] {

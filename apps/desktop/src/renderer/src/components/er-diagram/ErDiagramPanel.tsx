@@ -323,7 +323,7 @@ function Toolbar(props: {
           <DropdownMenu.Content
             align="end"
             sideOffset={4}
-            className="z-50 min-w-60 rounded-md border border-border bg-panel p-1 text-[13px] text-fg shadow-xl"
+            className="z-50 min-w-60 rounded-md border border-border bg-raised p-1 text-[13px] text-fg shadow-widget"
           >
             <MenuItem hint="to review and apply" onSelect={() => void openModel(view)}>
               Open model file…
@@ -362,7 +362,7 @@ function Toolbar(props: {
           <DropdownMenu.Content
             align="end"
             sideOffset={4}
-            className="z-50 min-w-56 rounded-md border border-border bg-panel p-1 text-[13px] text-fg shadow-xl"
+            className="z-50 min-w-56 rounded-md border border-border bg-raised p-1 text-[13px] text-fg shadow-widget"
           >
             <MenuLabel>Save as</MenuLabel>
             <MenuItem hint="vector" onSelect={() => void view.export('svg')}>
@@ -476,7 +476,7 @@ function MenuItem(props: {
   return (
     <DropdownMenu.Item
       onSelect={props.onSelect}
-      className="flex cursor-default items-center gap-3 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+      className="flex cursor-default items-center gap-3 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
     >
       <span className="flex-1">{props.children}</span>
       {props.hint && <span className="text-[11px] text-muted">{props.hint}</span>}
@@ -713,7 +713,7 @@ function LayingOut({ view }: { readonly view: ErDiagramView }) {
   return (
     <div
       role="status"
-      className="pointer-events-none absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-panel/95 px-3 py-1 text-xs text-muted shadow-lg"
+      className="pointer-events-none absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-raised px-3 py-1 text-xs text-muted shadow-widget"
     >
       <span className="h-3 w-3 animate-spin rounded-full border-2 border-border border-t-accent" />
       Laying out…
@@ -731,7 +731,7 @@ function Legend() {
   return (
     <section
       aria-label="Legend"
-      className="absolute bottom-3 left-3 z-10 rounded-lg border border-border bg-panel/95 text-[11px] shadow-lg backdrop-blur"
+      className="absolute bottom-3 left-3 z-10 rounded-lg border border-border bg-raised text-[11px] shadow-widget backdrop-blur"
     >
       <button
         type="button"

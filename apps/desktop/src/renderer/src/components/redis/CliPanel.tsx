@@ -313,7 +313,7 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
               aria-checked={format === f}
               className={cx(
                 'h-7 px-2 text-xs',
-                format === f ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                format === f ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => setFormat(f)}
             >
@@ -421,7 +421,7 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
             role="listbox"
             aria-label="Suggestions"
             data-testid="cli-suggestions"
-            className="absolute bottom-full left-2 z-20 mb-1 max-h-72 w-[520px] overflow-auto rounded border border-border bg-panel py-1 text-xs shadow-xl"
+            className="absolute bottom-full left-2 z-20 mb-1 max-h-72 w-[520px] overflow-auto rounded border border-border bg-raised py-1 text-xs shadow-widget"
           >
             {items.map((item, i) => (
               <li
@@ -430,7 +430,7 @@ export function CliPanel(props: { readonly panelId: string; readonly target: Red
                 aria-selected={i === highlight}
                 className={cx(
                   'flex cursor-default gap-2 px-2 py-0.5',
-                  i === highlight ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                  i === highlight ? 'bg-list-active text-fg' : 'hover:bg-list-hover',
                 )}
                 onMouseDown={(event) => {
                   event.preventDefault();

@@ -12,6 +12,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { useSearchView } from '../../state/search/view';
 import type { DocumentsView } from '../../state/search/documents';
+import { BISQUE, TENMOKU } from '../../lib/kiln';
 import { DARK, LIGHT } from '../ResultGrid';
 
 /**
@@ -36,8 +37,8 @@ export function selectedDocumentRows(selection: GridSelection): number[] {
   return Array.from({ length: range.height }, (_, i) => range.y + i);
 }
 
-const MUTED_DARK: Partial<Theme> = { textDark: '#6b7485' };
-const MUTED_LIGHT: Partial<Theme> = { textDark: '#9aa2ae' };
+const MUTED_DARK: Partial<Theme> = { textDark: TENMOKU.faint };
+const MUTED_LIGHT: Partial<Theme> = { textDark: BISQUE.faint };
 
 /** Initial widths: ids and short fields narrow, everything else 160 px. */
 export const ID_WIDTH = 180;

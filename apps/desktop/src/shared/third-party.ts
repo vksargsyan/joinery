@@ -25,6 +25,8 @@ export const thirdPartyPackageSchema = z.object({
   /** NOTICE files, which Apache-2.0 requires redistributions to carry. */
   noticeText: z.string().optional(),
   shippedIn: z.array(shippedInSchema),
+  /** Absent for an npm package; `asset` for a bundled file that is not one (a font). */
+  source: z.literal('asset').optional(),
 });
 export type ThirdPartyPackage = z.infer<typeof thirdPartyPackageSchema>;
 

@@ -392,7 +392,7 @@ function IndexHeader(props: {
             {menu && (
               <span
                 role="menu"
-                className="absolute top-8 right-0 z-10 flex w-64 flex-col rounded-md border border-border bg-panel p-1 shadow-xl"
+                className="absolute top-8 right-0 z-10 flex w-64 flex-col rounded-md border border-border bg-raised p-1 shadow-widget"
                 onMouseLeave={() => setMenu(false)}
               >
                 <button

@@ -390,7 +390,7 @@ export function CellEditor(props: CellEditorProps) {
       className={cx(
         'flex flex-col gap-2 text-fg',
         props.variant === 'overlay' &&
-          'w-[400px] max-w-full rounded border border-border bg-panel p-2.5 shadow-xl',
+          'w-[400px] max-w-full rounded border border-border bg-raised p-2.5 shadow-widget',
       )}
       data-testid="cell-editor"
       role="group"

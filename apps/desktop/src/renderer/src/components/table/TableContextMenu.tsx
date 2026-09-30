@@ -103,7 +103,7 @@ export function TableContextMenu(props: {
         <DropdownMenu.Content
           align="start"
           aria-label="Row actions"
-          className="z-50 max-h-[80vh] min-w-52 overflow-auto rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+          className="z-50 max-h-[80vh] min-w-52 overflow-auto rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
           {editable && (
             <>
@@ -160,7 +160,7 @@ function Item(props: {
       disabled={props.disabled}
       onSelect={props.onSelect}
       className={cx(
-        'cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-hover',
+        'cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active',
         props.danger && 'text-danger',
       )}
     >

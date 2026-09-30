@@ -37,7 +37,7 @@ export function UpdateNotice() {
       aria-live="polite"
       data-testid="update-notice"
       className={cx(
-        'fixed right-4 bottom-4 z-30 flex max-w-sm flex-col gap-2 rounded-lg border bg-panel px-4 py-3 shadow-xl',
+        'fixed right-4 bottom-4 z-30 flex max-w-sm flex-col gap-2 rounded-lg border bg-raised px-4 py-3 shadow-widget',
         notice.kind === 'answer' && notice.tone === 'error' ? 'border-danger' : 'border-border',
       )}
     >

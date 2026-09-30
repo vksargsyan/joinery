@@ -98,7 +98,7 @@ export function SqlPanel({ view }: { readonly view: SqlView }) {
               }
               className={cx(
                 'px-2 py-0.5 text-xs disabled:opacity-40',
-                mode === option ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                mode === option ? 'bg-badge text-fg' : 'hover:bg-hover',
               )}
               onClick={() => view.setMode(option)}
             >
@@ -350,7 +350,7 @@ function DslPane(props: { readonly view: SqlView; readonly theme: 'dark' | 'ligh
                       aria-checked={pane === option}
                       className={cx(
                         'px-2 py-0.5',
-                        pane === option ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                        pane === option ? 'bg-badge text-fg' : 'hover:bg-hover',
                       )}
                       onClick={() => setPane(option)}
                     >

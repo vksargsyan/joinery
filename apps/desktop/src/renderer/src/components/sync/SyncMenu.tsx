@@ -30,14 +30,14 @@ export function SyncMenu() {
     <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <Button size="sm" variant="ghost">
+          <Button size="sm" variant="quiet">
             Compare
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="end"
-            className="z-50 min-w-48 rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+            className="z-50 min-w-48 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
           >
             <Item onSelect={() => openStructureCompare()}>Compare structure…</Item>
             <Item onSelect={() => openDataCompare()}>Compare data…</Item>
@@ -55,7 +55,7 @@ function Item(props: { readonly children: string; readonly onSelect: () => void 
   return (
     <DropdownMenu.Item
       onSelect={props.onSelect}
-      className="cursor-default rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+      className="cursor-default rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
     >
       {props.children}
     </DropdownMenu.Item>

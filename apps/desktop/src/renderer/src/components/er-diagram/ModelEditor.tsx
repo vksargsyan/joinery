@@ -139,12 +139,12 @@ export function EditBar(props: { readonly editor: ErModelEditor }) {
           <DropdownMenu.Content
             align="start"
             sideOffset={4}
-            className="z-50 max-h-80 min-w-60 overflow-auto rounded-md border border-border bg-panel p-1 text-[13px] text-fg shadow-xl"
+            className="z-50 max-h-80 min-w-60 overflow-auto rounded-md border border-border bg-raised p-1 text-[13px] text-fg shadow-widget"
           >
             {edited.map(([name, mark]) => (
               <DropdownMenu.Item
                 key={name}
-                className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+                className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
                 onSelect={() => view.focus(view.tableIdOf(name))}
               >
                 <MarkDot mark={mark} />

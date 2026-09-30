@@ -645,7 +645,7 @@ function RelationEdge(props: EdgeProps<RelationEdgeType>) {
       {active && (
         <EdgeLabelRenderer>
           <div
-            className="er-edge-label pointer-events-none absolute rounded-full border border-accent/40 bg-panel px-2 py-0.5 font-mono text-[10px] whitespace-nowrap text-fg shadow-md"
+            className="er-edge-label pointer-events-none absolute rounded-full border border-accent/40 bg-raised px-2 py-0.5 font-mono text-[10px] whitespace-nowrap text-fg shadow-widget"
             style={{
               transform: `translate(-50%, -50%) translate(${route.label.x}px, ${route.label.y}px)`,
             }}
@@ -849,7 +849,7 @@ function ColumnRow(props: {
 }
 
 const MENU_ITEM =
-  'flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-hover';
+  'flex cursor-default items-center gap-2 rounded px-2 py-1.5 text-[13px] outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active';
 
 /** The right-click menu of a table on the canvas. */
 function TableMenu(props: {
@@ -866,7 +866,7 @@ function TableMenu(props: {
     <ContextMenu.Root onOpenChange={(open) => open && view.select(table.id)}>
       <ContextMenu.Trigger asChild>{props.children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content className="z-50 min-w-52 rounded-md border border-border bg-panel p-1 text-fg shadow-xl">
+        <ContextMenu.Content className="z-50 min-w-52 rounded-md border border-border bg-raised p-1 text-fg shadow-widget">
           {props.editable && editor && (
             <>
               <ContextMenu.Item className={MENU_ITEM} onSelect={() => editor.addColumn(table.name)}>

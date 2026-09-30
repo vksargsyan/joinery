@@ -232,7 +232,7 @@ export function QueryBuilderPanel({ view }: { readonly view: DocumentsView }) {
                 <span
                   className={cx(
                     'min-w-4 rounded-full px-1 text-center text-[10px] tabular-nums',
-                    tab === t.id ? 'bg-accent text-accent-fg' : 'bg-panel-2 text-muted',
+                    tab === t.id ? 'bg-badge text-fg' : 'bg-panel-2 text-muted',
                   )}
                 >
                   {t.count}
@@ -459,7 +459,7 @@ function FieldItem(props: {
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="start"
-            className="z-50 min-w-52 rounded-md border border-border bg-panel p-1 text-[13px] shadow-xl"
+            className="z-50 min-w-52 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
             onCloseAutoFocus={(event) => {
               const id = focusNext.current;
               focusNext.current = undefined;
@@ -651,7 +651,7 @@ function AddMenu(props: {
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
-          className="z-50 min-w-56 rounded-md border border-border bg-panel p-1 text-[13px] shadow-xl"
+          className="z-50 min-w-56 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
           onCloseAutoFocus={(event) => {
             const id = focusNext.current;
             focusNext.current = undefined;
@@ -779,7 +779,7 @@ function ClauseMenu(props: {
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
-          className="z-50 min-w-44 rounded-md border border-border bg-panel p-1 text-[13px] shadow-xl"
+          className="z-50 min-w-44 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
           <DropdownMenu.Label className="px-2 pt-1 pb-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
             Move to
@@ -1123,7 +1123,7 @@ function TopValues(props: {
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="start"
-          className="z-50 max-h-80 w-72 overflow-auto rounded-md border border-border bg-panel p-1 text-[13px] shadow-xl"
+          className="z-50 max-h-80 w-72 overflow-auto rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
           <DropdownMenu.Label className="flex items-center justify-between gap-2 px-2 pt-1 pb-1 text-[10px] font-semibold tracking-wide text-muted uppercase">
             <span className="truncate">Top values of {sortPath(field, path)}</span>
@@ -1148,7 +1148,7 @@ function TopValues(props: {
                 onSelect={() => props.onPick(value.text)}
                 disabled={picked}
                 data-testid="search-builder-top-value"
-                className="relative flex cursor-default items-center gap-2 overflow-hidden rounded px-2 py-1 outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-hover"
+                className="relative flex cursor-default items-center gap-2 overflow-hidden rounded px-2 py-1 outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-list-active"
               >
                 <span
                   aria-hidden="true"

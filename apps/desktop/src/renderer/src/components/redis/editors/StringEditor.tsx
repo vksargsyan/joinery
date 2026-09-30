@@ -126,7 +126,7 @@ export function StringEditor() {
               aria-checked={view === m.mode}
               className={cx(
                 'h-7 px-2 text-xs',
-                view === m.mode ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                view === m.mode ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => {
                 setMode(m.mode);

@@ -29,3 +29,4 @@ supersede it with a new one.
 | [0022](0022-rdb-dump-analysis.md)              | Redis dump analysis: a streaming RDB reader in the job runner       | Accepted |
 | [0023](0023-redis-search-indexes.md)           | Redis search indexes: FT.* services read by redis-tools             | Accepted |
 | [0024](0024-elasticsearch-query-builder.md)    | Elasticsearch query builder: a Query DSL model, read back from text | Accepted |
+| [0025](0025-kiln-design-system.md)             | The Kiln design system: tokens, controls, editor and grid themes    | Accepted |

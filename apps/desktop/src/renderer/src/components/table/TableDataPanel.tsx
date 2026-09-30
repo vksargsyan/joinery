@@ -156,7 +156,7 @@ function TableDataView({ view }: { readonly view: TableView }) {
               aria-checked={viewMode === mode}
               className={cx(
                 'px-2 py-0.5 text-xs',
-                viewMode === mode ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                viewMode === mode ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => {
                 if (mode === 'form') {

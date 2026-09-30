@@ -88,12 +88,12 @@ export function App() {
   return (
     <div className="flex h-full flex-col">
       <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-panel px-3">
-        <span className="text-[13px] font-semibold tracking-tight">Joinery</span>
+        <span className="text-[13px] font-semibold tracking-tight text-fg">Joinery</span>
         {production && activeProfile && (
           <span
             role="status"
             data-testid="production-banner"
-            className="rounded bg-env-production px-2 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
+            className="rounded-sm bg-env-production px-2 py-0.5 text-[11px] font-bold tracking-wide text-accent-fg uppercase"
           >
             Production · {activeProfile.name}
           </span>
@@ -101,7 +101,7 @@ export function App() {
         <span className="flex-1" />
         <Button
           size="sm"
-          variant="ghost"
+          variant="quiet"
           onClick={newQuery}
           disabled={!activeTab && readyProfiles.length === 0}
         >
@@ -110,7 +110,7 @@ export function App() {
         </Button>
         <Button
           size="sm"
-          variant={historyOpen ? 'secondary' : 'ghost'}
+          variant={historyOpen ? 'secondary' : 'quiet'}
           onClick={() => setHistoryOpen(!historyOpen)}
           aria-pressed={historyOpen}
         >
@@ -118,19 +118,19 @@ export function App() {
           History
         </Button>
         <SyncMenu />
-        <Button size="sm" variant="ghost" onClick={() => openSchedulesPanel()}>
+        <Button size="sm" variant="quiet" onClick={() => openSchedulesPanel()}>
           Schedules
         </Button>
         <Button
           size="sm"
-          variant={jobsOpen ? 'secondary' : 'ghost'}
+          variant={jobsOpen ? 'secondary' : 'quiet'}
           onClick={() => showJobs(!jobsOpen)}
           aria-pressed={jobsOpen}
         >
           Jobs
           {jobsRunning > 0 && (
             <span
-              className="rounded bg-accent px-1 text-[10px] text-accent-fg"
+              className="min-w-4 rounded-full bg-accent px-1 text-center text-[9px] leading-4 font-semibold text-accent-fg"
               aria-label={`${jobsRunning} running`}
             >
               {jobsRunning}
@@ -139,13 +139,13 @@ export function App() {
         </Button>
         <Button
           size="sm"
-          variant="ghost"
+          variant="quiet"
           onClick={() => void toggleTheme()}
           aria-label="Switch theme"
         >
           {theme === 'dark' ? 'Light theme' : 'Dark theme'}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => openAbout()} aria-label="About Joinery">
+        <Button size="sm" variant="quiet" onClick={() => openAbout()} aria-label="About Joinery">
           About
         </Button>
       </header>
