@@ -12,7 +12,7 @@ import { Icon, cx } from '../ui';
 /**
  * Aggregation results two ways (spec §11): a tree of aggregations, buckets (with their
  * document counts) and metrics, and a flattened table with one row per innermost bucket. Used
- * by the console's response pane and by the SQL editor's translated DSL.
+ * by the console's response pane, the SQL editor's translated DSL and the documents view.
  */
 export function AggregationView(props: { readonly aggregations: string }) {
   const [mode, setMode] = useState<'tree' | 'table'>('tree');
@@ -60,7 +60,7 @@ export function AggregationView(props: { readonly aggregations: string }) {
         <span className="text-muted">
           {mode === 'table'
             ? `${formatCount(parsed.table.rows.length)} rows`
-            : `${formatCount(parsed.tree.length)} aggregations`}
+            : `${formatCount(parsed.tree.length)} ${parsed.tree.length === 1 ? 'aggregation' : 'aggregations'}`}
         </span>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">

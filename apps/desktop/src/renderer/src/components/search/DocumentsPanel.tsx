@@ -1,29 +1,42 @@
 import type { GridSelection } from '@glideapps/glide-data-grid';
-import { useState } from 'react';
+import { parseJsonTree } from '@joinery/search-tools';
+import { useMemo, useState } from 'react';
 
 import { formatCount, formatDuration } from '../../lib/format';
 import type { DocumentsView } from '../../state/search/documents';
+import { useDslBuilder, type QueryEditorMode } from '../../state/search/query-builder';
 import { useSearchView } from '../../state/search/view';
+import { Segmented } from '../mongo/parts';
 import { useTheme } from '../theme';
 import { Button, Field, Icon, Input, Modal, Select, cx } from '../ui';
+import { AggregationView } from './AggregationView';
 import { DocumentGrid, EMPTY_GRID_SELECTION, selectedDocumentRows } from './DocumentGrid';
 import { JsonEditor } from './JsonEditor';
 import { NoticeBar } from './parts';
+import { QueryBuilderPanel } from './QueryBuilder';
 
 /**
  * The document grid panel (spec §11): the query bar (a Query DSL clause or a Lucene query
- * string, and a sort), the grid of flattened fields that loads pages as it scrolls (a point in
- * time with search_after, or a scroll), the counts and paging mode, and the document actions:
- * create, edit, delete and bulk (delete or set a field on the selected rows, or send NDJSON),
- * with per-item outcomes.
+ * string, a sort and aggregations, as text or with the query builder), the grid of flattened
+ * fields that loads pages as it scrolls (a point in time with search_after, or a scroll), the
+ * aggregation results beside it, the counts and paging mode, and the document actions: create,
+ * edit, delete and bulk (delete or set a field on the selected rows, or send NDJSON), with
+ * per-item outcomes.
  */
 
 const PAGING_LABELS = { pit: 'point in time', scroll: 'scroll', single: 'one page' } as const;
+
+const EDITOR_MODES: readonly { readonly value: QueryEditorMode; readonly label: string }[] = [
+  { value: 'text', label: 'Text' },
+  { value: 'builder', label: 'Builder' },
+];
 
 export function DocumentsPanel({ view }: { readonly view: DocumentsView }) {
   const theme = useTheme();
   const queryText = useSearchView(view, (s) => s.queryText);
   const sortText = useSearchView(view, (s) => s.sortText);
+  const aggsText = useSearchView(view, (s) => s.aggsText);
+  const mode = useDslBuilder(view.builder, (s) => s.mode);
   const issue = useSearchView(view, (s) => s.issue);
   const running = useSearchView(view, (s) => s.running);
   const pageSize = useSearchView(view, (s) => s.pageSize);
@@ -31,6 +44,10 @@ export function DocumentsPanel({ view }: { readonly view: DocumentsView }) {
   const [dialog, setDialog] = useState<'set-field' | 'bulk' | undefined>(undefined);
   const selected = selectedDocumentRows(selection);
   const readOnly = useSearchView(view, (s) => s.policy?.readOnly ?? false);
+  const aggregations = useSearchView(view, (s) => s.aggregations);
+  const resultTab = useSearchView(view, (s) =>
+    s.aggregations === undefined ? 'documents' : s.resultTab,
+  );
 
   const search = (): void => {
     setSelection(EMPTY_GRID_SELECTION);
@@ -40,52 +57,94 @@ export function DocumentsPanel({ view }: { readonly view: DocumentsView }) {
   return (
     <div className="flex h-full flex-col bg-bg" data-testid="search-documents">
       <form
-        className="flex flex-wrap items-end gap-2 border-b border-border bg-panel px-2 py-1.5"
+        className="flex flex-col gap-1.5 border-b border-border bg-panel px-2 py-1.5"
         aria-label="Query"
         onSubmit={(event) => {
           event.preventDefault();
           search();
         }}
       >
-        <label className="flex min-w-64 flex-[3] flex-col gap-0.5 text-[11px] text-muted">
-          Query (DSL clause or Lucene syntax)
-          <Input
-            value={queryText}
-            onChange={(event) => view.setQueryText(event.target.value)}
-            placeholder='status:paid AND total:>100   or   {"term": {"status": "paid"}}'
-            aria-invalid={issue !== undefined}
-            className="font-mono"
-            data-testid="documents-query"
+        <div className="flex items-center gap-2">
+          <Segmented
+            label="Query editor"
+            value={mode}
+            options={EDITOR_MODES}
+            onChange={(next) => view.builder.setMode(next)}
           />
-        </label>
-        <label className="flex min-w-40 flex-1 flex-col gap-0.5 text-[11px] text-muted">
-          Sort (JSON)
-          <Input
-            value={sortText}
-            onChange={(event) => view.setSortText(event.target.value)}
-            placeholder='[{"@timestamp": "desc"}]'
-            className="font-mono"
-            data-testid="documents-sort"
-          />
-        </label>
-        <label className="flex w-24 flex-col gap-0.5 text-[11px] text-muted">
-          Page size
-          <Select
-            value={String(pageSize)}
-            onChange={(event) => view.setPageSize(Number(event.target.value))}
-            aria-label="Page size"
+          <span className="min-w-0 flex-1 truncate text-[11px] text-muted">
+            {mode === 'builder'
+              ? 'Build the query from the mapping; the text follows every change'
+              : 'Query DSL or Lucene syntax, a sort and aggregations as JSON'}
+          </span>
+          <label className="flex items-center gap-1.5 text-[11px] whitespace-nowrap text-muted">
+            Page size
+            <Select
+              value={String(pageSize)}
+              onChange={(event) => view.setPageSize(Number(event.target.value))}
+              aria-label="Page size"
+              className="w-20"
+            >
+              {[25, 50, 100, 500, 1000].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <Button type="submit" size="md" variant="primary" disabled={running}>
+            <Icon name="play" className="h-3.5 w-3.5" />
+            Search
+          </Button>
+        </div>
+        {mode === 'builder' && <QueryBuilderPanel view={view} />}
+        <div
+          className={cx(
+            'grid grid-cols-[minmax(16rem,3fr)_minmax(10rem,1fr)_minmax(10rem,1fr)] gap-2',
+            mode === 'builder' && 'hidden',
+          )}
+        >
+          <label className="flex min-w-0 flex-col gap-0.5 text-[11px] text-muted">
+            Query (DSL clause or Lucene syntax)
+            <Input
+              value={queryText}
+              onChange={(event) => view.setQueryText(event.target.value)}
+              placeholder='status:paid AND total:>100   or   {"term": {"status": "paid"}}'
+              aria-invalid={issue !== undefined}
+              className="font-mono"
+              data-testid="documents-query"
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-0.5 text-[11px] text-muted">
+            Sort (JSON)
+            <Input
+              value={sortText}
+              onChange={(event) => view.setSortText(event.target.value)}
+              placeholder='[{"@timestamp": "desc"}]'
+              className="font-mono"
+              data-testid="documents-sort"
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-0.5 text-[11px] text-muted">
+            Aggregations (JSON)
+            <Input
+              value={aggsText}
+              onChange={(event) => view.setAggsText(event.target.value)}
+              placeholder='{"by_status": {"terms": {"field": "status"}}}'
+              className="font-mono"
+              data-testid="documents-aggs"
+            />
+          </label>
+        </div>
+        {mode === 'builder' && queryText !== '' && (
+          <p
+            className="truncate font-mono text-[11px] text-muted"
+            title={queryText}
+            data-testid="documents-built-query"
           >
-            {[25, 50, 100, 500, 1000].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <Button type="submit" size="md" variant="primary" disabled={running}>
-          <Icon name="play" className="h-3.5 w-3.5" />
-          Search
-        </Button>
+            <span className="font-sans">Query: </span>
+            {queryText}
+          </p>
+        )}
       </form>
       {issue && (
         <p
@@ -148,7 +207,8 @@ export function DocumentsPanel({ view }: { readonly view: DocumentsView }) {
         <Status view={view} />
       </div>
       <NoticeBar view={view} />
-      <div className="min-h-0 flex-1">
+      <ResultTabs view={view} />
+      <div className={cx('min-h-0 flex-1', resultTab === 'aggregations' && 'hidden')}>
         <DocumentGrid
           view={view}
           theme={theme}
@@ -157,6 +217,11 @@ export function DocumentsPanel({ view }: { readonly view: DocumentsView }) {
           onActivate={(row) => view.openEditor('edit', row)}
         />
       </div>
+      {resultTab === 'aggregations' && aggregations !== undefined && (
+        <div className="min-h-0 flex-1">
+          <AggregationView aggregations={aggregations} />
+        </div>
+      )}
       <LoadMore view={view} />
       <DocumentEditorDialog view={view} theme={theme} />
       {dialog === 'set-field' && (
@@ -173,6 +238,56 @@ export function DocumentsPanel({ view }: { readonly view: DocumentsView }) {
         <BulkDialog view={view} theme={theme} onClose={() => setDialog(undefined)} />
       )}
       <BulkResultDialog view={view} />
+    </div>
+  );
+}
+
+/** Documents or aggregation results, when the search had aggregations. */
+function ResultTabs({ view }: { readonly view: DocumentsView }) {
+  const aggregations = useSearchView(view, (s) => s.aggregations);
+  const tab = useSearchView(view, (s) => s.resultTab);
+  const loaded = useSearchView(view, (s) => s.hits.length);
+  const count = useMemo(() => {
+    if (aggregations === undefined) return 0;
+    try {
+      const node = parseJsonTree(aggregations);
+      return node.type === 'object' ? node.members.length : 0;
+    } catch {
+      return 0;
+    }
+  }, [aggregations]);
+  if (aggregations === undefined) return null;
+  const tabs = [
+    { id: 'documents' as const, label: 'Documents', count: loaded },
+    { id: 'aggregations' as const, label: 'Aggregations', count },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Results"
+      className="flex items-center gap-0.5 border-b border-border bg-panel px-2"
+    >
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={tab === t.id}
+          onClick={() => view.setResultTab(t.id)}
+          data-testid={`documents-tab-${t.id}`}
+          className={cx(
+            '-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1 text-xs outline-none focus-visible:bg-hover',
+            tab === t.id
+              ? 'border-accent font-medium text-fg'
+              : 'border-transparent text-muted hover:text-fg',
+          )}
+        >
+          {t.label}
+          <span className="rounded-full bg-panel-2 px-1.5 text-[10px] text-muted tabular-nums">
+            {formatCount(t.count)}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

@@ -134,7 +134,7 @@ function fakeHost(overrides: Record<string, unknown> = {}) {
 }
 
 describe('the query bar', () => {
-  it('takes a DSL clause or a Lucene query string, and a sort', () => {
+  it('takes a DSL clause or a Lucene query string, a sort and aggregations', () => {
     expect(queryClause('')).toBeUndefined();
     expect(queryClause('{"term": {"a": 1}}')).toBe('{"term": {"a": 1}}');
     expect(queryClause('status:paid AND "x y"')).toBe(
@@ -146,6 +146,11 @@ describe('the query bar', () => {
     expect(searchBody('', '')).toBe('{}');
     expect(() => searchBody('{"a": ', '')).toThrow(/query is not valid JSON/);
     expect(() => searchBody('', '[')).toThrow(/sort is not valid JSON/);
+    expect(searchBody('', '', '{"t": {"terms": {"field": "a"}}}')).toBe(
+      '{"aggs": {"t": {"terms": {"field": "a"}}}}',
+    );
+    expect(() => searchBody('', '', '{"t": ')).toThrow(/aggregations are not valid JSON/);
+    expect(() => searchBody('', '', '[]')).toThrow('The aggregations are a JSON object');
   });
 });
 
