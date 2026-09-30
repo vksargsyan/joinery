@@ -1,6 +1,7 @@
 import type { DataEditorRef, GridSelection } from '@glideapps/glide-data-grid';
 import { allColumnsIdentity, type ChangePlan } from '@joinery/table-data';
-import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { DropdownMenu } from 'radix-ui';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { formatCount, formatRows } from '../../lib/format';
 import { confirm } from '../../state/dialogs';
@@ -11,10 +12,11 @@ import {
   selectionStats,
   type RowRef,
 } from '../../state/table/grid-model';
+import { PAGE_SIZES } from '../../state/table/paging';
 import { getTableView, useTableState, type TableView, type ViewMode } from '../../state/table-view';
 import { openTableData } from '../dock';
 import { useTheme } from '../theme';
-import { Button, Icon, cx } from '../ui';
+import { Button, Icon, cx, type IconName } from '../ui';
 import { ViewModeSwitch, type ViewModeOption } from '../ViewModeSwitch';
 import { ApplyDialog } from './ApplyDialog';
 import { ColumnsPopover } from './ColumnMenus';
@@ -354,6 +356,115 @@ function Banner(props: {
   );
 }
 
+/**
+ * Navicat's pager: first, previous, the page number (type one and press Enter), next, last, and
+ * the rows per page under the gear. "Last" counts the rows first when the total is not known.
+ */
+function Pager(props: { readonly view: TableView; readonly total: number | undefined }) {
+  const { view } = props;
+  const paging = useTableState(view, (s) => s.paging);
+  const counting = useTableState(view, (s) => s.counting);
+  const [text, setText] = useState(String(paging.page));
+  useEffect(() => setText(String(paging.page)), [paging.page]);
+  const pages =
+    props.total === undefined ? undefined : Math.max(1, Math.ceil(props.total / paging.pageSize));
+  const busy = paging.loading || counting;
+  const atStart = paging.page <= 1;
+  const atEnd = pages !== undefined ? paging.page >= pages : !paging.hasNext;
+  const go = (move: Parameters<TableView['goToPage']>[0]): void => void view.goToPage(move);
+  const step = (
+    icon: IconName,
+    label: string,
+    move: Parameters<TableView['goToPage']>[0],
+    off: boolean,
+  ) => (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={off || busy}
+      onClick={() => go(move)}
+      className="flex h-[20px] w-[22px] items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-fg disabled:opacity-35 disabled:hover:bg-transparent"
+    >
+      <Icon name={icon} className="h-3.5 w-3.5" />
+    </button>
+  );
+  const submit = (): void => {
+    const page = Number(text);
+    if (!Number.isInteger(page) || page < 1 || (pages !== undefined && page > pages)) {
+      setText(String(paging.page));
+      return;
+    }
+    if (page !== paging.page) go(page);
+  };
+  return (
+    <nav aria-label="Pages" className="flex items-center gap-0.5" data-testid="table-pager">
+      {step('page-first', 'First page', 'first', atStart)}
+      {step('page-previous', 'Previous page', 'previous', atStart)}
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label="Page"
+        value={text}
+        onChange={(event) => setText(event.target.value.replace(/[^\d]/g, ''))}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') submit();
+          if (event.key === 'Escape') setText(String(paging.page));
+        }}
+        onBlur={() => setText(String(paging.page))}
+        className="mx-0.5 h-[20px] w-11 rounded-sm border border-border bg-deep px-1 text-center text-xs text-fg tabular-nums outline-none! focus:border-focus"
+      />
+      {pages !== undefined && (
+        <span className="px-0.5 text-muted tabular-nums" data-testid="table-pages">
+          of {formatCount(pages)}
+        </span>
+      )}
+      {step('page-next', 'Next page', 'next', atEnd)}
+      {step('page-last', 'Last page', 'last', atEnd)}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            type="button"
+            aria-label="Page size"
+            title={`${formatCount(paging.pageSize)} rows per page`}
+            className="ml-0.5 flex h-[20px] w-[22px] items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-fg data-[state=open]:bg-pressed data-[state=open]:text-fg"
+          >
+            <Icon name="settings" className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            side="top"
+            align="end"
+            className="z-50 min-w-44 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
+          >
+            <DropdownMenu.Label className="px-2 pt-1 pb-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
+              Rows per page
+            </DropdownMenu.Label>
+            <DropdownMenu.RadioGroup
+              value={String(paging.pageSize)}
+              onValueChange={(value) => void view.setPageSize(Number(value))}
+            >
+              {PAGE_SIZES.map((size) => (
+                <DropdownMenu.RadioItem
+                  key={size}
+                  value={String(size)}
+                  className="relative flex cursor-default items-center rounded-sm py-1 pr-2 pl-7 tabular-nums outline-none data-[highlighted]:bg-list-active"
+                >
+                  <DropdownMenu.ItemIndicator className="absolute left-2 text-rust">
+                    <Icon name="check" className="h-3.5 w-3.5" />
+                  </DropdownMenu.ItemIndicator>
+                  {formatCount(size)}
+                </DropdownMenu.RadioItem>
+              ))}
+            </DropdownMenu.RadioGroup>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </nav>
+  );
+}
+
 const VIEW_MODES: readonly ViewModeOption<ViewMode>[] = [
   { value: 'grid', label: 'Grid', icon: 'view-grid' },
   { value: 'form', label: 'Form', icon: 'view-form' },
@@ -374,8 +485,9 @@ function Footer(props: {
   const cellErrors = useTableState(view, (s) => s.cellErrors);
   const columns = useTableState(view, (s) => s.columns);
   const changes = useChanges(view);
-  // Every row is loaded: the total is known without counting.
-  const complete = !paging.hasMore && !paging.loading && paging.error === undefined;
+  // The first page holds every row: the total is known without counting.
+  const complete =
+    paging.page === 1 && !paging.hasNext && !paging.loading && paging.error === undefined;
   const known = exactCount ?? (complete ? paging.rows.length : undefined);
 
   const layout = useTableState(view, (s) => s.layout);
@@ -408,7 +520,6 @@ function Footer(props: {
         {formatRows(paging.rows.length)} loaded
       </span>
       {paging.loading && <span className="text-muted">· loading…</span>}
-      {paging.hasMore && !paging.loading && <span className="text-muted">· more on scroll</span>}
       <span className="text-muted" data-testid="table-total">
         ·{' '}
         {known !== undefined
@@ -470,6 +581,7 @@ function Footer(props: {
           )}
         </span>
       )}
+      <Pager view={view} total={known} />
       <ViewModeSwitch options={VIEW_MODES} value={props.viewMode} onChange={props.onViewMode} />
     </footer>
   );

@@ -33,6 +33,8 @@ export function FormView(props: {
   const changes = useChanges(view);
   const [editing, setEditing] = useState<string>();
   const total = paging.rows.length + changes.counts.inserted;
+  // Records count on from the pages before this one.
+  const offset = (paging.page - 1) * paging.pageSize;
   const ref = view.rowAt(index);
   useEffect(() => setEditing(undefined), [index]);
 
@@ -47,20 +49,30 @@ export function FormView(props: {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => view.setFormIndex(index - 1)}
-          disabled={index === 0}
+          // The first record of a page goes on to the previous page's last.
+          onClick={() =>
+            index === 0
+              ? void view
+                  .goToPage('previous')
+                  .then(() => view.setFormIndex(Number.MAX_SAFE_INTEGER))
+              : view.setFormIndex(index - 1)
+          }
+          disabled={index === 0 && paging.page <= 1}
         >
           ‹ Previous
         </Button>
         <span aria-live="polite" data-testid="form-position">
-          Record {formatCount(index + 1)} of {formatCount(total)}
-          {paging.hasMore ? '+' : ''}
+          Record {formatCount(offset + index + 1)} of {formatCount(offset + total)}
+          {paging.hasNext ? '+' : ''}
         </span>
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => view.setFormIndex(index + 1)}
-          disabled={index >= total - 1 && !paging.hasMore}
+          // The last record of a page goes on to the next page.
+          onClick={() =>
+            index >= total - 1 ? void view.goToPage('next') : view.setFormIndex(index + 1)
+          }
+          disabled={index >= total - 1 && !paging.hasNext}
         >
           Next ›
         </Button>

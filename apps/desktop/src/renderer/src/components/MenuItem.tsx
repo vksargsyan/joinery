@@ -10,6 +10,8 @@ export function MenuItem(props: {
   readonly danger?: boolean;
   readonly disabled?: boolean;
   readonly icon?: IconName;
+  /** The key that does the same, right-aligned: "⌘C". */
+  readonly shortcut?: string;
 }) {
   return (
     <DropdownMenu.Item
@@ -24,6 +26,9 @@ export function MenuItem(props: {
         <Icon name={props.icon} className={props.danger ? 'text-danger' : 'text-muted'} />
       )}
       {props.children}
+      {props.shortcut !== undefined && (
+        <kbd className="ml-auto pl-4 font-sans text-[11px] text-faint">{props.shortcut}</kbd>
+      )}
     </DropdownMenu.Item>
   );
 }
