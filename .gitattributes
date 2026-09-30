@@ -1,0 +1,2 @@
+# Replies captured from real servers: CRLF is part of the RESP protocol, so keep them byte for byte.
+*.resp binary
