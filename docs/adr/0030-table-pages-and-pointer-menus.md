@@ -40,7 +40,9 @@ page is a find with its own skip and limit, inside the skip and limit typed in t
 (limit 0 is none). Pages hold 100 documents by default, or 50, 500 or 1,000. Last counts the
 matching documents first, and the tree and table number documents on from the pages before.
 
-**Toolbars** of the table data view and the collection view carry a glyph on every button.
+**Toolbars** of the table data view and the collection view carry a glyph on every button. The
+collection view's tools (aggregate, SQL, indexes, schema, options, watch) sit under one Tools
+menu, each with what it does, so the toolbar stays on one row.
 
 **Menus at the pointer.** Pointer menus anchor on `PointerAnchor`, a point rendered into the
 document body. It is used by the grid's cell menu, the column header menu and the Objects view.

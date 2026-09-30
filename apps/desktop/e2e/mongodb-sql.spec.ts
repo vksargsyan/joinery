@@ -201,7 +201,8 @@ test('exports the collection view query as Python and saves it', async () => {
 
 test("opens a collection's SQL tab with a starter query, and exports a translation", async () => {
   const collection = visible('mongo-collection-panel');
-  await collection.getByRole('button', { name: 'SQL', exact: true }).click();
+  await collection.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitem', { name: /^SQL/ }).click();
   const tab = page.getByTestId('mongo-sql').filter({ visible: true });
   await expect(tab.getByTestId('mongo-sql-editor')).toContainText('FROM orders');
   await expect(tab.getByTestId('mongo-sql-mql')).toContainText('.limit(100)');
