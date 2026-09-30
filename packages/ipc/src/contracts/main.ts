@@ -39,7 +39,7 @@ import {
   transientSecretsSchema,
 } from '../schemas/app';
 import { idSchema, taskProgressSchema } from '../schemas/common';
-import { appCommandSchema } from '../schemas/updates';
+import { appCommandSchema, windowMenuCommandSchema } from '../schemas/updates';
 import { connectionCheckResultSchema } from '../schemas/driver';
 import {
   autoMatchInputSchema,
@@ -179,6 +179,8 @@ export const mainContract = defineContract({
     openExternal: { input: z.object({ url: externalUrlSchema }), output: z.void() },
     /** Commands from the application menu (About...), for as long as the caller reads. */
     commands: { input: z.void(), item: appCommandSchema },
+    /** Runs an item of the window's own menu bar (Windows and Linux) in main. */
+    menu: { input: z.object({ command: windowMenuCommandSchema }), output: z.void() },
   },
   dialogs: {
     /** A native open-file dialog (TLS CA, certificate and key paths); null when cancelled. */

@@ -9,6 +9,7 @@ import {
   DEFAULT_APP_SETTINGS,
   appSettingsPatchSchema,
   appSettingsSchema,
+  type WindowMenuCommand,
   type AppCommand,
   type AppInfo,
   type AppSettings,
@@ -33,6 +34,7 @@ import type { JobManager } from './jobs';
 import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
 import { resolveProfile } from './secrets';
 import { erModelHandlers } from './er-models';
+import type { MenuCommands } from './menu';
 import { scheduleHandlers, type ScheduleEvents } from './schedules-api';
 import type { Scheduler } from './scheduler';
 import { metadataHandlers, snippetHandlers } from './metadata';
@@ -91,6 +93,10 @@ export interface MainServices<P> {
   readonly previousRun?: PreviousRun['ended'];
   /** Auto-update (spec §20); without it the status reports updates off. */
   readonly updates?: UpdatesService;
+  /** Check for Updates and Release Notes, shared by the native and the window menus. */
+  readonly menuCommands?: Pick<MenuCommands, 'checkForUpdates' | 'releaseNotes'>;
+  /** A development run: the window menu may reload and open the developer tools. */
+  readonly development?: boolean;
   /** Commands from the application menu for the page (About). */
   readonly appCommands?: {
     subscribe(listener: (command: AppCommand) => void): () => void;
@@ -103,6 +109,8 @@ export interface MainServices<P> {
 export interface WindowServices<P> extends FileDialogs {
   readonly sendPort: (payload: PortPayload, port: P) => void;
   readonly openFile: (options: OpenFileOptions) => Promise<string | null>;
+  /** Runs a window menu item on this window (Edit, View and Window roles, quitting). */
+  readonly runMenu?: (command: WindowMenuCommand) => void;
 }
 
 const SETTINGS_KEY = 'app';
@@ -301,6 +309,17 @@ export function createMainHandlers<P>(
           (listener) => services.appCommands?.subscribe(listener) ?? (() => undefined),
           signal,
         ),
+      menu: ({ command }) => {
+        if ((command === 'reload' || command === 'toggleDevTools') && !services.development) {
+          throw new JoineryError({
+            code: 'VALIDATION_FAILED',
+            message: 'Reload and the developer tools are for development runs',
+          });
+        }
+        if (command === 'checkForUpdates') services.menuCommands?.checkForUpdates();
+        else if (command === 'releaseNotes') services.menuCommands?.releaseNotes();
+        else window.runMenu?.(command);
+      },
     },
 
     dialogs: {

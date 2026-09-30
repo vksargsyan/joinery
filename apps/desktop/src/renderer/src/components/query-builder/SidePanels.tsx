@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SidePanel } from '../../state/query-builder/builder';
 import { entryOf } from '../../state/query-builder/catalog';
 import { aliasOptions, columnOptions, type ColumnOption } from '../../state/query-builder/options';
-import { Button, cx } from '../ui';
+import { Button, cx, TAB } from '../ui';
 import { CriteriaEditor } from './CriteriaEditor';
 import { ExprEditor, type ExprKind } from './ExprEditor';
 import {
@@ -68,11 +68,7 @@ export function SidePanels() {
         className="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-border bg-panel px-1"
       >
         {PANELS.map((entry) => (
-          <Tabs.Trigger
-            key={entry.id}
-            value={entry.id}
-            className="rounded-t px-2 py-1 text-xs text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
-          >
+          <Tabs.Trigger key={entry.id} value={entry.id} className={TAB}>
             {entry.label}
           </Tabs.Trigger>
         ))}

@@ -2,7 +2,7 @@ import { ENGINES } from '@joinery/core';
 import type { SavedComparison } from '@joinery/ipc';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 
 import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';
@@ -25,15 +25,12 @@ import { comparisonDraft, editSchedule } from '../../state/schedules';
 
 export const SAVED_COMPARISONS_KEY = ['sync', 'saved'] as const;
 
-export function SyncMenu() {
+/** `trigger` is the button that opens the menu (the title bar's Compare icon). */
+export function SyncMenu(props: { readonly trigger: ReactElement }) {
   return (
     <>
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <Button size="sm" variant="quiet">
-            Compare
-          </Button>
-        </DropdownMenu.Trigger>
+        <DropdownMenu.Trigger asChild>{props.trigger}</DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="end"

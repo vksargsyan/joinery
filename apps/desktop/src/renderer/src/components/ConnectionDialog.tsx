@@ -527,7 +527,7 @@ export function ConnectionDialog(props: {
               id="cx-color"
               type="color"
               className="h-8 w-12 cursor-pointer rounded border border-border bg-panel-2"
-              value={values.color === '' || values.color === undefined ? '#4f8cff' : values.color}
+              value={values.color === '' || values.color === undefined ? '#e8906a' : values.color}
               onChange={(event) => setValue('color', event.target.value, { shouldDirty: true })}
             />
             {values.color !== '' && (

@@ -34,8 +34,17 @@ test('shows the version, the update status and the third-party licences', async 
   app = await launchPackaged(EXECUTABLE!);
   const { page } = app;
 
-  await page.getByRole('button', { name: 'About Joinery' }).click();
+  // About lives in the application menu: on Windows and Linux the window's own menu bar; on
+  // macOS the native one, which a test driving the page cannot reach, so the #about link.
   const dialog = page.getByRole('dialog', { name: 'About Joinery' });
+  if (process.platform === 'darwin') {
+    await page.evaluate(() => {
+      location.hash = 'about';
+    });
+  } else {
+    await page.getByRole('menubar', { name: 'Application menu' }).getByText('Help').click();
+    await page.getByRole('menuitem', { name: 'About Joinery' }).click();
+  }
   await expect(dialog.getByTestId('about-version')).toHaveText(`Version ${VERSION}`);
   const status = dialog.getByTestId('update-status');
   await expect(status).not.toBeEmpty();

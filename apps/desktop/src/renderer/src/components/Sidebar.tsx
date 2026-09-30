@@ -31,6 +31,7 @@ import { openDataCompare, openStructureCompare } from '../state/sync/panels';
 import { openTransferFrom } from '../state/transfer-db/api';
 import { openErDiagram } from '../state/er-diagram/panels';
 import { openQueryBuilder } from '../state/query-builder/panels';
+import { EngineIcon } from './EngineIcon';
 import { BackupMenuItems } from './backup/BackupDialogs';
 import { DropTableDialog } from './designer/ReviewDialogs';
 import { MongoTree } from './mongo/MongoTree';
@@ -346,7 +347,7 @@ function ProfileItem(props: {
                   : undefined
               }
             />
-            <Icon name="database" className="text-muted" />
+            <EngineIcon engine={profile.engine} />
             <span className="truncate" data-testid="profile-name">
               {profile.name}
             </span>
@@ -559,7 +560,9 @@ function ObjectNode(props: {
                     ? 'database'
                     : 'table'
               }
-              className="text-muted"
+              className={
+                node.kind === 'database' || node.kind === 'schema' ? 'text-lilac' : 'text-muted'
+              }
             />
             <span className="truncate">{node.name}</span>
           </span>

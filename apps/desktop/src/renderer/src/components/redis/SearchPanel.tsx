@@ -1148,7 +1148,7 @@ function CreateIndexDialog(props: {
                   className={cx(
                     'h-8 px-3 text-xs',
                     draft.keyType === type
-                      ? 'bg-accent text-white'
+                      ? 'bg-badge text-fg'
                       : 'bg-panel-2 text-muted hover:text-fg',
                   )}
                   onClick={() => update({ keyType: type })}

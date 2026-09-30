@@ -18,6 +18,14 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
+/**
+ * Kiln's panel titles, for every tab strip inside a panel: muted until hovered, the active one
+ * `fg` with a rust underline. Works for `role="tab"` buttons (aria-selected) and Radix triggers
+ * (data-state). The strip itself carries the bottom border.
+ */
+export const TAB =
+  '-mb-px inline-flex items-center gap-1.5 border-b border-transparent px-2.5 py-1.5 text-xs whitespace-nowrap text-muted hover:text-fg aria-selected:border-accent aria-selected:text-fg data-[state=active]:border-accent data-[state=active]:text-fg';
+
 type Variant = 'primary' | 'secondary' | 'ghost' | 'quiet' | 'danger';
 
 const VARIANTS: Record<Variant, string> = {
@@ -202,92 +210,133 @@ export function Icon({
     | 'warning'
     | 'download'
     | 'copy'
-    | 'check';
+    | 'check'
+    | 'compare'
+    | 'schedule'
+    | 'jobs'
+    | 'sun'
+    | 'moon';
   readonly className?: string;
 }) {
+  // Kiln Glyphs' drawing: a 16px grid, 1.3 strokes with round caps and joins, closed shapes
+  // washed at 16% in their own colour (currentColor, so an icon follows its text).
+  const wash = { fill: 'currentColor', fillOpacity: 0.16 };
   const paths: Record<string, ReactNode> = {
-    play: <path d="M5 3.5v9l8-4.5z" fill="currentColor" />,
+    play: <path d="M5 3.4v9.2l7.6-4.6z" fill="currentColor" />,
     'play-all': (
       <>
-        <path d="M2.5 3.5v9l6-4.5z" fill="currentColor" />
-        <path d="M8.5 3.5v9l6-4.5z" fill="currentColor" />
+        <path d="M2.4 3.6v8.8l5.8-4.4z" fill="currentColor" />
+        <path d="M8.4 3.6v8.8l5.8-4.4z" fill="currentColor" />
       </>
     ),
-    stop: <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />,
-    plus: <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" />,
-    refresh: (
-      <path
-        d="M13 8a5 5 0 1 1-1.5-3.5M13 3v3h-3"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        fill="none"
-      />
-    ),
-    'chevron-right': <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />,
-    'chevron-down': <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />,
+    stop: <rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor" />,
+    plus: <path d="M8 3.25v9.5M3.25 8h9.5" />,
+    refresh: <path d="M13 8a5 5 0 1 1-1.46-3.54M13 2.9v2.85h-2.85" />,
+    'chevron-right': <path d="M6.2 4.2 10 8l-3.8 3.8" />,
+    'chevron-down': <path d="M4.2 6.2 8 10l3.8-3.8" />,
     more: (
       <>
-        <circle cx="3.5" cy="8" r="1.2" fill="currentColor" />
-        <circle cx="8" cy="8" r="1.2" fill="currentColor" />
-        <circle cx="12.5" cy="8" r="1.2" fill="currentColor" />
+        <circle cx="3.5" cy="8" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="12.5" cy="8" r="1.15" fill="currentColor" stroke="none" />
       </>
     ),
     database: (
       <>
-        <ellipse cx="8" cy="4" rx="5" ry="2" stroke="currentColor" fill="none" strokeWidth="1.2" />
-        <path
-          d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4"
-          stroke="currentColor"
-          fill="none"
-          strokeWidth="1.2"
-        />
+        <ellipse cx="8" cy="3.8" rx="5.2" ry="1.9" {...wash} />
+        <path d="M2.8 3.8v8.4c0 1 2.3 1.9 5.2 1.9s5.2-.9 5.2-1.9V3.8M2.8 8c0 1 2.3 1.9 5.2 1.9s5.2-.9 5.2-1.9" />
       </>
     ),
     table: (
       <>
-        <rect x="2.5" y="3" width="11" height="10" rx="1" stroke="currentColor" fill="none" />
-        <path d="M2.5 6.5h11M6.5 6.5V13" stroke="currentColor" />
+        <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.2" />
+        <path d="M1.75 6.25h12.5" />
+        <path
+          d="M2.95 2.75h10.1a1.2 1.2 0 0 1 1.2 1.2v2.3H1.75v-2.3a1.2 1.2 0 0 1 1.2-1.2z"
+          {...wash}
+          stroke="none"
+        />
+        <path d="M6.25 6.25v7" />
       </>
     ),
     folder: (
-      <path d="M2 4.5h4l1.5 1.5H14v6.5H2z" stroke="currentColor" fill="none" strokeWidth="1.2" />
-    ),
-    close: <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" />,
-    history: (
-      <>
-        <circle cx="8" cy="8" r="5.5" stroke="currentColor" fill="none" strokeWidth="1.2" />
-        <path d="M8 5v3l2 1.5" stroke="currentColor" fill="none" strokeWidth="1.2" />
-      </>
-    ),
-    format: <path d="M3 4h10M3 7h7M3 10h10M3 13h6" stroke="currentColor" strokeWidth="1.3" />,
-    warning: (
-      <>
-        <path d="M8 2l6.5 11.5h-13z" stroke="currentColor" fill="none" strokeWidth="1.2" />
-        <path d="M8 6.5v3.5M8 11.5v.5" stroke="currentColor" strokeWidth="1.4" />
-      </>
-    ),
-    download: (
       <path
-        d="M8 2.5v7.5M4.5 7l3.5 3.5L11.5 7M3 13.5h10"
-        stroke="currentColor"
-        fill="none"
-        strokeWidth="1.4"
+        d="M1.75 4.2a1 1 0 0 1 1-1h3.3l1.6 1.6h5.6a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1z"
+        {...wash}
       />
     ),
-    copy: (
+    close: <path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5" />,
+    history: (
       <>
-        <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" stroke="currentColor" fill="none" />
-        <path
-          d="M10.5 5.5V3.7c0-.7-.5-1.2-1.2-1.2H3.7c-.7 0-1.2.5-1.2 1.2v5.6c0 .7.5 1.2 1.2 1.2h1.8"
-          stroke="currentColor"
-          fill="none"
-        />
+        <circle cx="8" cy="8" r="5.6" />
+        <path d="M8 5v3.2l2.1 1.4" />
       </>
     ),
-    check: <path d="M3 8.5l3 3 7-7" stroke="currentColor" fill="none" strokeWidth="1.6" />,
+    format: <path d="M2.75 4h10.5M2.75 7h7M2.75 10h10.5M2.75 13h5.5" />,
+    warning: (
+      <>
+        <path
+          d="M7.13 2.5a1 1 0 0 1 1.74 0l5.6 9.9a1 1 0 0 1-.87 1.5H2.4a1 1 0 0 1-.87-1.5z"
+          {...wash}
+        />
+        <path d="M8 6.4v3.1M8 11.6v.1" />
+      </>
+    ),
+    download: <path d="M8 2.5v7.5M4.6 6.8 8 10.2l3.4-3.4M3 13.5h10" />,
+    copy: (
+      <>
+        <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" {...wash} />
+        <path d="M10.5 5.5V3.7c0-.7-.5-1.2-1.2-1.2H3.7c-.7 0-1.2.5-1.2 1.2v5.6c0 .7.5 1.2 1.2 1.2h1.8" />
+      </>
+    ),
+    check: <path d="M3.2 8.4l3 3 6.6-6.8" />,
+    // Two versions side by side, the right one differing.
+    compare: (
+      <>
+        <rect x="1.75" y="2.75" width="5.5" height="10.5" rx="1" {...wash} />
+        <rect x="8.75" y="2.75" width="5.5" height="10.5" rx="1" />
+        <path d="M3.4 5.75h2.2M3.4 8h2.2M10.4 5.75h2.2M10.4 8h2.2M10.4 10.25h1.2" />
+      </>
+    ),
+    schedule: (
+      <>
+        <rect x="1.75" y="3" width="12.5" height="10.75" rx="1.2" />
+        <path
+          d="M2.95 3h10.1a1.2 1.2 0 0 1 1.2 1.2v2.05H1.75V4.2A1.2 1.2 0 0 1 2.95 3z"
+          {...wash}
+          stroke="none"
+        />
+        <path d="M1.75 6.25h12.5M5 1.75v2.5M11 1.75v2.5M5.25 9h1M9.75 9h1M5.25 11.25h1" />
+      </>
+    ),
+    // A list of runs, each with its status dot.
+    jobs: (
+      <>
+        <circle cx="3.6" cy="4" r="1.35" {...wash} />
+        <circle cx="3.6" cy="8" r="1.35" {...wash} />
+        <circle cx="3.6" cy="12" r="1.35" {...wash} />
+        <path d="M6.75 4h6.5M6.75 8h6.5M6.75 12h4" />
+      </>
+    ),
+    sun: (
+      <>
+        <circle cx="8" cy="8" r="2.75" {...wash} />
+        <path d="M8 1.75v1.3M8 12.95v1.3M1.75 8h1.3M12.95 8h1.3M3.58 3.58l.92.92M11.5 11.5l.92.92M3.58 12.42l.92-.92M11.5 4.5l.92-.92" />
+      </>
+    ),
+    moon: <path d="M13.25 9.6A5.5 5.5 0 0 1 6.4 2.75a5.5 5.5 0 1 0 6.85 6.85z" {...wash} />,
   };
   return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className={cx('h-4 w-4 shrink-0', className)}>
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cx('h-4 w-4 shrink-0', className)}
+    >
       {paths[name]}
     </svg>
   );

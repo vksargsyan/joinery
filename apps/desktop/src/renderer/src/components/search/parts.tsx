@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { useSearchView, type SearchView, type SearchViewState } from '../../state/search/view';
-import { Button, Icon, cx } from '../ui';
+import { Button, cx, Icon, TAB } from '../ui';
 
 /** Small pieces the Elasticsearch panels share: notices, tabs, sizes, bars. */
 
@@ -50,7 +50,7 @@ export function Tabs<T extends string>(props: {
 }) {
   return (
     <div
-      className="flex items-center gap-1 border-b border-border bg-panel px-2 pt-1"
+      className="flex items-center gap-1 border-b border-border bg-panel px-2"
       role="tablist"
       aria-label={props.label}
     >
@@ -60,12 +60,7 @@ export function Tabs<T extends string>(props: {
           type="button"
           role="tab"
           aria-selected={tab.id === props.active}
-          className={cx(
-            '-mb-px rounded-t border border-b-0 px-3 py-1 text-xs',
-            tab.id === props.active
-              ? 'border-border bg-bg text-fg'
-              : 'border-transparent text-muted hover:text-fg',
-          )}
+          className={TAB}
           onClick={() => props.onSelect(tab.id)}
         >
           {tab.label}

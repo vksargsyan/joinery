@@ -176,14 +176,14 @@ function Switch(props: {
       }}
       className={cx(
         'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-        props.on ? 'bg-accent' : 'bg-border',
+        props.on ? 'bg-accent' : 'bg-pressed ring-1 ring-strong ring-inset',
       )}
     >
       <span
         aria-hidden
         className={cx(
-          'absolute top-0.5 left-0 h-4 w-4 rounded-full bg-white shadow transition-transform',
-          props.on ? 'translate-x-4.5' : 'translate-x-0.5',
+          'absolute top-0.5 left-0 h-4 w-4 rounded-full transition-transform',
+          props.on ? 'translate-x-4.5 bg-accent-fg' : 'translate-x-0.5 bg-muted',
         )}
       />
     </button>

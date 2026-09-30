@@ -8,7 +8,7 @@ import { useDslBuilder, type QueryEditorMode } from '../../state/search/query-bu
 import { useSearchView } from '../../state/search/view';
 import { Segmented } from '../mongo/parts';
 import { useTheme } from '../theme';
-import { Button, Field, Icon, Input, Modal, Select, cx } from '../ui';
+import { Button, cx, Field, Icon, Input, Modal, Select, TAB } from '../ui';
 import { AggregationView } from './AggregationView';
 import { DocumentGrid, EMPTY_GRID_SELECTION, selectedDocumentRows } from './DocumentGrid';
 import { JsonEditor } from './JsonEditor';
@@ -275,15 +275,10 @@ function ResultTabs({ view }: { readonly view: DocumentsView }) {
           aria-selected={tab === t.id}
           onClick={() => view.setResultTab(t.id)}
           data-testid={`documents-tab-${t.id}`}
-          className={cx(
-            '-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1 text-xs outline-none focus-visible:bg-hover',
-            tab === t.id
-              ? 'border-accent font-medium text-fg'
-              : 'border-transparent text-muted hover:text-fg',
-          )}
+          className={TAB}
         >
           {t.label}
-          <span className="rounded-full bg-panel-2 px-1.5 text-[10px] text-muted tabular-nums">
+          <span className="rounded-full bg-badge px-1.5 text-[10px] font-semibold text-rust tabular-nums">
             {formatCount(t.count)}
           </span>
         </button>

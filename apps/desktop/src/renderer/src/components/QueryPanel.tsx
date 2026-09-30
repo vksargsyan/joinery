@@ -26,7 +26,7 @@ import { PlanView } from './explain/PlanView';
 import { disposeModel, QueryEditor } from './QueryEditor';
 import { resultColumnKeys, ResultGrid } from './ResultGrid';
 import { ColumnsPopover } from './table/ColumnMenus';
-import { Button, EnvironmentBadge, Icon, cx } from './ui';
+import { Button, cx, EnvironmentBadge, Icon, TAB } from './ui';
 import { useTheme } from './theme';
 
 /**
@@ -301,26 +301,16 @@ export function Results({
         className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-panel px-1"
       >
         {tab.results.map((result) => (
-          <Tabs.Trigger
-            key={result.id}
-            value={result.id}
-            className="rounded-t px-2.5 py-1 text-xs text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
-          >
+          <Tabs.Trigger key={result.id} value={result.id} className={TAB}>
             {result.title}
           </Tabs.Trigger>
         ))}
         {tab.explain && (
-          <Tabs.Trigger
-            value="plan"
-            className="rounded-t px-2.5 py-1 text-xs text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
-          >
+          <Tabs.Trigger value="plan" className={TAB}>
             {tab.explain.analyze ? 'Plan (analyzed)' : 'Plan'}
           </Tabs.Trigger>
         )}
-        <Tabs.Trigger
-          value="messages"
-          className="rounded-t px-2.5 py-1 text-xs text-muted data-[state=active]:bg-bg data-[state=active]:text-fg"
-        >
+        <Tabs.Trigger value="messages" className={TAB}>
           Messages
           {errors > 0 && (
             <span className="ml-1 rounded bg-danger/20 px-1 text-danger">{errors}</span>

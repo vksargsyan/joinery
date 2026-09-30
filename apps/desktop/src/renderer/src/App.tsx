@@ -16,9 +16,8 @@ import { Prompts } from './components/Prompts';
 import { ScheduleDialog } from './components/schedules/ScheduleDialog';
 import { openRedisTool } from './components/redis/RedisTree';
 import { Sidebar } from './components/Sidebar';
-import { SyncMenu } from './components/sync/SyncMenu';
+import { TitleBar } from './components/TitleBar';
 import { useTheme } from './components/theme';
-import { Button, Icon } from './components/ui';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useConnections } from './state/connections';
 import { keys, useProfiles } from './state/data';
@@ -29,8 +28,8 @@ import { openAbout, watchAppCommands, watchUpdates } from './state/updates';
 import { useWorkspace } from './state/workspace';
 
 /**
- * The window: connections and objects on the left, dockable query tabs in the middle, history on
- * the right. The active tab's connection drives the production guardrail: a red frame around the
+ * The window: the title bar, connections and objects on the left, dockable query tabs in the
+ * middle, history on the right. The active tab's connection drives the production guardrail: a red frame around the
  * whole window and a banner naming the connection (spec §4).
  */
 export function App() {
@@ -49,6 +48,10 @@ export function App() {
   const activePanelProfile = usePanels((state) =>
     activeId ? state.panels[activeId]?.profileId : undefined,
   );
+  const activePanelTitle = usePanels((state) =>
+    activeId ? state.panels[activeId]?.title : undefined,
+  );
+  const activeTitle = activeTab?.title ?? activePanelTitle;
   const activeProfileId = activeTab?.profileId ?? activePanelProfile;
   const activeProfile = profiles.data?.find((p) => p.id === activeProfileId);
   const production = activeProfile?.presentation.environment === 'production';
@@ -73,6 +76,19 @@ export function App() {
     void watchAppCommands();
   }, []);
 
+  // `#about` opens the About box: a link for what cannot reach the application menu (the
+  // packaged-app tests drive the page only).
+  useEffect(() => {
+    const follow = (): void => {
+      if (location.hash !== '#about') return;
+      history.replaceState(null, '', location.pathname + location.search);
+      openAbout();
+    };
+    follow();
+    window.addEventListener('hashchange', follow);
+    return () => window.removeEventListener('hashchange', follow);
+  }, []);
+
   const toggleTheme = async (): Promise<void> => {
     await mainApi().settings.set({ theme: theme === 'dark' ? 'light' : 'dark' });
     await queryClient.invalidateQueries({ queryKey: keys.settings });
@@ -87,68 +103,20 @@ export function App() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-panel px-3">
-        <span className="text-[13px] font-semibold tracking-tight text-fg">Joinery</span>
-        {production && activeProfile && (
-          <span
-            role="status"
-            data-testid="production-banner"
-            className="rounded-sm bg-env-production px-2 py-0.5 text-[11px] font-bold tracking-wide text-accent-fg uppercase"
-          >
-            Production · {activeProfile.name}
-          </span>
-        )}
-        <span className="flex-1" />
-        <Button
-          size="sm"
-          variant="quiet"
-          onClick={newQuery}
-          disabled={!activeTab && readyProfiles.length === 0}
-        >
-          <Icon name="plus" className="h-3.5 w-3.5" />
-          New query
-        </Button>
-        <Button
-          size="sm"
-          variant={historyOpen ? 'secondary' : 'quiet'}
-          onClick={() => setHistoryOpen(!historyOpen)}
-          aria-pressed={historyOpen}
-        >
-          <Icon name="history" className="h-3.5 w-3.5" />
-          History
-        </Button>
-        <SyncMenu />
-        <Button size="sm" variant="quiet" onClick={() => openSchedulesPanel()}>
-          Schedules
-        </Button>
-        <Button
-          size="sm"
-          variant={jobsOpen ? 'secondary' : 'quiet'}
-          onClick={() => showJobs(!jobsOpen)}
-          aria-pressed={jobsOpen}
-        >
-          Jobs
-          {jobsRunning > 0 && (
-            <span
-              className="min-w-4 rounded-full bg-accent px-1 text-center text-[9px] leading-4 font-semibold text-accent-fg"
-              aria-label={`${jobsRunning} running`}
-            >
-              {jobsRunning}
-            </span>
-          )}
-        </Button>
-        <Button
-          size="sm"
-          variant="quiet"
-          onClick={() => void toggleTheme()}
-          aria-label="Switch theme"
-        >
-          {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-        </Button>
-        <Button size="sm" variant="quiet" onClick={() => openAbout()} aria-label="About Joinery">
-          About
-        </Button>
-      </header>
+      <TitleBar
+        title={activeTitle}
+        production={production ? activeProfile?.name : undefined}
+        theme={theme}
+        onToggleTheme={() => void toggleTheme()}
+        onNewQuery={newQuery}
+        newQueryDisabled={!activeTab && readyProfiles.length === 0}
+        historyOpen={historyOpen}
+        onToggleHistory={() => setHistoryOpen(!historyOpen)}
+        onSchedules={() => openSchedulesPanel()}
+        jobsOpen={jobsOpen}
+        jobsRunning={jobsRunning}
+        onToggleJobs={() => showJobs(!jobsOpen)}
+      />
       <div className="flex min-h-0 flex-1">
         <div className="w-72 shrink-0">
           <Sidebar onEdit={setDialog} />

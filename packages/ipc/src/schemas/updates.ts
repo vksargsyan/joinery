@@ -69,6 +69,33 @@ export const updateStatusSchema = z.object({
 });
 export type UpdateStatus = z.infer<typeof updateStatusSchema>;
 
-/** Commands the application menu sends to the page. */
-export const appCommandSchema = z.object({ command: z.enum(['about']) });
+/** Commands from main: the menu's About, and the window entering or leaving full screen. */
+export const appCommandSchema = z.object({
+  command: z.enum(['about', 'enter-full-screen', 'leave-full-screen']),
+});
 export type AppCommand = z.infer<typeof appCommandSchema>;
+
+/**
+ * What the window's own menu bar (Windows and Linux, where the native one hides with the title
+ * bar) asks main to do: the Edit, View and Window roles, quitting, and the Help items.
+ */
+export const windowMenuCommandSchema = z.enum([
+  'undo',
+  'redo',
+  'cut',
+  'copy',
+  'paste',
+  'selectAll',
+  'reload',
+  'toggleDevTools',
+  'resetZoom',
+  'zoomIn',
+  'zoomOut',
+  'toggleFullScreen',
+  'minimize',
+  'close',
+  'quit',
+  'checkForUpdates',
+  'releaseNotes',
+]);
+export type WindowMenuCommand = z.infer<typeof windowMenuCommandSchema>;
