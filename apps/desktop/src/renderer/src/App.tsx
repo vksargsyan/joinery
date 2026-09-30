@@ -24,7 +24,7 @@ import { keys, useProfiles } from './state/data';
 import { runningCount, showJobs, useJobs, watchJobs } from './state/jobs';
 import { usePanels } from './state/panels';
 import { openSchedulesPanel } from './state/schedules';
-import { watchAppCommands, watchUpdates } from './state/updates';
+import { openAbout, watchAppCommands, watchUpdates } from './state/updates';
 import { useWorkspace } from './state/workspace';
 
 /**
@@ -74,6 +74,19 @@ export function App() {
   useEffect(() => {
     void watchUpdates();
     void watchAppCommands();
+  }, []);
+
+  // `#about` opens the About box: a link for what cannot reach the application menu (the
+  // packaged-app tests drive the page only).
+  useEffect(() => {
+    const follow = (): void => {
+      if (location.hash !== '#about') return;
+      history.replaceState(null, '', location.pathname + location.search);
+      openAbout();
+    };
+    follow();
+    window.addEventListener('hashchange', follow);
+    return () => window.removeEventListener('hashchange', follow);
   }, []);
 
   const toggleTheme = async (): Promise<void> => {

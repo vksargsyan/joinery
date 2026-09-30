@@ -3,6 +3,7 @@ import type { AppCommand, UpdateStatus } from '@joinery/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { menuTemplate } from '../src/main/menu';
+import { windowMenus } from '../src/shared/window-menu';
 import { NO_POLICY, type UpdateFeed } from '../src/main/update-policy';
 import {
   AppCommands,
@@ -382,5 +383,41 @@ describe('the menu', () => {
     expect(
       labels(menuTemplate({ platform: 'linux', appName: 'Joinery', development: false })),
     ).not.toContain('About Joinery');
+  });
+});
+
+describe('the window menu bar (Windows, Linux)', () => {
+  it('holds the items of the native menu, run in main or opened by the page', () => {
+    const ROLE_COMMANDS: Record<string, string> = { togglefullscreen: 'toggleFullScreen' };
+    for (const platform of ['win32', 'linux']) {
+      for (const development of [false, true]) {
+        const native = menuTemplate({
+          platform,
+          appName: 'Joinery',
+          development,
+          commands: { about: () => {}, checkForUpdates: () => {}, releaseNotes: () => {} },
+        });
+        const page = windowMenus({ platform, appName: 'Joinery', development });
+        expect(page.map((m) => m.label)).toEqual(native.map((m) => m.label ?? 'Help'));
+        native.forEach((menu, i) => {
+          const items = (menu.submenu as Electron.MenuItemConstructorOptions[]).map((item) =>
+            item.type === 'separator'
+              ? 'separator'
+              : item.role !== undefined
+                ? (ROLE_COMMANDS[item.role] ?? item.role)
+                : item.label,
+          );
+          expect(
+            page[i]!.items.map((item) =>
+              item === 'separator'
+                ? 'separator'
+                : ['checkForUpdates', 'releaseNotes', 'about'].includes(item.command)
+                  ? item.label
+                  : item.command,
+            ),
+          ).toEqual(items);
+        });
+      }
+    }
   });
 });

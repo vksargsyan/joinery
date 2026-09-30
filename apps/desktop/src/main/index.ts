@@ -7,6 +7,7 @@ import {
   DEFAULT_APP_SETTINGS,
   type AppSettings,
   type Server,
+  type WindowMenuCommand,
 } from '@joinery/ipc';
 import { openStore, type ScheduleRecord, type ScheduleRun, type Store } from '@joinery/storage';
 import {
@@ -240,6 +241,12 @@ function start(): void {
   // Nothing may hold up a shutdown or a logout.
   powerMonitor.on('shutdown', () => quitGuard?.bypass());
   const updater = startUpdates(readAppSettings(openedStore, defaultSettings));
+  const menuCommands = {
+    checkForUpdates: () => void updater.check(),
+    releaseNotes: () => {
+      openExternal(updater.status().releaseNotesUrl ?? RELEASES_PAGE).catch(() => undefined);
+    },
+  };
   const services: MainServices<MessagePortMain> = {
     store: openedStore,
     supervisor: connections,
@@ -270,6 +277,8 @@ function start(): void {
     defaultSettings,
     updates: updater,
     appCommands,
+    menuCommands,
+    development: !app.isPackaged,
     onSettingsChanged: (settings) => {
       updater.applySettings(settings);
       themeSetting = settings.theme;
@@ -284,13 +293,7 @@ function start(): void {
         platform: process.platform,
         appName: app.getName(),
         development: !app.isPackaged,
-        commands: {
-          about: () => appCommands.send('about'),
-          checkForUpdates: () => void updater.check(),
-          releaseNotes: () => {
-            openExternal(updater.status().releaseNotesUrl ?? RELEASES_PAGE).catch(() => undefined);
-          },
-        },
+        commands: { about: () => appCommands.send('about'), ...menuCommands },
       }),
     ),
   );
@@ -366,10 +369,47 @@ function serveMainContract(services: MainServices<MessagePortMain>): void {
       });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     };
+    const runMenu = (command: WindowMenuCommand): void => {
+      switch (command) {
+        case 'undo':
+        case 'redo':
+        case 'cut':
+        case 'copy':
+        case 'paste':
+        case 'selectAll':
+        case 'reload':
+          contents[command]();
+          break;
+        case 'toggleDevTools':
+          contents.toggleDevTools();
+          break;
+        case 'resetZoom':
+          contents.setZoomLevel(0);
+          break;
+        case 'zoomIn':
+        case 'zoomOut':
+          contents.setZoomLevel(contents.getZoomLevel() + (command === 'zoomIn' ? 0.5 : -0.5));
+          break;
+        case 'toggleFullScreen':
+          owner.setFullScreen(!owner.isFullScreen());
+          break;
+        case 'minimize':
+          owner.minimize();
+          break;
+        case 'close':
+          owner.close();
+          break;
+        case 'quit':
+          app.quit();
+          break;
+        default:
+          break;
+      }
+    };
     const server = serve(
       fromElectronPort(port1),
       mainContract,
-      createMainHandlers(services, { sendPort, openFile, saveFile, openDirectory }),
+      createMainHandlers(services, { sendPort, openFile, saveFile, openDirectory, runMenu }),
     );
     servers.set(contents, { server, port: port1 });
     sendPort({ kind: 'main' }, port2);

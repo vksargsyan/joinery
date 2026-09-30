@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useWindowState } from '../state/window';
 import { SyncMenu } from './sync/SyncMenu';
 import { Icon, cx } from './ui';
+import { WindowMenuBar } from './WindowMenuBar';
 
 /**
  * The window's title bar, drawn by the page as VS Code draws its own (the native one is hidden,
@@ -10,7 +11,8 @@ import { Icon, cx } from './ui';
  * room for the traffic lights (not in full screen, where they hide); on Windows and Linux for
  * the window controls overlaid at its right. In the middle, the active tab's title, or on a
  * production connection the red banner naming it; at the right, the window's actions as icons
- * with tooltips. The app's name is in the application menu only, and so is About.
+ * with tooltips. On Windows and Linux the menu bar sits at its left (the native one hides with
+ * the native title bar). The app's name is in the application menu only, and so is About.
  */
 
 export function TitleBar(props: {
@@ -27,7 +29,8 @@ export function TitleBar(props: {
   readonly jobsRunning: number;
   readonly onToggleJobs: () => void;
 }) {
-  const mac = useWindowState((s) => s.platform === 'darwin');
+  const platform = useWindowState((s) => s.platform);
+  const mac = platform === 'darwin';
   const fullScreen = useWindowState((s) => s.fullScreen);
   return (
     <header
@@ -57,6 +60,7 @@ export function TitleBar(props: {
           )
         )}
       </div>
+      {!mac && <WindowMenuBar platform={platform} />}
       <span className="flex-1" />
       <div
         className="relative flex items-center gap-0.5 [-webkit-app-region:no-drag]"
