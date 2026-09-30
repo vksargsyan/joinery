@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Session } from '@joinery/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
@@ -88,7 +88,7 @@ function row(name: string): Locator {
 }
 
 test('schedules a SQL file and runs it from the Schedules panel', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -98,7 +98,7 @@ test('schedules a SQL file and runs it from the Schedules panel', async () => {
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
-  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().click();
+  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().dblclick();
   await expect(treeRow(database!.name)).toBeVisible();
 
   await stubDialogs(join(work, 'refresh.sql'));

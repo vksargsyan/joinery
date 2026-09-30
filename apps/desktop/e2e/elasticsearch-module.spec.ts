@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SearchSession } from '@joinery/driver-elasticsearch';
 import { parseJsonTree, stringAt } from '@joinery/search-tools';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectSearch, e2eIndex } from './search';
 
 /**
@@ -119,7 +119,7 @@ function cell(scope: Locator, column: number, row: number): Locator {
 }
 
 test('connects to Elasticsearch and lists the indices', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Database engine', { exact: true }).selectOption('elasticsearch');
   await dialog.getByLabel('Paste a URI to fill the form').fill(ES_URL!);
@@ -129,7 +129,7 @@ test('connects to Elasticsearch and lists the indices', async () => {
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
-  await profileItem().locator('[data-tree-row]').first().click();
+  await profileItem().locator('[data-tree-row]').first().dblclick();
   await expect(profileItem().getByText('Connected', { exact: true })).toBeAttached();
   for (const tool of ['Console', 'SQL', 'Cluster', 'Templates and pipelines', 'Snapshots']) {
     await expect(treeRow(tool)).toBeVisible();

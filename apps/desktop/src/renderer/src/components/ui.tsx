@@ -215,7 +215,14 @@ export function Icon({
     | 'schedule'
     | 'jobs'
     | 'sun'
-    | 'moon';
+    | 'moon'
+    | 'kebab'
+    | 'search'
+    | 'filter'
+    | 'connection-new'
+    | 'folder-new'
+    | 'disconnect'
+    | 'plug';
   readonly className?: string;
 }) {
   // Kiln Glyphs' drawing: a 16px grid, 1.3 strokes with round caps and joins, closed shapes
@@ -325,6 +332,62 @@ export function Icon({
       </>
     ),
     moon: <path d="M13.25 9.6A5.5 5.5 0 0 1 6.4 2.75a5.5 5.5 0 1 0 6.85 6.85z" {...wash} />,
+    kebab: (
+      <>
+        <circle cx="8" cy="3.5" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="8" cy="12.5" r="1.15" fill="currentColor" stroke="none" />
+      </>
+    ),
+    search: (
+      <>
+        <circle cx="7" cy="7" r="4.4" {...wash} />
+        <path d="m10.3 10.3 3.45 3.45" />
+      </>
+    ),
+    // A funnel: narrow what the tree shows.
+    filter: <path d="M2.25 3h11.5L9.2 8.6v4.2l-2.4 1.2V8.6z" {...wash} />,
+    // The database cylinder with a plus: a new connection.
+    'connection-new': (
+      <>
+        <ellipse cx="7" cy="3.8" rx="4.6" ry="1.75" {...wash} />
+        <path d="M2.4 3.8v7.4c0 .9 2 1.7 4.6 1.7M11.6 3.8v3.1M2.4 7.5c0 .9 2 1.7 4.6 1.7" />
+        <path d="M12 9.75v4.5M9.75 12h4.5" />
+      </>
+    ),
+    'folder-new': (
+      <>
+        <path
+          d="M8.4 12.8H2.75a1 1 0 0 1-1-1V4.2a1 1 0 0 1 1-1h3.3l1.6 1.6h5.6a1 1 0 0 1 1 1v2.4"
+          {...wash}
+        />
+        <path d="M12 9.75v4.5M9.75 12h4.5" />
+      </>
+    ),
+    // A plug pulled out of its socket: close connections.
+    disconnect: (
+      <>
+        <path
+          d="M5.3 8.3 3.9 9.7a2.3 2.3 0 0 0 0 3.25l-.85-.85a2.3 2.3 0 0 0 3.25 0l1.4-1.4z"
+          {...wash}
+        />
+        <path
+          d="M10.7 7.7l1.4-1.4a2.3 2.3 0 0 0 0-3.25l.85.85a2.3 2.3 0 0 0-3.25 0L8.3 5.3z"
+          {...wash}
+        />
+        <path d="M2 14l1.9-1.9M14 2l-1.9 1.9M6.9 5.4 5.6 4.1M5.3 7.1 3.6 6.6M9.1 10.6l1.3 1.3M10.7 8.9l.5 1.7" />
+      </>
+    ),
+    // A plug in its socket: connected.
+    plug: (
+      <>
+        <path
+          d="M6.1 6.6 4.2 8.5a2.5 2.5 0 0 0 0 3.5l-.2-.2a2.5 2.5 0 0 0 3.5 0l1.9-1.9z"
+          {...wash}
+        />
+        <path d="M2 14l2-2M8.2 5.3l2.4-2.4M10.7 7.8l2.4-2.4" />
+      </>
+    ),
   };
   return (
     <svg

@@ -5,7 +5,7 @@ import type { MongoSession } from '@joinery/driver-mongodb';
 import { toEjson } from '@joinery/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
 
 /**
@@ -107,7 +107,7 @@ async function replaceText(editor: Locator, text: string): Promise<void> {
 }
 
 test('opens a collection and shows the builder with the sampled fields', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(withoutTls(MONGO_URL!));
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -116,7 +116,7 @@ test('opens a collection and shows the builder with the sampled fields', async (
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
-  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().click();
+  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().dblclick();
   await treeRow(db).click();
   await treeRow('Collections').click();
   await treeRow('orders').dblclick();

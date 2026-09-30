@@ -42,3 +42,9 @@ export async function launchApp(
     },
   };
 }
+
+/** Opens the new connection dialog from the side bar's actions menu. */
+export async function openNewConnection(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Connection actions' }).click();
+  await page.getByRole('menuitem', { name: 'New connection' }).click();
+}
