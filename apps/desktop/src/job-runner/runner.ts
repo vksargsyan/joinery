@@ -29,6 +29,7 @@ import {
 } from './tasks';
 import { inspectConnection, planTransferJob, runTransferJob, type Connector } from './transfer-db';
 import { answerBackupRequest, connectDatabase, isBackupRequest, runBackupTask } from './backup';
+import { analyzeRdbFile } from './rdb';
 
 /**
  * The job runner's core (spec §3): runs jobs side by side, each on its own driver session,
@@ -89,6 +90,8 @@ function isSyncJob(job: RunnerJobSpec): job is SyncJobSpec {
 export class JobRunner {
   readonly #deps: JobRunnerDeps;
   readonly #jobs = new Map<string, RunningJob>();
+  /** Long requests that can be cancelled (RDB analyses), by request id. */
+  readonly #requestControllers = new Map<string, AbortController>();
 
   constructor(deps: JobRunnerDeps) {
     this.#deps = deps;
@@ -119,6 +122,9 @@ export class JobRunner {
         return;
       case 'request':
         void this.#answer(message.requestId, message.request);
+        return;
+      case 'cancel-request':
+        this.#requestControllers.get(message.requestId)?.abort();
         return;
       case 'host-key-decision':
         this.#deps.hostKeyDecision?.(message);
@@ -151,6 +157,20 @@ export class JobRunner {
     // The transfer wizard's requests connect; host key questions carry the request's id.
     const connect: Connector = (resolved) => this.#deps.connect(resolved, requestId);
     try {
+      if (request.kind === 'rdb-analyze') {
+        const controller = new AbortController();
+        this.#requestControllers.set(requestId, controller);
+        try {
+          const result = await analyzeRdbFile(request.input, {
+            signal: controller.signal,
+            onProgress: (progress) => this.#post({ type: 'request-progress', requestId, progress }),
+          });
+          this.#post({ type: 'response', requestId, result });
+        } finally {
+          this.#requestControllers.delete(requestId);
+        }
+        return;
+      }
       if (isBackupRequest(request)) {
         const result = await answerBackupRequest(request, { connect });
         this.#post({ type: 'response', requestId, result });

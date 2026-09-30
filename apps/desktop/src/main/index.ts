@@ -13,11 +13,9 @@ import {
   Menu,
   MessageChannelMain,
   Notification,
-  Tray,
   app,
   dialog,
   ipcMain,
-  nativeImage,
   powerMonitor,
   protocol,
   safeStorage,
@@ -33,6 +31,7 @@ import { buildContentSecurityPolicy } from '../shared/csp';
 import {
   createMainHandlers,
   readAppSettings,
+  writeAppSettings,
   type MainServices,
   type OpenFileOptions,
 } from './api';
@@ -45,6 +44,7 @@ import { executeSchedule } from './schedule-tasks';
 import { Scheduler, type TaskOutcome } from './scheduler';
 import { ScheduleEvents } from './schedules-api';
 import { menuTemplate } from './menu';
+import { QuitGuard } from './quit-guard';
 import { createSafeStorageSealer } from './sealer';
 import {
   hardenSession,
@@ -107,7 +107,7 @@ if (!app.requestSingleInstanceLock()) {
       if (window.isMinimized()) window.restore();
       window.focus();
     } else if (app.isReady()) {
-      // Running in the tray for its schedules: opening Joinery again opens its window.
+      // Running without a window (macOS): opening Joinery again opens one.
       createMainWindow();
     }
   });
@@ -120,8 +120,7 @@ let jobs: JobManager | undefined;
 let sync: SyncService | undefined;
 let updates: UpdateController | undefined;
 let scheduler: Scheduler | undefined;
-let tray: Tray | undefined;
-let quitting = false;
+let quitGuard: QuitGuard<BrowserWindow> | undefined;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -187,10 +186,7 @@ function start(): void {
     execute: (schedule) =>
       executeSchedule({ store: openedStore, jobs: jobManager, sync: syncService }, schedule),
     notify: notifySchedule,
-    onEvent: (event) => {
-      scheduleEvents.publish(event);
-      refreshTray();
-    },
+    onEvent: (event) => scheduleEvents.publish(event),
   });
   // The desktop starts dark and without the editor minimap; users change both in settings.
   const defaultSettings = {
@@ -199,6 +195,42 @@ function start(): void {
     editor: { ...DEFAULT_APP_SETTINGS.editor, minimap: false },
   };
   const appCommands = new AppCommands();
+  const activeScheduler = scheduler;
+  quitGuard = new QuitGuard<BrowserWindow>({
+    platform: process.platform,
+    enabled: () => readAppSettings(openedStore, defaultSettings).schedules.confirmClose,
+    paused: () => activeScheduler.paused,
+    schedules: () =>
+      openedStore.schedules.list().map((schedule) => ({
+        name: schedule.name,
+        enabled: schedule.enabled,
+        nextRunAt: schedule.nextRunAt,
+        running: activeScheduler.isRunning(schedule.id),
+      })),
+    ask: async (question, window) => {
+      const options = {
+        type: 'question' as const,
+        message: question.message,
+        detail: question.detail,
+        buttons: [...question.buttons],
+        defaultId: 0,
+        cancelId: 1,
+        checkboxLabel: question.checkboxLabel,
+        noLink: true,
+      };
+      const answer =
+        window && !window.isDestroyed()
+          ? await dialog.showMessageBox(window, options)
+          : await dialog.showMessageBox(options);
+      return { confirmed: answer.response === 0, dontAskAgain: answer.checkboxChecked };
+    },
+    stopAsking: () => {
+      writeAppSettings(openedStore, defaultSettings, { schedules: { confirmClose: false } });
+    },
+    quit: () => app.quit(),
+  });
+  // Nothing may hold up a shutdown or a logout.
+  powerMonitor.on('shutdown', () => quitGuard?.bypass());
   const updater = startUpdates(readAppSettings(openedStore, defaultSettings));
   const services: MainServices<MessagePortMain> = {
     store: openedStore,
@@ -349,6 +381,8 @@ function startUpdates(settings: UpdateSettings): UpdateController {
     },
     settings,
     log: (message) => console.info(`[updates] ${message}`),
+    // Restarting into the update is the user's own choice: it does not ask again.
+    beforeInstall: () => quitGuard?.bypass(),
   });
   return updates;
 }
@@ -384,6 +418,14 @@ function createMainWindow(): void {
     webPreferences: secureWebPreferences(join(__dirname, '../preload/index.cjs'), !app.isPackaged),
   });
   window.once('ready-to-show', () => window.show());
+  // Windows and Linux quit with their last window: with schedules on, ask first.
+  window.on('close', (event) => {
+    const last = BrowserWindow.getAllWindows().every((other) => other === window);
+    if (last && quitGuard && !quitGuard.lastWindowClosing(window)) event.preventDefault();
+  });
+  // Windows: the session is ending (shut down, restart, sign out); never hold it up.
+  window.on('query-session-end', () => quitGuard?.bypass());
+  window.on('session-end', () => quitGuard?.bypass());
   void window.loadURL(devServerUrl ?? APP_ENTRY_URL);
 }
 
@@ -414,59 +456,18 @@ function showMainWindow(): void {
   window.focus();
 }
 
-/**
- * Windows and Linux: with schedules on, closing the last window keeps Joinery running in the
- * tray, to run them; the tray opens it again, pauses the schedules or quits. macOS apps keep
- * running without windows already, in the Dock.
- */
-function showTray(): void {
-  if (!tray) {
-    tray = new Tray(nativeImage.createFromPath(windowIcon).resize({ width: 16, height: 16 }));
-    tray.setToolTip('Joinery: running your schedules');
-    tray.on('click', () => showMainWindow());
-  }
-  refreshTray();
-}
-
-function refreshTray(): void {
-  if (!tray) return;
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Open Joinery', click: () => showMainWindow() },
-      {
-        label: 'Pause schedules',
-        type: 'checkbox',
-        checked: scheduler?.paused ?? false,
-        click: (item) => scheduler?.setPaused(item.checked),
-      },
-      { type: 'separator' },
-      {
-        label: 'Quit Joinery',
-        click: () => {
-          quitting = true;
-          app.quit();
-        },
-      },
-    ]),
-  );
-}
-
-app.on('browser-window-created', () => {
-  tray?.destroy();
-  tray = undefined;
+app.on('window-all-closed', () => {
+  // macOS apps keep running without windows; elsewhere the last window closing quits.
+  if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform === 'darwin') return;
-  if (!quitting && scheduler?.hasEnabled()) {
-    showTray();
+app.on('before-quit', (event) => {
+  // With schedules on, the question comes first; confirming quits again.
+  const [window] = BrowserWindow.getAllWindows();
+  if (quitGuard && !quitGuard.beforeQuit(BrowserWindow.getFocusedWindow() ?? window)) {
+    event.preventDefault();
     return;
   }
-  app.quit();
-});
-
-app.on('before-quit', () => {
-  quitting = true;
   scheduler?.stop();
   scheduler = undefined;
   updates?.dispose();

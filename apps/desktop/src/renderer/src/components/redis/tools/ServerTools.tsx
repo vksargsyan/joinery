@@ -12,6 +12,7 @@ import { errorMessage } from '../../../lib/errors';
 import { formatCount } from '../../../lib/format';
 import { WRITE, destructive, formatCommandLine } from '../../../../../shared/redis-safety';
 import { appendBounded, parseNameList } from '../../../state/redis/cli';
+import { openDumpAnalysis } from '../../../state/redis/dump';
 import {
   laneSession,
   onPanelDispose,
@@ -594,7 +595,15 @@ export function BigKeysPanel({ panelId, target }: ToolProps) {
         {!report && !progress && (
           <EmptyState>
             Samples keys with SCAN and sizes them with MEMORY USAGE, grouped by key pattern (numbers
-            and ids become *).
+            and ids become *).{' '}
+            <button
+              type="button"
+              className="text-accent hover:underline"
+              onClick={() => openDumpAnalysis()}
+            >
+              Analyse a dump file instead
+            </button>{' '}
+            to see every key without touching the server.
           </EmptyState>
         )}
         {report && (

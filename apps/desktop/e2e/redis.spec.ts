@@ -345,6 +345,38 @@ test('creates a search index from suggested fields, queries it and drops it', as
   expect(await redisText(redis!, 'EXISTS', `${prefix}book:1`)).toBe('0');
 });
 
+test('analyses an RDB dump file offline', async () => {
+  const dump = join(
+    import.meta.dirname,
+    '../../../packages/redis-tools/test/fixtures/rdb/redis-8.2.rdb',
+  );
+  await launched!.app.evaluate(({ dialog }, file) => {
+    dialog.showOpenDialog = (() =>
+      Promise.resolve({ canceled: false, filePaths: [file] })) as typeof dialog.showOpenDialog;
+  }, dump);
+  await openTool(NAME, 'Dump analysis');
+  const panel = visible('dump-analysis');
+  await expect(panel.getByText('See what fills a Redis server')).toBeVisible();
+  await shot('redis-dump-welcome');
+  await panel.getByRole('button', { name: 'Choose RDB file…' }).first().click();
+
+  const report = panel.getByTestId('dump-report');
+  await expect(report.getByTestId('dump-file')).toHaveText('redis-8.2.rdb');
+  await expect(report).toContainText(/Redis 8\.2\.\d+ · RDB 12/);
+  await expect(report.getByTestId('stat-Keys')).toHaveText('23');
+  // Types with their encodings, module types named by module.
+  await expect(report.getByTestId('dump-type').first()).toContainText('HASH');
+  await expect(report.getByRole('table', { name: 'Types' })).toContainText('ReJSON-RL');
+  await expect(report.getByRole('table', { name: 'Types' })).toContainText('hashtable');
+  // Patterns: the three profiles in database 3 are one.
+  const profiles = report.getByTestId('dump-pattern').filter({ hasText: 'user:*:profile' });
+  await expect(profiles).toContainText('3');
+  await expect(report.getByTestId('dump-biggest').first()).toContainText('hash:big');
+  await expect(report.getByTestId('dump-longest').first()).toContainText('list:big');
+  await expect(report.getByRole('table', { name: 'Databases' })).toContainText('db3');
+  await shot('redis-dump-analysis');
+});
+
 test('shows the Cluster topology with the slot map', async () => {
   test.skip(!REDIS_CLUSTER, 'Set JOINERY_TEST_REDIS_CLUSTER for the Cluster topology');
   const [seed] = REDIS_CLUSTER!.split(',');

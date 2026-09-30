@@ -300,6 +300,13 @@ describe('main contract handlers', () => {
     const next = await main.settings.set({ editor: { fontSize: 15 }, theme: 'light' });
     expect(next.editor).toMatchObject({ fontSize: 15, tabSize: 2 });
     expect((await main.settings.get()).theme).toBe('light');
+    // Settings saved before a group existed get its defaults; the group saves like the others.
+    expect((await main.settings.get()).schedules).toEqual({ confirmClose: true });
+    await main.settings.set({ schedules: { confirmClose: false } });
+    expect(await main.settings.get()).toMatchObject({
+      theme: 'light',
+      schedules: { confirmClose: false },
+    });
   });
 
   it('streams connection events', async () => {

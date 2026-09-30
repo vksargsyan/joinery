@@ -31,6 +31,7 @@ import {
   backupMainContractShape,
   updatesMainContractShape,
   erModelsMainContractShape,
+  redisDumpMainContractShape,
   schedulesMainContractShape,
   parseRequest,
   syncMainContractShape,
@@ -480,6 +481,7 @@ describe('mainContract never hands a secret to the renderer', () => {
       updates: unusedHandlers(updatesMainContractShape),
       erModels: unusedHandlers(erModelsMainContractShape),
       schedules: unusedHandlers(schedulesMainContractShape),
+      redisDump: unusedHandlers(redisDumpMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -655,6 +657,7 @@ describe('desktop additions', () => {
       updates: unusedHandlers(updatesMainContractShape),
       erModels: unusedHandlers(erModelsMainContractShape),
       schedules: unusedHandlers(schedulesMainContractShape),
+      redisDump: unusedHandlers(redisDumpMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

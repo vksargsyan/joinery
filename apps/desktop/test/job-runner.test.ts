@@ -9,7 +9,13 @@ import {
   type ConnectionProfileInput,
   type ResolvedProfile,
 } from '@joinery/core';
-import type { ExportJob, ImportJob, RunSqlFileJob, TransferPreview } from '@joinery/ipc';
+import {
+  rdbReportSchema,
+  type ExportJob,
+  type ImportJob,
+  type RunSqlFileJob,
+  type TransferPreview,
+} from '@joinery/ipc';
 import {
   EXPORT_FORMATS,
   FILE_FORMATS,
@@ -739,6 +745,66 @@ describe('JobRunner Excel, XML and ZIP', () => {
     expect(single.entries.map((e) => e.name)).toEqual(['query_result.html']);
     await single.close();
     expect(readdirSync(dir).sort()).toEqual(['query.zip', 'tables.zip']);
+  });
+});
+
+describe('JobRunner RDB analysis', () => {
+  const fixture = join(
+    import.meta.dirname,
+    '../../../packages/redis-tools/test/fixtures/rdb/redis-7.4.rdb',
+  );
+
+  it('reads an RDB file with progress and answers with its report', async () => {
+    const { runner, posted, response } = setup();
+    runner.handle({
+      type: 'request',
+      requestId: 'r1',
+      request: { kind: 'rdb-analyze', input: { path: fixture } },
+    });
+    const answer = await response('r1');
+    expect(answer.error).toBeUndefined();
+    const report = rdbReportSchema.parse(answer.result);
+    expect(report).toMatchObject({
+      file: 'redis-7.4.rdb',
+      size: readFileSync(fixture).length,
+      bytes: readFileSync(fixture).length,
+      version: 12,
+      keys: 20,
+    });
+    // Key names cross as display text.
+    expect(report.patterns.some((p) => p.pattern === 'user:*:profile')).toBe(true);
+    expect(report.biggest[0]!.key).toBe('hash:big');
+    const progress = posted.filter((m) => m.type === 'request-progress');
+    expect(progress[0]).toMatchObject({ requestId: 'r1', progress: { bytes: 0 } });
+  });
+
+  it('refuses a file that is not an RDB, and cancels on request', async () => {
+    const { runner, response } = setup();
+    runner.handle({
+      type: 'request',
+      requestId: 'r2',
+      request: { kind: 'rdb-analyze', input: { path: file('notes.txt', 'hello, world') } },
+    });
+    expect((await response('r2')).error).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      message: expect.stringContaining('This is not an RDB file'),
+    });
+
+    // A large synthetic dump, cancelled as soon as it starts.
+    const keys = Array.from({ length: 200_000 }, (_, i) => `k${i}`);
+    const body = keys.map((k) => `\x00${String.fromCharCode(k.length)}${k}\x01v`).join('');
+    const big = join(dir, 'big.rdb');
+    writeFileSync(
+      big,
+      Buffer.from(`REDIS0011\xfe\x00${body}\xff\x00\x00\x00\x00\x00\x00\x00\x00`, 'latin1'),
+    );
+    runner.handle({
+      type: 'request',
+      requestId: 'r3',
+      request: { kind: 'rdb-analyze', input: { path: big } },
+    });
+    runner.handle({ type: 'cancel-request', requestId: 'r3' });
+    expect((await response('r3')).error).toMatchObject({ code: 'CANCELLED' });
   });
 });
 
