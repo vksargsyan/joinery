@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
 
 import { launchApp, type LaunchedApp } from './app';
@@ -9,6 +12,13 @@ import { launchApp, type LaunchedApp } from './app';
  */
 
 test.describe.configure({ mode: 'serial' });
+
+/** The app's version, so a release's version bump does not change the test. */
+const VERSION = (
+  JSON.parse(readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8')) as {
+    version: string;
+  }
+).version;
 
 let launched: LaunchedApp;
 let page: Page;
@@ -37,7 +47,7 @@ async function clickMenuItem(app: ElectronApplication, label: string): Promise<v
 test('shows the version, runtime and why a development run does not update', async () => {
   await page.getByRole('button', { name: 'About Joinery' }).click();
   const dialog = page.getByRole('dialog', { name: 'About Joinery' });
-  await expect(dialog.getByTestId('about-version')).toHaveText('Version 0.1.0');
+  await expect(dialog.getByTestId('about-version')).toHaveText(`Version ${VERSION}`);
   await expect(dialog.getByText(/Electron \d+.*Chromium .*Node\.js/)).toBeVisible();
   await expect(dialog.getByTestId('update-status')).toHaveText(
     'Updates are off in development runs.',
