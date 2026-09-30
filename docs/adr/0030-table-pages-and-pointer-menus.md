@@ -35,6 +35,13 @@ plain lists without glyphs.
 - **Numbering.** Row numbers, and the Form view's record numbers, count on from the pages
   before. The Form view's Previous and Next cross into the neighbouring pages.
 
+**MongoDB collections page the same way** (`state/mongo/pages.ts`, the shared `Pager`). Each
+page is a find with its own skip and limit, inside the skip and limit typed in the query bar
+(limit 0 is none). Pages hold 100 documents by default, or 50, 500 or 1,000. Last counts the
+matching documents first, and the tree and table number documents on from the pages before.
+
+**Toolbars** of the table data view and the collection view carry a glyph on every button.
+
 **Menus at the pointer.** Pointer menus anchor on `PointerAnchor`, a point rendered into the
 document body. It is used by the grid's cell menu, the column header menu and the Objects view.
 
@@ -45,7 +52,6 @@ document body. It is used by the grid's cell menu, the column header menu and th
 - Open referenced row.
 - Copy (⌘C), and "Copy as" as a submenu with every format.
 - Add, duplicate, revert and delete (last, in red).
-- A hint for paste.
 
 Every item of the cell and header menus has its own glyph, and shortcuts are right-aligned.
 

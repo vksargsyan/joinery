@@ -10,7 +10,7 @@ import { formatCount } from '../../lib/format';
 import { useWindowState } from '../../state/window';
 import { MenuItem, MenuSub } from '../MenuItem';
 import { PointerAnchor } from '../PointerAnchor';
-import { Icon, type IconName } from '../ui';
+import type { IconName } from '../ui';
 
 /** Where the grid's context menu opened, and the selection it acts on (display positions). */
 export interface MenuAt {
@@ -186,11 +186,6 @@ export function TableContextMenu(props: {
               </MenuItem>
             </>
           )}
-          <p className="mt-1 flex items-center gap-2 border-t border-border px-2 pt-1.5 pb-0.5 text-[11px] text-faint">
-            <Icon name="import" className="h-3 w-3" />
-            Paste into the grid with
-            <kbd className="font-sans text-muted">{mac ? '⌘V' : 'Ctrl+V'}</kbd>
-          </p>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

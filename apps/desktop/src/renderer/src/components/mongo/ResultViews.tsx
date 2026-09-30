@@ -123,6 +123,8 @@ function TreeResults(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [results, version],
   );
+  // A page's documents are numbered on from the pages before it.
+  const offset = useResults(results, (s) => s.offset);
   return (
     <div
       className="h-full overflow-auto font-mono text-xs select-text"
@@ -148,13 +150,13 @@ function TreeResults(props: {
                 type="button"
                 className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
                 onClick={() => results.toggleNode(key)}
-                aria-label={`Document ${index + 1}`}
+                aria-label={`Document ${offset + index + 1}`}
               >
                 <Icon
                   name={open ? 'chevron-down' : 'chevron-right'}
                   className="h-3 w-3 text-muted"
                 />
-                <span className="text-muted">{index + 1}</span>
+                <span className="text-muted">{offset + index + 1}</span>
                 {id !== undefined && (
                   <span className="truncate">
                     <span className="text-muted">_id: </span>
@@ -163,7 +165,7 @@ function TreeResults(props: {
                 )}
                 <span className="truncate text-muted">{valueText(value)}</span>
               </button>
-              <DocumentButtons index={index} actions={props.actions} />
+              <DocumentButtons index={index} number={offset + index + 1} actions={props.actions} />
             </div>
             {open && (
               <TreeChildren results={results} document={index} value={value} path={[]} depth={1} />
@@ -178,9 +180,11 @@ function TreeResults(props: {
 
 function DocumentButtons(props: {
   readonly index: number;
+  /** The document's number as shown (on from the pages before). */
+  readonly number: number;
   readonly actions: DocumentActions | undefined;
 }) {
-  const { actions, index } = props;
+  const { actions, index, number } = props;
   if (!actions) return null;
   return (
     <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
@@ -189,7 +193,7 @@ function DocumentButtons(props: {
           size="sm"
           variant="ghost"
           onClick={() => actions.edit!(index)}
-          aria-label={`Edit document ${index + 1}`}
+          aria-label={`Edit document ${number}`}
         >
           Edit
         </Button>
@@ -199,7 +203,7 @@ function DocumentButtons(props: {
           size="sm"
           variant="ghost"
           onClick={() => actions.clone!(index)}
-          aria-label={`Clone document ${index + 1}`}
+          aria-label={`Clone document ${number}`}
         >
           Clone
         </Button>
@@ -210,7 +214,7 @@ function DocumentButtons(props: {
           variant="ghost"
           className="text-danger"
           onClick={() => actions.remove!(index)}
-          aria-label={`Delete document ${index + 1}`}
+          aria-label={`Delete document ${number}`}
         >
           Delete
         </Button>
@@ -302,6 +306,8 @@ function TableResults(props: {
   const { results } = props;
   const version = useResults(results, (s) => s.version);
   const drill = useResults(results, (s) => s.drill);
+  // A page's documents are numbered on from the pages before it.
+  const offset = useResults(results, (s) => s.offset);
   const flatten = useResults(results, (s) => s.flatten);
   const columnOrder = useResults(results, (s) => s.columnOrder);
   const view = useMemo(
@@ -409,7 +415,11 @@ function TableResults(props: {
                 ))}
                 {actions && (
                   <td className="border-b border-border/60 px-1">
-                    <DocumentButtons index={row.document} actions={actions} />
+                    <DocumentButtons
+                      index={row.document}
+                      number={offset + row.document + 1}
+                      actions={actions}
+                    />
                   </td>
                 )}
               </tr>

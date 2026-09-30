@@ -3,7 +3,6 @@ import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { formatCount } from '../../lib/format';
 import type { CodeExportRequest } from '../../state/mongo/code-export';
 import {
-  PAGE_SIZE,
   useCollectionState,
   type CollectionView,
   type ViewTab,
@@ -13,7 +12,9 @@ import { useQueryBuilder, type QueryEditorMode } from '../../state/mongo/query-b
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
+import { Pager } from '../Pager';
 import { ViewModeSwitch, type ViewModeOption } from '../ViewModeSwitch';
+import { DOCUMENT_PAGE_SIZES, queryTotal } from '../../state/mongo/pages';
 import { CodeExportDialog } from './CodeExportDialog';
 import { BulkDialog, DocumentEditorDialog } from './DocumentDialogs';
 import { ExplainView } from './ExplainView';
@@ -65,6 +66,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           Run
         </Button>
         <Button size="sm" variant="ghost" onClick={() => void view.reset()} title="Clear the query">
+          <Icon name="restore" className="h-3.5 w-3.5" />
           Reset
         </Button>
         <Button
@@ -73,6 +75,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           onClick={() => void view.explain('executionStats')}
           title="Run the query and show its plan with execution statistics"
         >
+          <Icon name="gauge" className="h-3.5 w-3.5" />
           Explain
         </Button>
         <Button
@@ -81,6 +84,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           onClick={() => void view.explain('queryPlanner')}
           title="Show the chosen plan without running the query"
         >
+          <Icon name="diagram" className="h-3.5 w-3.5" />
           Plan only
         </Button>
         <Button
@@ -89,6 +93,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           onClick={() => setExporting(view.exportRequest())}
           title="Export the query as Node.js, Python, Java, C#, Go or PHP code"
         >
+          <Icon name="export" className="h-3.5 w-3.5" />
           Export code…
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
@@ -107,6 +112,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           disabled={!writable}
           onClick={() => view.openBulk('update')}
         >
+          <Icon name="edit" className="h-3.5 w-3.5" />
           Bulk update…
         </Button>
         <Button
@@ -116,6 +122,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           disabled={!writable}
           onClick={() => view.openBulk('delete')}
         >
+          <Icon name="trash" className="h-3.5 w-3.5" />
           Bulk delete…
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
@@ -207,6 +214,7 @@ function CollectionTools({ view }: { readonly view: CollectionView }) {
           })
         }
       >
+        <Icon name="filter" className="h-3.5 w-3.5" />
         Aggregate
       </Button>
       <Button
@@ -215,6 +223,7 @@ function CollectionTools({ view }: { readonly view: CollectionView }) {
         title="Query the collection with SQL in a new tab"
         onClick={() => openMongoSql({ profileId, db, collection })}
       >
+        <Icon name="query" className="h-3.5 w-3.5" />
         SQL
       </Button>
       {kind !== 'view' && (
@@ -223,6 +232,7 @@ function CollectionTools({ view }: { readonly view: CollectionView }) {
           variant="ghost"
           onClick={() => openMongoTool({ tool: 'indexes', target })}
         >
+          <Icon name="key" className="h-3.5 w-3.5" />
           Indexes
         </Button>
       )}
@@ -231,9 +241,11 @@ function CollectionTools({ view }: { readonly view: CollectionView }) {
         variant="ghost"
         onClick={() => openMongoTool({ tool: 'schema', target: { ...target, kind } })}
       >
+        <Icon name="chart" className="h-3.5 w-3.5" />
         Schema
       </Button>
       <Button size="sm" variant="ghost" onClick={() => openMongoTool({ tool: 'options', target })}>
+        <Icon name="design" className="h-3.5 w-3.5" />
         Options
       </Button>
       {kind !== 'view' && (
@@ -247,6 +259,7 @@ function CollectionTools({ view }: { readonly view: CollectionView }) {
             })
           }
         >
+          <Icon name="pulse" className="h-3.5 w-3.5" />
           Watch
         </Button>
       )}
@@ -395,7 +408,6 @@ const VIEW_TABS: readonly ViewModeOption<ViewTab>[] = [
 function Footer({ view }: { readonly view: CollectionView }) {
   const tab = useCollectionState(view, (s) => s.tab);
   const loaded = useResults(view.results, (s) => s.documents.length);
-  const hasMore = useResults(view.results, (s) => s.hasMore);
   const loading = useResults(view.results, (s) => s.loading);
   const estimate = useCollectionState(view, (s) => s.estimate);
   const exactCount = useCollectionState(view, (s) => s.exactCount);
@@ -405,16 +417,27 @@ function Footer({ view }: { readonly view: CollectionView }) {
     view,
     (s) => s.active !== undefined && Object.keys(s.active.filter).length > 0,
   );
-  const complete = !hasMore && !loading;
+  const page = useCollectionState(view, (s) => s.page);
+  const pageSize = useCollectionState(view, (s) => s.pageSize);
+  const hasNext = useCollectionState(view, (s) => s.hasNext);
+  const running = useCollectionState(view, (s) => s.running);
+  const active = useCollectionState(view, (s) => s.active);
+  // The first page holds every document: the total is known without counting.
+  const complete = page === 1 && !hasNext && !loading;
+  // Documents the query returns, within its own skip and limit, once counted.
+  const total =
+    exactCount !== undefined && active !== undefined
+      ? queryTotal(exactCount, active)
+      : complete && !filtered
+        ? loaded
+        : undefined;
   return (
     <footer className="flex flex-wrap items-center gap-2 border-t border-border bg-panel px-2 py-1 text-xs">
       <span data-testid="mongo-loaded" aria-live="polite">
         {formatCount(loaded)} {loaded === 1 ? 'document' : 'documents'} loaded
       </span>
       {loading && <span className="text-muted">· loading…</span>}
-      {hasMore && !loading && (
-        <span className="text-muted">· more on scroll ({formatCount(PAGE_SIZE)} per page)</span>
-      )}
+
       <span className="text-muted" data-testid="mongo-total">
         ·{' '}
         {exactCount !== undefined
@@ -448,6 +471,18 @@ function Footer({ view }: { readonly view: CollectionView }) {
       {durationMs !== undefined && (
         <span className="text-muted">first page in {durationMs} ms</span>
       )}
+      <Pager
+        page={page}
+        pageSize={pageSize}
+        pageSizes={DOCUMENT_PAGE_SIZES}
+        hasNext={hasNext}
+        total={total}
+        busy={running || loading || counting}
+        noun="documents"
+        testId="mongo"
+        onMove={(move) => void view.goToPage(move)}
+        onPageSize={(size) => void view.setPageSize(size)}
+      />
       <ViewModeSwitch options={VIEW_TABS} value={tab} onChange={(next) => view.setTab(next)} />
     </footer>
   );

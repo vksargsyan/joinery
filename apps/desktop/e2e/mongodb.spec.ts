@@ -157,17 +157,23 @@ test('lists a database’s collections in the Objects view; a click on one opens
   await expect(treeRow('orders')).toBeVisible();
 });
 
-test('opens a collection and pages its documents as the view scrolls', async () => {
+test('opens a collection and pages its documents as Navicat does', async () => {
   // One click opens the documents.
   await treeRow('orders').click();
   await expect(panel()).toBeVisible();
   const loaded = panel().getByTestId('mongo-loaded');
+  const pageBox = panel().getByLabel('Page', { exact: true });
   await expect(loaded).toHaveText('100 documents loaded');
   await expect(panel().getByTestId('mongo-total')).toContainText('150');
-  await panel()
-    .getByTestId('mongo-tree')
-    .evaluate((element) => element.scrollTo(0, element.scrollHeight));
-  await expect(loaded).toHaveText('150 documents loaded');
+  await expect(pageBox).toHaveValue('1');
+  await panel().getByRole('button', { name: 'Next page' }).click();
+  await expect(pageBox).toHaveValue('2');
+  await expect(loaded).toHaveText('50 documents loaded');
+  // Numbers count on from the first page.
+  await expect(panel().getByRole('button', { name: 'Document 101', exact: true })).toBeVisible();
+  await expect(panel().getByRole('button', { name: 'Next page' })).toBeDisabled();
+  await panel().getByRole('button', { name: 'First page' }).click();
+  await expect(loaded).toHaveText('100 documents loaded');
   await panel().getByRole('button', { name: 'Document 1', exact: true }).click();
   await expect(
     panel().getByTestId('mongo-tree').locator('[data-field="customer"]').first(),

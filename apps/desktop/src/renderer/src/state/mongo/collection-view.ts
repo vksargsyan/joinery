@@ -1,5 +1,5 @@
 import { JoineryError, requiresWriteConfirmation } from '@joinery/core';
-import type { MongoExplainResult, RpcStream } from '@joinery/ipc';
+import type { MongoExplainResult } from '@joinery/ipc';
 import {
   formatShellInline,
   fromEjson,
@@ -7,7 +7,6 @@ import {
   toEjson,
   toFindQuery,
   type BsonDocument,
-  type DocumentPage,
   type ExplainVerbosity,
   type Namespace,
   type QueryModel,
@@ -37,11 +36,12 @@ import {
   type TextIssue,
 } from './query-bar';
 import { QueryBuilder } from './query-builder';
+import { DEFAULT_DOCUMENT_PAGE, lastPage, pageWindow, queryTotal } from './pages';
 import { DocumentResults, type ResultMode } from './results';
 
 /**
- * One collection view (spec §9, "Browsing and editing"): the query bar, the documents paged
- * from a find() cursor as the user scrolls, counts (the collection's estimate, the exact number
+ * One collection view (spec §9, "Browsing and editing"): the query bar, the documents one page
+ * at a time as Navicat pages them (state/mongo/pages.ts), counts (the collection's estimate, the exact number
  * of matches on demand), the tree, table and JSON views, the document editor, bulk update and
  * delete by the current filter, and explain. Everything runs on the view's own session. The
  * write rules follow the profile as the SQL table view's do: a read-only profile edits nothing,
@@ -56,8 +56,27 @@ export interface CollectionTarget {
   readonly kind: 'collection' | 'view' | 'time-series';
 }
 
-/** Documents per page the view pulls from the cursor. */
-export const PAGE_SIZE = 100;
+const PAGE_SIZE_KEY = 'joinery.mongo.pageSize';
+
+/** The page size last chosen, kept in this browser profile (a convenience, not a setting). */
+function readPageSize(): number {
+  try {
+    const stored = Number(localStorage.getItem(PAGE_SIZE_KEY));
+    return Number.isInteger(stored) && stored >= 1 && stored <= 100_000
+      ? stored
+      : DEFAULT_DOCUMENT_PAGE;
+  } catch {
+    return DEFAULT_DOCUMENT_PAGE;
+  }
+}
+
+function savePageSize(size: number): void {
+  try {
+    localStorage.setItem(PAGE_SIZE_KEY, String(size));
+  } catch {
+    // Not kept: the next view starts with the default.
+  }
+}
 
 export type ViewTab = ResultMode | 'explain';
 
@@ -86,6 +105,11 @@ export interface CollectionViewState {
   /** The query the loaded documents came from; undefined before the first run. */
   readonly active: QueryModel | undefined;
   readonly running: boolean;
+  /** The page shown, from 1, and its size. */
+  readonly page: number;
+  readonly pageSize: number;
+  /** The page shown is full: another may follow. */
+  readonly hasNext: boolean;
   readonly durationMs: number | undefined;
   /** The collection's size from its metadata: undefined while reading, null when unknown. */
   readonly estimate: number | null | undefined;
@@ -111,7 +135,6 @@ export class CollectionView {
   /** The visual query builder, the query bar's second editor. */
   readonly builder: QueryBuilder;
   readonly #lane: SessionLane;
-  #stream: RpcStream<DocumentPage> | undefined;
   #runId = 0;
   #count: AbortController | undefined;
   #editor: EditorFlow | undefined;
@@ -129,6 +152,9 @@ export class CollectionView {
       findIssue: undefined,
       active: undefined,
       running: false,
+      page: 1,
+      pageSize: readPageSize(),
+      hasNext: false,
       durationMs: undefined,
       estimate: undefined,
       exactCount: undefined,
@@ -292,60 +318,101 @@ export class CollectionView {
       this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
       return;
     }
-    const runId = ++this.#runId;
-    await this.#closeStream();
     this.#count?.abort();
-    this.results.begin(() => this.#fetch(runId));
     this.#set({
       active: model,
-      running: true,
       exactCount: undefined,
       notice: undefined,
       explain: undefined,
       tab: s.tab === 'explain' ? this.results.state.mode : s.tab,
     });
-    patchPanel(this.id, { busy: true });
     const started = performance.now();
+    const shown = await this.#loadPage(1);
+    if (shown) this.#set({ durationMs: Math.round(performance.now() - started) });
+    void this.#refreshEstimate();
+  }
+
+  /**
+   * Shows another page of the query run last. The last page takes the exact count, counted
+   * first when it is not known yet.
+   */
+  async goToPage(move: 'first' | 'previous' | 'next' | 'last' | number): Promise<void> {
+    const s = this.state;
+    const active = s.active;
+    if (!active || s.running) return;
+    let target: number;
+    if (move === 'last') {
+      if (s.exactCount === undefined) await this.countExactly();
+      const count = this.state.exactCount;
+      if (count === undefined) return;
+      target = lastPage(queryTotal(count, active), s.pageSize);
+    } else if (move === 'first') target = 1;
+    else if (move === 'previous') target = s.page - 1;
+    else if (move === 'next') target = s.hasNext ? s.page + 1 : s.page;
+    else target = Math.floor(move);
+    if (target < 1 || target === s.page) return;
+    await this.#loadPage(target);
+  }
+
+  /** Documents per page, kept for every collection; the view starts over on the first page. */
+  async setPageSize(size: number): Promise<void> {
+    if (size === this.state.pageSize) return;
+    savePageSize(size);
+    this.#set({ pageSize: size });
+    if (this.state.active) await this.#loadPage(1);
+  }
+
+  /**
+   * Reads one page: a find with the page's skip and limit inside the query's own. True when it
+   * was shown (a later run did not replace it).
+   */
+  async #loadPage(page: number): Promise<boolean> {
+    const active = this.state.active;
+    if (!active) return false;
+    const runId = ++this.#runId;
+    const size = this.state.pageSize;
+    const window = pageWindow(page, size, active);
+    this.results.begin(undefined, [], (page - 1) * size);
+    this.#set({ running: true, page });
+    patchPanel(this.id, { busy: true });
     try {
-      this.#stream = await this.#lane.run(async (host, sessionId) =>
-        host.mongo.find({ sessionId, ns: this.ns, query: toFindQuery(model), pageSize: PAGE_SIZE }),
-      );
-      await this.#fetch(runId);
-      if (runId === this.#runId) this.#set({ durationMs: Math.round(performance.now() - started) });
+      let documents: readonly string[] = [];
+      if (window) {
+        documents = await this.#lane.run(async (host, sessionId) => {
+          const stream = host.mongo.find({
+            sessionId,
+            ns: this.ns,
+            query: { ...toFindQuery(active), skip: window.skip, limit: window.limit },
+            pageSize: window.limit,
+          });
+          try {
+            const first = await stream.next();
+            return first.done ? [] : first.value.documents;
+          } finally {
+            await stream.return().catch(() => undefined);
+          }
+        });
+      }
+      if (runId !== this.#runId) return false;
+      this.results.append(documents, false);
+      this.#set({
+        hasNext:
+          window !== undefined &&
+          documents.length >= window.limit &&
+          pageWindow(page + 1, size, active) !== undefined,
+      });
+      return true;
+    } catch (error) {
+      if (runId !== this.#runId) return false;
+      this.results.fail(errorMessage(error));
+      this.#set({ hasNext: false });
+      return false;
     } finally {
       if (runId === this.#runId) {
         this.#set({ running: false });
         patchPanel(this.id, { busy: false });
       }
     }
-    void this.#refreshEstimate();
-  }
-
-  /** Pulls the next page of the current run. */
-  async #fetch(runId: number): Promise<void> {
-    const stream = this.#stream;
-    if (!stream || runId !== this.#runId) return;
-    this.results.setLoading(true);
-    try {
-      const next = await stream.next();
-      if (runId !== this.#runId) return;
-      if (next.done) {
-        this.results.append([], false);
-        this.#stream = undefined;
-        return;
-      }
-      this.results.append(next.value.documents, next.value.documents.length >= PAGE_SIZE);
-    } catch (error) {
-      if (runId !== this.#runId) return;
-      this.#stream = undefined;
-      this.results.fail(errorMessage(error));
-    }
-  }
-
-  async #closeStream(): Promise<void> {
-    const stream = this.#stream;
-    this.#stream = undefined;
-    await stream?.return().catch(() => undefined);
   }
 
   async #refreshEstimate(): Promise<void> {
@@ -748,7 +815,6 @@ export class CollectionView {
     this.builder.dispose();
     this.#runId++;
     this.#count?.abort();
-    await this.#closeStream();
     await this.#lane.close();
   }
 }

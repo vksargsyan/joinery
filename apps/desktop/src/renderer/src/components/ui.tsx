@@ -228,6 +228,11 @@ export function Icon({
     | 'jobs'
     | 'sun'
     | 'moon'
+    | 'undo'
+    | 'redo'
+    | 'discard'
+    | 'columns'
+    | 'bookmark'
     | 'folder-move'
     | 'folder-up'
     | 'set-null'
@@ -605,6 +610,24 @@ export function Icon({
     width: (
       <path d="M2.5 3.5v9M13.5 3.5v9M4.6 8h6.8M6.3 6.3 4.6 8l1.7 1.7M9.7 6.3l1.7 1.7-1.7 1.7" />
     ),
+    undo: <path d="M5.6 3.6 2.8 6.4l2.8 2.8M2.8 6.4h6.6a3.8 3.8 0 0 1 0 7.6H6.6" />,
+    redo: <path d="M10.4 3.6l2.8 2.8-2.8 2.8M13.2 6.4H6.6a3.8 3.8 0 0 0 0 7.6h2.8" />,
+    // Staged changes thrown away.
+    discard: (
+      <>
+        <circle cx="8" cy="8" r="5.8" {...wash} />
+        <path d="M5.9 5.9l4.2 4.2M10.1 5.9l-4.2 4.2" />
+      </>
+    ),
+    columns: (
+      <>
+        <path d="M6 2.5h4v11H6z" {...wash} stroke="none" />
+        <rect x="2" y="2.5" width="12" height="11" rx="1.2" />
+        <path d="M6 2.5v11M10 2.5v11" />
+      </>
+    ),
+    // A saved view of the grid.
+    bookmark: <path d="M4.2 2.5h7.6v11L8 10.8l-3.8 2.7z" {...wash} />,
     kebab: (
       <>
         <circle cx="8" cy="3.5" r="1.15" fill="currentColor" stroke="none" />

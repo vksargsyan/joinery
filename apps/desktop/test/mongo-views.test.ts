@@ -13,7 +13,8 @@ import type { HostClient } from '../src/renderer/src/lib/main-client';
 import { useConnections } from '../src/renderer/src/state/connections';
 import { keys, queryClient } from '../src/renderer/src/state/data';
 import { useDialogs, type Prompt } from '../src/renderer/src/state/dialogs';
-import { CollectionView, PAGE_SIZE } from '../src/renderer/src/state/mongo/collection-view';
+import { CollectionView } from '../src/renderer/src/state/mongo/collection-view';
+import { DEFAULT_DOCUMENT_PAGE } from '../src/renderer/src/state/mongo/pages';
 import { MongoConsole } from '../src/renderer/src/state/mongo/console';
 import { profileInput } from './helpers';
 
@@ -99,10 +100,13 @@ function fakeHost(count: number) {
         record('find', input);
         const size = input.pageSize ?? 1000;
         const filter = input.query.filter;
-        const matching =
+        const filtered =
           filter && filter.includes('_id')
             ? documents.filter((doc) => filter === `{"_id":${JSON.stringify(JSON.parse(doc)._id)}}`)
             : documents;
+        const skip = input.query.skip ?? 0;
+        const limit = input.query.limit ?? 0;
+        const matching = filtered.slice(skip, limit > 0 ? skip + limit : undefined);
         return (async function* (): AsyncGenerator<DocumentPage> {
           for (let i = 0; i < matching.length; i += size)
             yield { documents: matching.slice(i, i + size) };
@@ -260,22 +264,38 @@ describe('collection view', () => {
     expect(v.state.fields.filter).toBe("{ status: 'open' }");
   });
 
-  it('runs the query and fetches the next page as the view scrolls', async () => {
+  it('shows one page at a time: next, last (counted first), a page by number, a new size', async () => {
     const fake = fakeHost(250);
     connectTo(fake.host);
     const v = view();
     await v.init();
-    expect(v.results.state.documents).toHaveLength(PAGE_SIZE);
-    expect(v.results.state.hasMore).toBe(true);
+    // Canonical Extended JSON: { _id: { $numberInt: "101" } }.
+    const ids = (): number[] =>
+      v.results.state.documents.map((doc) =>
+        Number((JSON.parse(doc) as { _id: { $numberInt: string } })._id.$numberInt),
+      );
+    const lastFind = () => fake.calls.filter((c) => c.method === 'find').at(-1)!.input;
+    expect(v.results.state.documents).toHaveLength(DEFAULT_DOCUMENT_PAGE);
+    expect(v.state).toMatchObject({ page: 1, pageSize: 100, hasNext: true });
     await expect.poll(() => v.state.estimate).toBe(250);
-    v.results.onVisibleEnd();
-    await expect.poll(() => v.results.state.documents.length).toBe(200);
-    v.results.onVisibleEnd();
-    await expect.poll(() => v.results.state.hasMore).toBe(false);
-    expect(v.results.state.documents).toHaveLength(250);
-    expect(fake.calls.filter((c) => c.method === 'find')).toHaveLength(1);
-    await v.countExactly();
+
+    await v.goToPage('next');
+    expect(lastFind()).toMatchObject({ query: { skip: 100, limit: 100 }, pageSize: 100 });
+    expect(v.state.page).toBe(2);
+    expect(ids()[0]).toBe(101);
+    expect(v.results.state.offset).toBe(100);
+
+    await v.goToPage('last');
     expect(v.state.exactCount).toBe(250);
+    expect(v.state).toMatchObject({ page: 3, hasNext: false });
+    expect(ids()).toHaveLength(50);
+    expect(lastFind()).toMatchObject({ query: { skip: 200, limit: 100 } });
+
+    await v.goToPage(1);
+    expect(ids()[0]).toBe(1);
+    await v.setPageSize(500);
+    expect(v.state).toMatchObject({ page: 1, pageSize: 500, hasNext: false });
+    expect(ids()).toHaveLength(250);
     await v.dispose();
   });
 
