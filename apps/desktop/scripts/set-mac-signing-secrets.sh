@@ -95,7 +95,7 @@ fi
 
 # --- The secrets ------------------------------------------------------------------------------
 
-echo "Storing the secrets in $repo…"
+echo "Storing the secrets in ${repo}…"
 # Values go to gh on stdin (printf is a shell builtin), so none of them shows in a process list.
 base64 -i "$p12" | gh secret set MAC_CERTIFICATE_P12_BASE64 --repo "$repo"
 printf '%s' "$P12_PASSWORD" | gh secret set MAC_CERTIFICATE_PASSWORD --repo "$repo"
