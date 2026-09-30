@@ -171,3 +171,37 @@ select {
     opacity 150ms,
     stroke 150ms;
 }
+
+/* While editing, a column's whole row starts (and takes) a relationship drag. */
+.er-canvas .react-flow__handle.er-row-handle {
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  transform: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: crosshair;
+}
+
+.er-canvas .react-flow__handle.er-row-handle:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.er-canvas .react-flow__handle.er-row-handle.connectingto,
+.er-canvas .react-flow__handle.er-row-handle.valid {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.er-canvas.er-editing .react-flow__pane {
+  cursor: default;
+}
+
+/* A highlighted relationship's label reads over the boxes it runs between. */
+.er-canvas .react-flow__edgelabel-renderer {
+  z-index: 1001;
+}

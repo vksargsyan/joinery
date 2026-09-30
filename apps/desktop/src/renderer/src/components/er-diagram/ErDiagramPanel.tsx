@@ -24,10 +24,11 @@ import {
 } from '../../state/er-diagram/model';
 import { useErDiagrams } from '../../state/er-diagram/panels';
 import { useErDiagram, type ErDiagramView } from '../../state/er-diagram/view';
-import { openTableDesigner } from '../dock';
+import { ReviewDialog } from './ReviewDialog';
 import { useTheme } from '../theme';
 import { Button, EnvironmentBadge, Icon, cx } from '../ui';
 import { ErCanvas } from './ErCanvas';
+import { EditBar, RelationEditor, TableEditor } from './ModelEditor';
 import {
   END_NAMES,
   EndGlyph,
@@ -40,6 +41,7 @@ import {
   actionsOf,
   canDesign,
   cardinality,
+  isEditable,
   openData,
   openDesign,
   schemaColor,
@@ -66,22 +68,36 @@ function Panel({ view }: { readonly view: ErDiagramView }) {
   const status = useErDiagram(view, (s) => s.status);
   const diagram = useErDiagram(view, (s) => s.diagram);
   const selected = useErDiagram(view, (s) => s.selected);
+  const selectedRelation = useErDiagram(view, (s) => s.selectedRelation);
   const search = useErDiagram(view, (s) => s.search);
+  const editor = useErDiagram(view, (s) => s.editor);
   const searchBox = useRef<HTMLInputElement>(null);
   const [listOpen, setListOpen] = useState(true);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+    const key = event.key.toLowerCase();
+    const mod = event.metaKey || event.ctrlKey;
+    const typing = (event.target as HTMLElement).closest('input, textarea, select');
+    if (mod && key === 'f') {
       event.preventDefault();
       setListOpen(true);
       requestAnimationFrame(() => searchBox.current?.select());
+    } else if (editor && mod && !typing && (key === 'z' || key === 'y')) {
+      // Text fields keep their own undo; elsewhere it is the model's.
+      event.preventDefault();
+      if (key === 'y' || event.shiftKey) editor.redo();
+      else editor.undo();
     } else if (event.key === 'Escape') {
       if (search !== '') view.setSearch('');
       else if (selected !== undefined) view.select(undefined);
+      else if (selectedRelation !== undefined) view.selectRelation(undefined);
       else return;
       event.preventDefault();
     }
   };
+
+  const selectedTable =
+    selected === undefined ? undefined : diagram?.tables.find((t) => t.id === selected);
 
   return (
     <div
@@ -90,6 +106,7 @@ function Panel({ view }: { readonly view: ErDiagramView }) {
       onKeyDown={onKeyDown}
     >
       <Toolbar view={view} listOpen={listOpen} onToggleList={() => setListOpen((v) => !v)} />
+      {editor && <EditBar editor={editor} />}
       <NoticeBar view={view} />
       <div className="flex min-h-0 flex-1">
         {listOpen && diagram && (
@@ -103,8 +120,10 @@ function Panel({ view }: { readonly view: ErDiagramView }) {
         <main className="relative min-w-0 flex-1">
           {!diagram && status === 'loading' && <Loading view={view} />}
           {!diagram && status === 'error' && <LoadError view={view} />}
-          {diagram && diagram.tables.length === 0 && <Empty view={view} diagram={diagram} />}
-          {diagram && diagram.tables.length > 0 && (
+          {diagram && diagram.tables.length === 0 && !editor && (
+            <Empty view={view} diagram={diagram} />
+          )}
+          {diagram && (diagram.tables.length > 0 || editor) && (
             <>
               <ErCanvas view={view} theme={theme} />
               <Legend />
@@ -112,11 +131,17 @@ function Panel({ view }: { readonly view: ErDiagramView }) {
             </>
           )}
         </main>
-        {diagram && selected !== undefined && (
-          <Inspector view={view} diagram={diagram} tableId={selected} />
+        {diagram && editor && selectedRelation !== undefined ? (
+          <RelationEditor editor={editor} id={selectedRelation} />
+        ) : diagram && editor && selectedTable && isEditable(selectedTable) ? (
+          <TableEditor editor={editor} name={selectedTable.name} />
+        ) : (
+          diagram &&
+          selected !== undefined && <Inspector view={view} diagram={diagram} tableId={selected} />
         )}
       </div>
       <Footer view={view} />
+      {editor && <ReviewDialog editor={editor} />}
     </div>
   );
 }
@@ -138,8 +163,10 @@ function Toolbar(props: {
   const laying = useErDiagram(view, (s) => s.laying);
   const exporting = useErDiagram(view, (s) => s.exporting);
   const status = useErDiagram(view, (s) => s.status);
+  const editor = useErDiagram(view, (s) => s.editor);
   const loading = status === 'loading';
   const ready = diagram !== undefined && diagram.tables.length > 0;
+  const blocker = diagram === undefined ? 'The structure is still loading' : view.editBlocker();
   return (
     <div
       role="toolbar"
@@ -171,7 +198,8 @@ function Toolbar(props: {
           <select
             aria-label="Schema"
             value={schema ?? ''}
-            disabled={loading}
+            disabled={loading || editor !== undefined}
+            title={editor ? 'Finish or discard the edits to switch schema' : undefined}
             onChange={(event) => void view.setSchema(event.target.value || undefined)}
             className="h-7 max-w-44 rounded border border-border bg-panel-2 px-1.5 text-xs text-fg focus:border-accent focus:outline-none"
           >
@@ -256,12 +284,42 @@ function Toolbar(props: {
         Fit
       </Button>
       <span className="flex-1" />
+      {!editor && (
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={blocker !== undefined}
+          onClick={() => view.startEditing()}
+          title={
+            blocker ??
+            'Change tables, columns and relationships here, then review and apply the SQL'
+          }
+          data-testid="er-edit"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            aria-hidden
+          >
+            <path d="M10.5 2.5 13.5 5.5 5.5 13.5H2.5V10.5Z" />
+            <path d="M9 4l3 3" />
+          </svg>
+          Edit model
+        </Button>
+      )}
       <Button
         size="sm"
         variant="ghost"
-        disabled={loading}
+        disabled={loading || editor !== undefined}
+        title={
+          editor
+            ? 'Finish or discard the edits to read the structure again'
+            : 'Read the structure again from the server'
+        }
         onClick={() => void view.refresh()}
-        title="Read the structure again from the server"
       >
         <Icon name="refresh" className={cx('h-3.5 w-3.5', loading && 'animate-spin')} />
         Refresh
@@ -536,17 +594,15 @@ function Empty({ view, diagram }: { readonly view: ErDiagramView; readonly diagr
           <Button
             size="sm"
             variant="primary"
-            onClick={() =>
-              openTableDesigner({
-                profileId: view.target.profileId,
-                database: diagram.database,
-                schema: home,
-                name: null,
-              })
-            }
+            disabled={view.editBlocker() !== undefined}
+            title={view.editBlocker() ?? 'Design tables and relationships on the canvas'}
+            onClick={() => {
+              view.startEditing();
+              view.state.editor?.addTable();
+            }}
           >
             <Icon name="plus" className="h-3.5 w-3.5" />
-            New table
+            Design tables
           </Button>
         )}
       </div>

@@ -1,11 +1,13 @@
-import type { SqlDialect } from '@joinery/core';
+import { isSqlEngine, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { copyToClipboard } from '../../lib/clipboard';
 import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';
+import { cachedProfile } from '../data';
 import { loadSnapshot, metadataCache } from '../metadata';
+import { patchPanel } from '../panels';
 import { layoutBoxes, type LayoutBox, type LayoutEdge, type Point } from '../query-builder/layout';
 import {
   boxSize,
@@ -13,12 +15,14 @@ import {
   matchingTables,
   neighbourhood,
   relationColumns,
+  tableId,
   visibleColumns,
   type ColumnMode,
   type DisplayOptions,
   type ErDiagram,
   type ErTable,
 } from './model';
+import { ErModelEditor } from './editor';
 import { diagramMermaid } from './mermaid';
 import { diagramSvg } from './svg';
 
@@ -61,6 +65,10 @@ export interface ErState {
   readonly hidden: ReadonlySet<string>;
   readonly search: string;
   readonly selected: string | undefined;
+  /** A relationship picked on the canvas (while editing). */
+  readonly selectedRelation: string | undefined;
+  /** The model being edited, while editing. */
+  readonly editor: ErModelEditor | undefined;
   /** Bumped when the canvas should fit the diagram (after a layout) or a table. */
   readonly fit: { readonly seq: number; readonly table?: string };
   readonly laying: boolean;
@@ -108,6 +116,7 @@ export class ErDiagramView {
   readonly target: ErTarget;
   readonly store: StoreApi<ErState>;
   #loadSeq = 0;
+  #live: SchemaSnapshot | undefined;
 
   constructor(id: string, target: ErTarget) {
     this.id = id;
@@ -124,6 +133,8 @@ export class ErDiagramView {
       hidden: new Set(),
       search: '',
       selected: undefined,
+      selectedRelation: undefined,
+      editor: undefined,
       fit: { seq: 0 },
       laying: false,
       exporting: false,
@@ -158,40 +169,136 @@ export class ErDiagramView {
         ...(this.target.database === undefined ? {} : { database: this.target.database }),
       });
       if (seq !== this.#loadSeq) return;
+      this.#live = snapshot;
+      // While a model is edited the canvas shows the model; the editor notes the change.
+      const editor = this.state.editor;
+      if (editor) {
+        editor.liveChanged(snapshot);
+        this.#set({ status: 'ready', error: undefined });
+        return;
+      }
       const schemas = this.target.dialect === 'postgres' ? snapshot.schemas.map((s) => s.name) : [];
       const schema =
         this.state.schema !== undefined && schemas.includes(this.state.schema)
           ? this.state.schema
           : undefined;
-      const diagram = erDiagram(snapshot, this.target.dialect, {
-        ...(schema === undefined ? {} : { schema }),
-        includeViews: this.state.includeViews,
-      });
-      const ids = new Set(diagram.tables.map((t) => t.id));
-      const positions = Object.fromEntries(
-        Object.entries(this.state.positions).filter(([id]) => ids.has(id)),
-      );
-      this.#set({
-        status: 'ready',
-        error: undefined,
-        diagram,
-        schemas,
-        schema,
-        positions,
-        hidden: new Set([...this.state.hidden].filter((id) => ids.has(id))),
-        selected:
-          this.state.selected !== undefined && ids.has(this.state.selected)
-            ? this.state.selected
-            : undefined,
-      });
-      // A first load or a schema switch is laid out whole; views turned on, or tables created
-      // since, go beside the diagram, which keeps the arrangement the user made.
-      if (Object.keys(positions).length === 0) await this.layout();
-      else await this.#placeNew();
+      this.#set({ schemas, schema });
+      await this.#show(snapshot);
     } catch (error) {
       if (seq !== this.#loadSeq) return;
       this.#set({ status: 'error', error: errorMessage(error) });
     }
+  }
+
+  /** The structure last read from the server. */
+  get live(): SchemaSnapshot | undefined {
+    return this.#live;
+  }
+
+  /**
+   * Draws a snapshot, the live structure or a model being edited: boxes keep their places,
+   * hidden tables and the selection stay where their tables still exist, and new tables are
+   * laid out (all of them on a first load or a schema switch, else beside the diagram).
+   */
+  async #show(snapshot: SchemaSnapshot): Promise<void> {
+    const schema = this.state.schema;
+    const diagram = erDiagram(snapshot, this.target.dialect, {
+      ...(schema === undefined ? {} : { schema }),
+      includeViews: this.state.includeViews,
+    });
+    const ids = new Set(diagram.tables.map((t) => t.id));
+    const positions = Object.fromEntries(
+      Object.entries(this.state.positions).filter(([id]) => ids.has(id)),
+    );
+    const relations = new Set(diagram.relations.map((r) => r.id));
+    this.#set({
+      status: 'ready',
+      error: undefined,
+      diagram,
+      positions,
+      hidden: new Set([...this.state.hidden].filter((id) => ids.has(id))),
+      selected:
+        this.state.selected !== undefined && ids.has(this.state.selected)
+          ? this.state.selected
+          : undefined,
+      selectedRelation:
+        this.state.selectedRelation !== undefined && relations.has(this.state.selectedRelation)
+          ? this.state.selectedRelation
+          : undefined,
+    });
+    if (Object.keys(positions).length === 0) await this.layout();
+    else await this.#placeNew();
+  }
+
+  /** Draws the model being edited (the editor calls it after each change). */
+  showModel(snapshot: SchemaSnapshot): Promise<void> {
+    return this.#show(snapshot);
+  }
+
+  /** The id a table of the edited schema has on the canvas. */
+  tableIdOf(name: string): string {
+    const schema =
+      this.target.dialect === 'postgres' ? (this.state.schema ?? '') : (this.#live?.database ?? '');
+    return tableId(schema, name);
+  }
+
+  /** Where a new table goes: right of the diagram, level with its top. */
+  spotBeside(): Point {
+    const diagram = this.state.diagram;
+    const { positions, hidden } = this.state;
+    if (!diagram) return { x: 40, y: 40 };
+    const shown = this.#boxes(diagram, (t) => positions[t.id] !== undefined && !hidden.has(t.id));
+    if (shown.length === 0) return { x: 40, y: 40 };
+    return {
+      x: Math.max(...shown.map((box) => positions[box.id]!.x + box.width)) + NEW_GAP,
+      y: Math.min(...shown.map((box) => positions[box.id]!.y)),
+    };
+  }
+
+  /** Keeps a box where it was when its table is renamed. */
+  movePosition(from: string, to: string): void {
+    const { [from]: place, ...rest } = this.state.positions;
+    if (!place) return;
+    this.#set({
+      positions: { ...rest, [to]: place },
+      ...(this.state.selected === from ? { selected: to } : {}),
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Editing
+
+  /** Why the model cannot be edited now, or undefined when it can. */
+  editBlocker(): string | undefined {
+    if (!this.#live || !this.state.diagram) return 'The structure is still loading';
+    if (cachedProfile(this.target.profileId)?.presentation.readOnly) {
+      return 'The connection is read-only';
+    }
+    if (this.target.dialect === 'postgres' && this.state.schema === undefined) {
+      return 'Choose a schema to edit it';
+    }
+    return undefined;
+  }
+
+  /** Starts editing the shown schema as a model. */
+  startEditing(): void {
+    const blocker = this.editBlocker();
+    const profile = cachedProfile(this.target.profileId);
+    if (blocker || !this.#live || !profile || !isSqlEngine(profile.engine) || this.state.editor) {
+      if (blocker) this.note({ kind: 'error', text: blocker });
+      return;
+    }
+    const schema = this.target.dialect === 'postgres' ? this.state.schema! : this.#live.database;
+    const editor = new ErModelEditor(this, this.#live, { engine: profile.engine, schema });
+    this.#set({ editor, notice: undefined });
+  }
+
+  /** Leaves editing (after Discard or Apply) and draws the live structure again. */
+  stopEditing(): void {
+    if (!this.state.editor) return;
+    this.#set({ editor: undefined, selectedRelation: undefined });
+    patchPanel(this.id, { dirty: false });
+    if (this.#live) void this.#show(this.#live);
   }
 
   /** Reads the structure again from the server. */
@@ -288,14 +395,16 @@ export class ErDiagramView {
   // What is shown
 
   async setSchema(schema: string | undefined): Promise<void> {
-    if (schema === this.state.schema) return;
+    if (schema === this.state.schema || this.state.editor) return;
     this.#set({ schema, positions: {}, hidden: new Set(), selected: undefined });
     await this.load();
   }
 
   async setIncludeViews(includeViews: boolean): Promise<void> {
     this.#set({ includeViews });
-    await this.load();
+    const editor = this.state.editor;
+    if (editor) await this.#show(editor.state.model.snapshot);
+    else await this.load();
   }
 
   /** Box heights follow the columns shown, so the layout runs again. */
@@ -315,7 +424,12 @@ export class ErDiagramView {
 
   /** Selects a table (its relationships and neighbours stand out), or clears the selection. */
   select(table: string | undefined): void {
-    this.#set({ selected: table });
+    this.#set({ selected: table, selectedRelation: undefined });
+  }
+
+  /** Selects a relationship (while editing), or clears the selection. */
+  selectRelation(relation: string | undefined): void {
+    this.#set({ selectedRelation: relation, selected: undefined });
   }
 
   /** Brings a table into view and selects it. */

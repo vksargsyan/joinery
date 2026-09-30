@@ -37,7 +37,10 @@ What works today:
   tables, keys and crow's-foot relationships, laid out automatically and draggable; all columns,
   keys only or names only; a table selected brings out its relationships, with its columns and
   references beside the canvas; search, hide and show only related tables; export as SVG, PNG or
-  Mermaid.
+  Mermaid. **Edit model** turns the diagram into a designer: add and rename tables, columns,
+  keys and relationships (drag from a column to another table), with undo and redo; Review &
+  apply shows the exact CREATE/ALTER script (renames stay renames, data loss is flagged) and
+  runs it with the usual write-safety checks, or opens it in a SQL tab.
 - **Autocomplete**: keywords, schemas, tables, columns with alias resolution, join conditions
   from foreign keys, functions with signature help, and snippets, computed in a Web Worker from
   a per-connection metadata cache that is ready at connect and refreshes after DDL.
@@ -120,9 +123,10 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: the scheduler, Parquet, ER model editing (forward engineering), cloud sync and
-the AI assistant; the embedded mongosh shell for MongoDB; RediSearch and offline RDB analysis; a
-query builder for Elasticsearch. The product specification lists the full scope.
+Not built yet: the scheduler, Parquet, saved ER models (models live while their diagram is
+open), cloud sync and the AI assistant; the embedded mongosh shell for MongoDB; RediSearch and
+offline RDB analysis; a query builder for Elasticsearch. The product specification lists the
+full scope.
 
 ## Repository layout
 

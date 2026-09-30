@@ -1,4 +1,6 @@
 import { createContext, useContext } from 'react';
+import { useStore } from 'zustand';
+import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { MARKER_SHAPES, MARKER_SIZE } from '../../state/er-diagram/markers';
 import type {
@@ -9,6 +11,7 @@ import type {
   ErTableKind,
   KeyLetter,
 } from '../../state/er-diagram/model';
+import type { EditorState, ErModelEditor } from '../../state/er-diagram/editor';
 import type { ErDiagramView } from '../../state/er-diagram/view';
 import { openTableData, openTableDesigner } from '../dock';
 import { cx } from '../ui';
@@ -23,6 +26,26 @@ export function useErView(): ErDiagramView {
   const view = useContext(ViewContext);
   if (!view) throw new Error('useErView outside an ER diagram');
   return view;
+}
+
+const NO_EDITOR: StoreApi<EditorState | undefined> = createStore<EditorState | undefined>()(
+  () => undefined,
+);
+
+/** Part of an editor's state, or `fallback` when the diagram is not being edited. */
+export function useEditorField<T>(
+  editor: ErModelEditor | undefined,
+  selector: (state: EditorState) => T,
+  fallback: T,
+): T {
+  return useStore(editor?.store ?? NO_EDITOR, (state) =>
+    state === undefined ? fallback : selector(state),
+  );
+}
+
+/** Can the model change this table? Tables of the edited schema can; views and stubs cannot. */
+export function isEditable(table: ErTable): boolean {
+  return !table.external && table.kind !== 'view' && table.kind !== 'materialized-view';
 }
 
 /** Schema colours for diagrams of several schemas: readable on both themes. */

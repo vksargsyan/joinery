@@ -1,6 +1,7 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema } from '@joinery/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { column, shop } from './er-fixtures';
 import { diagramMermaid } from '../src/renderer/src/state/er-diagram/mermaid';
 import { markerSvg } from '../src/renderer/src/state/er-diagram/markers';
 import {
@@ -40,111 +41,6 @@ vi.mock('../src/renderer/src/lib/main-client', () => ({
 vi.mock('../src/renderer/src/lib/clipboard', () => ({ copyToClipboard: mocks.copy }));
 
 const { ErDiagramView } = await import('../src/renderer/src/state/er-diagram/view');
-
-// ---------------------------------------------------------------------------------------------
-// Fixtures
-
-function column(name: string, ordinal: number, dataType: string, nullable = true) {
-  return { name, ordinal, dataType, nullable };
-}
-
-/** A shop in `public` and invoices in `sales`, with every kind of relationship. */
-function shop(): SchemaSnapshot {
-  return schemaSnapshotSchema.parse({
-    engine: 'postgres',
-    database: 'shop',
-    capturedAt: '2026-09-30T00:00:00Z',
-    schemas: [
-      {
-        name: 'public',
-        tables: [
-          {
-            name: 'customers',
-            comment: 'People who buy',
-            columns: [
-              column('id', 1, 'integer', false),
-              column('name', 2, 'text', false),
-              column('email', 3, 'text'),
-            ],
-            primaryKey: { name: 'customers_pkey', columns: ['id'] },
-            uniques: [{ name: 'customers_email_key', columns: ['email'] }],
-          },
-          {
-            name: 'orders',
-            columns: [
-              column('id', 1, 'integer', false),
-              column('customer_id', 2, 'integer', false),
-              column('total', 3, 'numeric(10,2)', false),
-              column('note', 4, 'text'),
-            ],
-            primaryKey: { name: 'orders_pkey', columns: ['id'] },
-            foreignKeys: [
-              {
-                name: 'orders_customer_id_fkey',
-                columns: ['customer_id'],
-                refTable: 'customers',
-                refColumns: ['id'],
-                onDelete: 'CASCADE',
-              },
-            ],
-          },
-          {
-            name: 'customer_profiles',
-            columns: [column('customer_id', 1, 'integer', false), column('bio', 2, 'text')],
-            primaryKey: { name: 'customer_profiles_pkey', columns: ['customer_id'] },
-            foreignKeys: [
-              {
-                name: 'customer_profiles_customer_id_fkey',
-                columns: ['customer_id'],
-                refTable: 'customers',
-                refColumns: ['id'],
-              },
-            ],
-          },
-          {
-            name: 'employees',
-            columns: [column('id', 1, 'integer', false), column('manager_id', 2, 'integer')],
-            primaryKey: { name: 'employees_pkey', columns: ['id'] },
-            foreignKeys: [
-              {
-                name: 'employees_manager_id_fkey',
-                columns: ['manager_id'],
-                refTable: 'employees',
-                refColumns: ['id'],
-              },
-            ],
-          },
-        ],
-        views: [
-          {
-            name: 'order_totals',
-            definition: 'SELECT …',
-            columns: ['customer_id', 'total'],
-          },
-        ],
-      },
-      {
-        name: 'sales',
-        tables: [
-          {
-            name: 'invoices',
-            columns: [column('id', 1, 'integer', false), column('order_id', 2, 'integer', false)],
-            primaryKey: { name: 'invoices_pkey', columns: ['id'] },
-            foreignKeys: [
-              {
-                name: 'invoices_order_id_fkey',
-                columns: ['order_id'],
-                refSchema: 'public',
-                refTable: 'orders',
-                refColumns: ['id'],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  });
-}
 
 function table(diagram: ErDiagram, label: string): ErTable {
   const found = diagram.tables.find((t) => tableLabel(diagram, t) === label);
