@@ -64,6 +64,9 @@ msi:
   perMachine: true
 
 mac:
+  # The bundle is Joinery.app: the top-level executableName (joinery, for Linux and Windows)
+  # would otherwise name it, and the DMG's volume, in lower case.
+  executableName: Joinery
   icon: build/icon.icns
   category: public.app-category.developer-tools
   hardenedRuntime: true
