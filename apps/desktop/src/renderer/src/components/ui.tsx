@@ -228,6 +228,10 @@ export function Icon({
     | 'jobs'
     | 'sun'
     | 'moon'
+    | 'view-grid'
+    | 'view-form'
+    | 'view-json'
+    | 'view-tree'
     | 'query'
     | 'file-run'
     | 'builder'
@@ -492,6 +496,33 @@ export function Icon({
     restore: <path d="M2.9 8a5.1 5.1 0 1 0 1.5-3.6L2.6 6.2M2.6 2.9v3.3h3.3M8 5.4v2.8l1.9 1.2" />,
     open: (
       <path d="M12.8 9.2v3.2a1.1 1.1 0 0 1-1.1 1.1H3.6a1.1 1.1 0 0 1-1.1-1.1V4.3a1.1 1.1 0 0 1 1.1-1.1h3.2M9.6 2.5h3.9v3.9M13.3 2.7 7.6 8.4" />
+    ),
+    'view-grid': (
+      <>
+        <rect x="2" y="2.5" width="12" height="11" rx="1.2" {...wash} />
+        <path d="M2 6.2h12M2 9.8h12M6 2.5v11M10 2.5v11" />
+      </>
+    ),
+    'view-form': (
+      <>
+        <rect x="7" y="2.8" width="7" height="3.6" rx="0.9" {...wash} />
+        <rect x="7" y="9.6" width="7" height="3.6" rx="0.9" />
+        <path d="M2.2 4.6h2.8M2.2 11.4h2.8" />
+      </>
+    ),
+    'view-json': (
+      <>
+        <path d="M5.6 2.6c-1.4 0-2 .7-2 1.9v1.7c0 .9-.5 1.5-1.4 1.8.9.3 1.4.9 1.4 1.8v1.7c0 1.2.6 1.9 2 1.9M10.4 2.6c1.4 0 2 .7 2 1.9v1.7c0 .9.5 1.5 1.4 1.8-.9.3-1.4.9-1.4 1.8v1.7c0 1.2-.6 1.9-2 1.9" />
+        <circle cx="8" cy="8" r=".7" fill="currentColor" stroke="none" />
+      </>
+    ),
+    'view-tree': (
+      <>
+        <rect x="2" y="2" width="5.2" height="3.2" rx="0.8" {...wash} />
+        <rect x="8.4" y="7" width="5.6" height="3" rx="0.8" />
+        <rect x="8.4" y="11" width="5.6" height="3" rx="0.8" />
+        <path d="M4.6 5.2v7.3h3.8M4.6 8.5h3.8" />
+      </>
     ),
     kebab: (
       <>

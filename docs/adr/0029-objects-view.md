@@ -58,6 +58,11 @@ comment last:
 view). An open one is brought forward: views remember their query tab. The chevron expands the
 object's columns and indexes. Double-click still works.
 
+**How rows are shown**: the data views' Grid / Form / JSON switch (Tree / Table / JSON / Explain
+for a MongoDB collection) moved from the toolbar to the status bar's right corner, as Navicat's
+icon toggles (`ViewModeSwitch`). The toggles keep their names ("Grid", "Form") for assistive
+technology and tests, and a MongoDB collection's view loses a toolbar row.
+
 ## Consequences
 
 - Clicking a database or a folder moves the focus to the Objects tab. To expand one without

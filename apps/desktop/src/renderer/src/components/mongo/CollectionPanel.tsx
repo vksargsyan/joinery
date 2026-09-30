@@ -13,6 +13,7 @@ import { useQueryBuilder, type QueryEditorMode } from '../../state/mongo/query-b
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
+import { ViewModeSwitch, type ViewModeOption } from '../ViewModeSwitch';
 import { CodeExportDialog } from './CodeExportDialog';
 import { BulkDialog, DocumentEditorDialog } from './DocumentDialogs';
 import { ExplainView } from './ExplainView';
@@ -155,31 +156,6 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           {notice.text}
         </Banner>
       )}
-      <div className="flex items-center gap-2 border-b border-border bg-panel px-2 py-1">
-        <div className="flex rounded border border-border" role="radiogroup" aria-label="View">
-          {(['tree', 'table', 'json', 'explain'] as ViewTab[]).map((option) => (
-            <button
-              key={option}
-              type="button"
-              role="radio"
-              aria-checked={tab === option}
-              className={cx(
-                'px-2 py-0.5 text-xs',
-                tab === option ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
-              )}
-              onClick={() => view.setTab(option)}
-            >
-              {option === 'tree'
-                ? 'Tree'
-                : option === 'table'
-                  ? 'Table'
-                  : option === 'json'
-                    ? 'JSON'
-                    : 'Explain'}
-            </button>
-          ))}
-        </div>
-      </div>
       <div className="min-h-0 flex-1">
         {tab === 'explain' ? (
           <ExplainView explain={explain} />
@@ -409,7 +385,15 @@ function QueryBar(props: { readonly view: CollectionView; readonly theme: 'dark'
   );
 }
 
+const VIEW_TABS: readonly ViewModeOption<ViewTab>[] = [
+  { value: 'tree', label: 'Tree', icon: 'view-tree' },
+  { value: 'table', label: 'Table', icon: 'view-grid' },
+  { value: 'json', label: 'JSON', icon: 'view-json' },
+  { value: 'explain', label: 'Explain', icon: 'gauge' },
+];
+
 function Footer({ view }: { readonly view: CollectionView }) {
+  const tab = useCollectionState(view, (s) => s.tab);
   const loaded = useResults(view.results, (s) => s.documents.length);
   const hasMore = useResults(view.results, (s) => s.hasMore);
   const loading = useResults(view.results, (s) => s.loading);
@@ -464,6 +448,7 @@ function Footer({ view }: { readonly view: CollectionView }) {
       {durationMs !== undefined && (
         <span className="text-muted">first page in {durationMs} ms</span>
       )}
+      <ViewModeSwitch options={VIEW_TABS} value={tab} onChange={(next) => view.setTab(next)} />
     </footer>
   );
 }

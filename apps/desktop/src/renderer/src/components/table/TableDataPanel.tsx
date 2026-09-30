@@ -15,6 +15,7 @@ import { getTableView, useTableState, type TableView, type ViewMode } from '../.
 import { openTableData } from '../dock';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
+import { ViewModeSwitch, type ViewModeOption } from '../ViewModeSwitch';
 import { ApplyDialog } from './ApplyDialog';
 import { ColumnsPopover } from './ColumnMenus';
 import { FilterBar } from './FilterBar';
@@ -147,29 +148,6 @@ function TableDataView({ view }: { readonly view: TableView }) {
           <Icon name="refresh" className="h-3.5 w-3.5" />
           Refresh
         </Button>
-        <div className="flex rounded border border-border" role="radiogroup" aria-label="View">
-          {(['grid', 'form', 'json'] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              role="radio"
-              aria-checked={viewMode === mode}
-              className={cx(
-                'px-2 py-0.5 text-xs',
-                viewMode === mode ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
-              )}
-              onClick={() => {
-                if (mode === 'form') {
-                  const first = selectedRows(selection)[0];
-                  if (first !== undefined) view.setFormIndex(first);
-                }
-                view.setViewMode(mode);
-              }}
-            >
-              {mode === 'grid' ? 'Grid' : mode === 'form' ? 'Form' : 'JSON'}
-            </button>
-          ))}
-        </div>
         <ViewPicker view={view} />
         {viewMode === 'grid' && (
           <ColumnsPopover
@@ -325,7 +303,19 @@ function TableDataView({ view }: { readonly view: TableView }) {
         {viewMode === 'form' && <FormView view={view} onOpenReferenced={openReferenced} />}
         {viewMode === 'json' && <JsonView view={view} />}
       </div>
-      <Footer view={view} selection={selection} />
+      <Footer
+        view={view}
+        selection={selection}
+        viewMode={viewMode}
+        onViewMode={(mode) => {
+          // The form opens on the first selected row.
+          if (mode === 'form') {
+            const first = selectedRows(selection)[0];
+            if (first !== undefined) view.setFormIndex(first);
+          }
+          view.setViewMode(mode);
+        }}
+      />
       {plan && <ApplyDialog view={view} plan={plan} onClose={() => setPlan(undefined)} />}
     </div>
   );
@@ -364,7 +354,18 @@ function Banner(props: {
   );
 }
 
-function Footer(props: { readonly view: TableView; readonly selection: GridSelection }) {
+const VIEW_MODES: readonly ViewModeOption<ViewMode>[] = [
+  { value: 'grid', label: 'Grid', icon: 'view-grid' },
+  { value: 'form', label: 'Form', icon: 'view-form' },
+  { value: 'json', label: 'JSON', icon: 'view-json' },
+];
+
+function Footer(props: {
+  readonly view: TableView;
+  readonly selection: GridSelection;
+  readonly viewMode: ViewMode;
+  readonly onViewMode: (mode: ViewMode) => void;
+}) {
   const { view, selection } = props;
   const paging = useTableState(view, (s) => s.paging);
   const estimate = useTableState(view, (s) => s.estimate);
@@ -469,6 +470,7 @@ function Footer(props: { readonly view: TableView; readonly selection: GridSelec
           )}
         </span>
       )}
+      <ViewModeSwitch options={VIEW_MODES} value={props.viewMode} onChange={props.onViewMode} />
     </footer>
   );
 }
