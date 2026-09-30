@@ -87,6 +87,7 @@ export type { StageInfo, StagePreviewOptions, StagePreviewPlan } from './pipelin
 
 export { SqlTranslationError } from './sql/errors';
 export type { SqlTranslationErrorCode } from './sql/errors';
+export { sqlName } from './sql/parser';
 export { sqlToMql } from './sql/translate';
 export type {
   SqlAggregateTranslation,

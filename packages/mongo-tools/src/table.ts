@@ -26,6 +26,11 @@ export interface TableViewOptions {
   readonly maxColumns?: number;
   /** Longest cell text; default 200 characters. */
   readonly maxCellLength?: number;
+  /**
+   * Dotted field paths to show first, in this order (a SQL query's select list); a column
+   * matches the first path it equals or is a prefix of. The other columns follow as found.
+   */
+  readonly columnOrder?: readonly string[];
 }
 
 export interface TableColumn {
@@ -164,6 +169,23 @@ interface ColumnState {
 }
 
 /** Builds the table view of `documents` (see the module comment). */
+/**
+ * Columns ranked by the first `order` path each equals or is a prefix of (an unflattened
+ * `address` column takes the place of `address.city`); unmatched columns keep their order after
+ * the ranked ones.
+ */
+function orderColumns(columns: ColumnState[], order: readonly string[]): ColumnState[] {
+  if (order.length === 0) return columns;
+  const rank = (key: string): number => {
+    const at = order.findIndex((path) => path === key || path.startsWith(`${key}.`));
+    return at < 0 ? order.length : at;
+  };
+  return columns
+    .map((column, index) => ({ column, index, rank: rank(column.key) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.column);
+}
+
 export function tableView(
   documents: readonly BsonValue[],
   options: TableViewOptions = {},
@@ -228,7 +250,7 @@ export function tableView(
     }
   }
 
-  const ordered = [...columns.values()];
+  const ordered = orderColumns([...columns.values()], options.columnOrder ?? []);
   const rows: TableRow[] = rowsIn.map((row) => ({
     document: row.document,
     path: row.path,

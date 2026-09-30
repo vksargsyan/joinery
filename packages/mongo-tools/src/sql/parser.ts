@@ -77,6 +77,19 @@ const RESERVED = new Set([
   'WITH',
 ]);
 
+const PLAIN_NAME = /^[\p{L}_][\p{L}\p{N}_$]*$/u;
+
+/**
+ * A collection or field name as this SQL reads it: bare when it is a plain identifier and not
+ * a reserved word, otherwise in backquotes (a backquote inside is doubled). Dotted collection
+ * names such as `system.profile` are quoted whole, so they stay one name.
+ */
+export function sqlName(name: string): string {
+  return PLAIN_NAME.test(name) && !RESERVED.has(name.toUpperCase())
+    ? name
+    : `\`${name.replaceAll('`', '``')}\``;
+}
+
 const AGGREGATES = new Set<AggregateName>(['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']);
 const COMPARE_OPS = new Map<string, CompareOp>([
   ['=', '='],

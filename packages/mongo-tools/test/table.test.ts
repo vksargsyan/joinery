@@ -45,6 +45,27 @@ describe('table view', () => {
     expect(view.rows[2]!.cells[6]).toEqual({ type: 'string', text: 'unknown' });
   });
 
+  it('puts the columns of a select list first, in its order', () => {
+    const ordered = tableView(docs, { columnOrder: ['tags', 'address.city', 'name'] });
+    expect(ordered.columns.map((c) => c.key)).toEqual(['tags', 'address', 'name', '_id', 'extra']);
+    // Cells move with their columns.
+    expect(ordered.rows[1]!.cells[2]).toEqual({ type: 'string', text: 'Alan' });
+    const flat = tableView(docs, {
+      expandDepth: 2,
+      columnOrder: ['address.geo.lat', 'address.city', 'nope'],
+    });
+    expect(flat.columns.map((c) => c.key)).toEqual([
+      'address.geo.lat',
+      // The unflattened `address` (a string in one document) is a prefix of the first path.
+      'address',
+      'address.city',
+      '_id',
+      'name',
+      'tags',
+      'extra',
+    ]);
+  });
+
   it('drills into arrays (a row per element) and sub-documents', () => {
     const tags = tableView(docs, { path: ['tags'] });
     expect(tags.rows.map((r) => r.path)).toEqual([

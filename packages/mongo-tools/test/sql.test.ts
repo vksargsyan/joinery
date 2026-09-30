@@ -6,6 +6,7 @@ import {
   formatShellInline,
   parseFindText,
   parseShellPipeline,
+  sqlName,
   sqlToMql,
   toEjson,
   toFindQuery,
@@ -355,6 +356,28 @@ describe('SQL to aggregate()', () => {
     const body = translation.text.slice('db.orders.aggregate('.length, -1);
     expect(toEjson(parseShellPipeline(body))).toBe(toEjson(translation.pipeline));
     expect(formatShellInline(translation.pipeline[1]!)).toBe('{ $sort: { n: -1 } }');
+  });
+});
+
+describe('SQL names', () => {
+  it('writes a name bare when it can, quoted otherwise, and reads it back', () => {
+    expect(sqlName('orders')).toBe('orders');
+    expect(sqlName('Kunden_2024')).toBe('Kunden_2024');
+    expect(sqlName('order')).toBe('`order`');
+    expect(sqlName('line-items')).toBe('`line-items`');
+    expect(sqlName('we`ird')).toBe('`we``ird`');
+    for (const name of [
+      'orders',
+      'order',
+      'Select',
+      'line-items',
+      'we`ird',
+      'system.profile',
+      'é t',
+      '9lives',
+    ]) {
+      expect(sqlToMql(`SELECT * FROM ${sqlName(name)}`).collection).toBe(name);
+    }
   });
 });
 
