@@ -4,6 +4,7 @@ export * from './engines';
 export * from './errors';
 export * from './profile';
 export * from './results';
+export * from './schedule';
 export * from './schema';
 export * from './server-tools';
 export * from './version';
