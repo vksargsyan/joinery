@@ -12,7 +12,7 @@ import {
 } from '../../state/grid-layout';
 import { MenuItem } from '../MenuItem';
 import { PointerAnchor } from '../PointerAnchor';
-import { Button, cx } from '../ui';
+import { Button, Icon, cx } from '../ui';
 
 /**
  * Column controls shared by the table data grid and the query result grid (spec §7: hide,
@@ -36,6 +36,7 @@ export function ColumnsPopover(props: {
     <Popover.Root>
       <Popover.Trigger asChild>
         <Button size="sm" variant="ghost" title="Show, hide, pin and order the columns">
+          <Icon name="columns" className="h-3.5 w-3.5" />
           Columns{hidden > 0 ? ` (${hidden} hidden)` : ''}
         </Button>
       </Popover.Trigger>

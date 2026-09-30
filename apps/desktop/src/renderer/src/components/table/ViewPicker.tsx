@@ -41,6 +41,7 @@ export function ViewPicker({ view }: { readonly view: TableView }) {
             data-testid="view-picker"
             title="Saved views of this table: columns, sort and filter"
           >
+            <Icon name="bookmark" className="h-3.5 w-3.5" />
             View: {active?.name ?? 'Default'}
             {modified && (
               <span className="text-warning" aria-label="modified">
