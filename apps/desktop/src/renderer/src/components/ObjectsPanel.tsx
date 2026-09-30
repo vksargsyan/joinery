@@ -42,6 +42,7 @@ import { EngineIcon } from './EngineIcon';
 import { Highlighted } from './Highlighted';
 import { ObjectMenuItems, designerTarget, openObjectData, requestDropTable } from './ObjectMenu';
 import { openTableDesigner } from './dock';
+import { PointerAnchor } from './PointerAnchor';
 import { MongoNodeMenu, iconFor, mongoNodeOpener, opensDocuments } from './mongo/MongoTree';
 import { Button, Icon, cx, type IconName } from './ui';
 
@@ -127,7 +128,6 @@ function ObjectsList(props: {
   const [connectError, setConnectError] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const grid = useRef<HTMLDivElement>(null);
-  const root = useRef<HTMLDivElement>(null);
   const connected = status === 'ready';
 
   // Loads the list when the view opens on a connected server (the tree may not have yet).
@@ -206,11 +206,10 @@ function ObjectsList(props: {
     else openObjectData(profile, node, dialect);
   };
 
-  /** Opens the object's menu at a point on screen (the panel is its own containing block). */
+  /** Opens the object's menu at a point on screen. */
   const openMenu = (node: BrowseNode, x: number, y: number): void => {
     if (!selected.has(key(node))) select(node);
-    const box = root.current?.getBoundingClientRect();
-    setMenu({ x: x - (box?.left ?? 0), y: y - (box?.top ?? 0), node });
+    setMenu({ x, y, node });
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
@@ -290,11 +289,7 @@ function ObjectsList(props: {
   );
 
   return (
-    <div
-      ref={root}
-      className="relative flex h-full min-h-0 flex-col bg-bg"
-      data-testid="objects-panel"
-    >
+    <div className="flex h-full min-h-0 flex-col bg-bg" data-testid="objects-panel">
       <div className="flex h-[35px] shrink-0 items-center gap-1 border-b border-border px-2">
         <nav aria-label="Location" className="flex min-w-0 items-center gap-1 pr-2 text-xs">
           <EngineIcon engine={profile.engine} className="h-3.5 w-3.5" />
@@ -609,11 +604,7 @@ function ObjectsList(props: {
       {menu && (
         <DropdownMenu.Root open onOpenChange={(open) => !open && setMenu(undefined)}>
           <DropdownMenu.Trigger asChild>
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute h-0 w-0"
-              style={{ left: menu.x, top: menu.y }}
-            />
+            <PointerAnchor x={menu.x} y={menu.y} />
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content

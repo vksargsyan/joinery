@@ -434,6 +434,8 @@ export function TableGrid(props: {
         onCellEdited={onCellEdited}
         onFinishedEditing={() => pendingEdits.clear()}
         rowMarkers="clickable-number"
+        // Row numbers continue from the pages before this one.
+        rowMarkerStartIndex={(paging.page - 1) * paging.pageSize + 1}
         smoothScrollX
         smoothScrollY
         theme={props.theme === 'dark' ? DARK : LIGHT}
@@ -457,7 +459,6 @@ export function TableGrid(props: {
         }}
         freezeColumns={display.frozen}
         onColumnMoved={(from, to) => view.setLayout(moveColumn(view.state.layout, from, to))}
-        onVisibleRegionChanged={(range) => view.onVisibleRows(range.y + range.height)}
         onColumnResize={(column, width) => {
           const id = column.id;
           if (id !== undefined) view.setLayout(setWidth(view.state.layout, id, width));

@@ -84,7 +84,13 @@ import {
   rowAt,
   type RowRef,
 } from './table/grid-model';
-import { PagingController, type PagingOptions, type PagingState } from './table/paging';
+import {
+  DEFAULT_TABLE_PAGE,
+  PagingController,
+  type PageMove,
+  type PagingOptions,
+  type PagingState,
+} from './table/paging';
 import {
   sameViewState,
   storedViewState,
@@ -182,6 +188,28 @@ function toCount(value: CellValue | undefined): number | undefined {
   return undefined;
 }
 
+const PAGE_SIZE_KEY = 'joinery.table.pageSize';
+
+/** The page size last chosen, kept in this browser profile (a convenience, not a setting). */
+function readPageSize(): number {
+  try {
+    const stored = Number(localStorage.getItem(PAGE_SIZE_KEY));
+    return Number.isInteger(stored) && stored >= 1 && stored <= 100_000
+      ? stored
+      : DEFAULT_TABLE_PAGE;
+  } catch {
+    return DEFAULT_TABLE_PAGE;
+  }
+}
+
+function savePageSize(size: number): void {
+  try {
+    localStorage.setItem(PAGE_SIZE_KEY, String(size));
+  } catch {
+    // Not kept: the next view starts with the default.
+  }
+}
+
 export class TableView {
   readonly id: string;
   readonly target: TableTarget;
@@ -209,6 +237,7 @@ export class TableView {
           return result.rows;
         }),
       () => this.store.setState({ paging: this.#paging.state }),
+      readPageSize(),
     );
     const draft = options.filter ? draftFromFilter(options.filter) : emptyFilter();
     this.store = createStore<TableViewState>()(() => ({
@@ -363,9 +392,35 @@ export class TableView {
     if (error !== undefined) this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
   }
 
-  /** Loads the next page when the grid shows rows near the end. */
-  onVisibleRows(lastVisible: number): void {
-    if (this.#paging.shouldLoadMore(lastVisible)) void this.#paging.loadMore();
+  /**
+   * Shows another page (asks first when changes are staged: their rows may leave the grid). The
+   * last page takes the exact count, counted first when it is not known yet.
+   */
+  async goToPage(move: PageMove | 'last'): Promise<void> {
+    if (this.state.status !== 'ready') return;
+    if (!(await this.confirmDiscard('Changing the page'))) return;
+    let target: PageMove = move === 'last' ? 1 : move;
+    if (move === 'last') {
+      if (this.state.exactCount === undefined) await this.countExactly();
+      const count = this.state.exactCount;
+      if (count === undefined) return;
+      target = Math.max(1, Math.ceil(count / this.#paging.pageSize));
+    }
+    this.#set({ cellErrors: {}, formIndex: 0 });
+    await this.#paging.goTo(target);
+    const error = this.#paging.state.error;
+    if (error !== undefined) this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
+  }
+
+  /** Rows per page, kept for every table; the view starts over on the first page. */
+  async setPageSize(size: number): Promise<void> {
+    if (size === this.#paging.pageSize || this.state.status !== 'ready') return;
+    if (!(await this.confirmDiscard('Changing the page size'))) return;
+    savePageSize(size);
+    this.#set({ cellErrors: {}, formIndex: 0 });
+    await this.#paging.reset(this.#pagingOptions(), size).catch((error: unknown) => {
+      this.#set({ notice: { kind: 'error', text: errorMessage(error) } });
+    });
   }
 
   /** Asks before dropping staged changes; true when there are none or the user agreed. */
@@ -714,7 +769,6 @@ export class TableView {
     const total = gridRowCount(this.#paging.state, this.changes.getSnapshot());
     const next = Math.max(0, Math.min(index, total - 1));
     this.#set({ formIndex: next });
-    this.onVisibleRows(next);
   }
 
   dismissNotice(): void {
@@ -991,7 +1045,7 @@ export class TableView {
     const rows = state.rows.map((row, i) =>
       i === ref.index ? row.map((cell, c) => (c === at ? value : cell)) : [...row],
     );
-    this.#paging.replaceRows(rows, [...state.keys], 0);
+    this.#paging.replaceRows(rows, [...state.keys]);
     return value;
   }
 
@@ -1131,7 +1185,7 @@ export class TableView {
         host.applyChanges({ sessionId, plan }),
       );
       const merged = mergeApplied(this.#paging.state, plan, result, this.state.identity);
-      this.#paging.replaceRows(merged.rows, merged.keys, merged.removed);
+      this.#paging.replaceRows(merged.rows, merged.keys);
       this.changes.reset();
       const counts = { insert: 0, update: 0, delete: 0 };
       for (const row of result.rows) counts[row.kind]++;

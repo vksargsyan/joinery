@@ -10,6 +10,8 @@ import {
   showAll,
   type ColumnLayout,
 } from '../../state/grid-layout';
+import { MenuItem } from '../MenuItem';
+import { PointerAnchor } from '../PointerAnchor';
 import { Button, cx } from '../ui';
 
 /**
@@ -160,58 +162,52 @@ export function HeaderMenu(props: {
   return (
     <DropdownMenu.Root open onOpenChange={(open) => !open && props.onClose()} modal={false}>
       <DropdownMenu.Trigger asChild>
-        <span
-          aria-hidden="true"
-          style={{ position: 'fixed', left: at.x, top: at.y, width: 1, height: 1 }}
-        />
+        <PointerAnchor x={at.x} y={at.y} />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="start"
+          sideOffset={2}
+          collisionPadding={8}
           aria-label={`Column ${props.label}`}
-          className="z-50 min-w-48 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
+          className="z-50 min-w-52 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
-          <DropdownMenu.Label className="truncate px-2 py-1 font-mono text-[11px] text-muted">
+          <DropdownMenu.Label className="truncate px-2 pt-1 pb-1.5 font-mono text-[12px] text-fg">
             {props.label}
           </DropdownMenu.Label>
           {props.onSort && (
             <>
-              <Item onSelect={() => props.onSort?.('asc')}>Sort ascending</Item>
-              <Item onSelect={() => props.onSort?.('desc')}>Sort descending</Item>
-              <Item onSelect={() => props.onSort?.(null)}>Clear sort</Item>
+              <MenuItem icon="sort-asc" onSelect={() => props.onSort?.('asc')}>
+                Sort ascending
+              </MenuItem>
+              <MenuItem icon="sort-desc" onSelect={() => props.onSort?.('desc')}>
+                Sort descending
+              </MenuItem>
+              <MenuItem icon="close" onSelect={() => props.onSort?.(null)}>
+                Clear sort
+              </MenuItem>
               <DropdownMenu.Separator className="my-1 h-px bg-border" />
             </>
           )}
-          <Item disabled={lastVisible} onSelect={() => onChange(setHidden(layout, at.key, true))}>
+          <MenuItem
+            icon="eye-off"
+            disabled={lastVisible}
+            onSelect={() => onChange(setHidden(layout, at.key, true))}
+          >
             Hide column
-          </Item>
-          <Item onSelect={() => onChange(setPinned(layout, at.key, !column.pinned))}>
+          </MenuItem>
+          <MenuItem icon="pin" onSelect={() => onChange(setPinned(layout, at.key, !column.pinned))}>
             {column.pinned ? 'Unpin column' : 'Pin column'}
-          </Item>
-          <Item
+          </MenuItem>
+          <MenuItem
+            icon="width"
             disabled={column.width === undefined}
             onSelect={() => onChange(resetWidth(layout, at.key))}
           >
             Reset width
-          </Item>
+          </MenuItem>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
-  );
-}
-
-function Item(props: {
-  readonly children: ReactNode;
-  readonly onSelect: () => void;
-  readonly disabled?: boolean;
-}) {
-  return (
-    <DropdownMenu.Item
-      disabled={props.disabled}
-      onSelect={props.onSelect}
-      className="cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active"
-    >
-      {props.children}
-    </DropdownMenu.Item>
   );
 }

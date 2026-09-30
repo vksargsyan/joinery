@@ -230,6 +230,18 @@ export function Icon({
     | 'moon'
     | 'folder-move'
     | 'folder-up'
+    | 'set-null'
+    | 'set-default'
+    | 'sort-asc'
+    | 'sort-desc'
+    | 'eye-off'
+    | 'pin'
+    | 'width'
+    | 'page-first'
+    | 'page-previous'
+    | 'page-next'
+    | 'page-last'
+    | 'settings'
     | 'view-grid'
     | 'view-form'
     | 'view-json'
@@ -542,6 +554,56 @@ export function Icon({
         <path d="M1.75 4.2a1 1 0 0 1 1-1h3.3l1.6 1.6h5.6a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1z" />
         <path d="M8 11.2V7.2M6.3 8.9 8 7.2l1.7 1.7" />
       </>
+    ),
+    'page-first': <path d="M3.5 3.5v9M12.5 8H6.2M9 5.2 6.2 8 9 10.8" />,
+    'page-previous': <path d="M12.5 8h-9M6.3 5.2 3.5 8l2.8 2.8" />,
+    'page-next': <path d="M3.5 8h9M9.7 5.2 12.5 8l-2.8 2.8" />,
+    'page-last': <path d="M12.5 3.5v9M3.5 8h6.3M7 5.2 9.8 8 7 10.8" />,
+    settings: (
+      <>
+        <path
+          d="M6.60 3.41L7.00 1.68L9.00 1.68L9.40 3.41L10.25 3.76L11.76 2.82L13.18 4.24L12.24 5.75L12.59 6.60L14.32 7.00L14.32 9.00L12.59 9.40L12.24 10.25L13.18 11.76L11.76 13.18L10.25 12.24L9.40 12.59L9.00 14.32L7.00 14.32L6.60 12.59L5.75 12.24L4.24 13.18L2.82 11.76L3.76 10.25L3.41 9.40L1.68 9.00L1.68 7.00L3.41 6.60L3.76 5.75L2.82 4.24L4.24 2.82L5.75 3.76Z"
+          {...wash}
+        />
+        <circle cx="8" cy="8" r="2" />
+      </>
+    ),
+    // The empty set: a NULL value.
+    'set-null': (
+      <>
+        <circle cx="8" cy="8" r="4.6" {...wash} />
+        <path d="M3.4 12.6 12.6 3.4" />
+      </>
+    ),
+    // A wand: the column's default value.
+    'set-default': (
+      <>
+        <path d="M2.8 13.2 9.6 6.4" />
+        <path d="M9.1 5.2l1.7 1.7-1 1-1.7-1.7z" {...wash} />
+        <path d="M11.8 1.9v2.2M10.7 3h2.2M13.6 6.4v1.6M12.8 7.2h1.6M7.2 2.2v1.4M6.5 2.9h1.4" />
+      </>
+    ),
+    'sort-asc': (
+      <path d="M3.5 12.5v-9M1.7 5.3 3.5 3.5l1.8 1.8M7.2 4.5h2.4M7.2 8h4.4M7.2 11.5h6.4" />
+    ),
+    'sort-desc': (
+      <path d="M3.5 3.5v9M1.7 10.7 3.5 12.5l1.8-1.8M7.2 4.5h6.4M7.2 8h4.4M7.2 11.5h2.4" />
+    ),
+    'eye-off': (
+      <>
+        <path d="M1.8 8s2.3-4.3 6.2-4.3S14.2 8 14.2 8s-2.3 4.3-6.2 4.3S1.8 8 1.8 8z" {...wash} />
+        <circle cx="8" cy="8" r="1.9" />
+        <path d="M2.6 13.4 13.4 2.6" />
+      </>
+    ),
+    pin: (
+      <>
+        <path d="M9.7 2.1l4.2 4.2-1.5.6-2.6 2.6.3 2.4-1 1-6-6 1-1 2.4.3 2.6-2.6z" {...wash} />
+        <path d="M5 11 2.1 13.9" />
+      </>
+    ),
+    width: (
+      <path d="M2.5 3.5v9M13.5 3.5v9M4.6 8h6.8M6.3 6.3 4.6 8l1.7 1.7M9.7 6.3l1.7 1.7-1.7 1.7" />
     ),
     kebab: (
       <>
