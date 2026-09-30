@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';
 import { errorMessage } from '../../lib/errors';
+import { useSettings } from '../../state/data';
 import { confirm } from '../../state/dialogs';
 import {
   deleteSchedule,
@@ -12,6 +13,7 @@ import {
   loadSchedules,
   runScheduleNow,
   selectSchedule,
+  setConfirmClose,
   setScheduleEnabled,
   useSchedules,
 } from '../../state/schedules';
@@ -47,6 +49,7 @@ export function SchedulesPanel() {
             open.
           </p>
         </div>
+        <AskBeforeClosing />
         <Button size="sm" variant="ghost" onClick={() => void loadSchedules()}>
           <Icon name="refresh" className="h-3.5 w-3.5" />
           Refresh
@@ -124,6 +127,34 @@ function Empty() {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/** The setting behind the question Joinery asks when it closes with schedules on. */
+function AskBeforeClosing() {
+  const settings = useSettings();
+  const [error, setError] = useState<string>();
+  const on = settings.data?.schedules.confirmClose ?? true;
+  return (
+    <div
+      className="flex items-center gap-2 text-xs text-muted"
+      title={
+        error ??
+        'Schedules run only while Joinery is open, so closing it with schedules on asks first'
+      }
+    >
+      <Switch
+        on={on}
+        label="Ask before closing Joinery"
+        onChange={(next) => {
+          setError(undefined);
+          setConfirmClose(next).catch((e: unknown) => setError(errorMessage(e)));
+        }}
+      />
+      <span className={cx(error !== undefined && 'text-danger')} aria-hidden>
+        Ask before closing
+      </span>
     </div>
   );
 }

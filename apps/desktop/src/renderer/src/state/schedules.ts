@@ -15,6 +15,7 @@ import { create } from 'zustand';
 import { currentDock } from '../components/dock';
 import { errorMessage } from '../lib/errors';
 import { mainApi } from '../lib/main-client';
+import { keys, queryClient } from './data';
 import { panelWithKey, registerPanel, unregisterPanel } from './panels';
 
 /**
@@ -367,4 +368,10 @@ export function comparisonDraft(comparison: SavedComparison, folder = ''): Sched
     task,
     what: whatOf(task, comparison.name),
   };
+}
+
+/** Whether closing Joinery asks first while schedules are on (they run only while it is open). */
+export async function setConfirmClose(on: boolean): Promise<void> {
+  await mainApi().settings.set({ schedules: { confirmClose: on } });
+  await queryClient.invalidateQueries({ queryKey: keys.settings });
 }

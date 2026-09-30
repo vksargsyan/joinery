@@ -1,6 +1,6 @@
 # 0019. The scheduler: jobs run from main while Joinery is open
 
-- Status: Accepted
+- Status: Accepted; staying open in the tray superseded by [0021](0021-confirm-closing-with-schedules.md)
 - Date: 2026-09-30
 
 ## Context

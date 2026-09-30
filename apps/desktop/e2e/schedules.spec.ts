@@ -43,6 +43,13 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  // Closing with a schedule on asks first: answer Quit.
+  await launched?.app
+    .evaluate(({ dialog }) => {
+      dialog.showMessageBox = (() =>
+        Promise.resolve({ response: 0, checkboxChecked: false })) as typeof dialog.showMessageBox;
+    })
+    .catch(() => undefined);
   await launched?.close();
   await direct?.close();
   await database?.drop();
@@ -202,4 +209,42 @@ test('turns a schedule off, edits it and deletes it', async () => {
   // The files its runs wrote stay.
   expect(existsSync(join(work, 'exports'))).toBe(true);
   expect(readdirSync(join(work, 'exports'))).toHaveLength(2);
+});
+
+test('asks before quitting while a schedule is on, and stays open on Cancel', async () => {
+  // Native message boxes answer Cancel and record what they were asked.
+  await launched!.app.evaluate(({ dialog }) => {
+    const asked: Electron.MessageBoxOptions[] = [];
+    (globalThis as { joineryAsked?: typeof asked }).joineryAsked = asked;
+    dialog.showMessageBox = ((...args: unknown[]) => {
+      asked.push(args.at(-1) as Electron.MessageBoxOptions);
+      return Promise.resolve({ response: 1, checkboxChecked: false });
+    }) as typeof dialog.showMessageBox;
+  });
+  const asked = () =>
+    launched!.app.evaluate(
+      () => (globalThis as { joineryAsked?: Electron.MessageBoxOptions[] }).joineryAsked ?? [],
+    );
+
+  await launched!.app.evaluate(({ app }) => app.quit());
+  await expect.poll(async () => (await asked()).length).toBe(1);
+  const [question] = await asked();
+  expect(question!.message).toMatch(
+    /^(Quit|Close) Joinery\? Schedules don’t run while it’s closed\.$/,
+  );
+  expect(question!.detail).toMatch(
+    /^The schedule “Run refresh\.sql” is on; its next run is (today|tomorrow) at \d\d:\d\d\./,
+  );
+  expect(question!.checkboxLabel).toBe('Don’t ask again');
+  // Cancelled: Joinery is still here.
+  await expect(panel()).toBeVisible();
+
+  // The panel's switch turns the question off, and on again.
+  const ask = panel().getByRole('switch', { name: 'Ask before closing Joinery' });
+  await expect(ask).toHaveAttribute('aria-checked', 'true');
+  await ask.click();
+  await expect(ask).toHaveAttribute('aria-checked', 'false');
+  await ask.click();
+  await expect(ask).toHaveAttribute('aria-checked', 'true');
+  await shot('schedules-ask-before-closing');
 });

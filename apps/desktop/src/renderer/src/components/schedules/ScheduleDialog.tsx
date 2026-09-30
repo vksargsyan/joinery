@@ -324,9 +324,9 @@ function Editor({ draft }: { readonly draft: ScheduleDraft }) {
         </section>
 
         <p className="rounded-md bg-panel-2 px-3 py-2 text-xs text-muted">
-          Schedules run while Joinery is open. On Windows and Linux, closing the window keeps it in
-          the tray to run them; on macOS it keeps running until you quit it. A run needs the
-          connection&apos;s password saved.
+          Schedules run while Joinery is open, and closing it with schedules on asks first. Runs
+          missed while it is closed are caught up or skipped, as chosen above, when it opens again.
+          A run needs the connection&apos;s password saved.
         </p>
 
         {error && (
