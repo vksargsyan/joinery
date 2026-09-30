@@ -77,5 +77,6 @@ export { serverToolsHostContractShape } from './contracts/server-tools';
 export { autosaveMainContractShape, gridViewsMainContractShape } from './contracts/workspace';
 export { erModelsMainContractShape } from './contracts/er-models';
 export { schedulesMainContractShape } from './contracts/schedules';
+export { redisDumpMainContractShape } from './contracts/redis-dump';
 export { searchHostContractShape } from './contracts/search';
 export { updatesMainContractShape } from './contracts/updates';

@@ -55,6 +55,11 @@ import type {
   LatencyEvent,
   LatencySample,
   PatternStats,
+  RdbAnalysis,
+  RdbDatabaseStats,
+  RdbGroupStats,
+  RdbKeyInfo,
+  RdbTypeStats,
   RedisBytes,
   RedisReply,
   SlowlogEntry,
@@ -556,6 +561,122 @@ export const redisBigKeyInputSchema = z.object({
 });
 
 export const redisBigKeyProgressSchema = z.object({ sampled: count, scanCalls: count });
+
+// ---------------------------------------------------------------------------------------------
+// RDB files, analysed offline (main's `redisDump.*`, run by the job runner)
+
+/** An RDB file picked with `dialogs.openFile`, and the delimiter its key patterns split on. */
+export const rdbAnalyzeInputSchema = z.object({
+  path: z.string().min(1).max(4096),
+  delimiter: z.string().min(1).max(8).optional(),
+});
+export type RdbAnalyzeInput = z.infer<typeof rdbAnalyzeInputSchema>;
+
+/** Bytes of the file read so far, of its size. */
+export const rdbAnalyzeProgressSchema = z.object({ bytes: count, total: count });
+export type RdbAnalyzeProgress = z.infer<typeof rdbAnalyzeProgressSchema>;
+
+const rdbGroupSchema: Schema<RdbGroupStats> = z.object({
+  name: z.string(),
+  keys: count,
+  bytes: count,
+});
+
+/**
+ * A key of the report. Main's contract carries no opaque values, so names are display text
+ * (`displayBytes`: UTF-8, other bytes as \xNN), which `parseDisplayBytes` turns back into bytes.
+ */
+const rdbReportKeySchema = z.object({
+  db: count,
+  key: z.string(),
+  keyLength: count,
+  type: z.string(),
+  encoding: z.string(),
+  bytes: count,
+  elements: count.nullable(),
+  expiresAt: z.number().nullable(),
+});
+export type RdbReportKey = z.infer<typeof rdbReportKeySchema>;
+
+const rdbReportPatternSchema = z.object({
+  pattern: z.string(),
+  count,
+  totalBytes: z.number(),
+  maxBytes: z.number(),
+  avgBytes: z.number(),
+  /** Display text of the pattern's largest key. */
+  largestKey: z.string().nullable(),
+  types: z.record(z.string(), z.number()),
+  withTtl: count,
+  share: z.number(),
+});
+export type RdbReportPattern = z.infer<typeof rdbReportPatternSchema>;
+
+const rdbTypeSchema: Schema<RdbTypeStats> = z.object({
+  name: z.string(),
+  keys: count,
+  bytes: count,
+  elements: count,
+  encodings: z.array(rdbGroupSchema),
+});
+
+const rdbDatabaseSchema: Schema<RdbDatabaseStats> = z.object({
+  db: count,
+  keys: count,
+  bytes: count,
+  expiring: count,
+});
+
+/** An RDB file's analysis (redis-tools `analyzeRdb`) with its key names as display text. */
+export const rdbReportSchema = z.object({
+  /** The file's name, for titles. */
+  file: z.string(),
+  /** The file's size; `bytes` is how much of it was read. */
+  size: count,
+  version: count,
+  bytes: count,
+  checksum: z.string().nullable(),
+  aux: textRecord,
+  createdAt: z.number().nullable(),
+  keys: count,
+  keyBytes: count,
+  expiring: count,
+  databases: z.array(rdbDatabaseSchema),
+  types: z.array(rdbTypeSchema),
+  expiry: z.array(rdbGroupSchema),
+  patterns: z.array(rdbReportPatternSchema),
+  biggest: z.array(rdbReportKeySchema),
+  longest: z.array(rdbReportKeySchema),
+  fieldsWithTtl: count,
+  functions: count,
+  moduleAux: z.array(rdbGroupSchema),
+  stopped: z.object({ message: z.string(), offset: count }).optional(),
+  durationMs: count,
+});
+export type RdbReport = z.infer<typeof rdbReportSchema>;
+
+/** The report of an analysis, as main's contract carries it. */
+export function rdbReportOf(
+  analysis: RdbAnalysis,
+  facts: { readonly file: string; readonly size: number; readonly durationMs: number },
+  display: (bytes: Uint8Array) => string,
+): RdbReport {
+  const key = (info: RdbKeyInfo): RdbReportKey => ({ ...info, key: display(info.key) });
+  return {
+    ...analysis,
+    ...facts,
+    databases: [...analysis.databases],
+    types: [...analysis.types],
+    expiry: [...analysis.expiry],
+    moduleAux: [...analysis.moduleAux],
+    patterns: analysis.patterns.map((p) => ({
+      ...p,
+      largestKey: p.largestKey === null ? null : display(p.largestKey),
+    })),
+    biggest: analysis.biggest.map(key),
+    longest: analysis.longest.map(key),
+  };
+}
 
 export const redisPubSubMessageSchema: Schema<PubSubMessage> = z.object({
   kind: z.enum(['message', 'pmessage', 'smessage']),
