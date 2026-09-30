@@ -85,8 +85,11 @@ export const tlsModeSchema = z.enum(['disable', 'require', 'verify-ca', 'verify-
 export type TlsMode = z.infer<typeof tlsModeSchema>;
 
 export const tlsSchema = z.object({
-  /** Default is verify-full; anything weaker shows a persistent warning in the UI. */
-  mode: tlsModeSchema.default('verify-full'),
+  /**
+   * Off unless stated (most servers a connection is made for have none); anything short of
+   * verify-full shows a persistent warning in the UI.
+   */
+  mode: tlsModeSchema.default('disable'),
   caPath: z.string().optional(),
   certPath: z.string().optional(),
   keyPath: z.string().optional(),
@@ -185,7 +188,7 @@ export const connectionProfileSchema = z
     engine: engineIdSchema,
     endpoint: endpointSchema,
     auth: authSchema.default({ method: 'none' }),
-    tls: tlsSchema.default({ mode: 'verify-full' }),
+    tls: tlsSchema.default({ mode: 'disable' }),
     ssh: sshTunnelSchema.optional(),
     proxy: proxySchema.optional(),
     options: connectionOptionsSchema.default(connectionOptionsSchema.parse({})),

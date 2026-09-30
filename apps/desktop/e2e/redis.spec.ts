@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { RedisSession } from '@joinery/driver-redis';
 
-import { launchApp, openNewConnection, type LaunchedApp } from './app';
+import { chooseEngine, launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectRedis, deletePrefix, e2ePrefix, redisCommand, redisText } from './redis';
 
 /**
@@ -78,7 +78,7 @@ test('connects and browses the namespace tree', async () => {
   await dialog.getByLabel('Paste a URI to fill the form').fill(REDIS_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
-  await expect(dialog.getByLabel('Database engine', { exact: true })).toHaveValue('redis');
+  await expect(dialog.getByTestId('connection-engine')).toHaveText('Redis');
   await dialog.getByLabel('Name', { exact: true }).fill(NAME);
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
@@ -383,8 +383,8 @@ test('shows the Cluster topology with the slot map', async () => {
   const [host, port] = seed!.trim().split(':') as [string, string];
   await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
+  await chooseEngine(dialog, 'Redis');
   await dialog.getByLabel('Name', { exact: true }).fill(CLUSTER_NAME);
-  await dialog.getByLabel('Database engine', { exact: true }).selectOption('redis');
   await dialog.getByLabel('Connect with', { exact: true }).selectOption('cluster');
   await dialog.getByLabel('Seed 1', { exact: true }).fill(host);
   await dialog.getByLabel('Seed 1 port', { exact: true }).fill(port);
@@ -393,7 +393,6 @@ test('shows the Cluster topology with the slot map', async () => {
     .getByLabel('Password', { exact: true })
     .fill(decodeURIComponent(new URL(REDIS_URL!).password));
   await dialog.getByLabel('Password storage').selectOption('session');
-  await dialog.getByLabel('TLS', { exact: true }).selectOption('disable');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = profileItem(CLUSTER_NAME);

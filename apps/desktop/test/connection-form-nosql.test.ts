@@ -68,14 +68,14 @@ async function fill(uri: string, current = defaultFormValues(), canSave = true) 
 }
 
 describe('engine defaults and switching', () => {
-  it('starts MongoDB and Redis on their ports, without sign-in, with verified TLS', () => {
+  it('starts MongoDB and Redis on their ports, without sign-in, with TLS off', () => {
     expect(defaultFormValues('mongodb')).toMatchObject({
       port: '27017',
       endpointKind: 'host',
       authMethod: 'none',
       mechanism: 'SCRAM-SHA-256',
       hostList: [{ host: 'localhost', port: '27017' }],
-      tlsMode: 'verify-full',
+      tlsMode: 'disable',
     });
     expect(defaultFormValues('redis')).toMatchObject({
       port: '6379',
@@ -83,6 +83,7 @@ describe('engine defaults and switching', () => {
       keyDelimiter: ':',
       hostList: [{ host: 'localhost', port: '6379' }],
       sentinels: [{ host: 'localhost', port: '26379' }],
+      tlsMode: 'disable',
     });
     expect(issues(mongo())).toEqual({});
     expect(issues(redis())).toEqual({});
@@ -122,6 +123,10 @@ describe('engine defaults and switching', () => {
       keyDelimiter: ':',
       hostList: [{ host: 'localhost', port: '6379' }],
     });
+    // With nothing typed, the new engine starts with its own default sign-in: none for these.
+    for (const engine of ['mongodb', 'redis', 'elasticsearch'] as const) {
+      expect(switchEngine(defaultFormValues('postgres'), engine).authMethod).toBe('none');
+    }
     // A port the user typed stays; a sentinel endpoint becomes host and port for SQL.
     const sentinel = redis({ endpointKind: 'sentinel', port: '6380', masterName: 'm' });
     expect(switchEngine(sentinel, 'postgres')).toMatchObject({
@@ -221,7 +226,14 @@ describe('MongoDB form validation', () => {
       keyPath: 'Choose the client key (the same file when the PEM holds both)',
     });
     expect(
-      issues(mongo({ authMethod: 'clientCertificate', certPath: '/c.pem', keyPath: '/c.pem' })),
+      issues(
+        mongo({
+          authMethod: 'clientCertificate',
+          tlsMode: 'verify-full',
+          certPath: '/c.pem',
+          keyPath: '/c.pem',
+        }),
+      ),
     ).toEqual({});
   });
 

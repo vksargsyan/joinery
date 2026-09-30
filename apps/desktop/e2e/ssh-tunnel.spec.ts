@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { startSshServer, type TestSshServer } from '../test/ssh-server';
-import { launchApp, openNewConnection, type LaunchedApp } from './app';
+import { connectionTab, launchApp, openNewConnection, type LaunchedApp } from './app';
 
 /**
  * An SSH tunnel end to end (spec §4): an in-process SSH server in the test process forwards to
@@ -59,10 +59,9 @@ test('asks about the host key, runs a query through the tunnel and reconnects wi
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   // Main parses the URI asynchronously; typing before it answers races the fill.
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
-  await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
+  await connectionTab(dialog, 'SSH');
   await dialog.getByLabel('Connect through an SSH tunnel').check();
   await dialog.getByLabel('SSH host').fill('127.0.0.1');
   await dialog.getByLabel('SSH port').fill(String(ssh.port));

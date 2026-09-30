@@ -83,11 +83,11 @@ async function connectFromUrl(url: string, name: string) {
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   // The pasted http:// URL makes the connection an Elasticsearch one.
-  await expect(dialog.getByLabel('Database engine', { exact: true })).toHaveValue('elasticsearch');
+  await expect(dialog.getByTestId('connection-engine')).toHaveText('Elasticsearch');
   await expect(dialog.getByLabel('Node URL 1', { exact: true })).toHaveValue(
     `http://${new URL(url).host}`,
   );
-  await expect(dialog.getByLabel('TLS', { exact: true })).toHaveValue('disable');
+  await expect(dialog.getByLabel('TLS mode', { exact: true })).toHaveValue('disable');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   return dialog;
 }

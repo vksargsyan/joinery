@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { startSshServer, type TestSshServer } from '../test/ssh-server';
-import { launchApp, openNewConnection, type LaunchedApp } from './app';
+import { chooseEngine, connectionTab, launchApp, openNewConnection, type LaunchedApp } from './app';
 import { withoutTls } from './mongo-db';
 
 /**
@@ -46,6 +46,7 @@ function treeRow(scope: Locator, text: string): Locator {
 
 /** Turns the SSH tunnel on, through the test server, with the password kept for this session. */
 async function throughSsh(dialog: Locator): Promise<void> {
+  await connectionTab(dialog, 'SSH');
   await dialog.getByLabel('Connect through an SSH tunnel').check();
   await field(dialog, 'SSH host').fill('127.0.0.1');
   await field(dialog, 'SSH port').fill(String(ssh.port));
@@ -100,15 +101,14 @@ test('connects to a Redis Cluster through SSH', async () => {
   const [host, port] = seeds[0]!.split(':') as [string, string];
   await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
+  await chooseEngine(dialog, 'Redis');
   await field(dialog, 'Name').fill(name);
-  await field(dialog, 'Database engine').selectOption('redis');
   await field(dialog, 'Connect with').selectOption('cluster');
   await field(dialog, 'Seed 1').fill(host);
   await field(dialog, 'Seed 1 port').fill(port);
   await field(dialog, 'Authentication').selectOption('password');
   await field(dialog, 'Password').fill(decodeURIComponent(new URL(REDIS_URL!).password));
   await field(dialog, 'Password storage').selectOption('session');
-  await field(dialog, 'TLS').selectOption('disable');
   await throughSsh(dialog);
 
   await testConnection(dialog);

@@ -262,7 +262,7 @@ function SearchBar() {
           placeholder="Search"
           aria-label="Search connections"
           spellCheck={false}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-fg outline-none! placeholder:text-faint"
           data-testid="sidebar-search"
         />
         {search !== '' && (

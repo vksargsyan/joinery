@@ -67,7 +67,8 @@ const GLYPHS: Readonly<Record<EngineId, ReactNode>> = {
   elasticsearch: <path d="M12.9 5.3A5.6 5.6 0 1 0 12.9 10.7M4.8 8h8.6" />,
 };
 
-const TONES: Readonly<Record<EngineId, string>> = {
+/** Each engine's glaze, as a text colour class. */
+export const ENGINE_TONES: Readonly<Record<EngineId, string>> = {
   postgres: 'text-cobalt',
   mysql: 'text-ochre',
   mariadb: 'text-peach',
@@ -87,7 +88,7 @@ export function EngineIcon(props: { readonly engine: EngineId; readonly classNam
       strokeLinecap="round"
       strokeLinejoin="round"
       data-engine={props.engine}
-      className={cx('h-4 w-4 shrink-0', TONES[props.engine], props.className)}
+      className={cx('h-4 w-4 shrink-0', ENGINE_TONES[props.engine], props.className)}
     >
       <title>{ENGINES[props.engine].displayName}</title>
       {GLYPHS[props.engine]}

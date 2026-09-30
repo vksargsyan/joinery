@@ -66,9 +66,9 @@ describe('connection profiles', () => {
     updatedAt: now,
   } as const;
 
-  it('applies safe defaults', () => {
+  it('applies the defaults: TLS off until stated, no sign-in', () => {
     const profile = connectionProfileSchema.parse(base);
-    expect(profile.tls.mode).toBe('verify-full');
+    expect(profile.tls.mode).toBe('disable');
     expect(profile.auth).toEqual({ method: 'none' });
     expect(profile.presentation.environment).toBe('dev');
     expect(profile.options.connectTimeoutMs).toBe(10_000);

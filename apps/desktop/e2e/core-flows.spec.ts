@@ -50,9 +50,11 @@ test('creates a PostgreSQL connection from a URI and tests it', async () => {
   await expect(dialog.getByLabel('Password', { exact: true })).not.toHaveValue('');
 
   await dialog.getByLabel('Name').fill(NAME);
-  // The test server has no TLS; turning it off must show the persistent warning.
-  await dialog.getByLabel('TLS').selectOption('disable');
+  // TLS starts off (the test server has none), and its tab shows the persistent warning.
+  await dialog.getByRole('tab', { name: /TLS/ }).click();
+  await expect(dialog.getByLabel('TLS mode')).toHaveValue('disable');
   await expect(dialog.getByText('TLS is disabled')).toBeVisible();
+  await dialog.getByRole('tab', { name: /General/ }).click();
   await dialog.getByLabel('Password storage').selectOption('session');
 
   await dialog.getByRole('button', { name: 'Test Connection' }).click();

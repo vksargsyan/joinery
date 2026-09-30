@@ -15,7 +15,9 @@ import { Note, PasswordFields, type ConnectionForm } from './fields';
 
 /**
  * The engine's own part of the connection dialog (spec §4): database and sign-in for SQL
- * engines, and for MongoDB and Redis their sign-in methods and options (§9, §10).
+ * engines, and for MongoDB, Redis and Elasticsearch their sign-in methods (§9, §10, §11) on the
+ * General tab; MongoDB's and Redis's options (default database, read preference, database
+ * number, key delimiter) on the Advanced tab.
  */
 
 interface SectionProps {
@@ -67,39 +69,34 @@ const READ_PREFERENCE_LABELS: Readonly<Record<ReadPreference, string>> = {
   nearest: 'Nearest',
 };
 
-/** MongoDB: default database, read preference, direct connection and the four sign-ins. */
-export function MongoFields(props: SectionProps) {
+/** MongoDB's options: default database, read preference, direct connection. */
+export function MongoOptions(props: { readonly form: ConnectionForm }) {
   const { register, control, formState } = props.form;
   const errors = formState.errors;
-  const [kind, authMethod, mechanism] = useWatch({
-    control,
-    name: ['endpointKind', 'authMethod', 'mechanism'],
-  });
-  const known = (MONGO_MECHANISMS as readonly string[]).includes(mechanism);
+  const kind = useWatch({ control, name: 'endpointKind' });
+  if (kind === 'uri') {
+    return <Note>The connection URI holds the default database and read preference.</Note>;
+  }
   return (
     <>
-      {kind !== 'uri' && (
-        <>
-          <Field
-            label="Default database"
-            htmlFor="cx-database"
-            hint="Optional"
-            error={errors.database?.message}
-          >
-            <Input id="cx-database" {...register('database')} aria-invalid={!!errors.database} />
-          </Field>
-          <Field label="Read preference" htmlFor="cx-read-preference">
-            <Select id="cx-read-preference" {...register('readPreference')}>
-              <option value="">Driver default (primary)</option>
-              {READ_PREFERENCES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {READ_PREFERENCE_LABELS[mode]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </>
-      )}
+      <Field
+        label="Default database"
+        htmlFor="cx-database"
+        hint="Optional"
+        error={errors.database?.message}
+      >
+        <Input id="cx-database" {...register('database')} aria-invalid={!!errors.database} />
+      </Field>
+      <Field label="Read preference" htmlFor="cx-read-preference">
+        <Select id="cx-read-preference" {...register('readPreference')}>
+          <option value="">Driver default (primary)</option>
+          {READ_PREFERENCES.map((mode) => (
+            <option key={mode} value={mode}>
+              {READ_PREFERENCE_LABELS[mode]}
+            </option>
+          ))}
+        </Select>
+      </Field>
       {kind === 'host' && (
         <div className="col-span-2 flex flex-col gap-0.5 text-[13px]">
           <label className="flex items-center gap-2">
@@ -112,7 +109,21 @@ export function MongoFields(props: SectionProps) {
           </p>
         </div>
       )}
+    </>
+  );
+}
 
+/** MongoDB's sign-ins: none, user and password (SCRAM or LDAP), an X.509 certificate. */
+export function MongoFields(props: SectionProps) {
+  const { register, control, formState } = props.form;
+  const errors = formState.errors;
+  const [kind, authMethod, mechanism] = useWatch({
+    control,
+    name: ['endpointKind', 'authMethod', 'mechanism'],
+  });
+  const known = (MONGO_MECHANISMS as readonly string[]).includes(mechanism);
+  return (
+    <>
       <Field label="Authentication" htmlFor="cx-auth-method" error={errors.authMethod?.message}>
         <Select id="cx-auth-method" {...register('authMethod')}>
           {ENGINE_AUTH_METHODS.mongodb.map((method) => (
@@ -188,7 +199,7 @@ export function MongoFields(props: SectionProps) {
           </Field>
           <div />
           <Note>
-            Signs in (in $external) with the client certificate and key chosen under TLS below; TLS
+            Signs in (in $external) with the client certificate and key chosen on the TLS tab; TLS
             must be on. One PEM file holding both can be chosen for each.
           </Note>
         </>
@@ -197,11 +208,11 @@ export function MongoFields(props: SectionProps) {
   );
 }
 
-/** Redis: logical database, key delimiter, and an optional ACL user with a password. */
-export function RedisFields(props: SectionProps) {
+/** Redis's options: the logical database and the key browser's delimiter. */
+export function RedisOptions(props: { readonly form: ConnectionForm }) {
   const { register, control, formState } = props.form;
   const errors = formState.errors;
-  const [kind, authMethod] = useWatch({ control, name: ['endpointKind', 'authMethod'] });
+  const kind = useWatch({ control, name: 'endpointKind' });
   return (
     <>
       {showsDatabase({ engine: 'redis', endpointKind: kind }) ? (
@@ -235,7 +246,17 @@ export function RedisFields(props: SectionProps) {
           aria-invalid={!!errors.keyDelimiter}
         />
       </Field>
+    </>
+  );
+}
 
+/** Redis: no sign-in, or a password with an optional ACL user. */
+export function RedisFields(props: SectionProps) {
+  const { register, control, formState } = props.form;
+  const errors = formState.errors;
+  const authMethod = useWatch({ control, name: 'authMethod' });
+  return (
+    <>
       <Field label="Authentication" htmlFor="cx-auth-method" error={errors.authMethod?.message}>
         <Select id="cx-auth-method" {...register('authMethod')}>
           <option value="none">None</option>

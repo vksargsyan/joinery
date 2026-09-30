@@ -121,7 +121,7 @@ function cell(scope: Locator, column: number, row: number): Locator {
 test('connects to Elasticsearch and lists the indices', async () => {
   await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
-  await dialog.getByLabel('Database engine', { exact: true }).selectOption('elasticsearch');
+  await dialog.getByRole('radio', { name: 'Elasticsearch', exact: true }).click();
   await dialog.getByLabel('Paste a URI to fill the form').fill(ES_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();

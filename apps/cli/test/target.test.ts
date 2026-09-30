@@ -83,9 +83,9 @@ describe('URI targets', () => {
     expect(store.exists).toBe(false);
   });
 
-  it('defaults TLS to verify-full, honours sslmode, and --tls overrides both', async () => {
+  it('defaults TLS to off, honours sslmode, and --tls overrides both', async () => {
     const d = deps(store);
-    expect((await resolveTarget('postgres://h/db', {}, d)).profile.tls.mode).toBe('verify-full');
+    expect((await resolveTarget('postgres://h/db', {}, d)).profile.tls.mode).toBe('disable');
     expect((await resolveTarget('postgres://h/db?sslmode=require', {}, d)).profile.tls.mode).toBe(
       'require',
     );

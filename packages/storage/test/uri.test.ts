@@ -348,6 +348,8 @@ const CASES: readonly Case[] = [
     // An SRV record's TXT entry names the auth database; an explicit one still wins.
     uri: 'mongodb+srv://user:pass@cluster0.abcde.mongodb.net/shop?authSource=users',
     endpoint: { kind: 'srv', host: 'cluster0.abcde.mongodb.net' },
+    // An SRV record implies TLS, as in MongoDB drivers.
+    tls: { mode: 'verify-full' },
     auth: { method: 'password', user: 'user', password: REF },
     profileOptions: { authSource: 'users', defaultDatabase: 'shop' },
     password: 'pass',
@@ -385,6 +387,8 @@ const CASES: readonly Case[] = [
     uri: 'mongodb+srv://user:pass@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
     name: 'cluster0.abcde.mongodb.net',
     endpoint: { kind: 'srv', host: 'cluster0.abcde.mongodb.net' },
+    // An SRV record implies TLS, as in MongoDB drivers.
+    tls: { mode: 'verify-full' },
     auth: { method: 'password', user: 'user', password: REF },
     profileOptions: { applicationName: 'Cluster0' },
     password: 'pass',
