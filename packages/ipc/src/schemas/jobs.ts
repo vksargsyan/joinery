@@ -21,7 +21,15 @@ import { transferJobSchema } from './transfer-db';
 export const sqlDialectSchema = z.enum(SQL_ENGINE_IDS);
 
 /** Formats rows are read from. */
-export const TRANSFER_ROW_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml'] as const;
+export const TRANSFER_ROW_FORMATS = [
+  'csv',
+  'tsv',
+  'json',
+  'jsonl',
+  'xlsx',
+  'xml',
+  'parquet',
+] as const;
 export const transferRowFormatSchema = z.enum(TRANSFER_ROW_FORMATS);
 export type TransferRowFormat = z.infer<typeof transferRowFormatSchema>;
 
@@ -37,6 +45,7 @@ export const TRANSFER_EXPORT_FORMATS = [
   'jsonl',
   'xlsx',
   'xml',
+  'parquet',
   'sql',
   'sql-ddl',
   'html',
@@ -59,6 +68,8 @@ export const INFERRED_COLUMN_TYPES = [
   'timestamp',
   'uuid',
   'json',
+  'time',
+  'binary',
   'text',
 ] as const;
 
@@ -159,6 +170,15 @@ export const transferPreviewSchema = z.object({
     .object({
       rowPath: z.string(),
       candidates: z.array(z.object({ path: z.string(), count: countSchema, fields: countSchema })),
+    })
+    .optional(),
+  /** Parquet: rows and row groups in the whole file, its writer and page codecs. */
+  parquet: z
+    .object({
+      rows: countSchema,
+      rowGroups: countSchema,
+      createdBy: z.string().max(1024).optional(),
+      compressions: z.array(z.string().max(32)).max(16),
     })
     .optional(),
   /** File size in bytes. */
@@ -304,6 +324,13 @@ export const exportXlsxSettingsSchema = z.object({
   decimals: z.enum(['text', 'number']).optional(),
 });
 
+export const PARQUET_COMPRESSIONS = ['snappy', 'zstd', 'gzip', 'none'] as const;
+
+/** Parquet: the page codec (default Snappy). */
+export const exportParquetSettingsSchema = z.object({
+  compression: z.enum(PARQUET_COMPRESSIONS).optional(),
+});
+
 export const exportSqlSettingsSchema = z.object({
   /** Rows per INSERT statement. */
   rowsPerStatement: z.number().int().min(1).max(10_000).optional(),
@@ -333,6 +360,7 @@ export const exportJobSchema = z.object({
   json: exportJsonSettingsSchema.optional(),
   sql: exportSqlSettingsSchema.optional(),
   xlsx: exportXlsxSettingsSchema.optional(),
+  parquet: exportParquetSettingsSchema.optional(),
   encoding: z.enum(['utf-8', 'utf-16le']).optional(),
   bom: z.boolean().optional(),
   gzip: z.boolean().optional(),
@@ -563,6 +591,7 @@ export const exportSettingsSchema = z.object({
   json: exportJsonSettingsSchema.optional(),
   sql: exportSqlSettingsSchema.optional(),
   xlsx: exportXlsxSettingsSchema.optional(),
+  parquet: exportParquetSettingsSchema.optional(),
   encoding: z.enum(['utf-8', 'utf-16le']).optional(),
   bom: z.boolean().optional(),
   gzip: z.boolean().optional(),

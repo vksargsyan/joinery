@@ -111,9 +111,12 @@ describe('jobs contract', () => {
     expect(jobSpecSchema.safeParse({ ...base, file: { path: '', format: 'csv' } }).success).toBe(
       false,
     );
+    expect(jobSpecSchema.safeParse({ ...base, file: { path: '/x', format: 'avro' } }).success).toBe(
+      false,
+    );
     expect(
       jobSpecSchema.safeParse({ ...base, file: { path: '/x', format: 'parquet' } }).success,
-    ).toBe(false);
+    ).toBe(true);
     const file = (extra: object) =>
       jobSpecSchema.safeParse({ ...base, file: { path: '/x', ...extra } }).success;
     expect(file({ format: 'xlsx', xlsx: { sheet: 'Data', headerRow: 3 } })).toBe(true);

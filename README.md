@@ -67,13 +67,15 @@ What works today:
   through a foreign key), MongoDB to SQL (flattened fields, child tables or JSON columns for
   arrays) and Redis to Redis (DUMP/RESTORE with TTLs, Cluster-aware).
 - **Import and export**: wizards for CSV, TSV, JSON, JSON Lines (gzip too), Excel (.xlsx, streamed,
-  with a worksheet picker and header row) and XML (rows at a detected or chosen path) into an
-  existing or a new table, with format, delimiter, header and encoding detection, a live
-  preview, auto-matched columns, inferred types for new tables, and append, update, upsert,
-  delete and replace modes; exports of tables or query results to CSV, TSV, JSON, JSON Lines,
-  Excel (typed cells, real dates, a worksheet per table), XML, SQL INSERTs, SQL with DDL, HTML
-  or Markdown, one file per table or combined, gzip-compressed or zipped; Run SQL File with stop
-  or continue and an error log. Saved wizard settings.
+  with a worksheet picker and header row), XML (rows at a detected or chosen path) and Parquet
+  (typed columns, every common codec, nested columns as JSON) into an existing or a new table,
+  with format, delimiter, header and encoding detection, a live preview, auto-matched columns,
+  inferred types for new tables, and append, update, upsert, delete and replace modes; exports
+  of tables or query results to CSV, TSV, JSON, JSON Lines, Excel (typed cells, real dates, a
+  worksheet per table), XML, Parquet (exact decimals, dates, timestamps and UUIDs; Snappy, ZSTD
+  or GZIP), SQL INSERTs, SQL with DDL, HTML or Markdown, one file per table or combined,
+  gzip-compressed or zipped; Run SQL File with stop or continue and an error log. Saved wizard
+  settings.
 - **Job runner**: imports, exports and SQL files run in their own utility process, several at
   once, with progress, cancel (which rolls back), failed rows by row, line and column, a job
   history and a desktop notification when a long job ends.
@@ -159,7 +161,7 @@ pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-pac
 | `packages/drivers/elasticsearch` | `@joinery/driver-elasticsearch` | Elasticsearch adapter on its own HTTP client: documents, SQL, administration                      |
 | `packages/search-tools`          | `@joinery/search-tools`         | Console parser, lossless JSON, request classifier, SQL and admin reply readers, autocomplete      |
 | `packages/tunnel`                | `@joinery/tunnel`               | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks                   |
-| `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping               |
+| `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML/Parquet import, export also to HTML/Markdown, ZIP, mapping       |
 | `packages/backup`                | `@joinery/backup`               | Backup and restore for every engine, the .jbak archive, pg_dump/mysqldump                         |
 
 Packages under `packages/` never import Electron, so the CLI and the tests use them directly.
@@ -200,6 +202,7 @@ node apps/cli/dist/joinery.mjs import dev --table public.people --file people.cs
 node apps/cli/dist/joinery.mjs export dev --table orders --table items --format sql-ddl --one-file --out shop.sql.gz --gzip
 node apps/cli/dist/joinery.mjs import dev --table sales --file q3.xlsx --sheet July --create --key id
 node apps/cli/dist/joinery.mjs export dev --table orders --table items --format xlsx --one-file --out shop.xlsx
+node apps/cli/dist/joinery.mjs export dev --table events --format parquet --codec zstd --out events.parquet
 node apps/cli/dist/joinery.mjs run-file dev migrate.sql --continue
 JOINERY_BACKUP_PASSPHRASE=… node apps/cli/dist/joinery.mjs backup prod --out shop.jbak --encrypt
 node apps/cli/dist/joinery.mjs restore dev shop.jbak --select public.orders --database shop_copy --create-database

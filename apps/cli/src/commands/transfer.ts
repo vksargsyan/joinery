@@ -14,6 +14,7 @@ import {
   fileSource,
   importRows,
   isCompoundFile,
+  isParquet,
   isZip,
   loadTable,
   previewSource,
@@ -29,6 +30,7 @@ import {
   type ExportSummary,
   type ExportTable,
   type ImportMode,
+  type ParquetCompression,
   type RowError,
   type RowFormat,
   type Sink,
@@ -108,6 +110,8 @@ export interface ExportDataOptions extends TargetOverrides {
   readonly dropTable: boolean;
   /** Excel: decimals as exact text (default) or as numbers where a double holds them. */
   readonly decimals?: 'text' | 'number';
+  /** Parquet: the page codec (default Snappy). */
+  readonly codec?: ParquetCompression;
   readonly bom: boolean;
   /** --yes: run a --query that needs confirmation without asking. */
   readonly yes: boolean;
@@ -333,7 +337,13 @@ export async function importDataCommand(
     if (fromStdin) {
       const stdin = await replayable(stdinBytes(ctx.stdin), 1024 * 1024);
       input = stdin;
-      if (options.format === 'xlsx' || isZip(stdin.start) || isCompoundFile(stdin.start)) {
+      if (
+        options.format === 'xlsx' ||
+        options.format === 'parquet' ||
+        isZip(stdin.start) ||
+        isCompoundFile(stdin.start) ||
+        isParquet(stdin.start)
+      ) {
         reporter.progress(`Reading ${name}…`, true);
         spooled = await spoolToFile(stdin.all);
         input = { head: spooled.source, all: spooled.source };
@@ -530,10 +540,21 @@ export async function exportDataCommand(
     throw new CliError('--gzip writes a file', { hint: 'Pipe stdout through gzip instead' });
   }
   if (options.gzip && options.zip) throw new CliError('Choose --gzip or --zip, not both');
-  if (toStdout && (options.zip || options.format === 'xlsx')) {
-    throw new CliError(`${options.zip ? '--zip' : 'An Excel workbook'} writes a file`, {
-      hint: 'Give --out a file name',
+  if (toStdout && (options.zip || options.format === 'xlsx' || options.format === 'parquet')) {
+    const what = options.zip
+      ? '--zip'
+      : options.format === 'xlsx'
+        ? 'An Excel workbook'
+        : 'A Parquet file';
+    throw new CliError(`${what} writes a file`, { hint: 'Give --out a file name' });
+  }
+  if (options.gzip && options.format === 'parquet') {
+    throw new CliError('A gzipped Parquet file is one other tools cannot read', {
+      hint: 'Parquet compresses its own pages: use --codec zstd for smaller files',
     });
+  }
+  if (options.codec !== undefined && options.format !== 'parquet') {
+    throw new CliError('--codec is for --format parquet');
   }
   const several = options.tables.length > 1;
   if (options.zip && options.oneFile) {
@@ -542,7 +563,7 @@ export async function exportDataCommand(
   const combined = several && options.oneFile;
   if (combined && !combinableFormat(options.format)) {
     throw new CliError(
-      `--one-file is available for every format but csv, tsv and jsonl, not ${options.format}`,
+      `--one-file is available for every format but csv, tsv, jsonl and parquet, not ${options.format}`,
     );
   }
   if (several && !combined && !options.zip && toStdout) {
@@ -577,6 +598,7 @@ export async function exportDataCommand(
         header: options.header,
         ...(options.decimals !== undefined ? { decimals: options.decimals } : {}),
       },
+      parquet: options.codec !== undefined ? { compression: options.codec } : {},
       ...(options.bom ? { bom: true } : {}),
       onProgress: (progress) =>
         reporter.progress(

@@ -163,6 +163,9 @@ export async function previewFile(input: TransferPreviewInput): Promise<Transfer
           },
         }
       : {}),
+    ...(preview.parquet !== undefined
+      ? { parquet: { ...preview.parquet, compressions: [...preview.parquet.compressions] } }
+      : {}),
     size,
   };
 }
@@ -411,6 +414,9 @@ export async function runExport(job: ExportJob, context: JobContext): Promise<Jo
     xlsx: {
       ...(job.xlsx?.header !== undefined ? { header: job.xlsx.header } : {}),
       ...(job.xlsx?.decimals !== undefined ? { decimals: job.xlsx.decimals } : {}),
+    },
+    parquet: {
+      ...(job.parquet?.compression !== undefined ? { compression: job.parquet.compression } : {}),
     },
     ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
     ...(job.bom === true ? { bom: true } : {}),

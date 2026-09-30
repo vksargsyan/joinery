@@ -1,5 +1,5 @@
 import { JoineryError } from '@joinery/core';
-import type { ImportMode, TransferRowFormat } from '@joinery/ipc';
+import type { ImportMode, TransferPreview, TransferRowFormat } from '@joinery/ipc';
 import { useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 
@@ -85,6 +85,9 @@ function wizardApi(): ImportWizardApi {
                 'xlsx',
                 'xlsm',
                 'xml',
+                'parquet',
+                'parq',
+                'pq',
                 'gz',
               ],
             },
@@ -207,9 +210,10 @@ function FileStep({ wizard, state }: StepProps) {
   return (
     <div className="flex flex-col items-start gap-3 text-[13px]">
       <p className="text-muted">
-        CSV, TSV, JSON (an array of objects), JSON Lines, Excel workbooks (.xlsx) and XML files,
-        text formats optionally gzip-compressed. The format, encoding, delimiter, header, worksheet
-        and XML row path are detected; you can change them on the next step.
+        CSV, TSV, JSON (an array of objects), JSON Lines, Excel workbooks (.xlsx), XML and Parquet
+        files, text formats optionally gzip-compressed. The format, encoding, delimiter, header,
+        worksheet and XML row path are detected, and Parquet brings its own column types; you can
+        change them on the next step.
       </p>
       <Button
         variant="primary"
@@ -246,8 +250,22 @@ const FORMAT_NAMES: Readonly<Record<string, string>> = {
   jsonl: 'JSON Lines',
   xlsx: 'Excel',
   xml: 'XML',
+  parquet: 'Parquet',
   sql: 'SQL',
 };
+
+const count = (n: number, one: string, many = `${one}s`): string =>
+  `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+
+/** What a Parquet file's footer says: its size in rows, its row groups, codecs and writer. */
+function parquetSummary(parquet: NonNullable<TransferPreview['parquet']>): string {
+  return [
+    count(parquet.rows, 'row'),
+    count(parquet.rowGroups, 'row group'),
+    ...(parquet.compressions.length > 0 ? [parquet.compressions.join(', ')] : []),
+    ...(parquet.createdBy !== undefined ? [`written by ${parquet.createdBy}`] : []),
+  ].join(' · ');
+}
 
 function PreviewStep({ wizard, state }: StepProps) {
   const preview = state.preview!;
@@ -287,8 +305,21 @@ function PreviewStep({ wizard, state }: StepProps) {
             <option value="jsonl">JSON Lines</option>
             <option value="xlsx">Excel (.xlsx)</option>
             <option value="xml">XML</option>
+            <option value="parquet">Parquet</option>
           </SelectField>
         </Labelled>
+        {preview.format === 'parquet' && preview.parquet && (
+          <div className="col-span-4 flex flex-col gap-1">
+            <span className="text-[11px] font-medium text-muted">Parquet file</span>
+            <p
+              className="flex h-8 items-center truncate text-xs"
+              title={parquetSummary(preview.parquet)}
+              data-testid="import-parquet-summary"
+            >
+              {parquetSummary(preview.parquet)}
+            </p>
+          </div>
+        )}
         {preview.format === 'xlsx' && preview.xlsx && (
           <>
             <Labelled id="import-sheet" label="Worksheet" className="col-span-2">
@@ -323,7 +354,7 @@ function PreviewStep({ wizard, state }: StepProps) {
             </Labelled>
           </>
         )}
-        {preview.format !== 'xlsx' && (
+        {preview.format !== 'xlsx' && preview.format !== 'parquet' && (
           <Labelled id="import-encoding" label="Encoding">
             <SelectField
               id="import-encoding"
@@ -758,6 +789,9 @@ function formatSummary(state: ImportWizardState): string {
     }`;
   }
   if (preview.xml) return `${name} · ${preview.encoding} · rows at ${preview.xml.rowPath}`;
+  if (preview.parquet) {
+    return `${name} · ${count(preview.parquet.rows, 'row')} in ${count(preview.parquet.rowGroups, 'row group')}`;
+  }
   return `${name} · ${preview.encoding}${
     preview.csv
       ? ` · delimiter ${preview.csv.delimiter === '\t' ? 'tab' : `"${preview.csv.delimiter}"`}${preview.csv.header ? ' · header' : ''}`

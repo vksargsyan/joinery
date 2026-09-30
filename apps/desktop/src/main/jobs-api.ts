@@ -127,7 +127,12 @@ export function describeJob(spec: JobSpec): JobDescription {
       };
     }
     case 'export': {
-      const format = spec.format === 'sql-ddl' ? 'SQL with DDL' : spec.format.toUpperCase();
+      const format =
+        spec.format === 'sql-ddl'
+          ? 'SQL with DDL'
+          : spec.format === 'parquet'
+            ? 'Parquet'
+            : spec.format.toUpperCase();
       const tables = spec.source.kind === 'tables' ? spec.source.tables : [];
       const what =
         spec.source.kind === 'query'
