@@ -69,10 +69,16 @@ describe.skipIf(!PG_URL)('PostgreSQL server tools', () => {
     expect(first.uptimeSeconds).toBeGreaterThan(0);
     const tile = (snapshot: typeof first, id: string) => snapshot.tiles.find((t) => t.id === id);
     expect(tile(first, 'connections')).toMatchObject({ kind: 'gauge' });
-    const tps1 = tile(first, 'tps');
-    const tps2 = tile(second, 'tps');
-    if (tps1?.kind !== 'rate' || tps2?.kind !== 'rate') throw new Error('tps is a rate');
-    expect(tps2.counter!).toBeGreaterThanOrEqual(tps1.counter!);
+    const tps = tile(second, 'tps');
+    if (tps?.kind !== 'rate') throw new Error('tps is a rate');
+    expect(tps.counter!).toBeGreaterThan(0);
+    // The tps counter sums every database, and other test files drop theirs meanwhile (the app
+    // takes a drop as a reset); this database's own commits only grow.
+    const { database } = await tools.info();
+    const commits = (snapshot: typeof first) =>
+      Number(snapshot.sections[0]!.table.rows.find((r) => r['database'] === database)?.['commits']);
+    // NaN, and so a failure, when the database has no row.
+    expect(commits(second)).toBeGreaterThanOrEqual(commits(first));
     const ratio = tile(second, 'cache-hit');
     if (ratio?.kind !== 'ratio') throw new Error('cache-hit is a ratio');
     expect(ratio.total!).toBeGreaterThan(0);
