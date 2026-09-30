@@ -10,8 +10,8 @@ end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreS
 
 The foundation, the SQL MVP and the NoSQL modules are built: MySQL, MariaDB and PostgreSQL work
 end to end in the desktop app and on the command line, MongoDB and Redis (or Valkey) connect,
-browse, query and edit there too, and Elasticsearch and OpenSearch have a driver, an explorer and
-a console. Data moves between engines with transfers, backups and restores.
+browse, query and edit there too, and Elasticsearch and OpenSearch have documents, SQL, index
+and cluster administration. Data moves between engines with transfers, backups and restores.
 
 What works today:
 
@@ -29,6 +29,10 @@ What works today:
   grid 1,000 rows at a time; server-side cancel; transaction controls; history. Visual explain
   (Explain and Explain Analyze) shows the plan tree with cost, estimated against actual rows and
   the slowest node. Editor buffers are autosaved and come back as tabs after a crash.
+- **Visual query builder** (MySQL, MariaDB, PostgreSQL): tables on a canvas with joins proposed
+  from foreign keys, side panels for columns, criteria, grouping, sort and limit, and the SQL
+  kept in step both ways; SQL the builder cannot show opens read-only. Runs go through the query
+  tab, with its safety checks, streaming and history.
 - **Autocomplete**: keywords, schemas, tables, columns with alias resolution, join conditions
   from foreign keys, functions with signature help, and snippets, computed in a Web Worker from
   a per-connection metadata cache that is ready at connect and refreshes after DDL.
@@ -87,8 +91,14 @@ What works today:
   Sentinel/Cluster topology.
 - **Elasticsearch and OpenSearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
   bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
-  health, data streams and aliases; and a Kibana-style console with autocomplete from the open
-  API specification. Writes follow the same confirmation rules as SQL.
+  health, data streams and aliases; a Kibana-style console with autocomplete from the open API
+  specification; a document grid paged past 10,000 hits with editing, conflict detection and
+  bulk actions; SQL with Translate to DSL, and ES|QL, with aggregations as a tree or a table;
+  index operations, create index, a mapping editor that plans a reindex when a change cannot
+  apply in place, and reindex with live progress; cluster health, nodes, shard allocation with
+  its explanation, disk watermarks and tasks; aliases with atomic swaps, index and component
+  templates, ILM or ISM policies, ingest pipelines with simulate, and snapshots with restore.
+  Writes follow the same confirmation rules as SQL.
 - **Server tools** (MySQL, MariaDB, PostgreSQL, MongoDB): a monitor polled at a chosen interval
   with the history kept for the session (connections, QPS or TPS, cache and buffer pool hit
   ratios, locks, replication and replica lag, the oplog window); sessions with cancel and
@@ -102,36 +112,37 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis,
   Elasticsearch and OpenSearch too; backup and restore for every engine.
 
-Not built yet: the scheduler, Parquet, the visual query builder and ER modelling for SQL, cloud
-sync and the AI assistant; for MongoDB the embedded mongosh shell, and SQL translation and code
-export in the app (the library has them); RediSearch and offline RDB analysis; for Elasticsearch
-and OpenSearch the document grid, mapping editor, query builder and cluster tools; signed and
-auto-updating releases. The product specification lists the full scope.
+Not built yet: the scheduler, Parquet, ER modelling for SQL, cloud sync and the AI assistant; for
+MongoDB the embedded mongosh shell, and SQL translation and code export in the app (the library
+has them); RediSearch and offline RDB analysis; a query builder for Elasticsearch and
+OpenSearch. The product specification lists the full scope.
 
 ## Repository layout
 
 pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-packages.md)).
 
-| Path                        | Package                    | What it is                                                                          |
-| --------------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| `apps/desktop`              | `@joinery/desktop`         | Electron app: main, sandboxed preload, React renderer, connection hosts, job runner |
-| `apps/cli`                  | `@joinery/cli`             | `joinery` command-line tool                                                         |
-| `packages/core`             | `@joinery/core`            | Domain types, capability flags, schema snapshot, driver adapter contract            |
-| `packages/ipc`              | `@joinery/ipc`             | Typed RPC over MessagePort with zod-validated contracts                             |
-| `packages/storage`          | `@joinery/storage`         | Local SQLite store, migrations, sealed secrets, URI/pgpass import                   |
-| `packages/sql-tools`        | `@joinery/sql-tools`       | Lexer, statement splitter, parameters, safety checks, formatter, diagnostics        |
-| `packages/sync`             | `@joinery/sync`            | Structure diff and script generation, data compare                                  |
-| `packages/table-data`       | `@joinery/table-data`      | Table data paging, filters, staged changes and apply, cell parsing, copy/paste      |
-| `packages/drivers/sql-base` | `@joinery/driver-sql-base` | Shared endpoint, TLS, error mapping and Test Connection logic                       |
-| `packages/drivers/postgres` | `@joinery/driver-postgres` | PostgreSQL adapter (pg, pg-cursor)                                                  |
-| `packages/drivers/mysql`    | `@joinery/driver-mysql`    | MySQL and MariaDB adapter (mysql2)                                                  |
-| `packages/drivers/mongodb`  | `@joinery/driver-mongodb`  | MongoDB adapter (mongodb) with document, index, GridFS and change stream services   |
-| `packages/mongo-tools`      | `@joinery/mongo-tools`     | mongosh-style query parsing, Extended JSON, find() text, schema analysis            |
-| `packages/drivers/redis`    | `@joinery/driver-redis`    | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools |
-| `packages/redis-tools`      | `@joinery/redis-tools`     | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs     |
-| `packages/tunnel`           | `@joinery/tunnel`          | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks     |
-| `packages/transfer`         | `@joinery/transfer`        | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping |
-| `packages/backup`           | `@joinery/backup`          | Backup and restore for every engine, the .jbak archive, pg_dump/mysqldump           |
+| Path                             | Package                         | What it is                                                                                        |
+| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `apps/desktop`                   | `@joinery/desktop`              | Electron app: main, sandboxed preload, React renderer, connection hosts, job runner               |
+| `apps/cli`                       | `@joinery/cli`                  | `joinery` command-line tool                                                                       |
+| `packages/core`                  | `@joinery/core`                 | Domain types, capability flags, schema snapshot, driver adapter contract                          |
+| `packages/ipc`                   | `@joinery/ipc`                  | Typed RPC over MessagePort with zod-validated contracts                                           |
+| `packages/storage`               | `@joinery/storage`              | Local SQLite store, migrations, sealed secrets, URI/pgpass import                                 |
+| `packages/sql-tools`             | `@joinery/sql-tools`            | Lexer, statement splitter, parameters, safety checks, formatter, diagnostics, query builder model |
+| `packages/sync`                  | `@joinery/sync`                 | Structure diff and script generation, data compare                                                |
+| `packages/table-data`            | `@joinery/table-data`           | Table data paging, filters, staged changes and apply, cell parsing, copy/paste                    |
+| `packages/drivers/sql-base`      | `@joinery/driver-sql-base`      | Shared endpoint, TLS, error mapping and Test Connection logic                                     |
+| `packages/drivers/postgres`      | `@joinery/driver-postgres`      | PostgreSQL adapter (pg, pg-cursor)                                                                |
+| `packages/drivers/mysql`         | `@joinery/driver-mysql`         | MySQL and MariaDB adapter (mysql2)                                                                |
+| `packages/drivers/mongodb`       | `@joinery/driver-mongodb`       | MongoDB adapter (mongodb) with document, index, GridFS and change stream services                 |
+| `packages/mongo-tools`           | `@joinery/mongo-tools`          | mongosh-style query parsing, Extended JSON, find() text, schema analysis                          |
+| `packages/drivers/redis`         | `@joinery/driver-redis`         | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools               |
+| `packages/redis-tools`           | `@joinery/redis-tools`          | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs                   |
+| `packages/drivers/elasticsearch` | `@joinery/driver-elasticsearch` | Elasticsearch and OpenSearch adapter on its own HTTP client: documents, SQL, administration       |
+| `packages/search-tools`          | `@joinery/search-tools`         | Console parser, lossless JSON, request classifier, SQL and admin reply readers, autocomplete      |
+| `packages/tunnel`                | `@joinery/tunnel`               | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks                   |
+| `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping               |
+| `packages/backup`                | `@joinery/backup`               | Backup and restore for every engine, the .jbak archive, pg_dump/mysqldump                         |
 
 Packages under `packages/` never import Electron, so the CLI and the tests use them directly.
 
