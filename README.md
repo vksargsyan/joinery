@@ -133,9 +133,9 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: Parquet, cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
-RediSearch and offline RDB analysis; a query builder for Elasticsearch; schedules that run while
-Joinery is closed. The product specification lists the full scope.
+Not built yet: cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
+RediSearch and offline RDB analysis; a query builder for Elasticsearch. The product specification
+lists the full scope.
 
 ## Repository layout
 
