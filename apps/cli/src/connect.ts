@@ -45,9 +45,8 @@ export const defaultAdapters: AdapterFactory = (engine: EngineId): DriverAdapter
       const redis = createRedisAdapter();
       return withSshStepCheck(redis, (resolved, deps) => redis.checkConnection(resolved, deps));
     }
-    case 'elasticsearch':
-    case 'opensearch': {
-      const search = createSearchAdapter({ engine });
+    case 'elasticsearch': {
+      const search = createSearchAdapter();
       return withSshStepCheck(search, (resolved, deps) => search.checkConnection(resolved, deps));
     }
     default:

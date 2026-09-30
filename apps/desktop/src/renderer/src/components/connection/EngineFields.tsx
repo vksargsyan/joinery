@@ -2,7 +2,6 @@ import { useWatch } from 'react-hook-form';
 
 import {
   ENGINE_AUTH_METHODS,
-  type SearchDialogEngine,
   EXTERNAL_AUTH_SOURCE,
   MONGO_MECHANISMS,
   READ_PREFERENCES,
@@ -265,10 +264,10 @@ const SEARCH_AUTH_LABELS: Readonly<Partial<Record<FormAuthMethod, string>>> = {
 };
 
 /**
- * Elasticsearch and OpenSearch (spec §4, §11): no sign-in, basic authentication, an API key
- * (Elasticsearch) or a bearer token, each secret kept like a password.
+ * Elasticsearch (spec §4, §11): no sign-in, basic authentication, an API key or a bearer token,
+ * each secret kept like a password.
  */
-export function SearchFields(props: SectionProps & { readonly engine: SearchDialogEngine }) {
+export function SearchFields(props: SectionProps) {
   const { register, control, formState } = props.form;
   const errors = formState.errors;
   const authMethod = useWatch({ control, name: 'authMethod' });
@@ -276,7 +275,7 @@ export function SearchFields(props: SectionProps & { readonly engine: SearchDial
     <>
       <Field label="Authentication" htmlFor="cx-auth-method" error={errors.authMethod?.message}>
         <Select id="cx-auth-method" {...register('authMethod')}>
-          {ENGINE_AUTH_METHODS[props.engine].map((method) => (
+          {ENGINE_AUTH_METHODS.elasticsearch.map((method) => (
             <option key={method} value={method}>
               {SEARCH_AUTH_LABELS[method]}
             </option>
@@ -289,7 +288,7 @@ export function SearchFields(props: SectionProps & { readonly engine: SearchDial
             <Input
               id="cx-user"
               autoComplete="off"
-              placeholder={props.engine === 'opensearch' ? 'admin' : 'elastic'}
+              placeholder="elastic"
               {...register('user')}
               aria-invalid={!!errors.user}
             />

@@ -18,8 +18,8 @@ import { BASE_STATE, SearchView, type SearchViewState } from './view';
 
 /**
  * Templates, lifecycle policies, pipelines and aliases (spec §11), one tab each: aliases with
- * add, remove and an atomic swap; index, component and legacy templates; ILM policies
- * (Elasticsearch) or ISM policies (OpenSearch), by capability; and ingest pipelines with a
+ * add, remove and an atomic swap; index, component and legacy templates; ILM policies, where
+ * the cluster has index lifecycle management; and ingest pipelines with a
  * simulate panel that runs sample documents through the edited pipeline, processor by
  * processor. Each resource is edited as the JSON its PUT takes; saving and deleting follow the
  * write rules.
@@ -44,10 +44,7 @@ export const RESOURCE_LABELS: Readonly<Record<SearchResourceKind, { one: string;
   };
 
 /** The body a new resource starts from. */
-export function resourceTemplate(
-  kind: SearchResourceKind,
-  lifecycle: 'ilm' | 'ism' | null,
-): string {
+export function resourceTemplate(kind: SearchResourceKind): string {
   switch (kind) {
     case 'index-template':
       return '{\n  "index_patterns": ["logs-*"],\n  "priority": 100,\n  "template": {\n    "settings": { "number_of_shards": 1 },\n    "mappings": { "properties": {} }\n  }\n}';
@@ -56,9 +53,7 @@ export function resourceTemplate(
     case 'legacy-template':
       return '{\n  "index_patterns": ["logs-*"],\n  "order": 0,\n  "settings": {},\n  "mappings": { "properties": {} }\n}';
     case 'lifecycle-policy':
-      return lifecycle === 'ism'
-        ? '{\n  "policy": {\n    "description": "Delete after 30 days",\n    "default_state": "hot",\n    "states": [\n      { "name": "hot", "actions": [], "transitions": [{ "state_name": "delete", "conditions": { "min_index_age": "30d" } }] },\n      { "name": "delete", "actions": [{ "delete": {} }], "transitions": [] }\n    ]\n  }\n}'
-        : '{\n  "policy": {\n    "phases": {\n      "hot": { "actions": { "rollover": { "max_age": "7d" } } },\n      "delete": { "min_age": "30d", "actions": { "delete": {} } }\n    }\n  }\n}';
+      return '{\n  "policy": {\n    "phases": {\n      "hot": { "actions": { "rollover": { "max_age": "7d" } } },\n      "delete": { "min_age": "30d", "actions": { "delete": {} } }\n    }\n  }\n}';
     case 'ingest-pipeline':
       return '{\n  "description": "",\n  "processors": [\n    { "set": { "field": "ingested", "value": "{{_ingest.timestamp}}" } }\n  ]\n}';
     case 'snapshot-repository':
@@ -78,7 +73,6 @@ export interface AdminState extends SearchViewState {
         readonly name: string;
         readonly isNew: boolean;
         readonly text: string;
-        readonly original: SearchResourceInfo | undefined;
       }
     | undefined;
   /** The pipeline simulator's documents and results. */
@@ -119,13 +113,9 @@ export class AdminView extends SearchView<AdminState> {
         ? (['index-template', 'component-template'] as const)
         : []),
       'legacy-template',
-      ...(caps === undefined || caps.lifecycle !== null ? (['lifecycle-policy'] as const) : []),
+      ...(caps === undefined || caps.lifecycle ? (['lifecycle-policy'] as const) : []),
       'ingest-pipeline',
     ];
-  }
-
-  get lifecycle(): 'ilm' | 'ism' | null {
-    return this.state.info?.capabilities.lifecycle ?? null;
   }
 
   async setTab(tab: AdminTab): Promise<void> {
@@ -158,11 +148,6 @@ export class AdminView extends SearchView<AdminState> {
           host.search.resources.list({ sessionId, kind: tab }),
         );
         if (this.state.tab === tab) this.set({ resources });
-        const selected = this.state.selected;
-        if (selected && !selected.isNew) {
-          const fresh = resources.find((r) => r.name === selected.name);
-          if (fresh) this.set({ selected: { ...selected, original: fresh } });
-        }
       }
     } catch (error) {
       this.notify('error', errorMessage(error));
@@ -178,7 +163,7 @@ export class AdminView extends SearchView<AdminState> {
     const resource = this.state.resources.find((r) => r.name === name);
     if (!resource) return;
     this.set({
-      selected: { name, isNew: false, text: formatJson(resource.body), original: resource },
+      selected: { name, isNew: false, text: formatJson(resource.body) },
       simulation: undefined,
       simulateError: undefined,
     });
@@ -188,12 +173,7 @@ export class AdminView extends SearchView<AdminState> {
     const tab = this.state.tab;
     if (tab === 'aliases') return;
     this.set({
-      selected: {
-        name: '',
-        isNew: true,
-        text: resourceTemplate(tab, this.lifecycle),
-        original: undefined,
-      },
+      selected: { name: '', isNew: true, text: resourceTemplate(tab) },
       simulation: undefined,
     });
   }
@@ -225,15 +205,11 @@ export class AdminView extends SearchView<AdminState> {
       this.notify('error', `The definition is not valid JSON: ${errorMessage(error)}`);
       return false;
     }
-    const original = selected.original;
-    const request = resourcePutRequest(tab, this.lifecycle ?? 'ilm', name, body, {
-      ...(original?.seqNo !== undefined ? { seqNo: original.seqNo } : {}),
-      ...(original?.primaryTerm !== undefined ? { primaryTerm: original.primaryTerm } : {}),
-    });
+    const request = resourcePutRequest(tab, name, body);
     const confirmed = await this.guard({
       safety: { writes: true },
       title: `${selected.isNew ? 'Create' : 'Replace'} the ${RESOURCE_LABELS[tab].one} ${name}?`,
-      detail: `PUT ${request.path}${request.query ? `?${request.query}` : ''}\n${formatJson(body)}`,
+      detail: `PUT ${request.path}\n${formatJson(body)}`,
       confirmLabel: 'Save',
     });
     if (confirmed === undefined) return false;
@@ -244,12 +220,10 @@ export class AdminView extends SearchView<AdminState> {
           kind: tab,
           name,
           body,
-          ...(original?.seqNo !== undefined ? { ifSeqNo: original.seqNo } : {}),
-          ...(original?.primaryTerm !== undefined ? { ifPrimaryTerm: original.primaryTerm } : {}),
           confirmed,
         }),
       );
-      this.set({ selected: { name, isNew: false, text: formatJson(body), original: undefined } });
+      this.set({ selected: { name, isNew: false, text: formatJson(body) } });
       await this.reload();
       this.notify('success', `Saved the ${RESOURCE_LABELS[tab].one} ${name}`);
       return true;
@@ -262,7 +236,7 @@ export class AdminView extends SearchView<AdminState> {
     if (tab === 'aliases') return;
     const request = {
       method: 'DELETE' as const,
-      path: resourcePath(tab, this.lifecycle ?? 'ilm', name),
+      path: resourcePath(tab, name),
     };
     const confirmed = await this.guard({
       safety: classifyRequest(request),

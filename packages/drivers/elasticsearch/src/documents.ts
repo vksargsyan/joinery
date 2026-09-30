@@ -63,16 +63,10 @@ function pagingSort(
   mode: 'pit' | 'scroll',
 ): string {
   const sort = member(node, 'sort');
-  const opensearch = ctx.facts.distribution === 'opensearch';
   if (mode === 'scroll') return sort ? nodeText(text, sort) : '["_doc"]';
-  const tiebreaker = ctx.facts.capabilities.shardDocSort ? '{"_shard_doc": "asc"}' : '"_doc"';
-  if (!sort) return `[${tiebreaker}]`;
-  // Elasticsearch adds _shard_doc under a point in time itself; OpenSearch needs it spelled out.
-  if (!opensearch) return nodeText(text, sort);
-  const items =
-    sort.type === 'array' ? sort.items.map((i) => nodeText(text, i)) : [nodeText(text, sort)];
-  if (items.some((item) => item.includes('_shard_doc'))) return `[${items.join(', ')}]`;
-  return `[${[...items, tiebreaker].join(', ')}]`;
+  // Under a point in time Elasticsearch adds the _shard_doc tiebreaker to a sort itself.
+  if (sort) return nodeText(text, sort);
+  return ctx.facts.capabilities.shardDocSort ? '[{"_shard_doc": "asc"}]' : '["_doc"]';
 }
 
 /** Opens a point in time; undefined when the cluster refuses (the caller then scrolls). */
@@ -82,14 +76,12 @@ async function openPit(
   keepAlive: string,
   opts: SearchOpOptions,
 ): Promise<string | undefined> {
-  const opensearch = ctx.facts.distribution === 'opensearch';
-  const path = opensearch
-    ? `/${segment(target)}/_search/point_in_time`
-    : `/${segment(target)}/_pit`;
-  const response = await ctx.send({ method: 'POST', path, query: `keep_alive=${keepAlive}` }, opts);
+  const response = await ctx.send(
+    { method: 'POST', path: `/${segment(target)}/_pit`, query: `keep_alive=${keepAlive}` },
+    opts,
+  );
   if (response.status >= 200 && response.status < 300) {
-    const root = parseJsonTree(response.body);
-    return stringAt(root, opensearch ? 'pit_id' : 'id');
+    return stringAt(parseJsonTree(response.body), 'id');
   }
   // A missing index is the caller's error; anything else (no privilege, no such API) scrolls.
   if (/index_not_found_exception/.test(response.body)) {
@@ -99,12 +91,11 @@ async function openPit(
 }
 
 async function closePit(ctx: SearchContext, id: string): Promise<void> {
-  const opensearch = ctx.facts.distribution === 'opensearch';
   await ctx.http
     .request({
       method: 'DELETE',
-      path: opensearch ? '/_search/point_in_time' : '/_pit',
-      body: opensearch ? JSON.stringify({ pit_id: [id] }) : JSON.stringify({ id }),
+      path: '/_pit',
+      body: JSON.stringify({ id }),
       timeoutMs: 10_000,
     })
     .catch(() => undefined);

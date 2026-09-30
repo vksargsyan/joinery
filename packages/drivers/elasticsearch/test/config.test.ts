@@ -141,11 +141,6 @@ describe('buildSearchClientPlan', () => {
       protocol: 'https:',
       hostHeader: 'abc.us-east-1.aws.found.io:443',
     });
-    // The profile schema already refuses it; the driver does too for a profile built by hand.
-    const elastic = resolved({ endpoint: { kind: 'cloudId', cloudId } });
-    expect(() =>
-      buildSearchClientPlan({ ...elastic, profile: { ...elastic.profile, engine: 'opensearch' } }),
-    ).toThrow(expect.objectContaining({ code: 'VALIDATION_FAILED' }));
   });
 
   it('goes through a tunnel to one node, keeping its name for Host and TLS', () => {

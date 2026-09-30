@@ -7,7 +7,6 @@ import { isSearchSession, type SearchSession } from '@joinery/driver-elasticsear
 import {
   classifyRequest,
   compactJson,
-  distributionName,
   formatJson,
   parseConsole,
   parseSearchError,
@@ -32,7 +31,7 @@ import {
 } from './target';
 
 /**
- * Elasticsearch and OpenSearch in joinery-cli (spec §11): `joinery query <target> -e 'GET
+ * Elasticsearch in joinery-cli (spec §11): `joinery query <target> -e 'GET
  * _cluster/health'` runs Kibana console text (a request line, then an optional JSON body, or
  * NDJSON lines for _bulk and _msearch; several requests run in order) and prints each response
  * body, pretty-printed with numbers exactly as the server sent them; the status and timing go
@@ -43,14 +42,13 @@ import {
  * with an error status counts as a failed request (exit 2).
  */
 
-/** True when the target is an http(s):// URL or a saved Elasticsearch / OpenSearch profile. */
+/** True when the target is an http(s):// URL or a saved Elasticsearch profile. */
 export function isSearchTarget(runtime: Runtime, spec: string): boolean {
   if (isConnectionUri(spec)) {
     const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(spec.trim())?.[1]?.toLowerCase() ?? '';
     return SEARCH_SCHEMES.has(scheme);
   }
-  const engine = engineOf(runtime, spec);
-  return engine === 'elasticsearch' || engine === 'opensearch';
+  return engineOf(runtime, spec) === 'elasticsearch';
 }
 
 /** One request of the input, ready to send. */
@@ -208,7 +206,7 @@ async function checkRequest(
 }
 
 /** Connects to a search target (through its tunnel), asking for a password once if refused. */
-async function openSearch(
+async function connectSearch(
   runtime: Runtime,
   target: Target,
   options: QueryOptions,
@@ -260,7 +258,7 @@ function responseError(planned: PlannedSearchRequest, response: SearchResponse):
   });
 }
 
-/** `joinery query` on an Elasticsearch or OpenSearch target (see the module comment). */
+/** `joinery query` on an Elasticsearch target (see the module comment). */
 export async function searchQueryCommand(
   runtime: Runtime,
   spec: string,
@@ -287,17 +285,17 @@ export async function searchQueryCommand(
   }
   const target = await targetFor(runtime, spec, options);
   runtime.interrupts.throwIfInterrupted();
-  const connection = await openSearch(runtime, target, options);
+  const connection = await connectSearch(runtime, target, options);
   const { session } = connection;
   const { reporter } = runtime;
   let failures = 0;
   let firstJson = true;
   try {
     if (!isSearchSession(session)) {
-      throw new CliError(`"${target.label}" is not an Elasticsearch or OpenSearch server`);
+      throw new CliError(`"${target.label}" is not an Elasticsearch server`);
     }
     reporter.debug(
-      `connected to ${connection.target.label}: ${distributionName(session.distribution)} ${session.serverVersion || '(version hidden from this user)'}`,
+      `connected to ${connection.target.label}: Elasticsearch ${session.serverVersion || '(version hidden from this user)'}`,
     );
     if (options.format === 'json') await runtime.stdout.write('[');
     for (const [i, planned] of requests.entries()) {

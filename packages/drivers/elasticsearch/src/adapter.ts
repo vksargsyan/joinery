@@ -10,15 +10,15 @@ import { checkSearchConnection, type SearchCheckDeps } from './check';
 import { ElasticSearchSession, searchCoreCapabilities } from './session';
 
 /**
- * The Elasticsearch and OpenSearch driver adapter (ADR 0010). One adapter serves both engines:
- * they speak the same HTTP API, and every difference is a capability flag the session reads
- * from the server. Sessions are SearchSessions: narrow them with `isSearchSession`.
+ * The Elasticsearch driver adapter (ADR 0010). Every difference between versions and
+ * distributions is a capability flag the session reads from the server. Sessions are
+ * SearchSessions: narrow them with `isSearchSession`.
  */
 export class SearchAdapter implements DriverAdapter {
-  constructor(readonly engine: 'elasticsearch' | 'opensearch') {}
+  readonly engine = 'elasticsearch';
 
   capabilities(serverVersion?: string): Capabilities {
-    return searchCoreCapabilities(this.engine, serverVersion);
+    return searchCoreCapabilities(serverVersion);
   }
 
   connect(resolved: ResolvedProfile): Promise<Session> {
@@ -37,9 +37,6 @@ export class SearchAdapter implements DriverAdapter {
   }
 }
 
-/** Creates the adapter for Elasticsearch (the default) or OpenSearch. */
-export function createSearchAdapter(
-  options: { readonly engine?: 'elasticsearch' | 'opensearch' } = {},
-): SearchAdapter {
-  return new SearchAdapter(options.engine ?? 'elasticsearch');
+export function createSearchAdapter(): SearchAdapter {
+  return new SearchAdapter();
 }

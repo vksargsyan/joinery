@@ -62,11 +62,8 @@ describe('completeConsole', () => {
     ]);
   });
 
-  it('leaves out Elasticsearch-only APIs on OpenSearch and adds its own', () => {
+  it('offers the endpoints of the specification, ES|QL included', () => {
     expect(complete('POST /_q|').labels).toContain('_query');
-    const os = complete('POST /_|', { distribution: 'opensearch' }).labels;
-    expect(os).not.toContain('_query');
-    expect(os).toContain('_plugins/_sql');
   });
 
   it('offers query parameters of the endpoint after "?"', () => {

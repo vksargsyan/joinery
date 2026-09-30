@@ -14,28 +14,26 @@ import {
 } from '../src';
 import { portPair, unusedHandlers } from './helpers';
 
-/** The Elasticsearch and OpenSearch namespace of the connection host contract (spec §11). */
+/** The Elasticsearch namespace of the connection host contract (spec §11). */
 
 describe('search schemas', () => {
   it('round-trips the wire types unchanged', () => {
     const info: SearchClusterInfo = {
-      distribution: 'opensearch',
-      version: '3.5.0',
-      clusterName: 'os',
-      plugins: ['opensearch-sql'],
+      version: '9.4.0',
+      clusterName: 'es',
+      plugins: ['analysis-icu'],
       capabilities: {
-        esql: false,
-        sql: 'opensearch',
-        ppl: true,
+        esql: true,
+        sql: true,
         dataStreams: true,
-        lifecycle: null,
+        lifecycle: true,
         pointInTime: true,
         shardDocSort: true,
         searchAfter: true,
-        asyncSearch: false,
+        asyncSearch: true,
         composableTemplates: true,
         cloneIndex: true,
-        security: null,
+        security: false,
       },
     };
     expect(searchClusterInfoSchema.parse(info)).toEqual(info);

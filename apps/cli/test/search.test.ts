@@ -17,7 +17,7 @@ import { describeEndpoint, resolveTarget, resolvedProfile } from '../src/target'
 import { MemoryStream, ScriptedPrompter, run, tempDir } from './helpers';
 
 /**
- * Elasticsearch and OpenSearch in joinery-cli: console text into requests, response output,
+ * Elasticsearch in joinery-cli: console text into requests, response output,
  * http(s):// URL targets, and `query` / `test` end to end through the real adapter against a
  * small in-process HTTP server that answers like Elasticsearch.
  */
@@ -89,7 +89,7 @@ describe('http(s):// URL targets', () => {
     reporter: new Reporter(new MemoryStream(), { verbose: true }),
   });
 
-  it('reads an Elasticsearch URL, or OpenSearch with --engine', async () => {
+  it('reads an Elasticsearch URL', async () => {
     const target = await resolveTarget('https://elastic:s3cret@es.example.com:9243', {}, deps());
     expect(target.profile).toMatchObject({
       engine: 'elasticsearch',
@@ -102,9 +102,9 @@ describe('http(s):// URL targets', () => {
     expect(JSON.stringify(target)).not.toContain('s3cret');
     expect(describeEndpoint(target.profile)).toBe('https://es.example.com:9243');
 
-    const os = await resolveTarget('http://127.0.0.1:9201', { engine: 'opensearch' }, deps());
-    expect(os.profile).toMatchObject({ engine: 'opensearch', tls: { mode: 'disable' } });
-    expect(os.label).toBe('OpenSearch 127.0.0.1:9201');
+    const plain = await resolveTarget('http://127.0.0.1:9201', {}, deps());
+    expect(plain.profile).toMatchObject({ engine: 'elasticsearch', tls: { mode: 'disable' } });
+    expect(plain.label).toBe('Elasticsearch 127.0.0.1:9201');
   });
 
   it('logs in with JOINERY_API_KEY when the URL has no user', async () => {

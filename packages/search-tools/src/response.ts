@@ -2,7 +2,7 @@ import { member, nodeAt, nodeText, numberAt, parseJsonTree, stringAt, type JsonN
 import type { SearchHit, SearchPage } from './wire';
 
 /**
- * Readers for Elasticsearch and OpenSearch replies that keep documents as text: a search
+ * Readers for Elasticsearch replies that keep documents as text: a search
  * reply's hits with their `_source` sliced out of the reply, and the error object every failing
  * request returns. Shared by the driver and the renderer.
  */
@@ -41,7 +41,7 @@ function positionIn(reason: string): { line: number; column: number } | undefine
 }
 
 /**
- * Reads the error of a failing request: Elasticsearch's and OpenSearch's
+ * Reads the error of a failing request: Elasticsearch's
  * `{"error": {"type", "reason", "root_cause": [...], "caused_by": {...}}, "status"}`, the plain
  * `{"error": "no handler found..."}` form, and non-JSON bodies. Undefined for an empty body.
  */

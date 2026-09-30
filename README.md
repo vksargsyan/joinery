@@ -10,8 +10,8 @@ end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreS
 
 The foundation, the SQL MVP and the NoSQL modules are built: MySQL, MariaDB and PostgreSQL work
 end to end in the desktop app and on the command line, MongoDB and Redis (or Valkey) connect,
-browse, query and edit there too, and Elasticsearch and OpenSearch have documents, SQL, index
-and cluster administration. Data moves between engines with transfers, backups and restores.
+browse, query and edit there too, and Elasticsearch has documents, SQL, index and cluster
+administration. Data moves between engines with transfers, backups and restores.
 
 What works today:
 
@@ -92,7 +92,7 @@ What works today:
   with autocomplete and inline docs; Pub/Sub, an INFO dashboard, slow log, clients, latency,
   MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
   Sentinel/Cluster topology.
-- **Elasticsearch and OpenSearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
+- **Elasticsearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
   bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
   health, data streams and aliases; a Kibana-style console with autocomplete from the open API
   specification; a document grid paged past 10,000 hits with editing, conflict detection and
@@ -100,7 +100,7 @@ What works today:
   index operations, create index, a mapping editor that plans a reindex when a change cannot
   apply in place, and reindex with live progress; cluster health, nodes, shard allocation with
   its explanation, disk watermarks and tasks; aliases with atomic swaps, index and component
-  templates, ILM or ISM policies, ingest pipelines with simulate, and snapshots with restore.
+  templates, ILM policies, ingest pipelines with simulate, and snapshots with restore.
   Writes follow the same confirmation rules as SQL.
 - **Server tools** (MySQL, MariaDB, PostgreSQL, MongoDB): a monitor polled at a chosen interval
   with the history kept for the session (connections, QPS or TPS, cache and buffer pool hit
@@ -112,12 +112,12 @@ What works today:
   validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
   setParameter. Every change shows its exact statement first.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
-  export, run-file, transfer and profile management; test and query for MongoDB, Redis,
-  Elasticsearch and OpenSearch too; backup and restore for every engine.
+  export, run-file, transfer and profile management; test and query for MongoDB, Redis and
+  Elasticsearch too; backup and restore for every engine.
 
 Not built yet: the scheduler, Parquet, ER modelling for SQL, cloud sync and the AI assistant; the
 embedded mongosh shell for MongoDB; RediSearch and offline RDB analysis; a query builder for
-Elasticsearch and OpenSearch. The product specification lists the full scope.
+Elasticsearch. The product specification lists the full scope.
 
 ## Repository layout
 
@@ -140,7 +140,7 @@ pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-pac
 | `packages/mongo-tools`           | `@joinery/mongo-tools`          | mongosh-style query parsing, Extended JSON, find() text, schema analysis                          |
 | `packages/drivers/redis`         | `@joinery/driver-redis`         | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools               |
 | `packages/redis-tools`           | `@joinery/redis-tools`          | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs                   |
-| `packages/drivers/elasticsearch` | `@joinery/driver-elasticsearch` | Elasticsearch and OpenSearch adapter on its own HTTP client: documents, SQL, administration       |
+| `packages/drivers/elasticsearch` | `@joinery/driver-elasticsearch` | Elasticsearch adapter on its own HTTP client: documents, SQL, administration                      |
 | `packages/search-tools`          | `@joinery/search-tools`         | Console parser, lossless JSON, request classifier, SQL and admin reply readers, autocomplete      |
 | `packages/tunnel`                | `@joinery/tunnel`               | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks                   |
 | `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping               |

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useSearchView, type SearchView, type SearchViewState } from '../../state/search/view';
 import { Button, Icon, cx } from '../ui';
 
-/** Small pieces the Elasticsearch / OpenSearch panels share: notices, tabs, sizes, bars. */
+/** Small pieces the Elasticsearch panels share: notices, tabs, sizes, bars. */
 
 /** "1.2 GB" for a byte count. */
 export function formatBytes(bytes: number): string {

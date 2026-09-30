@@ -243,17 +243,13 @@ describe('cluster replies', () => {
 });
 
 describe('named resources', () => {
-  it('maps kinds to paths, lifecycle to ILM or ISM', () => {
-    expect(resourcePath('index-template', 'ilm', 'logs')).toBe('/_index_template/logs');
-    expect(resourcePath('lifecycle-policy', 'ilm', 'hot')).toBe('/_ilm/policy/hot');
-    expect(resourcePath('lifecycle-policy', 'ism', 'hot')).toBe('/_plugins/_ism/policies/hot');
-    expect(() => resourcePath('lifecycle-policy', null)).toThrow();
-    expect(
-      resourcePutRequest('lifecycle-policy', 'ism', 'p', '{}', { seqNo: 3, primaryTerm: 1 }),
-    ).toEqual({
+  it('maps kinds to paths', () => {
+    expect(resourcePath('index-template', 'logs')).toBe('/_index_template/logs');
+    expect(resourcePath('lifecycle-policy', 'hot')).toBe('/_ilm/policy/hot');
+    expect(resourcePath('snapshot-repository')).toBe('/_snapshot');
+    expect(resourcePutRequest('lifecycle-policy', 'p', '{}')).toEqual({
       method: 'PUT',
-      path: '/_plugins/_ism/policies/p',
-      query: 'if_seq_no=3&if_primary_term=1',
+      path: '/_ilm/policy/p',
       body: '{}',
     });
   });
@@ -261,7 +257,6 @@ describe('named resources', () => {
   it('reads composable templates without read-only fields, hiding dot names', () => {
     const list = parseResources(
       'index-template',
-      'ilm',
       JSON.stringify({
         index_templates: [
           {
@@ -294,10 +289,9 @@ describe('named resources', () => {
     ]);
   });
 
-  it('reads ILM and ISM policies as their PUT bodies', () => {
+  it('reads ILM policies as their PUT bodies', () => {
     const ilm = parseResources(
       'lifecycle-policy',
-      'ilm',
       '{"hot-warm": {"version": 2, "modified_date": "x", "policy": {"phases": {"hot": {}, "delete": {}}}, "in_use_by": {"indices": ["a", "b"]}}}',
     );
     expect(ilm[0]).toMatchObject({
@@ -309,30 +303,12 @@ describe('named resources', () => {
         { label: 'Version', value: '2' },
       ],
     });
-    const ism = parseResources(
-      'lifecycle-policy',
-      'ism',
-      '{"policies": [{"_id": "p1", "_seq_no": 4, "_primary_term": 1, "policy": {"policy_id": "p1", "description": "d", "last_updated_time": 1, "schema_version": 1, "default_state": "hot", "states": [{"name": "hot"}, {"name": "delete"}]}}], "total_policies": 1}',
-    );
-    expect(ism[0]).toEqual({
-      kind: 'lifecycle-policy',
-      name: 'p1',
-      summary: [
-        { label: 'Description', value: 'd' },
-        { label: 'Default state', value: 'hot' },
-        { label: 'States', value: 'hot, delete' },
-      ],
-      body: '{"policy":{"description":"d","default_state":"hot","states":[{"name":"hot"},{"name":"delete"}]}}',
-      seqNo: 4,
-      primaryTerm: 1,
-    });
   });
 
   it('reads pipelines and repositories', () => {
     expect(
       parseResources(
         'ingest-pipeline',
-        'ilm',
         '{"clean": {"description": "Tidy", "processors": [{"trim": {"field": "a"}}, {"lowercase": {"field": "b"}}]}}',
       )[0]!.summary,
     ).toEqual([
@@ -342,7 +318,6 @@ describe('named resources', () => {
     expect(
       parseResources(
         'snapshot-repository',
-        null,
         '{"backups": {"type": "fs", "settings": {"location": "/snap"}}}',
       ),
     ).toEqual([

@@ -16,10 +16,7 @@ import { defineHiddenSecret } from '../internal/redact';
 export type ConnectionProfileDraft = Omit<ConnectionProfileInput, 'id' | 'createdAt' | 'updatedAt'>;
 
 export interface ParseConnectionUriOptions {
-  /**
-   * The engine behind the URI. Required for http(s):// URLs (elasticsearch or opensearch);
-   * picks MariaDB for a mysql:// URI. Must agree with the scheme otherwise.
-   */
+  /** The engine behind the URI: picks MariaDB for a mysql:// URI. Must agree with the scheme. */
   readonly engine?: EngineId;
   /** Profile name; defaults to host[:port][/database]. */
   readonly name?: string;
@@ -39,7 +36,7 @@ export interface ParsedConnectionUri {
   readonly password?: string;
   /**
    * Query parameters that were dropped: secret-bearing ones always, and for engines without a
-   * `uri` endpoint (Elasticsearch, OpenSearch) every one Joinery could not map.
+   * `uri` endpoint (Elasticsearch) every one Joinery could not map.
    */
   readonly ignoredParams: readonly string[];
 }
@@ -48,8 +45,7 @@ export interface ParsedConnectionUri {
  * Parses a pasted connection URI (spec §4, "Import from ... pasted URIs") for PostgreSQL
  * (`postgres://`, `postgresql://`, `jdbc:postgresql://`), MySQL and MariaDB (`mysql://`,
  * `mariadb://`), MongoDB (`mongodb://`, `mongodb+srv://`), Redis (`redis://`, `rediss://`,
- * `redis+sentinel://`, `unix://`) and Elasticsearch / OpenSearch (`http://`, `https://` with
- * `options.engine`).
+ * `redis+sentinel://`, `unix://`) and Elasticsearch (`http://`, `https://`).
  *
  * TLS settings stated by the URI (sslmode, ssl-mode, ssl, tls, rediss://, https://) are mapped
  * to the profile's TLS mode; when the URI says nothing, the profile keeps Joinery's safe default
@@ -376,8 +372,8 @@ const SCHEME_ENGINES: Readonly<Record<string, readonly EngineId[]>> = {
   unix: ['redis'],
   'redis+unix': ['redis'],
   'redis+socket': ['redis'],
-  http: ['elasticsearch', 'opensearch'],
-  https: ['elasticsearch', 'opensearch'],
+  http: ['elasticsearch'],
+  https: ['elasticsearch'],
 };
 
 function engineFor(scheme: string, requested: EngineId | undefined): EngineId {
@@ -390,9 +386,6 @@ function engineFor(scheme: string, requested: EngineId | undefined): EngineId {
       );
     }
     return requested;
-  }
-  if (engines.length > 1 && (scheme === 'http' || scheme === 'https')) {
-    throw invalid('say whether the URL points to Elasticsearch or OpenSearch');
   }
   const [first] = engines;
   if (!first) throw invalid(`the scheme "${scheme}" is not supported`);
@@ -411,8 +404,7 @@ function buildDraft(engine: EngineId, parts: UriParts, params: Params): BuiltPro
     case 'redis':
       return buildRedis(parts, params);
     case 'elasticsearch':
-    case 'opensearch':
-      return buildSearch(engine, parts);
+      return buildSearch(parts);
   }
 }
 
@@ -740,8 +732,9 @@ function buildRedis(parts: UriParts, params: Params): BuiltProfile {
   };
 }
 
-/** Search engines have no URI endpoint, so every query parameter is reported as ignored. */
-function buildSearch(engine: 'elasticsearch' | 'opensearch', parts: UriParts): BuiltProfile {
+/** Elasticsearch has no URI endpoint, so every query parameter is reported as ignored. */
+function buildSearch(parts: UriParts): BuiltProfile {
+  const engine = 'elasticsearch';
   if (parts.hosts.length === 0 || parts.hosts.some((host) => host.host === '')) {
     throw invalid('the URL needs a host');
   }

@@ -32,7 +32,6 @@ export const URI_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
   mongodb: 'mongodb+srv://user:password@cluster0.example.net/database',
   redis: 'rediss://user:password@host:6380/0',
   elasticsearch: 'https://elastic:password@host:9200',
-  opensearch: 'https://admin:password@host:9200',
 };
 
 /** The same, without the password, for the stored URI field. */
@@ -43,7 +42,6 @@ const STORED_URI_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
   mongodb: 'mongodb://user@host1:27017,host2:27017/database?replicaSet=rs0',
   redis: 'redis://user@host:6379/0',
   elasticsearch: 'https://host:9200',
-  opensearch: 'https://host:9200',
 };
 
 const SOCKET_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
@@ -53,7 +51,6 @@ const SOCKET_EXAMPLES: Readonly<Record<DialogEngine, string>> = {
   mongodb: '/tmp/mongodb-27017.sock',
   redis: '/var/run/redis/redis-server.sock',
   elasticsearch: '',
-  opensearch: '',
 };
 
 /** The inputs of the chosen endpoint form: host and port, socket, URI, host lists, SRV. */

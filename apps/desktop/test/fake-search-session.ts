@@ -39,11 +39,10 @@ export function fakeSearchSession(): FakeSearchSession {
     seqNo: 1,
     primaryTerm: 1,
   });
-  const capabilities = searchCapabilities({ distribution: 'elasticsearch', version: '9.4.0' });
+  const capabilities = searchCapabilities({ version: '9.4.0' });
   const state = { closed: false };
   const fake = {
     engine: 'elasticsearch' as const,
-    distribution: 'elasticsearch' as const,
     serverVersion: '9.4.0',
     searchCapabilities: capabilities,
     inTransaction: false,
@@ -64,7 +63,6 @@ export function fakeSearchSession(): FakeSearchSession {
       state.closed = true;
     },
     clusterInfo: record('clusterInfo', () => ({
-      distribution: 'elasticsearch' as const,
       version: '9.4.0',
       clusterName: 'test',
       plugins: [],

@@ -60,9 +60,9 @@ export const BROWSE_NODE_KINDS = [
   'key',
   /** A cluster node or shard (Redis Cluster primary, MongoDB shard). */
   'node',
-  /** An Elasticsearch / OpenSearch data stream. */
+  /** An Elasticsearch data stream. */
   'data-stream',
-  /** An Elasticsearch / OpenSearch alias. */
+  /** An Elasticsearch alias. */
   'alias',
   'other',
 ] as const;

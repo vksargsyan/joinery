@@ -1,5 +1,4 @@
 import { newId } from '@joinery/core';
-import { distributionName, type SearchDistribution } from '@joinery/search-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -21,7 +20,7 @@ import {
 } from './console-flow';
 
 /**
- * The Elasticsearch / OpenSearch console (spec §11), Kibana Dev Tools' working set: requests in
+ * The Elasticsearch console (spec §11), Kibana Dev Tools' working set: requests in
  * console syntax, the one at the cursor (or every one a selection touches) sent with
  * Ctrl/Cmd+Enter, each response shown re-indented with its status, time and warnings. The write
  * rules apply before each request (read-only refuses, destructive and production writes ask),
@@ -55,7 +54,6 @@ export interface SearchConsoleState {
   readonly history: readonly string[];
   /** Index, alias and data stream names for autocomplete. */
   readonly names: readonly string[];
-  readonly distribution: SearchDistribution | undefined;
   readonly serverVersion: string | undefined;
   readonly policy: SearchWritePolicy | undefined;
 }
@@ -78,7 +76,6 @@ export class SearchConsole {
       historyOpen: false,
       history: [],
       names: [],
-      distribution: undefined,
       serverVersion: undefined,
       policy: undefined,
     }));
@@ -101,7 +98,7 @@ export class SearchConsole {
       const info = await this.#lane.run((host, sessionId) =>
         host.search.clusterInfo({ sessionId }),
       );
-      this.#set({ distribution: info.distribution, serverVersion: info.version });
+      this.#set({ serverVersion: info.version });
     } catch {
       // A user without the monitor privilege: the console still works.
     }
@@ -129,11 +126,6 @@ export class SearchConsole {
     } catch {
       // Autocomplete without names still offers the endpoints.
     }
-  }
-
-  /** The distribution's name for messages, "Elasticsearch" until it is known. */
-  get productName(): string {
-    return distributionName(this.state.distribution ?? 'elasticsearch');
   }
 
   /**

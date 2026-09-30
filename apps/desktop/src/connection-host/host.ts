@@ -233,7 +233,7 @@ export class ConnectionHost {
             redisWritePolicy(this.#resolved.profile),
           );
         }
-        if (session.engine === 'elasticsearch' || session.engine === 'opensearch') {
+        if (session.engine === 'elasticsearch') {
           return executeSearchGuarded(
             session,
             text,

@@ -10,14 +10,14 @@ import { NoticeBar, Tabs, Toolbar } from './parts';
 
 /**
  * Templates, lifecycle policies, pipelines and aliases (spec §11): one tab each, shown only
- * where the cluster has the feature (ILM on Elasticsearch, ISM on OpenSearch, composable
- * templates from Elasticsearch 7.8). Resources are edited as the JSON their PUT takes; an
+ * where the cluster has the feature (ILM outside the OSS distribution, composable templates
+ * from Elasticsearch 7.8). Resources are edited as the JSON their PUT takes; an
  * ingest pipeline's edit can be simulated on sample documents before it is saved.
  */
 
-function tabLabel(tab: AdminTab, lifecycle: 'ilm' | 'ism' | null): string {
+function tabLabel(tab: AdminTab): string {
   if (tab === 'aliases') return 'Aliases';
-  if (tab === 'lifecycle-policy') return lifecycle === 'ism' ? 'ISM policies' : 'ILM policies';
+  if (tab === 'lifecycle-policy') return 'ILM policies';
   return RESOURCE_LABELS[tab].many;
 }
 
@@ -26,7 +26,7 @@ export function AdminPanel({ view }: { readonly view: AdminView }) {
   const loading = useSearchView(view, (s) => s.loading);
   // Re-render when the capability flags arrive.
   useSearchView(view, (s) => s.info);
-  const tabs = view.tabs.map((id) => ({ id, label: tabLabel(id, view.lifecycle) }));
+  const tabs = view.tabs.map((id) => ({ id, label: tabLabel(id) }));
   return (
     <div className="flex h-full flex-col bg-bg" data-testid="search-admin">
       <Tabs

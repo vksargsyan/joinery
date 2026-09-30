@@ -8,7 +8,7 @@ import {
 import { AdminView } from '../../state/search/admin';
 import { currentDock } from '../dock';
 
-/** Opens the Elasticsearch / OpenSearch panels in the dock. */
+/** Opens the Elasticsearch panels in the dock. */
 
 function addToDock(id: string, title: string): void {
   currentDock()?.addPanel({

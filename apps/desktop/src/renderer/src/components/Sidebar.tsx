@@ -378,7 +378,7 @@ function ProfileItem(props: {
                 <MenuItem onSelect={() => void newQuery()}>
                   {profile.engine === 'redis'
                     ? 'Open CLI'
-                    : profile.engine === 'elasticsearch' || profile.engine === 'opensearch'
+                    : profile.engine === 'elasticsearch'
                       ? 'Open console'
                       : 'New query tab'}
                 </MenuItem>
@@ -444,13 +444,11 @@ function ProfileItem(props: {
           <RedisTree profile={profile} depth={depth + 1} />
         </div>
       )}
-      {expanded &&
-        connected &&
-        (profile.engine === 'elasticsearch' || profile.engine === 'opensearch') && (
-          <div role="group">
-            <SearchTree profile={profile} depth={depth + 1} onError={props.onError} />
-          </div>
-        )}
+      {expanded && connected && profile.engine === 'elasticsearch' && (
+        <div role="group">
+          <SearchTree profile={profile} depth={depth + 1} onError={props.onError} />
+        </div>
+      )}
     </div>
   );
 }

@@ -8,7 +8,6 @@ import type {
   SearchClusterHealth,
   SearchClusterInfo,
   SearchDataStreamInfo,
-  SearchDistribution,
   SearchDocument,
   SearchIndexSummary,
   SearchNodeSummary,
@@ -175,7 +174,7 @@ export interface SimulatePipelineOptions extends SearchOpOptions {
 }
 
 /**
- * An Elasticsearch or OpenSearch session: the generic Session contract (`execute` runs Kibana
+ * An Elasticsearch session: the generic Session contract (`execute` runs Kibana
  * console text, one result set per request with the JSON response) plus the services the
  * module needs (spec §11). Documents, queries, mappings and settings go in and come out as JSON
  * text. Every call takes a signal and an execution id for `cancel`.
@@ -184,9 +183,7 @@ export interface SimulatePipelineOptions extends SearchOpOptions {
  * SQL and ES|QL) add methods beside these without changing them.
  */
 export interface SearchSession extends Session {
-  readonly engine: 'elasticsearch' | 'opensearch';
-  /** What the server is, which may differ from the profile's engine. */
-  readonly distribution: SearchDistribution;
+  readonly engine: 'elasticsearch';
   readonly searchCapabilities: SearchCapabilities;
 
   // Cluster
@@ -284,12 +281,12 @@ export interface SearchSession extends Session {
 
   // SQL and ES|QL
   /**
-   * Runs SQL through the SQL API (Elasticsearch) or the SQL plugin (OpenSearch), a page at a
-   * time with the server's cursor, which is closed when the iteration ends early. Cells are
-   * JSON text. NOT_SUPPORTED when the cluster has no SQL.
+   * Runs SQL through the SQL API, a page at a time with the server's cursor, which is closed
+   * when the iteration ends early. Cells are JSON text. NOT_SUPPORTED when the cluster has no
+   * SQL.
    */
   sql(query: string, opts?: SqlQueryOptions): AsyncIterable<SearchTable>;
-  /** Translates SQL to Query DSL (Elasticsearch) or explains it (OpenSearch). */
+  /** Translates SQL to Query DSL. */
   translateSql(query: string, opts?: SearchOpOptions): Promise<SqlTranslation>;
   /** Runs an ES|QL query; NOT_SUPPORTED on clusters without it. */
   esql(query: string, opts?: SearchOpOptions): Promise<SearchTable>;
@@ -339,7 +336,7 @@ export interface SearchSession extends Session {
     kind: SearchResourceKind,
     name: string,
     body: JsonText,
-    opts?: SearchOpOptions & ConcurrencyOptions,
+    opts?: SearchOpOptions,
   ): Promise<void>;
   deleteResource(kind: SearchResourceKind, name: string, opts?: SearchOpOptions): Promise<void>;
   /**

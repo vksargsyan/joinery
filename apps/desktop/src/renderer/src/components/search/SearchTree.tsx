@@ -23,7 +23,7 @@ import { openSearchConsole, openSearchTool } from './open';
 import { formatBytes } from './parts';
 
 /**
- * An Elasticsearch or OpenSearch connection's object tree (spec §5): Indices with their health
+ * An Elasticsearch connection's object tree (spec §5): Indices with their health
  * badge, documents and size; Data streams with their backing index count; Aliases with the
  * indices they point at; then the Console, SQL, Cluster, Templates and pipelines, and
  * Snapshots. Double-click (or Enter) on an index, alias or data stream opens its document

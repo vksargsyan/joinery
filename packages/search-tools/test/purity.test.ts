@@ -16,6 +16,6 @@ describe('search-tools purity', () => {
     expect(source).not.toMatch(/from ['"]node:/);
     expect(source).not.toMatch(/\bBuffer\b/);
     expect(source).not.toMatch(/\bprocess\./);
-    expect(source).not.toMatch(/@elastic|@opensearch-project/);
+    expect(source).not.toMatch(/@elastic/);
   });
 });

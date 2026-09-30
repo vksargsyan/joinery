@@ -11,7 +11,7 @@ import { SERVERS, allIds, cleanUp, connect, testPrefix } from './helpers';
  * (point in time and scroll), delete by query, the console's raw requests and `execute`.
  */
 
-describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine services', (server) => {
+describe.skipIf(SERVERS.length === 0).each(SERVERS)('services', (server) => {
   const prefix = testPrefix();
   const orders = `${prefix}orders`;
   const logs = `${prefix}logs`;
@@ -33,7 +33,6 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine services', (server)
   });
 
   it('knows what the server is', () => {
-    expect(session.distribution).toBe(server.engine);
     expect(session.serverVersion).toMatch(/^\d+\.\d+/);
     expect(session.searchCapabilities.pointInTime).toBe(true);
     expect(session.capabilities()).toMatchObject({ queryCancel: true, clusterMode: true });
@@ -41,12 +40,10 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine services', (server)
 
   it('reads cluster information, health and nodes', async () => {
     const info = await session.clusterInfo();
-    expect(info).toMatchObject({ distribution: server.engine, version: session.serverVersion });
+    expect(info).toMatchObject({ version: session.serverVersion });
     expect(info.clusterName).not.toBe('');
-    if (server.engine === 'elasticsearch') {
-      expect(info.license).toMatchObject({ status: 'active' });
-      expect(info.capabilities.esql).toBe(true);
-    }
+    expect(info.license).toMatchObject({ status: 'active' });
+    expect(info.capabilities.esql).toBe(true);
     const health = await session.clusterHealth();
     expect(['green', 'yellow']).toContain(health.status);
     expect(health.nodes).toBeGreaterThan(0);

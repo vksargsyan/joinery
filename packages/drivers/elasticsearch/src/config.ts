@@ -27,7 +27,6 @@ export type SearchAuthMethod = 'none' | 'basic' | 'apiKey' | 'bearer' | 'certifi
 
 /** Everything needed to talk to a cluster for a profile. */
 export interface SearchClientPlan {
-  readonly engine: 'elasticsearch' | 'opensearch';
   readonly nodes: readonly SearchNodeTarget[];
   /** The Authorization header value; a secret. */
   readonly authorization?: string;
@@ -77,7 +76,7 @@ export function parseNodeUrl(url: string, tlsMode: TlsMode): ParsedNodeUrl {
   if (scheme !== undefined && scheme !== 'http' && scheme !== 'https') {
     throw invalid(
       `A node URL uses "${scheme}://"`,
-      'Elasticsearch and OpenSearch URLs start with http:// or https://',
+      'Elasticsearch URLs start with http:// or https://',
     );
   }
   let parsed: URL;
@@ -187,7 +186,7 @@ export function buildSearchClientPlan(
   options: { readonly readFile?: FileReader } = {},
 ): SearchClientPlan {
   const { profile } = resolved;
-  if (profile.engine !== 'elasticsearch' && profile.engine !== 'opensearch') {
+  if (profile.engine !== 'elasticsearch') {
     throw new JoineryError({
       code: 'VALIDATION_FAILED',
       message: `The Elasticsearch adapter cannot open a ${ENGINES[profile.engine].displayName} profile`,
@@ -216,12 +215,6 @@ export function buildSearchClientPlan(
       urls = endpoint.urls;
       break;
     case 'cloudId':
-      if (profile.engine !== 'elasticsearch') {
-        throw invalid(
-          'A Cloud ID names an Elastic Cloud deployment, which runs Elasticsearch',
-          'Use the node URLs of the OpenSearch cluster instead',
-        );
-      }
       urls = [cloudIdUrl(endpoint.cloudId)];
       cloud = true;
       break;
@@ -288,7 +281,6 @@ export function buildSearchClientPlan(
       ? `${nodes[0]!.label} (through the tunnel)`
       : nodes.map((node) => node.label).join(', ');
   return {
-    engine: profile.engine,
     nodes,
     ...(authorization !== undefined ? { authorization } : {}),
     authMethod,

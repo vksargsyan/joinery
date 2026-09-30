@@ -10,7 +10,7 @@ import { errorProp } from '@joinery/driver-sql-base';
 import type { SearchClientPlan, SearchNodeTarget } from './config';
 
 /**
- * The HTTP client behind the Elasticsearch / OpenSearch adapter (ADR 0010): Node's http and
+ * The HTTP client behind the Elasticsearch adapter (ADR 0010): Node's http and
  * https modules with one keep-alive agent per node, so TLS is exactly what buildTlsSettings
  * configures (pinned host names through a tunnel included) and every body stays text.
  *

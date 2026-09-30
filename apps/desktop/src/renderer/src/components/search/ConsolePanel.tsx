@@ -12,7 +12,7 @@ import { AggregationView } from './AggregationView';
 import { ConsoleEditor, ResponseViewer } from './ConsoleEditor';
 
 /**
- * The Elasticsearch / OpenSearch console (spec §11): Kibana Dev Tools syntax on the left, the
+ * The Elasticsearch console (spec §11): Kibana Dev Tools syntax on the left, the
  * responses on the right. Ctrl/Cmd+Enter (or Send) sends the request at the cursor, or every
  * request the selection touches; Auto-indent re-indents their bodies; History lists what ran
  * here, a click puts it back into the editor.
@@ -25,7 +25,6 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
   const historyOpen = useSearchConsole(console, (s) => s.historyOpen);
   const history = useSearchConsole(console, (s) => s.history);
   const policy = useSearchConsole(console, (s) => s.policy);
-  const distribution = useSearchConsole(console, (s) => s.distribution);
   const serverVersion = useSearchConsole(console, (s) => s.serverVersion);
   const connection = useConnections((s) => s.byProfile[console.target.profileId]);
   const profile = cachedProfile(console.target.profileId);
@@ -171,10 +170,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
             initialText={console.target.text ?? WELCOME}
             theme={theme}
             errorMarker={marker}
-            completion={() => ({
-              indices: console.state.names,
-              ...(console.state.distribution ? { distribution: console.state.distribution } : {}),
-            })}
+            completion={() => ({ indices: console.state.names })}
             onRun={(text, start, end) => {
               setSelected(undefined);
               void console.run(text, start, end);
@@ -255,14 +251,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
             {profile.name}
           </span>
         )}
-        {serverVersion && (
-          <span>
-            · {console.productName} {serverVersion}
-            {distribution && profile && distribution !== profile.engine
-              ? ' (the connection is set up for the other engine)'
-              : ''}
-          </span>
-        )}
+        {serverVersion && <span>· Elasticsearch {serverVersion}</span>}
         <span className="flex-1" />
         <span>
           {connection?.status === 'ready' ? 'Connected' : (connection?.status ?? 'Not connected')}

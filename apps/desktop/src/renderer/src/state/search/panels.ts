@@ -10,7 +10,7 @@ import { SnapshotsView } from './snapshots';
 import { SqlView, type SqlMode } from './sql';
 
 /**
- * The Elasticsearch / OpenSearch module's dock panels: consoles, document grids, index panels,
+ * The Elasticsearch module's dock panels: consoles, document grids, index panels,
  * the SQL and ES|QL editor, and the cluster, templates-and-pipelines and snapshot panels. The
  * dock renders them through one `search` panel component; this registry holds each panel's
  * state and disposes it (closing its session) when the panel closes.

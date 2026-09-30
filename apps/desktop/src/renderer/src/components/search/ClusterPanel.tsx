@@ -60,7 +60,7 @@ function Overview({ view }: { readonly view: ClusterView }) {
           </h3>
           <Facts
             items={[
-              ...(info ? ([['Server', `${info.distribution} ${info.version}`]] as const) : []),
+              ...(info ? ([['Server', `Elasticsearch ${info.version}`]] as const) : []),
               ['Nodes', `${health.nodes} (${health.dataNodes} data)`],
               [
                 'Active shards',

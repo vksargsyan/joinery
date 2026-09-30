@@ -50,13 +50,13 @@ jobs:
       - run: pnpm audit --audit-level high
 
   integration:
-    name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }}, MongoDB ${{ matrix.mongodb }}, ${{ matrix.redis }}, Elasticsearch ${{ matrix.elasticsearch }}, OpenSearch ${{ matrix.opensearch }})
+    name: Integration (PostgreSQL ${{ matrix.postgres }}, MySQL ${{ matrix.mysql }}, MariaDB ${{ matrix.mariadb }}, MongoDB ${{ matrix.mongodb }}, ${{ matrix.redis }}, Elasticsearch ${{ matrix.elasticsearch }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         # Pull requests test the current LTS versions; nightly and manual runs cover the full matrix.
-        include: ${{ fromJSON((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '[{"postgres":"14","mysql":"8.0","mariadb":"10.6","mongodb":"7.0","redis":"redis:6.2","elasticsearch":"7.17.28","opensearch":"2.19.6"},{"postgres":"15","mysql":"8.4","mariadb":"10.11","mongodb":"7.0","redis":"valkey/valkey:7.2","elasticsearch":"8.19.22","opensearch":"2.19.6"},{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4","elasticsearch":"9.5.3","opensearch":"3.8.0"},{"postgres":"17","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"valkey/valkey:8.0","elasticsearch":"8.19.22","opensearch":"3.8.0"},{"postgres":"18","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"redis:8.0","elasticsearch":"9.5.3","opensearch":"3.8.0"}]' || '[{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4","elasticsearch":"9.5.3","opensearch":"3.8.0"}]') }}
+        include: ${{ fromJSON((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '[{"postgres":"14","mysql":"8.0","mariadb":"10.6","mongodb":"7.0","redis":"redis:6.2","elasticsearch":"7.17.28"},{"postgres":"15","mysql":"8.4","mariadb":"10.11","mongodb":"7.0","redis":"valkey/valkey:7.2","elasticsearch":"8.19.22"},{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4","elasticsearch":"9.5.3"},{"postgres":"17","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"valkey/valkey:8.0","elasticsearch":"8.19.22"},{"postgres":"18","mysql":"9.7","mariadb":"11.8","mongodb":"8.0","redis":"redis:8.0","elasticsearch":"9.5.3"}]' || '[{"postgres":"16","mysql":"8.4","mariadb":"11.4","mongodb":"8.0","redis":"redis:7.4","elasticsearch":"9.5.3"}]') }}
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -96,13 +96,12 @@ jobs:
       JOINERY_TEST_REDIS_SENTINEL: 127.0.0.1:26380/joinery-master
       JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
       JOINERY_TEST_ELASTICSEARCH_URL: http://elastic:joinery-es@127.0.0.1:9200
-      JOINERY_TEST_OPENSEARCH_URL: http://127.0.0.1:9201
     steps:
       - uses: actions/checkout@v7
       # A MongoDB replica set and a Redis Sentinel and Cluster need server arguments, which
       # service containers cannot pass.
       - run: .github/scripts/start-nosql.sh "${{ matrix.mongodb }}" "${{ matrix.redis }}"
-      - run: .github/scripts/start-search.sh "${{ matrix.elasticsearch }}" "${{ matrix.opensearch }}"
+      - run: .github/scripts/start-search.sh "${{ matrix.elasticsearch }}"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -113,7 +112,7 @@ jobs:
       - run: pnpm test:integration --continue
 
   e2e:
-    name: Desktop end-to-end (PostgreSQL 16, MongoDB 8.0, Redis 7.4, Elasticsearch 9.5, OpenSearch 3.8)
+    name: Desktop end-to-end (PostgreSQL 16, MongoDB 8.0, Redis 7.4, Elasticsearch 9.5)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -132,14 +131,13 @@ jobs:
       JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
       JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
       JOINERY_TEST_ELASTICSEARCH_URL: http://elastic:joinery-es@127.0.0.1:9200
-      JOINERY_TEST_OPENSEARCH_URL: http://127.0.0.1:9201
       # Ubuntu runners restrict the unprivileged user namespaces Chromium's sandbox needs. Only
       # the e2e launcher honours this; the app itself always keeps the renderer sandbox on.
       JOINERY_E2E_NO_SANDBOX: '1'
     steps:
       - uses: actions/checkout@v7
       - run: .github/scripts/start-nosql.sh 8.0 redis:7.4
-      - run: .github/scripts/start-search.sh 9.5.3 3.8.0
+      - run: .github/scripts/start-search.sh 9.5.3
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:

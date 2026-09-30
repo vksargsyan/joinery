@@ -34,8 +34,7 @@ import {
  * JOINERY_SSH_PASSWORD, JOINERY_SSH_KEY_PASSPHRASE and JOINERY_PROXY_PASSWORD or asked for. A URI
  * target gets its tunnel and proxy from the command line (`--ssh`, `--proxy`, see tunnels.ts).
  *
- * An `http://` or `https://` URL is an Elasticsearch node (OpenSearch with `--engine
- * opensearch`; the session detects the distribution either way). It can log in with the URL's
+ * An `http://` or `https://` URL is an Elasticsearch node. It can log in with the URL's
  * user and password, or with an API key from JOINERY_API_KEY; a saved profile's API key or
  * bearer token comes from its secret, JOINERY_API_KEY / JOINERY_BEARER_TOKEN, or a prompt.
  */
@@ -50,12 +49,7 @@ export interface TargetOverrides {
   readonly readOnly?: boolean;
   /** --ssh, --proxy and the host key flags. The route flags apply to URI targets only. */
   readonly tunnel?: TunnelFlags;
-  /** --engine: what an http(s):// URL points to (default Elasticsearch). */
-  readonly engine?: SearchEngineId;
 }
-
-/** The engines behind http(s):// URLs. */
-export type SearchEngineId = 'elasticsearch' | 'opensearch';
 
 /** A resolved connection target, ready to connect. Its secrets never print. */
 export interface Target {
@@ -90,7 +84,6 @@ const CLI_ENGINES: ReadonlySet<string> = new Set([
   'mongodb',
   'redis',
   'elasticsearch',
-  'opensearch',
 ]);
 const SQL_SCHEMES = new Set(['postgres', 'postgresql', 'mysql', 'mariadb']);
 /** MongoDB URIs work with `test` and `query` (the SQL commands refuse them when they connect). */
@@ -102,7 +95,7 @@ export const REDIS_SCHEMES: ReadonlySet<string> = new Set([
   'redis+sentinel',
   'rediss+sentinel',
 ]);
-/** Elasticsearch / OpenSearch node URLs work with `test` and `query`. */
+/** Elasticsearch node URLs work with `test` and `query`. */
 export const SEARCH_SCHEMES: ReadonlySet<string> = new Set(['http', 'https']);
 /** SecretRef id for a password the CLI adds to a profile or URI that had none. */
 export const CLI_PASSWORD_REF = 'joinery-cli-password';
@@ -228,13 +221,7 @@ async function resolveUri(
       hint: 'Use a postgres://, postgresql://, mysql://, mariadb://, mongodb://, mongodb+srv://, redis://, rediss://, http:// or https:// URI, or a saved profile name',
     });
   }
-  if (overrides.engine !== undefined && !search) {
-    deps.reporter.warn('--engine applies to http:// and https:// URLs; it is ignored here');
-  }
-  const parsed = parseConnectionUri(
-    spec,
-    search ? { engine: overrides.engine ?? 'elasticsearch' } : {},
-  );
+  const parsed = parseConnectionUri(spec);
   if (parsed.ignoredParams.length > 0) {
     deps.reporter.warn(`ignored URI parameters: ${parsed.ignoredParams.join(', ')}`);
   }
@@ -301,12 +288,9 @@ async function resolveProfile(
       `--ssh, --ssh-key, --ssh-agent, --ssh-password-env and --proxy apply to URI targets; "${profile.name}" uses its saved SSH and proxy settings`,
     );
   }
-  if (overrides.engine !== undefined) {
-    deps.reporter.warn(`--engine applies to URL targets; "${profile.name}" keeps its engine`);
-  }
   if (!CLI_ENGINES.has(profile.engine)) {
     throw new CliError(
-      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL, MariaDB, MongoDB, Redis, Elasticsearch and OpenSearch`,
+      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL, MariaDB, MongoDB, Redis and Elasticsearch`,
       { code: 'NOT_SUPPORTED' },
     );
   }

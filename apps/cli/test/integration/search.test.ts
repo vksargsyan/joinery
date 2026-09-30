@@ -8,24 +8,19 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * The BUILT binary against the Elasticsearch and OpenSearch test servers (spec §11): `test`
+ * The BUILT binary against the Elasticsearch test server (spec §11): `test`
  * step by step (and a wrong password failing at the Auth step without echoing it), `query`
  * running console requests that create an index, bulk-index and search documents (a 64-bit
  * number printed exactly), JSON lines output, and the write rules (read-only refuses, a delete
- * needs --yes). Gated on JOINERY_TEST_ELASTICSEARCH_URL / JOINERY_TEST_OPENSEARCH_URL; each run
- * uses its own index, deleted afterwards.
+ * needs --yes). Gated on JOINERY_TEST_ELASTICSEARCH_URL; each run uses its own index, deleted
+ * afterwards.
  */
 
 const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
 
-const SERVERS = [
-  {
-    engine: 'elasticsearch',
-    name: 'Elasticsearch',
-    url: process.env['JOINERY_TEST_ELASTICSEARCH_URL'],
-  },
-  { engine: 'opensearch', name: 'OpenSearch', url: process.env['JOINERY_TEST_OPENSEARCH_URL'] },
-].filter((s): s is { engine: string; name: string; url: string } => s.url !== undefined);
+const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
+/** The configured server, for describe.each: none without JOINERY_TEST_ELASTICSEARCH_URL. */
+const SERVERS: readonly { readonly url: string }[] = ES_URL ? [{ url: ES_URL }] : [];
 
 let workDir = '';
 
@@ -92,28 +87,26 @@ afterAll(async () => {
   if (workDir) rmSync(workDir, { recursive: true, force: true });
 });
 
-describe.skipIf(SERVERS.length === 0).each(SERVERS)('joinery-cli with $name', (server) => {
+describe.skipIf(SERVERS.length === 0).each(SERVERS)('joinery-cli with Elasticsearch', (server) => {
   const index = `joinery-cli-${randomBytes(4).toString('hex')}`;
-  const engine = ['--engine', server.engine];
   indices.push({ url: server.url, index });
 
   it('tests the URL step by step', async () => {
-    const result = await joinery(['test', server.url, ...engine]);
+    const result = await joinery(['test', server.url]);
     expect(result.code, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toMatch(/✓ Auth/);
-    expect(result.stdout).toMatch(new RegExp(`✓ Version\\s+${server.name} \\d+\\.\\d+`));
+    expect(result.stdout).toMatch(new RegExp(`✓ Version\\s+Elasticsearch \\d+\\.\\d+`));
     expect(result.stdout).toContain('Connection OK.');
     const password = new URL(server.url).password;
     if (password) expect(result.stdout + result.stderr).not.toContain(password);
-    const json = await joinery(['test', server.url, ...engine, '--json']);
-    expect(JSON.parse(json.stdout)).toMatchObject({ engine: server.engine, ok: true });
+    const json = await joinery(['test', server.url, '--json']);
+    expect(JSON.parse(json.stdout)).toMatchObject({ engine: 'elasticsearch', ok: true });
   });
 
   it('creates an index, indexes and searches documents', async () => {
     const created = await joinery([
       'query',
       server.url,
-      ...engine,
       '-e',
       [
         `PUT /${index}`,
@@ -133,7 +126,6 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('joinery-cli with $name', (s
     const searched = await joinery([
       'query',
       server.url,
-      ...engine,
       '--format',
       'jsonl',
       '-e',
@@ -155,7 +147,6 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('joinery-cli with $name', (s
     const readOnly = await joinery([
       'query',
       server.url,
-      ...engine,
       '--read-only',
       '-e',
       `POST /${index}/_doc\n{"n": 3}`,
@@ -163,24 +154,17 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('joinery-cli with $name', (s
     expect(readOnly.code).toBe(2);
     expect(readOnly.stderr).toContain('is read-only');
 
-    const unconfirmed = await joinery(['query', server.url, ...engine, '-e', `DELETE /${index}`]);
+    const unconfirmed = await joinery(['query', server.url, '-e', `DELETE /${index}`]);
     expect(unconfirmed.code).toBe(2);
     expect(unconfirmed.stderr).toContain('needs confirmation');
 
-    const missing = await joinery([
-      'query',
-      server.url,
-      ...engine,
-      '-e',
-      `GET /${index}-missing/_search`,
-    ]);
+    const missing = await joinery(['query', server.url, '-e', `GET /${index}-missing/_search`]);
     expect(missing.code).toBe(2);
     expect(missing.stderr).toContain('404 Not Found: index_not_found_exception');
 
     const deleted = await joinery([
       'query',
       server.url,
-      ...engine,
       '--yes',
       '-e',
       `DELETE /${index}\n\nHEAD /${index}`,
@@ -189,11 +173,11 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('joinery-cli with $name', (s
   });
 });
 
-describe.skipIf(!SERVERS.some((s) => s.engine === 'elasticsearch' && new URL(s.url).username))(
+describe.skipIf(!ES_URL || !new URL(ES_URL).username)(
   'joinery-cli with Elasticsearch security',
   () => {
     it('fails at the Auth step with a wrong password, without echoing it', async () => {
-      const server = SERVERS.find((s) => s.engine === 'elasticsearch')!;
+      const server = SERVERS[0]!;
       const url = new URL(server.url);
       url.password = 'not-the-Password-42';
       const result = await joinery(['test', url.toString()]);

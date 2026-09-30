@@ -23,7 +23,6 @@ import {
   endpointKindsFor,
   formFromUri,
   formToProfile,
-  isSearchDialogEngine,
   profileToForm,
   switchEndpointKind,
   switchEngine,
@@ -419,13 +418,8 @@ export function ConnectionDialog(props: {
           <MongoFields form={form} canSave={canSave} editing={editing !== undefined} />
         ) : engine === 'redis' ? (
           <RedisFields form={form} canSave={canSave} editing={editing !== undefined} />
-        ) : isSearchDialogEngine(engine) ? (
-          <SearchFields
-            form={form}
-            engine={engine}
-            canSave={canSave}
-            editing={editing !== undefined}
-          />
+        ) : engine === 'elasticsearch' ? (
+          <SearchFields form={form} canSave={canSave} editing={editing !== undefined} />
         ) : (
           <SqlFields form={form} canSave={canSave} editing={editing !== undefined} />
         )}
@@ -439,7 +433,7 @@ export function ConnectionDialog(props: {
           </Select>
         </Field>
         <div />
-        {isSearchDialogEngine(engine) && endpointKind === 'urls' && (
+        {engine === 'elasticsearch' && endpointKind === 'urls' && (
           <p className="col-span-2 -mt-1 text-xs text-muted">
             The URL scheme decides: https:// connects with TLS in the mode chosen here, http://
             needs “Disable TLS”.

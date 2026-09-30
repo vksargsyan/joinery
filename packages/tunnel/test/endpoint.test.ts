@@ -172,7 +172,7 @@ describe('tunnelReach', () => {
     expect(JSON.stringify(error)).not.toContain('topsecret');
   });
 
-  it('reaches one Elasticsearch or OpenSearch node URL, or a Cloud ID', () => {
+  it('reaches one Elasticsearch node URL, or a Cloud ID', () => {
     const search = (endpoint: ConnectionProfileInput['endpoint'], tls = 'verify-full' as const) =>
       tunnelTarget(profile({ engine: 'elasticsearch', endpoint, tls: { mode: tls } }));
     expect(search({ kind: 'urls', urls: ['https://es.internal:9243/prefix'] })).toEqual({

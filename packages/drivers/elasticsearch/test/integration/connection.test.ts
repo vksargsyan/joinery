@@ -5,7 +5,7 @@ import { parseJsonTree, stringAt } from '@joinery/search-tools';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createSearchAdapter, isSearchSession, type SearchSession } from '../../src';
-import { ES_URL, OS_URL, SERVERS, connect, profileFor } from './helpers';
+import { ES_URL, SERVERS, connect, profileFor } from './helpers';
 
 /**
  * Connecting and Test Connection against the real servers (spec §4): the stepwise check,
@@ -15,8 +15,7 @@ import { ES_URL, OS_URL, SERVERS, connect, profileFor } from './helpers';
 
 async function check(resolved: ResolvedProfile): Promise<ConnectionCheckResult[]> {
   const results: ConnectionCheckResult[] = [];
-  const engine = resolved.profile.engine === 'opensearch' ? 'opensearch' : 'elasticsearch';
-  for await (const result of createSearchAdapter({ engine }).checkConnection(resolved)) {
+  for await (const result of createSearchAdapter().checkConnection(resolved)) {
     results.push(result);
   }
   return results;
@@ -37,7 +36,7 @@ beforeAll(async () => {
   await new Promise<void>((resolve) => closed.close(() => resolve()));
 });
 
-describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine connection', (server) => {
+describe.skipIf(SERVERS.length === 0).each(SERVERS)('connection', (server) => {
   it('passes Test Connection step by step', async () => {
     const results = await check(profileFor(server));
     expect(steps(results)).toEqual([
@@ -51,28 +50,10 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine connection', (serve
     ]);
     expect(results[3]!.message).toContain('unencrypted');
     const version = results[6]!.message!;
-    expect(version).toContain(server.engine === 'opensearch' ? 'OpenSearch' : 'Elasticsearch');
-    if (server.engine === 'elasticsearch') {
-      expect(version).toMatch(/basic licence/);
-      expect(results[4]!.message).toBe('Signed in as elastic (realm reserved)');
-    }
+    expect(version).toContain('Elasticsearch');
+    expect(version).toMatch(/basic licence/);
+    expect(results[4]!.message).toBe('Signed in as elastic (realm reserved)');
     expect(results[5]!.message).toMatch(/Cluster health (green|yellow), 1 node/);
-  });
-
-  it('notes a profile set up for the other engine, and still connects', async () => {
-    const other = server.engine === 'elasticsearch' ? 'opensearch' : 'elasticsearch';
-    const results = await check(profileFor(server, { engine: other }));
-    expect(results[6]!.message).toContain('the connection is set up for');
-    const session = await createSearchAdapter({ engine: other }).connect(
-      profileFor(server, { engine: other }),
-    );
-    try {
-      if (!isSearchSession(session)) throw new Error('expected a SearchSession');
-      expect(session.engine).toBe(other);
-      expect(session.distribution).toBe(server.engine);
-    } finally {
-      await session.close();
-    }
   });
 
   it('fails the TCP step for a closed port with a hint', async () => {
@@ -107,7 +88,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine connection', (serve
     bad.port = String(closedPort);
     const resolved = profileFor(server);
     const nodes = [`${bad.protocol}//${bad.host}`, `${good.protocol}//${good.host}`];
-    const session = await createSearchAdapter({ engine: server.engine }).connect({
+    const session = await createSearchAdapter().connect({
       ...resolved,
       profile: { ...resolved.profile, endpoint: { kind: 'urls', urls: nodes } },
     });
@@ -139,7 +120,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine connection', (serve
 });
 
 describe.skipIf(!ES_URL)('Elasticsearch authentication', () => {
-  const server = { engine: 'elasticsearch' as const, url: ES_URL! };
+  const server = { url: ES_URL! };
   const withoutPassword = (): string => {
     const url = new URL(ES_URL!);
     url.password = '';
@@ -250,12 +231,5 @@ describe.skipIf(!ES_URL)('Elasticsearch authentication', () => {
       await admin.request({ method: 'DELETE', path: `/_security/user/${user}` });
       await admin.close();
     }
-  });
-});
-
-describe.skipIf(!OS_URL)('OpenSearch without security', () => {
-  it('connects with no authentication', async () => {
-    const results = await check(profileFor({ engine: 'opensearch', url: OS_URL! }));
-    expect(results.find((r) => r.step === 'auth')!.message).toBe('No authentication needed');
   });
 });

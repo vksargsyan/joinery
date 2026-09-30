@@ -14,7 +14,7 @@ supersede it with a new one.
 | [0007](0007-nosql-engine-services.md)        | MongoDB and Redis: engine services beside the Session contract   | Accepted |
 | [0008](0008-multi-node-tunnels.md)           | Tunnels reach every node of a replica set, Sentinel or Cluster   | Accepted |
 | [0009](0009-sync-in-the-app.md)              | Structure and data sync in the app: runner jobs, results in main | Accepted |
-| [0010](0010-search-engines.md)               | Elasticsearch and OpenSearch: one driver on our own HTTP client  | Accepted |
+| [0010](0010-search-engines.md)               | Elasticsearch: one driver on our own HTTP client                 | Accepted |
 | [0011](0011-server-tools.md)                 | Server tools: neutral vocabulary, statements built in the host   | Accepted |
 | [0012](0012-excel-xml-zip-formats.md)        | Excel, XML and ZIP written on node:zlib, without a library       | Accepted |
 | [0013](0013-packaging-and-updates.md)        | Packaging, auto-update and licence audit on electron-builder     | Accepted |

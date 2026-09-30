@@ -30,7 +30,6 @@ import { queryString, segment, type SearchContext } from './context';
 import { mapResponseError } from './errors';
 import { assertJsonObject } from './indices';
 import type {
-  ConcurrencyOptions,
   ReindexOptions,
   ResizeOptions,
   SearchOpOptions,
@@ -287,15 +286,12 @@ export async function diskAllocation(
 // ---------------------------------------------------------------------------------------------
 // Named resources
 
-function lifecycleOf(ctx: SearchContext, kind: SearchResourceKind): 'ilm' | 'ism' | null {
-  const lifecycle = ctx.facts.capabilities.lifecycle;
-  if (kind === 'lifecycle-policy' && lifecycle === null) {
+/** Refuses a resource kind the cluster does not have. */
+function checkKind(ctx: SearchContext, kind: SearchResourceKind): void {
+  if (kind === 'lifecycle-policy' && !ctx.facts.capabilities.lifecycle) {
     throw new JoineryError({
       code: 'NOT_SUPPORTED',
-      message:
-        ctx.facts.distribution === 'opensearch'
-          ? 'This OpenSearch cluster has no Index State Management plugin'
-          : 'This Elasticsearch cluster has no index lifecycle management',
+      message: 'This cluster has no index lifecycle management (the OSS distribution lacks it)',
     });
   }
   if (
@@ -308,7 +304,6 @@ function lifecycleOf(ctx: SearchContext, kind: SearchResourceKind): 'ilm' | 'ism
         'This cluster has only legacy index templates (Elasticsearch 7.8 added composable ones)',
     });
   }
-  return lifecycle;
 }
 
 function resourceName(name: string): string {
@@ -326,15 +321,15 @@ export async function listResources(
   kind: SearchResourceKind,
   opts: SearchOpOptions & { readonly includeHidden?: boolean } = {},
 ): Promise<SearchResourceInfo[]> {
-  const lifecycle = lifecycleOf(ctx, kind);
-  const request = { method: 'GET', path: resourcePath(kind, lifecycle) };
+  checkKind(ctx, kind);
+  const request = { method: 'GET', path: resourcePath(kind) };
   const response = await ctx.send(request, opts);
   // Some list endpoints answer 404 while nothing of the kind exists yet.
   if (response.status === 404) return [];
   if (response.status < 200 || response.status >= 300) {
     throw mapResponseError(response.status, response.body, ctx.errorContext());
   }
-  return parseResources(kind, lifecycle, response.body, {
+  return parseResources(kind, response.body, {
     ...(opts.includeHidden !== undefined ? { includeHidden: opts.includeHidden } : {}),
   });
 }
@@ -344,23 +339,12 @@ export async function putResource(
   kind: SearchResourceKind,
   name: string,
   body: string,
-  opts: SearchOpOptions & ConcurrencyOptions = {},
+  opts: SearchOpOptions = {},
 ): Promise<void> {
-  const lifecycle = lifecycleOf(ctx, kind);
+  checkKind(ctx, kind);
   assertJsonObject(body, 'definition');
-  const request = resourcePutRequest(kind, lifecycle, resourceName(name), body, {
-    ...(opts.ifSeqNo !== undefined ? { seqNo: opts.ifSeqNo } : {}),
-    ...(opts.ifPrimaryTerm !== undefined ? { primaryTerm: opts.ifPrimaryTerm } : {}),
-  });
-  await ctx.call(
-    {
-      method: request.method,
-      path: request.path,
-      ...(request.query !== undefined ? { query: request.query } : {}),
-      body,
-    },
-    opts,
-  );
+  const request = resourcePutRequest(kind, resourceName(name), body);
+  await ctx.call({ method: request.method, path: request.path, body }, opts);
 }
 
 export async function deleteResource(
@@ -369,11 +353,8 @@ export async function deleteResource(
   name: string,
   opts: SearchOpOptions = {},
 ): Promise<void> {
-  const lifecycle = lifecycleOf(ctx, kind);
-  await ctx.call(
-    { method: 'DELETE', path: resourcePath(kind, lifecycle, resourceName(name)) },
-    opts,
-  );
+  checkKind(ctx, kind);
+  await ctx.call({ method: 'DELETE', path: resourcePath(kind, resourceName(name)) }, opts);
 }
 
 export async function simulatePipeline(

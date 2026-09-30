@@ -208,8 +208,8 @@ export function openQueryTab(options: {
     }
     return openMongoConsole(options);
   }
-  // An Elasticsearch / OpenSearch connection's "query tab" is its console (spec §11).
-  if (engine === 'elasticsearch' || engine === 'opensearch') return openSearchConsole(options);
+  // An Elasticsearch connection's "query tab" is its console (spec §11).
+  if (engine === 'elasticsearch') return openSearchConsole(options);
   const tabId = createTab({
     profileId: options.profileId,
     title: options.title,

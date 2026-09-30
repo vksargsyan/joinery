@@ -12,7 +12,6 @@ import {
   issuesOf,
   parseConsole,
   resourcePath,
-  sqlRequest,
   type SearchResourceKind,
 } from '@joinery/search-tools';
 
@@ -24,7 +23,7 @@ import {
 
 /**
  * The connection host's `search.*` handlers (spec §11): each finds the call's session, checks
- * it is an Elasticsearch or OpenSearch session and calls the matching SearchSession service.
+ * it is an Elasticsearch session and calls the matching SearchSession service.
  * JSON text passes through untouched.
  *
  * The write rules (spec §4) are enforced here whatever the page sends (shared/search-writes):
@@ -51,7 +50,7 @@ let isSearch: Promise<typeof isSearchSession> | undefined;
  * loads its own engine's driver); by the time such a session exists it is loaded.
  */
 export async function asSearchSession(session: Session): Promise<SearchSession> {
-  if (session.engine !== 'elasticsearch' && session.engine !== 'opensearch') throw notSearch();
+  if (session.engine !== 'elasticsearch') throw notSearch();
   isSearch ??= import('@joinery/driver-elasticsearch').then((driver) => driver.isSearchSession);
   if (!(await isSearch)(session)) throw notSearch();
   return session;
@@ -60,7 +59,7 @@ export async function asSearchSession(session: Session): Promise<SearchSession> 
 function notSearch(): JoineryError {
   return new JoineryError({
     code: 'NOT_SUPPORTED',
-    message: 'Elasticsearch services need an Elasticsearch or OpenSearch connection',
+    message: 'Elasticsearch services need an Elasticsearch connection',
   });
 }
 
@@ -311,15 +310,9 @@ export function searchHandlers(context: SearchHandlerContext): SearchHandlers {
     },
 
     sql: {
-      async *query({ sessionId, query, confirmed, ...options }, { signal }) {
-        const s = await session(sessionId);
-        const dialect = s.searchCapabilities.sql;
-        // The OpenSearch plugin runs DELETE statements: classified like the request it sends.
-        if (dialect !== null) {
-          const safety = classifyRequest(sqlRequest(dialect, query));
-          write(confirmed, 'The SQL statement', safety);
-        }
-        yield* s.sql(query, defined({ ...options, signal }));
+      async *query({ sessionId, query, ...options }, { signal }) {
+        // The SQL API only reads, so no write rule applies.
+        yield* (await session(sessionId)).sql(query, defined({ ...options, signal }));
       },
       translate: async ({ sessionId, query }, { signal }) =>
         (await session(sessionId)).translateSql(query, { signal }),
@@ -385,7 +378,7 @@ export function searchHandlers(context: SearchHandlerContext): SearchHandlers {
         const s = await session(sessionId);
         const safety = classifyRequest({
           method: 'DELETE',
-          path: resourcePath(kind, s.searchCapabilities.lifecycle ?? 'ilm', name),
+          path: resourcePath(kind, name),
         });
         write(confirmed, `Deleting the ${RESOURCE_NAMES[kind]} ${name}`, safety);
         await s.deleteResource(kind, name, { signal });

@@ -32,13 +32,12 @@ export async function loadAdapter(engine: EngineId): Promise<DriverAdapter> {
       const adapter = createRedisAdapter();
       return withSshStepCheck(adapter, (resolved, deps) => adapter.checkConnection(resolved, deps));
     }
-    case 'elasticsearch':
-    case 'opensearch': {
+    case 'elasticsearch': {
       const [{ createSearchAdapter }, { withSshStepCheck }] = await Promise.all([
         import('@joinery/driver-elasticsearch'),
         import('@joinery/tunnel'),
       ]);
-      const adapter = createSearchAdapter({ engine });
+      const adapter = createSearchAdapter();
       return withSshStepCheck(adapter, (resolved, deps) => adapter.checkConnection(resolved, deps));
     }
     default: {

@@ -2,7 +2,7 @@ import { compactJson, member, nodeText, parseJsonTree, stringAt, type JsonNode }
 
 /**
  * Mappings (spec §11): the fields of a mapping as a flat list, and what a proposed mapping
- * would change. Elasticsearch and OpenSearch accept new fields, new multi-fields and a few
+ * would change. Elasticsearch accepts new fields, new multi-fields and a few
  * updatable parameters on an existing index; any other change to an existing field (its type,
  * analyzer, index or doc_values...) is refused, and the data has to move to a new index with a
  * reindex (see reindex.ts). The mapping editor shows this before anything is sent.

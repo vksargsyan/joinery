@@ -5,7 +5,7 @@ import { loadChildren } from '../explorer';
 import { SessionLane } from '../session-lane';
 
 /**
- * The Elasticsearch / OpenSearch object explorer (spec §5): what a tree node from the driver's
+ * The Elasticsearch object explorer (spec §5): what a tree node from the driver's
  * `browse` stands for, the console text that searches it, and the request a delete sends
  * (shown before it runs). Paths are folder / name, the folder segments the driver's stable ids
  * (indices, data-streams, aliases).

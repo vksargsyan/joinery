@@ -14,7 +14,7 @@ import { SnapshotsPanel } from './SnapshotsPanel';
 import { SqlPanel } from './SqlPanel';
 
 /**
- * An Elasticsearch / OpenSearch dock panel (spec §11): a console, a document grid, an index, the
+ * An Elasticsearch dock panel (spec §11): a console, a document grid, an index, the
  * SQL and ES|QL editor, the cluster, templates and pipelines, or snapshots.
  */
 export function SearchPanel(props: { readonly panelId: string }) {

@@ -34,7 +34,7 @@ import { z } from 'zod';
 import { idSchema } from './common';
 
 /**
- * Zod schemas for the Elasticsearch and OpenSearch module (spec §11), as its calls cross from
+ * Zod schemas for the Elasticsearch module (spec §11), as its calls cross from
  * the renderer to the connection host. Documents, queries, mappings, settings and responses
  * are JSON text (ADR 0010), so nothing here holds a parsed document.
  *
@@ -76,22 +76,20 @@ export const searchResponseSchema: z.ZodType<SearchResponse, SearchResponse> = z
 export const searchCapabilitiesSchema: z.ZodType<SearchCapabilities, SearchCapabilities> = z.object(
   {
     esql: z.boolean(),
-    sql: z.enum(['elasticsearch', 'opensearch']).nullable(),
-    ppl: z.boolean(),
+    sql: z.boolean(),
     dataStreams: z.boolean(),
-    lifecycle: z.enum(['ilm', 'ism']).nullable(),
+    lifecycle: z.boolean(),
     pointInTime: z.boolean(),
     shardDocSort: z.boolean(),
     searchAfter: z.boolean(),
     asyncSearch: z.boolean(),
     composableTemplates: z.boolean(),
     cloneIndex: z.boolean(),
-    security: z.enum(['elasticsearch', 'opensearch']).nullable(),
+    security: z.boolean(),
   },
 );
 
 export const searchClusterInfoSchema: z.ZodType<SearchClusterInfo, SearchClusterInfo> = z.object({
-  distribution: z.enum(['elasticsearch', 'opensearch']),
   version: z.string(),
   clusterName: z.string(),
   clusterUuid: z.string().optional(),
@@ -247,7 +245,6 @@ export const searchTableSchema: z.ZodType<SearchTable, SearchTable> = z.object({
   rows: z.array(z.array(z.string())),
   cursor: z.string().optional(),
   more: z.boolean().optional(),
-  total: z.number().optional(),
   partial: z.boolean().optional(),
   tookMs: z.number().optional(),
 });
@@ -347,8 +344,6 @@ export const searchResourceInfoSchema: z.ZodType<SearchResourceInfo, SearchResou
     name: z.string(),
     summary: z.array(z.object({ label: z.string(), value: z.string() })),
     body: z.string(),
-    seqNo: z.number().int().optional(),
-    primaryTerm: z.number().int().optional(),
   },
 );
 
@@ -501,8 +496,6 @@ export const searchSqlQueryInputSchema = z.object({
   fetchSize: z.number().int().min(1).max(10_000).optional(),
   maxRows: z.number().int().min(1).optional(),
   timeZone: z.string().max(64).optional(),
-  /** OpenSearch's SQL plugin can delete (`DELETE FROM`): that needs a confirmation. */
-  confirmed: searchConfirmedSchema,
   ...operationFields,
 });
 
@@ -548,8 +541,6 @@ export const searchResourcePutInputSchema = z.object({
   name: nameSchema,
   /** The JSON its PUT takes. */
   body: jsonTextSchema,
-  ifSeqNo: z.number().int().nonnegative().optional(),
-  ifPrimaryTerm: z.number().int().positive().optional(),
   confirmed: searchConfirmedSchema,
 });
 

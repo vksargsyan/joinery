@@ -17,10 +17,8 @@ describe('classifyRequest', () => {
       ['POST', '/orders/_pit'],
       ['DELETE', '/_pit'],
       ['DELETE', '/_search/scroll'],
-      ['DELETE', '/_search/point_in_time'],
       ['POST', '/_sql'],
       ['POST', '/_query'],
-      ['POST', '/_plugins/_sql'],
       ['POST', '/_ingest/pipeline/p/_simulate'],
       ['post', '/orders/_validate/query'],
       ['POST', '/orders/_search/template'],
@@ -112,7 +110,6 @@ describe('classifyRequest', () => {
       'deletes the snapshot',
     );
     expect(read('POST', '/_snapshot/backups/_cleanup').destructive).toContain('no snapshot');
-    expect(read('DELETE', '/_plugins/_ism/policies/p').destructive).toBe('deletes the ISM policy');
     for (const [method, path] of [
       ['POST', '/orders/_clone/orders-copy'],
       ['POST', '/orders/_shrink/orders-small'],
@@ -123,11 +120,5 @@ describe('classifyRequest', () => {
       expect(safety, `${method} ${path}`).toMatchObject({ writes: true });
       expect(safety.destructive).toBeUndefined();
     }
-  });
-
-  it('treats a SQL DELETE through the OpenSearch plugin as destructive', () => {
-    expect(
-      read('POST', '/_plugins/_sql', '{"query": "DELETE FROM logs WHERE a = 1"}').destructive,
-    ).toBeDefined();
   });
 });

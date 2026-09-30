@@ -32,7 +32,7 @@ import { BASE_STATE, SearchView, type SearchViewState } from './view';
  * The document grid of an index, alias or data stream (spec §11): a search (a Query DSL clause
  * or a Lucene query string, and a sort) whose hits load a page at a time as the grid scrolls,
  * with each `_source` flattened into dotted columns. Deep pages come from a point in time with
- * search_after (OpenSearch without one: a scroll), never from/size, so paging past 10,000 hits
+ * search_after (a scroll where there is none), never from/size, so paging past 10,000 hits
  * works. Documents are created, edited with optimistic concurrency (a conflict shows the stored
  * version) and deleted; selected rows are deleted or updated through `_bulk`, and pasted NDJSON
  * runs as a bulk request, each with its per-item outcome.

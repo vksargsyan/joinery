@@ -67,7 +67,7 @@ import { Sink } from './output/sink';
 import { Reporter, Style } from './reporter';
 import type { Runtime } from './runtime';
 import { StoreHandle, resolveStorePath } from './store';
-import { redactUri, type SearchEngineId } from './target';
+import { redactUri } from './target';
 import {
   SSH_PASSWORD_ENV,
   Tunnels,
@@ -96,8 +96,7 @@ Targets:
   hidden prompt. TLS defaults to verify-full unless the URI says otherwise (?sslmode=...)
   or --tls is given.
 
-  An http:// or https:// URL is an Elasticsearch node (--engine opensearch for OpenSearch):
-  https://elastic@es.example.com:9200. It logs in with the URL's user and password, or
+  An http:// or https:// URL is an Elasticsearch node: https://elastic@es.example.com:9200. It logs in with the URL's user and password, or
   with the API key in JOINERY_API_KEY; the scheme decides TLS (--tls sets the https mode).
 
 SSH tunnels and proxies:
@@ -119,7 +118,7 @@ Environment:
   JOINERY_SSH_PASSWORD       SSH password for --ssh hops and profiles that ask for it
   JOINERY_SSH_KEY_PASSPHRASE passphrase of an encrypted SSH key
   JOINERY_PROXY_PASSWORD     proxy password (a --proxy URL may carry it too)
-  JOINERY_API_KEY            Elasticsearch / OpenSearch API key (URL targets and profiles)
+  JOINERY_API_KEY            Elasticsearch API key (URL targets and profiles)
   JOINERY_BEARER_TOKEN       bearer token for profiles that log in with one
   JOINERY_PASSPHRASE         seals passwords the CLI saves (the OS keychain is app-only)
   JOINERY_EXPORT_PASSPHRASE  passphrase for profiles export/import files
@@ -294,13 +293,6 @@ function yesOption(what: string): Option {
   return new Option('-y, --yes', what);
 }
 
-function engineOption(): Option {
-  return new Option(
-    '--engine <engine>',
-    'what an http(s):// URL points to (default elasticsearch)',
-  ).choices(['elasticsearch', 'opensearch']);
-}
-
 /** The commander program. `schedule` receives the job the parsed command asked for. */
 export function buildProgram(ctx: CliContext, schedule: (job: Job) => void): Command {
   const program = new Command('joinery')
@@ -331,27 +323,20 @@ export function buildProgram(ctx: CliContext, schedule: (job: Job) => void): Com
     .description('test a connection step by step: DNS, TCP, SSH, TLS, auth, ping, version')
     .argument('<target>', 'profile name or id, or connection URI')
     .addOption(tlsOption())
-    .addOption(engineOption())
     .option('--json', 'print the steps as JSON')
     .addHelpText(
       'after',
-      '\nExit code 0 when every step passes, 1 when one fails (with a fix hint), 2 on errors.\n\nExamples:\n  joinery test prod-db\n  joinery test "postgres://app@db.internal:5432/app?sslmode=verify-full"\n  joinery test "postgres://app@10.0.3.7/app" --ssh ops@bastion.example.com --ssh-agent\n  joinery test "https://elastic@es.internal:9200"\n  joinery test "http://localhost:9200" --engine opensearch',
+      '\nExit code 0 when every step passes, 1 when one fails (with a fix hint), 2 on errors.\n\nExamples:\n  joinery test prod-db\n  joinery test "postgres://app@db.internal:5432/app?sslmode=verify-full"\n  joinery test "postgres://app@10.0.3.7/app" --ssh ops@bastion.example.com --ssh-agent\n  joinery test "https://elastic@es.internal:9200"',
     )
-    .action(
-      (
-        target: string,
-        options: { tls?: TlsMode; json?: boolean; engine?: SearchEngineId } & TunnelCliOptions,
-      ) => {
-        schedule((runtime) =>
-          testCommand(runtime, target, {
-            json: options.json === true,
-            ...(options.tls !== undefined ? { tls: options.tls } : {}),
-            ...(options.engine !== undefined ? { engine: options.engine } : {}),
-            ...tunnelFlags(options),
-          }),
-        );
-      },
-    );
+    .action((target: string, options: { tls?: TlsMode; json?: boolean } & TunnelCliOptions) => {
+      schedule((runtime) =>
+        testCommand(runtime, target, {
+          json: options.json === true,
+          ...(options.tls !== undefined ? { tls: options.tls } : {}),
+          ...tunnelFlags(options),
+        }),
+      );
+    });
 
   // query ------------------------------------------------------------------------------------
   program
@@ -384,7 +369,6 @@ export function buildProgram(ctx: CliContext, schedule: (job: Job) => void): Com
     .option('--read-only', 'refuse statements that write')
     .addOption(yesOption('run statements that need confirmation without asking'))
     .addOption(tlsOption())
-    .addOption(engineOption())
     .addHelpText(
       'after',
       `
@@ -412,7 +396,7 @@ line, and print redis-cli's output (--format json or jsonl: the replies as JSON)
 and other destructive commands ask for confirmation (or need --yes):
   joinery query "redis://localhost:6379/0" -e 'SET greeting "hello world"'
 
-Elasticsearch and OpenSearch targets (http://, https:// or a saved profile) run Kibana console
+Elasticsearch targets (http://, https:// or a saved profile) run Kibana console
 requests: a method and path per request, then its JSON body (NDJSON lines for _bulk); each
 response body prints as JSON with numbers exactly as sent (--format json or jsonl: objects with
 the request, status and body). Deleting or closing indices, delete by query and other
@@ -1059,7 +1043,6 @@ interface QueryCliOptions extends TunnelCliOptions {
   readOnly?: boolean;
   yes?: boolean;
   tls?: TlsMode;
-  engine?: SearchEngineId;
 }
 
 function queryOptions(options: QueryCliOptions): Parameters<typeof queryCommand>[2] {
@@ -1076,7 +1059,6 @@ function queryOptions(options: QueryCliOptions): Parameters<typeof queryCommand>
     ...(options.database !== undefined ? { database: options.database } : {}),
     ...(options.readOnly ? { readOnly: true } : {}),
     ...(options.tls !== undefined ? { tls: options.tls } : {}),
-    ...(options.engine !== undefined ? { engine: options.engine } : {}),
     ...tunnelFlags(options),
   };
 }

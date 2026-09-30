@@ -8,7 +8,6 @@ import {
   type JsonNode,
   type SearchClusterHealth,
   type SearchClusterInfo,
-  type SearchDistribution,
   type SearchHealthStatus,
   type SearchNodeSummary,
 } from '@joinery/search-tools';
@@ -26,7 +25,6 @@ import type { SearchOpOptions } from './types';
 
 /** What `GET /` says about the server. */
 export interface RootInfo {
-  readonly distribution: SearchDistribution;
   readonly version: string;
   readonly clusterName: string;
   readonly clusterUuid?: string;
@@ -42,7 +40,7 @@ export interface RootInfo {
   readonly restricted?: boolean;
 }
 
-/** Reads `GET /`: OpenSearch says `version.distribution: "opensearch"`; Elasticsearch does not. */
+/** Reads `GET /`: the version, the cluster and the build flavour. */
 export function parseRoot(body: string, headers: Readonly<Record<string, unknown>>): RootInfo {
   let root: JsonNode;
   try {
@@ -50,7 +48,7 @@ export function parseRoot(body: string, headers: Readonly<Record<string, unknown
   } catch {
     throw new JoineryError({
       code: 'CONNECTION_FAILED',
-      message: 'The server did not answer GET / with JSON: it is not Elasticsearch or OpenSearch',
+      message: 'The server did not answer GET / with JSON: it is not Elasticsearch',
       hint: 'Check the URL: it should point at the HTTP port of a node (usually 9200)',
     });
   }
@@ -58,19 +56,15 @@ export function parseRoot(body: string, headers: Readonly<Record<string, unknown
   if (number === undefined) {
     throw new JoineryError({
       code: 'CONNECTION_FAILED',
-      message: 'The server answered GET / without a version: it is not Elasticsearch or OpenSearch',
+      message: 'The server answered GET / without a version: it is not Elasticsearch',
       hint: 'Check the URL: it should point at the HTTP port of a node (usually 9200)',
     });
   }
-  const distribution = stringAt(root, 'version', 'distribution');
-  const tagline = stringAt(root, 'tagline') ?? '';
   const clusterUuid = stringAt(root, 'cluster_uuid');
   const nodeName = stringAt(root, 'name');
   const buildFlavor = stringAt(root, 'version', 'build_flavor');
   const luceneVersion = stringAt(root, 'version', 'lucene_version');
   return {
-    distribution:
-      distribution === 'opensearch' || /opensearch/i.test(tagline) ? 'opensearch' : 'elasticsearch',
     version: number,
     clusterName: stringAt(root, 'cluster_name') ?? '',
     ...(clusterUuid !== undefined ? { clusterUuid } : {}),
@@ -105,24 +99,21 @@ export async function readPlugins(
 }
 
 /**
- * Connects the dots at session start: `GET /` (which also proves the credentials), then the
- * plugins, so the capability flags are right from the first call.
+ * Reads the server at session start: `GET /`, which also proves the credentials, so the
+ * capability flags are right from the first call.
  */
 export async function detectServer(
   http: SearchHttpClient,
-  engine: SearchDistribution,
   context: Parameters<typeof mapResponseError>[2],
-): Promise<{ root: RootInfo; facts: ServerFacts; plugins: string[] }> {
+): Promise<{ root: RootInfo; facts: ServerFacts }> {
   const response = await http.request({ method: 'GET', path: '/' });
   let root: RootInfo;
   if (response.status === 403) {
-    // Authenticated, but without the monitor privilege: guess the distribution from the header.
-    const elasticProduct = response.headers['x-elastic-product'] === 'Elasticsearch';
+    // Authenticated, but without the monitor privilege: the version stays unknown.
     root = {
-      distribution: elasticProduct ? 'elasticsearch' : engine,
       version: '',
       clusterName: '',
-      elasticProduct,
+      elasticProduct: response.headers['x-elastic-product'] === 'Elasticsearch',
       restricted: true,
     };
   } else if (response.status !== 200) {
@@ -130,20 +121,16 @@ export async function detectServer(
   } else {
     root = parseRoot(response.body, response.headers);
   }
-  const plugins = await readPlugins(http);
   const facts: ServerFacts = {
-    distribution: root.distribution,
     version: root.version,
     ...(root.buildFlavor !== undefined ? { buildFlavor: root.buildFlavor } : {}),
     capabilities: searchCapabilities({
-      distribution: root.distribution,
       version: root.version,
       ...(root.buildFlavor !== undefined ? { buildFlavor: root.buildFlavor } : {}),
-      plugins,
       securityEnabled: context.authMethod !== undefined && context.authMethod !== 'none',
     }),
   };
-  return { root, facts, plugins };
+  return { root, facts };
 }
 
 export async function clusterInfo(
@@ -154,20 +141,15 @@ export async function clusterInfo(
   const root = parseRoot(rootResponse.body, rootResponse.headers);
   const [plugins, license] = await Promise.all([
     readPlugins(ctx.http, opts.signal),
-    root.distribution === 'elasticsearch' && root.buildFlavor !== 'oss'
-      ? readLicense(ctx, opts)
-      : Promise.resolve(undefined),
+    root.buildFlavor !== 'oss' ? readLicense(ctx, opts) : Promise.resolve(undefined),
   ]);
   const capabilities = searchCapabilities({
-    distribution: root.distribution,
     version: root.version,
     ...(root.buildFlavor !== undefined ? { buildFlavor: root.buildFlavor } : {}),
-    plugins,
     securityEnabled: ctx.plan.authMethod !== 'none',
   });
   ctx.facts = { ...ctx.facts, capabilities };
   return {
-    distribution: root.distribution,
     version: root.version,
     clusterName: root.clusterName,
     ...(root.clusterUuid !== undefined ? { clusterUuid: root.clusterUuid } : {}),

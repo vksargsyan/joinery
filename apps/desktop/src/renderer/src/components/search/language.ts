@@ -15,7 +15,7 @@ import { monaco } from '../../lib/monaco';
 
 export const CONSOLE_LANGUAGE = 'joinery-es-console';
 
-/** Model URI → the completion options of the console that owns it (index names, distribution). */
+/** Model URI → the completion options of the console that owns it (its index names). */
 const consoles = new Map<string, () => ConsoleCompletionOptions>();
 
 export function bindConsoleModel(

@@ -95,7 +95,6 @@ export const BASE_CAPABILITIES: Readonly<Record<EngineId, Capabilities>> = {
   },
   redis: { ...NONE, clusterMode: true },
   elasticsearch: { ...NONE, queryCancel: true, clusterMode: true },
-  opensearch: { ...NONE, queryCancel: true, clusterMode: true },
 };
 
 /**

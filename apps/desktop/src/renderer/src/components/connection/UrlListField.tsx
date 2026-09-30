@@ -5,7 +5,7 @@ import { Button, Icon, Input } from '../ui';
 import type { ConnectionForm } from './fields';
 
 /**
- * The node URLs of an Elasticsearch or OpenSearch connection (spec §4): one or more, each
+ * The node URLs of an Elasticsearch connection (spec §4): one or more, each
  * labelled "Node URL <n>" for assistive technology, with the sniffing option below them.
  */
 export function UrlListField(props: { readonly form: ConnectionForm }) {

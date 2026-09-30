@@ -2,7 +2,7 @@
   "name": "@joinery/driver-elasticsearch",
   "version": "0.0.0",
   "private": true,
-  "description": "Elasticsearch and OpenSearch driver adapter (one adapter, capability-flagged differences) over Node's HTTP client: console requests, cluster, index, alias, data stream and document services.",
+  "description": "Elasticsearch driver adapter (capability-flagged version differences) over Node's HTTP client: console requests, cluster, index, alias, data stream and document services.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

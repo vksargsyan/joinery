@@ -369,11 +369,9 @@ describe('search handlers', () => {
     });
   });
 
-  it('loads the driver for both engines', async () => {
-    for (const engine of ['elasticsearch', 'opensearch'] as const) {
-      const adapter = await loadAdapter(engine);
-      expect(adapter.engine).toBe(engine);
-      expect('checkWithSshStep' in adapter).toBe(true);
-    }
+  it('loads the Elasticsearch driver with the SSH step check', async () => {
+    const adapter = await loadAdapter('elasticsearch');
+    expect(adapter.engine).toBe('elasticsearch');
+    expect('checkWithSshStep' in adapter).toBe(true);
   });
 });

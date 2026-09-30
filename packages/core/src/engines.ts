@@ -8,7 +8,6 @@ export const ENGINE_IDS = [
   'mongodb',
   'redis',
   'elasticsearch',
-  'opensearch',
 ] as const;
 
 export const engineIdSchema = z.enum(ENGINE_IDS);
@@ -42,7 +41,6 @@ export const ENGINES: Readonly<Record<EngineId, EngineInfo>> = {
     family: 'search',
     defaultPort: 9200,
   },
-  opensearch: { id: 'opensearch', displayName: 'OpenSearch', family: 'search', defaultPort: 9200 },
 };
 
 export function isSqlEngine(engine: EngineId): engine is SqlEngineId {

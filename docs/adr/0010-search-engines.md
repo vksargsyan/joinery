@@ -1,21 +1,19 @@
-# 0010. Elasticsearch and OpenSearch: one driver on our own HTTP client
+# 0010. Elasticsearch: one driver on our own HTTP client
 
 - Status: Accepted
 - Date: 2026-09-29
 
 ## Context
 
-Spec §11 adds Elasticsearch and OpenSearch. They share most of their REST API (OpenSearch forked
-from Elasticsearch 7.10) but differ in details that matter to a client: OpenSearch's point in
-time lives at `/_search/point_in_time`, its SQL is a plugin at `/_plugins/_sql`, index lifecycle
-is ISM instead of ILM, and only Elasticsearch has ES|QL (8.11 and later). Users run clusters from
-Elasticsearch 7.17 to 9.x and OpenSearch 2.x to 3.x, behind TLS, API keys, bearer tokens,
-reverse proxies with a path prefix, Elastic Cloud IDs and SSH bastions.
+Spec §11 adds Elasticsearch. Its versions and distributions differ in details that matter to a
+client: the OSS flavour of 7.x has none of X-Pack (no SQL, ILM, point in time or async search),
+composable templates arrived in 7.8, data streams in 7.9 and ES|QL in 8.11. Users run clusters
+from 7.17 to 9.x, behind TLS, API keys, bearer tokens, reverse proxies with a path prefix,
+Elastic Cloud IDs and SSH bastions.
 
 The official clients do not fit. `@elastic/elasticsearch` 9 refuses any server that is not
 Elasticsearch 9 by default (product check, `compatible-with=9` media types that 7.x and 8.x
-reject); `@opensearch-project/opensearch` brings AWS signing and a JSON library we do not use;
-`@elastic/transport` brings undici, an HTTP proxy agent and OpenTelemetry. None of them keeps
+reject); `@elastic/transport` brings undici, an HTTP proxy agent and OpenTelemetry. None of them keeps
 64-bit numbers or `1.10` exactly: they parse bodies with `JSON.parse`, and documents in a
 database tool must round-trip byte for byte.
 
@@ -24,13 +22,10 @@ needs a parser, a formatter and autocomplete there.
 
 ## Decision
 
-**One adapter for both engines, capability flags from the server.**
-`@joinery/driver-elasticsearch` serves the `elasticsearch` and `opensearch` engines. At connect
-it reads `GET /` (distribution, version, build flavour) and the installed plugins, and derives
-`SearchCapabilities`: ES|QL, the SQL API or the OpenSearch SQL plugin, data streams, ILM or ISM,
-point in time with `search_after`, and so on. The profile's engine is what the user picked; the
-session trusts the server (`session.distribution`), and Test Connection names a mismatch.
-Services grow as methods on `SearchSession` (grouped: cluster, indices, aliases, data streams,
+**One adapter, capability flags from the server.** `@joinery/driver-elasticsearch` serves the
+`elasticsearch` engine. At connect it reads `GET /` (version and build flavour) and derives
+`SearchCapabilities`: ES|QL, the SQL API, data streams, ILM, point in time with `search_after`,
+and so on, so every version and distribution difference is a flag. Services grow as methods on `SearchSession` (grouped: cluster, indices, aliases, data streams,
 documents, raw request) so later panels add methods without reshaping these.
 
 **Our own HTTP client on `node:http` / `node:https`, no runtime dependency.** It sends plain
@@ -59,8 +54,7 @@ read-only index blocks.
 lossless JSON helpers, the request classifier behind the write rules, the wire types, the
 capability flags and autocomplete. Autocomplete data is generated from the open Elasticsearch
 API specification (github.com/elastic/elasticsearch-specification, Apache 2.0) by
-`scripts/generate-api-spec.mjs`, which records the branch and date. OpenSearch-only endpoints
-(`_plugins/...`) are not in it, so they do not complete yet.
+`scripts/generate-api-spec.mjs`, which records the branch and date.
 
 **Write rules in the connection host.** Every request is classified (`classifyRequest`):
 GET and HEAD read, known read endpoints read whatever their method (`POST _search`), anything
@@ -72,10 +66,8 @@ rules with `--yes`.
 
 ## Consequences
 
-- No product check, AWS or telemetry code in the app, and one code path for seven server
-  versions; the price is owning an HTTP client (about 400 lines) and its tests.
-- The capability flags are the only place engine differences live; the nightly matrix covers
-  Elasticsearch 7.17, 8.19 and 9.x and OpenSearch 2.19 and 3.x to keep them honest.
-- AWS SigV4 and Amazon OpenSearch Service are out of scope for this version; they can be added
-  as another auth method in the client without changing the session.
+- No product check or telemetry code in the app, and one code path from 7.17 to 9.x; the price
+  is owning an HTTP client (about 400 lines) and its tests.
+- The capability flags are the only place version differences live; the nightly matrix covers
+  7.17, 8.19 and 9.x to keep them honest.
 - Autocomplete follows the Elasticsearch specification's branch; regenerating it is one command.

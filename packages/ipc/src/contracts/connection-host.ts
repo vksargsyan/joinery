@@ -131,7 +131,7 @@ export const connectionHostContract = defineContract({
   redis: redisHostContractShape,
   /** Server tools of MySQL, MariaDB, PostgreSQL and MongoDB (spec §15). */
   serverTools: serverToolsHostContractShape,
-  /** Elasticsearch and OpenSearch cluster, index and document services and the console (§11). */
+  /** Elasticsearch cluster, index and document services and the console (§11). */
   search: searchHostContractShape,
 });
 

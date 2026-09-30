@@ -15,7 +15,7 @@ import { patchPanel } from '../panels';
 import { SessionLane } from '../session-lane';
 
 /**
- * What the Elasticsearch / OpenSearch panels share (spec §11): a session of their own, the
+ * What the Elasticsearch panels share (spec §11): a session of their own, the
  * profile's write rules, what the cluster is (its capability flags gate every feature), a
  * notice line, and the confirmation before a write. The page asks with the same rules the
  * connection host enforces (shared/search-writes), then sends `confirmed`; the host checks

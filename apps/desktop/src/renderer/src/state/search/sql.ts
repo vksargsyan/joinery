@@ -15,8 +15,8 @@ import { patchPanel } from '../panels';
 import { BASE_STATE, SearchView, type SearchViewState } from './view';
 
 /**
- * The SQL and ES|QL editor (spec §11): SQL through Elasticsearch's SQL API or OpenSearch's SQL
- * plugin, paged with the server's cursor as the results scroll; ES|QL on clusters that have it
+ * The SQL and ES|QL editor (spec §11): SQL through the SQL API, paged with the server's cursor
+ * as the results scroll; ES|QL on clusters that have it
  * (a capability flag, not a version check); and "Translate to DSL", which shows the Query DSL a
  * SQL query becomes, runs it as a search, and shows its aggregations as a tree and a flattened
  * table. Runs go to the query history.
@@ -52,10 +52,10 @@ export interface SqlState extends SearchViewState {
   readonly translating: boolean;
   readonly translation:
     | {
-        /** The DSL, re-indented; undefined when the server's plan holds none. */
+        /** The DSL, re-indented; undefined when the reply holds none. */
         readonly dsl: string | undefined;
         readonly target: string | undefined;
-        /** The server's reply (the plan, on OpenSearch), re-indented. */
+        /** The server's reply, re-indented. */
         readonly raw: string;
       }
     | undefined;
@@ -105,7 +105,7 @@ export class SqlView extends SearchView<SqlState> {
     await this.loadBasics();
     const caps = this.state.info?.capabilities;
     // Open on what the cluster has: SQL first, ES|QL when there is no SQL.
-    if (caps && caps.sql === null && caps.esql && this.target.mode === undefined) {
+    if (caps && !caps.sql && caps.esql && this.target.mode === undefined) {
       this.set({ mode: 'esql' });
     }
   }
@@ -113,7 +113,7 @@ export class SqlView extends SearchView<SqlState> {
   /** What the cluster offers: undefined until known (both are then offered). */
   get supports(): { readonly sql: boolean; readonly esql: boolean } {
     const caps = this.state.info?.capabilities;
-    return { sql: caps ? caps.sql !== null : true, esql: caps ? caps.esql : true };
+    return { sql: caps ? caps.sql : true, esql: caps ? caps.esql : true };
   }
 
   setMode(mode: SqlMode): void {
@@ -126,7 +126,7 @@ export class SqlView extends SearchView<SqlState> {
     if (query === '' || this.state.running) return;
     const mode = this.state.mode;
     if (mode === 'sql' && !this.supports.sql) {
-      this.set({ error: 'This cluster has no SQL (OpenSearch needs the SQL plugin).' });
+      this.set({ error: 'This cluster has no SQL (the OSS distribution lacks it).' });
       return;
     }
     if (mode === 'esql' && !this.supports.esql) {
@@ -251,7 +251,7 @@ export class SqlView extends SearchView<SqlState> {
   // -------------------------------------------------------------------------------------------
   // Translate to DSL
 
-  /** Translates the SQL to Query DSL (or, on OpenSearch, explains it). */
+  /** Translates the SQL to Query DSL. */
   async translate(text: string): Promise<void> {
     const query = text.trim();
     if (query === '' || !this.supports.sql) return;

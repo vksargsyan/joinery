@@ -1,4 +1,4 @@
-import { cellDisplay, distributionName } from '@joinery/search-tools';
+import { cellDisplay } from '@joinery/search-tools';
 import { useMemo, useState, type UIEvent } from 'react';
 
 import { formatCount, formatDuration } from '../../lib/format';
@@ -13,7 +13,7 @@ import { openSearchConsole } from './open';
 import { NoticeBar } from './parts';
 
 /**
- * The SQL and ES|QL editor (spec §11): SQL through the SQL API or the OpenSearch SQL plugin,
+ * The SQL and ES|QL editor (spec §11): SQL through the SQL API,
  * ES|QL where the cluster has it (both by capability flag), results that page with the server's
  * cursor as they scroll, and Translate to DSL, whose search runs here with its aggregations as
  * a tree and a flattened table, or opens in the console.
@@ -139,12 +139,7 @@ export function SqlPanel({ view }: { readonly view: SqlView }) {
           </Button>
         )}
         <span className="flex-1" />
-        {info && (
-          <span className="text-[11px] text-muted">
-            {distributionName(info.distribution)} {info.version}
-            {info.capabilities.sql === 'opensearch' ? ' · SQL plugin' : ''}
-          </span>
-        )}
+        {info && <span className="text-[11px] text-muted">Elasticsearch {info.version}</span>}
       </div>
       <NoticeBar view={view} />
       <div className="flex min-h-0 flex-1 flex-col">

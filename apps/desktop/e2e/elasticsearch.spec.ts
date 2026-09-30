@@ -8,19 +8,16 @@ import { launchApp, type LaunchedApp } from './app';
 import { connectSearch, e2eIndex, indexExists } from './search';
 
 /**
- * The Elasticsearch and OpenSearch module end to end against real servers (spec §4, §5, §11):
- * connect to Elasticsearch from a pasted URL, create an index from the console, index and
- * search documents (a 64-bit number comes back exactly), autocomplete, a destructive request
- * that asks first, and the index in the explorer with its health; then an OpenSearch
- * connection passes Test Connection and connects. Indices are named for the run and deleted
- * afterwards. With JOINERY_E2E_SHOTS set, screenshots are saved there.
+ * The Elasticsearch module end to end against a real server (spec §4, §5, §11): connect from a
+ * pasted URL, create an index from the console, index and search documents (a 64-bit number
+ * comes back exactly), autocomplete, a destructive request that asks first, and the index in
+ * the explorer with its health. Indices are named for the run and deleted afterwards. With
+ * JOINERY_E2E_SHOTS set, screenshots are saved there.
  */
 
 const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
-const OS_URL = process.env['JOINERY_TEST_OPENSEARCH_URL'];
 const SHOTS = process.env['JOINERY_E2E_SHOTS'];
 const NAME = 'E2E Elasticsearch';
-const OS_NAME = 'E2E OpenSearch';
 
 test.skip(!ES_URL, 'Set JOINERY_TEST_ELASTICSEARCH_URL to run the Elasticsearch end-to-end tests');
 
@@ -79,14 +76,14 @@ async function send(text: string, status: string): Promise<Locator> {
   return badge;
 }
 
-async function connectFromUrl(engine: 'elasticsearch' | 'opensearch', url: string, name: string) {
+async function connectFromUrl(url: string, name: string) {
   await page.getByRole('button', { name: 'New connection' }).click();
   const dialog = page.getByRole('dialog', { name: 'New connection' });
-  await dialog.getByLabel('Database engine', { exact: true }).selectOption(engine);
   await dialog.getByLabel('Paste a URI to fill the form').fill(url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
-  await expect(dialog.getByLabel('Database engine', { exact: true })).toHaveValue(engine);
+  // The pasted http:// URL makes the connection an Elasticsearch one.
+  await expect(dialog.getByLabel('Database engine', { exact: true })).toHaveValue('elasticsearch');
   await expect(dialog.getByLabel('Node URL 1', { exact: true })).toHaveValue(
     `http://${new URL(url).host}`,
   );
@@ -96,7 +93,7 @@ async function connectFromUrl(engine: 'elasticsearch' | 'opensearch', url: strin
 }
 
 test('connects to Elasticsearch from a pasted URL, step by step', async () => {
-  const dialog = await connectFromUrl('elasticsearch', ES_URL!, NAME);
+  const dialog = await connectFromUrl(ES_URL!, NAME);
   await expect(dialog.getByLabel('User', { exact: true })).toHaveValue('elastic');
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Test Connection' }).click();
@@ -195,18 +192,4 @@ test('shows the new index in the explorer with its health', async () => {
   await expect(consolePanel().getByTestId('search-console-editor')).toContainText(
     `GET /${index}/_search`,
   );
-});
-
-test('connects to OpenSearch too', async () => {
-  test.skip(!OS_URL, 'Set JOINERY_TEST_OPENSEARCH_URL to check the OpenSearch connection');
-  const dialog = await connectFromUrl('opensearch', OS_URL!, OS_NAME);
-  await dialog.getByRole('button', { name: 'Test Connection' }).click();
-  await expect(dialog.getByText('Connection succeeded')).toBeVisible();
-  await expect(dialog.getByTestId('check-version')).toContainText('OpenSearch');
-  await dialog.getByRole('button', { name: 'Save' }).click();
-  await expect(dialog).toBeHidden();
-  const profile = profileItem(OS_NAME);
-  await profile.locator('[data-tree-row]').first().click();
-  await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
-  await expect(treeRow(profile, 'Indices')).toBeVisible();
 });

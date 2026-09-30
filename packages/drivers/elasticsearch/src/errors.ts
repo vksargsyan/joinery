@@ -6,7 +6,7 @@ import { redactSecrets, type SearchAuthMethod } from './config';
 import { HttpTransportError } from './http';
 
 /**
- * Maps what can go wrong talking to Elasticsearch or OpenSearch to JoineryErrors with a fix hint
+ * Maps what can go wrong talking to Elasticsearch to JoineryErrors with a fix hint
  * (spec §4): network and TLS failures, and the server's HTTP errors — authentication (401),
  * missing privileges and read-only blocks (403), missing indices (404), version conflicts (409),
  * circuit breakers and rejected executions (429), timeouts, and request syntax errors with the

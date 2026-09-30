@@ -17,7 +17,6 @@ import type {
   SearchClusterHealth,
   SearchClusterInfo,
   SearchDataStreamInfo,
-  SearchDistribution,
   SearchDocument,
   SearchIndexSummary,
   SearchNodeSummary,
@@ -71,38 +70,32 @@ import type {
 } from './types';
 
 /** Core capabilities of a search cluster: cancellable requests, a cluster of nodes. */
-export function searchCoreCapabilities(
-  engine: 'elasticsearch' | 'opensearch',
-  serverVersion?: string,
-): Capabilities {
-  return capabilitiesFor(engine, serverVersion);
+export function searchCoreCapabilities(serverVersion?: string): Capabilities {
+  return capabilitiesFor('elasticsearch', serverVersion);
 }
 
-/** Narrows a Session to the Elasticsearch / OpenSearch session with its services. */
+/** Narrows a Session to the Elasticsearch session with its services. */
 export function isSearchSession(session: Session): session is SearchSession {
-  return (
-    (session.engine === 'elasticsearch' || session.engine === 'opensearch') &&
-    session instanceof ElasticSearchSession
-  );
+  return session.engine === 'elasticsearch' && session instanceof ElasticSearchSession;
 }
 
 /**
- * One Elasticsearch or OpenSearch "connection": an HTTP client over the profile's nodes (a
+ * One Elasticsearch "connection": an HTTP client over the profile's nodes (a
  * keep-alive agent each) behind the Session contract, plus the services of SearchSession. HTTP
  * has no session state, so calls run concurrently; `cancel` aborts a call's request and
  * cancels the server tasks it started.
  */
 export class ElasticSearchSession implements SearchSession {
+  readonly engine = 'elasticsearch';
   readonly inTransaction = false;
 
   private constructor(
     private readonly ctx: SearchContext,
-    readonly engine: 'elasticsearch' | 'opensearch',
     readonly serverVersion: string,
     private readonly clusterName: string,
   ) {}
 
-  /** Connects: `GET /` (proves the URL and the credentials), the plugins, then sniffing. */
+  /** Connects: `GET /` (proves the URL and the credentials), then sniffing. */
   static async open(resolved: ResolvedProfile): Promise<ElasticSearchSession> {
     const plan: SearchClientPlan = buildSearchClientPlan(resolved);
     const http = new SearchHttpClient(plan);
@@ -113,18 +106,14 @@ export class ElasticSearchSession implements SearchSession {
       ...(plan.user !== undefined ? { user: plan.user } : {}),
     };
     try {
-      const { root, facts } = await cluster.detectServer(http, plan.engine, errorContext);
+      const { root, facts } = await cluster.detectServer(http, errorContext);
       if (plan.sniff) await sniffNodes(http, resolved).catch(() => undefined);
       const ctx = new SearchContext(http, plan, facts);
-      return new ElasticSearchSession(ctx, plan.engine, root.version, root.clusterName);
+      return new ElasticSearchSession(ctx, root.version, root.clusterName);
     } catch (error) {
       http.close();
       throw mapTransportError(error, errorContext);
     }
-  }
-
-  get distribution(): SearchDistribution {
-    return this.ctx.facts.distribution;
   }
 
   get searchCapabilities(): SearchCapabilities {
@@ -132,7 +121,7 @@ export class ElasticSearchSession implements SearchSession {
   }
 
   capabilities(): Capabilities {
-    return searchCoreCapabilities(this.engine, this.serverVersion || undefined);
+    return searchCoreCapabilities(this.serverVersion || undefined);
   }
 
   execute(text: string, opts: ExecOptions): AsyncIterable<ResultChunk> {
@@ -390,7 +379,7 @@ export class ElasticSearchSession implements SearchSession {
     kind: SearchResourceKind,
     name: string,
     body: string,
-    opts?: SearchOpOptions & ConcurrencyOptions,
+    opts?: SearchOpOptions,
   ): Promise<void> {
     return admin.putResource(this.ctx, kind, name, body, opts);
   }

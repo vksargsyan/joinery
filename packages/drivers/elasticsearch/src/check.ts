@@ -4,7 +4,6 @@ import { connect as tlsConnect, type ConnectionOptions } from 'node:tls';
 
 import {
   CONNECTION_CHECK_STEPS,
-  ENGINES,
   JoineryError,
   type ConnectionCheckResult,
   type ConnectionCheckStep,
@@ -12,21 +11,15 @@ import {
   type ResolvedProfile,
 } from '@joinery/core';
 import { errorMessage, type CheckConnectionDeps } from '@joinery/driver-sql-base';
-import {
-  distributionName,
-  numberAt,
-  parseJsonTree,
-  searchCapabilities,
-  stringAt,
-} from '@joinery/search-tools';
+import { numberAt, parseJsonTree, searchCapabilities, stringAt } from '@joinery/search-tools';
 
-import { parseRoot, readPlugins } from './cluster';
+import { parseRoot } from './cluster';
 import { buildSearchClientPlan, hostPort, redactSecrets, type SearchClientPlan } from './config';
 import { mapResponseError, mapTransportError, type SearchErrorContext } from './errors';
 import { SearchHttpClient, type HttpRequest, type HttpResponse } from './http';
 
 /**
- * Test Connection for Elasticsearch and OpenSearch (spec §4), in the core steps: DNS (every
+ * Test Connection for Elasticsearch (spec §4), in the core steps: DNS (every
  * node host), TCP (one reachable node is enough), the SSH tunnel or proxy, a TLS handshake
  * (https nodes), HTTP and authentication (`GET /`), ping (the cluster health) and the version
  * with the distribution, licence and cluster name. Each failing step names the problem and a
@@ -413,35 +406,25 @@ async function* httpSteps(
       yield log.ok('version', started, 'Unknown: the user may not read GET /');
       return;
     }
-    const plugins = await readPlugins(client);
     const capabilities = searchCapabilities({
-      distribution: root.distribution,
       version: root.version,
       ...(root.buildFlavor !== undefined ? { buildFlavor: root.buildFlavor } : {}),
-      plugins,
     });
     const parts: string[] = [];
-    if (root.distribution === 'elasticsearch') {
-      if (root.buildFlavor === 'oss') parts.push('OSS distribution');
-      const license = await client
-        .request({ method: 'GET', path: '/_license' })
-        .then((r) => (r.status === 200 ? parseJsonTree(r.body) : undefined))
-        .catch(() => undefined);
-      const type = stringAt(license, 'license', 'type');
-      const status = stringAt(license, 'license', 'status');
-      if (type) parts.push(`${type} licence${status && status !== 'active' ? ` (${status})` : ''}`);
-    }
+    if (root.buildFlavor === 'oss') parts.push('OSS distribution');
+    const license = await client
+      .request({ method: 'GET', path: '/_license' })
+      .then((r) => (r.status === 200 ? parseJsonTree(r.body) : undefined))
+      .catch(() => undefined);
+    const type = stringAt(license, 'license', 'type');
+    const status = stringAt(license, 'license', 'status');
+    if (type) parts.push(`${type} licence${status && status !== 'active' ? ` (${status})` : ''}`);
     if (capabilities.esql) parts.push('ES|QL');
     if (capabilities.sql) parts.push('SQL');
-    const engine = resolved.profile.engine;
-    const mismatch =
-      engine !== root.distribution
-        ? `; the connection is set up for ${ENGINES[engine].displayName}, choose ${distributionName(root.distribution)} to match`
-        : '';
     yield log.ok(
       'version',
       started,
-      `${distributionName(root.distribution)} ${root.version}${parts.length > 0 ? ` (${parts.join(', ')})` : ''}, cluster "${root.clusterName}"${mismatch}`,
+      `Elasticsearch ${root.version}${parts.length > 0 ? ` (${parts.join(', ')})` : ''}, cluster "${root.clusterName}"`,
     );
   } finally {
     client.close();
@@ -461,11 +444,6 @@ async function currentUser(
       const user = stringAt(node, 'username');
       const realm = stringAt(node, 'authentication_realm', 'name');
       if (user) return `Signed in as ${user}${realm ? ` (realm ${realm})` : ''}`;
-    }
-    const os = await client.request({ method: 'GET', path: '/_plugins/_security/authinfo' });
-    if (os.status === 200) {
-      const user = stringAt(parseJsonTree(os.body), 'user_name');
-      if (user) return `Signed in as ${user}`;
     }
   } catch {
     // Who the user is is a nicety; the step already passed.

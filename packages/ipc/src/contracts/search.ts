@@ -46,7 +46,7 @@ import {
 
 /**
  * The `search.*` namespace of the connection host contract (spec §11): the services of an
- * Elasticsearch or OpenSearch session opened with `openSession`. Documents, queries, mappings,
+ * Elasticsearch session opened with `openSession`. Documents, queries, mappings,
  * settings and responses cross as JSON text. Paged searches are streams: pages are fetched as
  * the renderer pulls, and stopping early releases the point in time or scroll.
  *
@@ -55,7 +55,7 @@ import {
  * (index and document deletes, close, delete by query, force merge, bulk deletes) need
  * `confirmed` on every profile, and every write needs it on production profiles and profiles
  * that confirm writes (CONFIRMATION_REQUIRED otherwise). The console's `request` is classified
- * the same way. Engines other than Elasticsearch and OpenSearch answer NOT_SUPPORTED.
+ * the same way. Engines other than Elasticsearch answer NOT_SUPPORTED.
  *
  * Namespaces group the services: cluster, indices, aliases, data streams and documents; then
  * SQL and ES|QL, index administration (resize, reindex), tasks, allocation, the named
@@ -69,7 +69,7 @@ const done = z.void();
 const json = z.string();
 
 export const searchHostContractShape = {
-  /** Distribution, version, licence, plugins and capability flags of the cluster. */
+  /** Version, licence, plugins and capability flags of the cluster. */
   clusterInfo: { input: searchSessionRefSchema, output: searchClusterInfoSchema },
   clusterHealth: {
     input: z.object({ sessionId, index: name.optional() }),
@@ -194,12 +194,12 @@ export const searchHostContractShape = {
   request: { input: searchRequestInputSchema, output: searchResponseSchema },
 
   /**
-   * SQL through the SQL API or the OpenSearch SQL plugin (capability `sql`): pages as the
+   * SQL through the SQL API (capability `sql`): pages as the
    * renderer pulls, the server's cursor closed when it stops early.
    */
   sql: {
     query: { input: searchSqlQueryInputSchema, item: searchTableSchema },
-    /** Translate to DSL (Elasticsearch) or the plugin's explain (OpenSearch). */
+    /** Translate to DSL. */
     translate: {
       input: z.object({
         sessionId,

@@ -90,50 +90,29 @@ describe('parseSearchError', () => {
 
 describe('searchCapabilities', () => {
   it('follows Elasticsearch versions and flavours', () => {
-    expect(searchCapabilities({ distribution: 'elasticsearch', version: '9.4.0' })).toMatchObject({
+    expect(searchCapabilities({ version: '9.4.0' })).toMatchObject({
       esql: true,
-      sql: 'elasticsearch',
+      sql: true,
       dataStreams: true,
-      lifecycle: 'ilm',
+      lifecycle: true,
       pointInTime: true,
       shardDocSort: true,
-      security: 'elasticsearch',
+      security: true,
     });
-    expect(searchCapabilities({ distribution: 'elasticsearch', version: '8.10.4' }).esql).toBe(
-      false,
-    );
-    expect(searchCapabilities({ distribution: 'elasticsearch', version: '7.17.28' })).toMatchObject(
-      {
-        esql: false,
-        pointInTime: true,
-        dataStreams: true,
-      },
-    );
-    expect(
-      searchCapabilities({ distribution: 'elasticsearch', version: '7.10.2', buildFlavor: 'oss' }),
-    ).toMatchObject({ sql: null, lifecycle: null, pointInTime: false, dataStreams: false });
-  });
-
-  it('follows OpenSearch versions and plugins', () => {
-    expect(
-      searchCapabilities({ distribution: 'opensearch', version: '3.5.0', plugins: [] }),
-    ).toMatchObject({
+    expect(searchCapabilities({ version: '8.10.4' }).esql).toBe(false);
+    expect(searchCapabilities({ version: '7.17.28' })).toMatchObject({
       esql: false,
-      sql: null,
-      lifecycle: null,
       pointInTime: true,
-      security: null,
+      dataStreams: true,
     });
-    expect(
-      searchCapabilities({
-        distribution: 'opensearch',
-        version: '2.19.1',
-        plugins: ['opensearch-sql', 'opensearch-index-management', 'opensearch-security'],
-      }),
-    ).toMatchObject({ sql: 'opensearch', ppl: true, lifecycle: 'ism', security: 'opensearch' });
-    expect(searchCapabilities({ distribution: 'opensearch', version: '2.3.0' }).pointInTime).toBe(
-      false,
-    );
+    expect(searchCapabilities({ version: '7.10.2', buildFlavor: 'oss' })).toMatchObject({
+      sql: false,
+      lifecycle: false,
+      pointInTime: false,
+      dataStreams: false,
+      security: false,
+    });
+    expect(searchCapabilities({ version: '9.4.0', securityEnabled: false }).security).toBe(false);
   });
 
   it('compares versions numerically', () => {

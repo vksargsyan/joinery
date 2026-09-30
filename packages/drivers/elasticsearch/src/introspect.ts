@@ -73,7 +73,7 @@ export async function introspectSearch(
   }
   tables.sort((a, b) => a.name.localeCompare(b.name));
   return {
-    engine: ctx.plan.engine,
+    engine: 'elasticsearch',
     serverVersion: ctx.facts.version,
     database: clusterName,
     options: {},

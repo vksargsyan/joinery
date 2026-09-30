@@ -152,10 +152,9 @@ describe('checkSearchConnection', () => {
     expect(tcp[1]).toMatchObject({ step: 'tcp', status: 'failed' });
   });
 
-  it('skips TLS for an http URL and names OpenSearch', async () => {
+  it('skips TLS for an http URL, and names the OSS distribution', async () => {
     const results = await run(
       resolved({
-        engine: 'opensearch',
         endpoint: { kind: 'urls', urls: ['http://10.0.0.9:9200'] },
         auth: { method: 'none' },
       }),
@@ -164,11 +163,11 @@ describe('checkSearchConnection', () => {
         'GET /': [
           200,
           JSON.stringify({
-            cluster_name: 'os',
-            version: { distribution: 'opensearch', number: '2.19.1' },
+            cluster_name: 'oss',
+            version: { number: '7.10.2', build_flavor: 'oss' },
           }),
         ],
-        'GET /_cat/plugins': [200, '[{"component":"opensearch-sql"}]'],
+        'GET /_license': [400, '{"error":"no handler found for uri [/_license]"}'],
       }),
     );
     expect(results.map((r) => [r.step, r.status])).toEqual([
@@ -181,7 +180,7 @@ describe('checkSearchConnection', () => {
       ['version', 'ok'],
     ]);
     expect(results[4]!.message).toBe('No authentication needed');
-    expect(results[6]!.message).toBe('OpenSearch 2.19.1 (SQL), cluster "os"');
+    expect(results[6]!.message).toBe('Elasticsearch 7.10.2 (OSS distribution), cluster "oss"');
   });
 
   it('passes auth for a user without the monitor privilege, and says so', async () => {

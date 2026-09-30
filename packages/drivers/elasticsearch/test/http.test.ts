@@ -74,7 +74,6 @@ function node(port: number, extra: Partial<SearchNodeTarget> = {}): SearchNodeTa
 
 function plan(nodes: SearchNodeTarget[], extra: Partial<SearchClientPlan> = {}): SearchClientPlan {
   return {
-    engine: 'elasticsearch',
     nodes,
     authMethod: 'basic',
     authorization: 'Basic dTpw',

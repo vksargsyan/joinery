@@ -1,8 +1,8 @@
-import type { SearchCapabilities, SearchDistribution } from './capabilities';
+import type { SearchCapabilities } from './capabilities';
 import type { HttpMethod } from './console/parser';
 
 /**
- * The Elasticsearch and OpenSearch module's wire types (spec §11): what the driver's services
+ * The Elasticsearch module's wire types (spec §11): what the driver's services
  * return and what crosses from the connection host to the renderer. Documents, mappings,
  * settings, queries and raw responses are JSON text, never parsed values, so large integers and
  * the server's formatting survive every process boundary (ADR 0010). Everything else is plain
@@ -41,7 +41,6 @@ export interface SearchResponse {
 
 /** `GET /` plus the licence and plugins: what the cluster is. */
 export interface SearchClusterInfo {
-  readonly distribution: SearchDistribution;
   /** e.g. "9.4.0". */
   readonly version: string;
   readonly clusterName: string;
@@ -343,9 +342,6 @@ export interface SearchResourceInfo {
   readonly summary: readonly { readonly label: string; readonly value: string }[];
   /** The JSON its PUT takes, as the server holds it (read-only fields removed). */
   readonly body: JsonText;
-  /** OpenSearch ISM policies are updated with optimistic concurrency. */
-  readonly seqNo?: number;
-  readonly primaryTerm?: number;
 }
 
 /** One snapshot of a repository. */

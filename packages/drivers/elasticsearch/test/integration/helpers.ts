@@ -10,25 +10,20 @@ import {
 } from '../../src';
 
 /**
- * The real servers the integration tests use: Elasticsearch with security on
- * (JOINERY_TEST_ELASTICSEARCH_URL, credentials in the URL) and OpenSearch without it
- * (JOINERY_TEST_OPENSEARCH_URL). Every test names its indices with a prefix unique to the run
- * and deletes them by name afterwards (wildcard deletes are refused by default).
+ * The real server the integration tests use: Elasticsearch with security on
+ * (JOINERY_TEST_ELASTICSEARCH_URL, credentials in the URL). Every test names its indices with a
+ * prefix unique to the run and deletes them by name afterwards (wildcard deletes are refused by
+ * default).
  */
 
 export const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
-export const OS_URL = process.env['JOINERY_TEST_OPENSEARCH_URL'];
 
 export interface TestServer {
-  readonly engine: 'elasticsearch' | 'opensearch';
   readonly url: string;
 }
 
-/** The configured servers, for describe.each. */
-export const SERVERS: readonly TestServer[] = [
-  ...(ES_URL ? [{ engine: 'elasticsearch' as const, url: ES_URL }] : []),
-  ...(OS_URL ? [{ engine: 'opensearch' as const, url: OS_URL }] : []),
-];
+/** The configured server, for describe.each: none without JOINERY_TEST_ELASTICSEARCH_URL. */
+export const SERVERS: readonly TestServer[] = ES_URL ? [{ url: ES_URL }] : [];
 
 /** `joinery-it-<random>-`, unique per run. */
 export function testPrefix(): string {
@@ -39,16 +34,14 @@ export function profileFor(
   server: TestServer,
   overrides: Partial<ConnectionProfileInput> = {},
 ): ResolvedProfile {
-  return searchProfileFromUrl(server.url, server.engine, overrides);
+  return searchProfileFromUrl(server.url, overrides);
 }
 
 export async function connect(
   server: TestServer,
   overrides: Partial<ConnectionProfileInput> = {},
 ): Promise<SearchSession> {
-  const session = await createSearchAdapter({ engine: server.engine }).connect(
-    profileFor(server, overrides),
-  );
+  const session = await createSearchAdapter().connect(profileFor(server, overrides));
   if (!isSearchSession(session)) throw new Error('expected a SearchSession');
   return session;
 }

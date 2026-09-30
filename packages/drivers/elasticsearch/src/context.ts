@@ -1,10 +1,5 @@
 import { JoineryError, newId } from '@joinery/core';
-import {
-  parseJsonTree,
-  type JsonNode,
-  type SearchCapabilities,
-  type SearchDistribution,
-} from '@joinery/search-tools';
+import { parseJsonTree, type JsonNode, type SearchCapabilities } from '@joinery/search-tools';
 
 import type { SearchClientPlan } from './config';
 import { mapResponseError, mapTransportError, type SearchErrorContext } from './errors';
@@ -13,7 +8,6 @@ import type { SearchOpOptions } from './types';
 
 /** What the service modules know about the server they talk to. */
 export interface ServerFacts {
-  readonly distribution: SearchDistribution;
   readonly version: string;
   readonly buildFlavor?: string;
   readonly capabilities: SearchCapabilities;

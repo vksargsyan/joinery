@@ -43,18 +43,9 @@ export const DIALOG_ENGINES = [
   'mongodb',
   'redis',
   'elasticsearch',
-  'opensearch',
 ] as const;
 export type DialogEngine = (typeof DIALOG_ENGINES)[number];
 export const COMING_SOON_ENGINES: readonly EngineId[] = [];
-
-/** Elasticsearch and OpenSearch: node URLs or a Cloud ID, and HTTP sign-ins (spec §4, §11). */
-export const SEARCH_DIALOG_ENGINES = ['elasticsearch', 'opensearch'] as const;
-export type SearchDialogEngine = (typeof SEARCH_DIALOG_ENGINES)[number];
-
-export function isSearchDialogEngine(engine: EngineId): engine is SearchDialogEngine {
-  return engine === 'elasticsearch' || engine === 'opensearch';
-}
 
 /** Every endpoint form the dialog's engines accept (core's `ENDPOINT_KINDS` says which). */
 export const FORM_ENDPOINT_KINDS = [
@@ -82,7 +73,6 @@ const FORM_ENDPOINT_KINDS_BY_ENGINE: Readonly<Record<DialogEngine, readonly Form
   mongodb: ENDPOINT_KINDS.mongodb.filter(isFormEndpointKind),
   redis: ENDPOINT_KINDS.redis.filter(isFormEndpointKind),
   elasticsearch: ENDPOINT_KINDS.elasticsearch.filter(isFormEndpointKind),
-  opensearch: ENDPOINT_KINDS.opensearch.filter(isFormEndpointKind),
 };
 
 function isFormEndpointKind(kind: string): kind is FormEndpointKind {
@@ -102,9 +92,7 @@ export const ENGINE_AUTH_METHODS: Readonly<Record<DialogEngine, readonly FormAut
   mariadb: ['password'],
   mongodb: ['none', 'password', 'clientCertificate'],
   redis: ['none', 'password'],
-  // OpenSearch has no API keys; its security plugin takes basic auth and JWT bearer tokens.
   elasticsearch: ['none', 'password', 'apiKey', 'bearer'],
-  opensearch: ['none', 'password', 'bearer'],
 };
 
 /**
@@ -161,7 +149,7 @@ function isMongoDatabaseName(value: string): boolean {
 const MONGO_NAME_MESSAGE =
   'A MongoDB database name has fewer than 64 characters and no spaces or / \\ . " $';
 
-/** One Elasticsearch / OpenSearch node URL, as the dialog edits it (an object for the row list). */
+/** One Elasticsearch node URL, as the dialog edits it (an object for the row list). */
 export const urlRowSchema = z.object({ url: z.string().trim().max(2048) });
 export type UrlRowValues = z.infer<typeof urlRowSchema>;
 
@@ -202,7 +190,7 @@ export function tunnelLimitation(engine: DialogEngine): string | undefined {
   if (engine === 'redis') {
     return 'Through an SSH tunnel or a proxy, Sentinel and Cluster reach every node through it, by the address the node announces as the SSH server or proxy sees it.';
   }
-  if (isSearchDialogEngine(engine)) {
+  if (engine === 'elasticsearch') {
     return 'Through an SSH tunnel or a proxy, Joinery reaches one node: list a single URL (or use a Cloud ID). It does not discover other nodes through a tunnel.';
   }
   return undefined;
@@ -220,11 +208,11 @@ export const connectionFormSchema = z
     uri: z.string().trim().max(8192),
     /** MongoDB host list or Redis cluster seeds. */
     hostList: z.array(hostRowSchema).max(MAX_HOST_ROWS),
-    /** Elasticsearch / OpenSearch node URLs. */
+    /** Elasticsearch node URLs. */
     urls: z.array(urlRowSchema).max(MAX_HOST_ROWS),
     /** Elastic Cloud deployment id. */
     cloudId: z.string().trim().max(2048),
-    /** Elasticsearch / OpenSearch: discover the other nodes from the listed ones. */
+    /** Elasticsearch: discover the other nodes from the listed ones. */
     sniff: z.boolean(),
     /** MongoDB replica set name for a host list; optional. */
     replicaSet: z.string().trim().max(255),
@@ -464,12 +452,12 @@ export function isCloudId(value: string): boolean {
 }
 
 /**
- * Elasticsearch and OpenSearch (spec §4): node URLs (http or https, no password in them, one
+ * Elasticsearch (spec §4): node URLs (http or https, no password in them, one
  * scheme for all, and the TLS mode following it as Redis's rediss:// does), or a Cloud ID; a
  * user for basic authentication; a stored API key or token; one URL through a tunnel.
  */
 function searchIssues(form: ConnectionFormValues, issue: IssueAt): void {
-  if (!isSearchDialogEngine(form.engine)) return;
+  if (form.engine !== 'elasticsearch') return;
   if (form.endpointKind === 'urls') {
     if (form.urls.length === 0) issue(['urls'], 'Add at least one node URL');
     const schemes = new Set<string>();
@@ -548,7 +536,7 @@ function searchIssues(form: ConnectionFormValues, issue: IssueAt): void {
 export function showsDatabase(
   form: Pick<ConnectionFormValues, 'engine' | 'endpointKind'>,
 ): boolean {
-  if (form.endpointKind === 'uri' || isSearchDialogEngine(form.engine)) return false;
+  if (form.endpointKind === 'uri' || form.engine === 'elasticsearch') return false;
   return !(form.engine === 'redis' && form.endpointKind === 'cluster');
 }
 
@@ -599,9 +587,8 @@ const DEFAULT_AUTH_METHOD: Readonly<Record<DialogEngine, FormAuthMethod>> = {
   mariadb: 'password',
   mongodb: 'none',
   redis: 'none',
-  // Elasticsearch 8 and later have security on by default; OpenSearch often runs without it.
+  // Elasticsearch 8 and later have security on by default.
   elasticsearch: 'password',
-  opensearch: 'none',
 };
 
 /** A new node URL row: the engine's port on localhost, over https. */
@@ -613,7 +600,7 @@ export function defaultFormValues(engine: DialogEngine = 'postgres'): Connection
   return {
     name: '',
     engine,
-    endpointKind: isSearchDialogEngine(engine) ? 'urls' : 'host',
+    endpointKind: engine === 'elasticsearch' ? 'urls' : 'host',
     host: 'localhost',
     port: String(ENGINES[engine].defaultPort),
     socketPath: '',
@@ -696,13 +683,9 @@ export function switchEngine(
     directConnection: false,
     readPreference: '',
     keyDelimiter: fresh.keyDelimiter,
-    // Elasticsearch and OpenSearch keep their node URLs between each other.
-    urls:
-      isSearchDialogEngine(values.engine) && isSearchDialogEngine(engine)
-        ? values.urls
-        : fresh.urls,
-    cloudId: engine === 'elasticsearch' ? values.cloudId : '',
-    sniff: isSearchDialogEngine(engine) ? values.sniff : false,
+    urls: fresh.urls,
+    cloudId: fresh.cloudId,
+    sniff: fresh.sniff,
   };
 }
 
@@ -1067,7 +1050,7 @@ function optionsFromForm(
             : undefined;
   }
   if (form.engine === 'redis') options.keyDelimiter = optional(form.keyDelimiter);
-  if (isSearchDialogEngine(form.engine) && form.endpointKind === 'urls' && form.sniff) {
+  if (form.engine === 'elasticsearch' && form.endpointKind === 'urls' && form.sniff) {
     options.sniff = true;
   }
   return options;
@@ -1194,15 +1177,8 @@ export async function formFromUri(
 ): Promise<FilledFromUri> {
   const { parse, canSave } = options;
   const uri = text.trim();
-  // An http(s) URL can be either search engine: the chosen one, else Elasticsearch.
-  const engine =
-    options.engine === 'mariadb' && /^mysql:/i.test(uri)
-      ? 'mariadb'
-      : /^https?:/i.test(uri)
-        ? isSearchDialogEngine(options.engine)
-          ? options.engine
-          : 'elasticsearch'
-        : undefined;
+  // A mysql:// URI is MariaDB's while MariaDB is the chosen engine.
+  const engine = options.engine === 'mariadb' && /^mysql:/i.test(uri) ? 'mariadb' : undefined;
   const parsed = await parse({ uri, ...(engine ? { engine } : {}) });
   const profile = parsed.profile;
   // Read the fields to keep only now: the user may have typed a name while main parsed.

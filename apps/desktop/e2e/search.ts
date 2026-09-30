@@ -8,16 +8,13 @@ import {
 } from '@joinery/driver-elasticsearch';
 
 /**
- * Direct Elasticsearch / OpenSearch access for the end-to-end tests: a session that bypasses
+ * Direct Elasticsearch access for the end-to-end tests: a session that bypasses
  * the app, to check what the app wrote and to delete the run's indices afterwards (by name:
  * wildcard deletes are refused by default).
  */
 
-export async function connectSearch(
-  url: string,
-  engine: 'elasticsearch' | 'opensearch' = 'elasticsearch',
-): Promise<SearchSession> {
-  const session = await createSearchAdapter({ engine }).connect(searchProfileFromUrl(url, engine));
+export async function connectSearch(url: string): Promise<SearchSession> {
+  const session = await createSearchAdapter().connect(searchProfileFromUrl(url));
   if (!isSearchSession(session)) throw new Error('expected a search session');
   return session;
 }

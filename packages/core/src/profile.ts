@@ -48,7 +48,7 @@ export const endpointSchema = z.discriminatedUnion('kind', [
     masterName: z.string().min(1),
   }),
   z.object({ kind: z.literal('cluster'), seeds: z.array(hostPortSchema).min(1) }),
-  /** Elasticsearch / OpenSearch node URLs. */
+  /** Elasticsearch node URLs. */
   z.object({ kind: z.literal('urls'), urls: z.array(z.string().min(1)).min(1) }),
   z.object({ kind: z.literal('cloudId'), cloudId: z.string().min(1) }),
 ]);
@@ -63,7 +63,6 @@ export const ENDPOINT_KINDS: Readonly<Record<EngineId, readonly EndpointKind[]>>
   mongodb: ['host', 'hosts', 'srv', 'uri'],
   redis: ['host', 'socket', 'sentinel', 'cluster', 'uri'],
   elasticsearch: ['urls', 'cloudId'],
-  opensearch: ['urls'],
 };
 
 export const authSchema = z.discriminatedUnion('method', [
@@ -155,7 +154,7 @@ export const connectionOptionsSchema = z.object({
   /** Redis: the delimiter that splits key names into the browser's namespace tree (default ":"). */
   keyDelimiter: z.string().min(1).max(16).optional(),
   /**
-   * Elasticsearch / OpenSearch: discover the cluster's other nodes from the listed URLs and
+   * Elasticsearch: discover the cluster's other nodes from the listed URLs and
    * spread requests over them (off by default: the addresses nodes announce are often not
    * reachable from a desktop).
    */

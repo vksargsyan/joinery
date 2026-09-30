@@ -2,7 +2,7 @@ import { member, parseJsonTree, type JsonNode } from './json';
 import type { HttpMethod } from './console/parser';
 
 /**
- * What an Elasticsearch or OpenSearch request does, for the write rules (spec §4): whether it
+ * What an Elasticsearch request does, for the write rules (spec §4): whether it
  * can change data or cluster state, and whether it is destructive (it deletes or closes data,
  * or rewrites documents in bulk). Blocking operations (a write or read block on an index, set
  * directly or through its settings) count as destructive too: they always ask. The connection
@@ -46,7 +46,6 @@ const READ_SEGMENTS = new Set([
   '_pit',
   '_graph',
   '_sql',
-  '_ppl',
 ]);
 
 /** A path's segments, percent-decoded, without empty ones. */
@@ -146,7 +145,6 @@ export function classifyRequest(request: {
     if (
       (has('_search') && segments.includes('scroll')) ||
       has('_pit') ||
-      (has('_search') && segments.includes('point_in_time')) ||
       has('_async_search') ||
       (has('_sql') && segments.includes('close'))
     ) {
@@ -221,15 +219,7 @@ export function classifyRequest(request: {
     }
   }
   if (apis.some((a) => READ_SEGMENTS.has(a))) {
-    // OpenSearch's SQL plugin: `DELETE FROM` is a write when the plugin allows it.
-    if ((has('_sql') || has('_plugins')) && /\bdelete\s+from\b/i.test(request.body ?? '')) {
-      return {
-        writes: true,
-        destructive: 'deletes the documents the SQL statement matches',
-        label,
-      };
-    }
-    // _search/scroll and _search/template read too; _pit opens a point in time.
+    // _search/scroll and _search/template read too; _pit opens a point in time; SQL only reads.
     return { writes: false, label };
   }
   return { writes: true, label };
@@ -249,7 +239,6 @@ function deleteReason(segments: readonly string[], apis: readonly string[]): str
       ? 'deletes the snapshot (its data in the repository is gone)'
       : 'unregisters the snapshot repository (its files stay where they are)';
   }
-  if (apis.includes('_ism')) return 'deletes the ISM policy';
   if (apis.includes('_alias') || apis.includes('_aliases')) return 'removes aliases';
   const api = apis[0]!;
   const known = DELETE_REASONS[api];
@@ -265,7 +254,6 @@ const DELETE_REASONS: Readonly<Record<string, string>> = {
   _component_template: 'deletes the component template',
   _template: 'deletes the index template',
   _security: 'deletes security objects (users, roles or API keys)',
-  _plugins: 'deletes plugin objects',
   _scripts: 'deletes the stored script',
   _tasks: 'deletes tasks',
   _transform: 'deletes the transform',

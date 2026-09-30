@@ -12,7 +12,7 @@ import {
 import { errorInfo } from '../../lib/errors';
 
 /**
- * The Elasticsearch / OpenSearch document editor (spec §11): a document's `_source` as JSON,
+ * The Elasticsearch document editor (spec §11): a document's `_source` as JSON,
  * checked as it is typed, saved with optimistic concurrency. An edit writes only over the
  * version that was read (`if_seq_no` / `if_primary_term`); when someone changed the document
  * meanwhile the save fails with CONFLICT and the editor shows their version, offering to reload

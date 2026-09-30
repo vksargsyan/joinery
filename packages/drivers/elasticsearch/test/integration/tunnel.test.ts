@@ -19,7 +19,7 @@ import { createSearchAdapter, isSearchSession } from '../../src';
 import { SERVERS, profileFor, type TestServer } from './helpers';
 
 /**
- * Elasticsearch and OpenSearch through an in-process SSH server, a SOCKS5 proxy and an HTTP
+ * Elasticsearch through an in-process SSH server, a SOCKS5 proxy and an HTTP
  * CONNECT proxy: one node URL is forwarded, and the requests keep the node's own Host header.
  */
 
@@ -65,9 +65,9 @@ function throughSsh(
   return { ...base, secrets: { ...base.secrets, 'ssh-password': SSH_PASSWORD } };
 }
 
-describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine through a tunnel', (server) => {
+describe.skipIf(SERVERS.length === 0).each(SERVERS)('through a tunnel', (server) => {
   it('connects through SSH and runs requests', async () => {
-    const adapter = createSearchAdapter({ engine: server.engine });
+    const adapter = createSearchAdapter();
     const connected = await connectThroughTransport(adapter, throughSsh(server), manager);
     try {
       const { session, transport } = connected;
@@ -82,10 +82,9 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine through a tunnel', 
 
   it('passes Test Connection through the tunnel, every step accounted for', async () => {
     const results: ConnectionCheckResult[] = [];
-    for await (const result of createSearchAdapter({ engine: server.engine }).checkConnection(
-      throughSsh(server),
-      { runSshStep: (profile) => runSshStep(profile, manager) },
-    )) {
+    for await (const result of createSearchAdapter().checkConnection(throughSsh(server), {
+      runSshStep: (profile) => runSshStep(profile, manager),
+    })) {
       results.push(result);
     }
     expect(results.map((r) => [r.step, r.status])).toEqual([
@@ -105,7 +104,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine through a tunnel', 
       endpoint: { kind: 'urls', urls: [`http://${url.host}`, 'http://other:9200'] },
     });
     await expect(
-      connectThroughTransport(createSearchAdapter({ engine: server.engine }), several, manager),
+      connectThroughTransport(createSearchAdapter(), several, manager),
     ).rejects.toMatchObject({ code: 'NOT_SUPPORTED', hint: expect.stringContaining('one URL') });
   });
 
@@ -115,7 +114,7 @@ describe.skipIf(SERVERS.length === 0).each(SERVERS)('$engine through a tunnel', 
       { kind: 'http' as const, host: '127.0.0.1', port: httpProxy.port },
     ]) {
       const connected = await connectThroughTransport(
-        createSearchAdapter({ engine: server.engine }),
+        createSearchAdapter(),
         profileFor(server, { proxy }),
         manager,
       );

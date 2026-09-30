@@ -6,7 +6,6 @@ import {
   type ApiSpec,
   type ApiType,
 } from './api/spec';
-import type { SearchDistribution } from './capabilities';
 import { HTTP_METHODS, isRequestLine } from './console/parser';
 
 /**
@@ -39,119 +38,11 @@ export interface ConsoleCompletion {
 export interface ConsoleCompletionOptions {
   /** Index, alias and data stream names to offer for {index} segments. */
   readonly indices?: readonly string[];
-  /** Leaves out Elasticsearch-only APIs on OpenSearch and adds OpenSearch's own. */
-  readonly distribution?: SearchDistribution;
   readonly spec?: ApiSpec;
 }
 
-/** API namespaces OpenSearch does not have (X-Pack and Elastic-only features). */
-const ELASTIC_ONLY = new Set([
-  'async_search',
-  'autoscaling',
-  'ccr',
-  'connector',
-  'enrich',
-  'eql',
-  'esql',
-  'features',
-  'fleet',
-  'graph',
-  'ilm',
-  'inference',
-  'license',
-  'logstash',
-  'migration',
-  'ml',
-  'monitoring',
-  'profiling',
-  'query_rules',
-  'rollup',
-  'search_application',
-  'searchable_snapshots',
-  'security',
-  'shutdown',
-  'simulate',
-  'slm',
-  'sql',
-  'ssl',
-  'streams',
-  'synonyms',
-  'text_structure',
-  'transform',
-  'watcher',
-  'xpack',
-]);
-const ELASTIC_ONLY_ENDPOINTS = new Set(['open_point_in_time', 'close_point_in_time']);
-
-/** OpenSearch endpoints the Elasticsearch specification does not describe. */
-const OPENSEARCH_ENDPOINTS: readonly ApiEndpoint[] = [
-  {
-    name: 'opensearch.sql',
-    methods: ['POST'],
-    paths: ['/_plugins/_sql'],
-    params: ['format'],
-    body: 'json',
-    summary: 'Run a SQL query (SQL plugin).',
-  },
-  {
-    name: 'opensearch.sql.explain',
-    methods: ['POST'],
-    paths: ['/_plugins/_sql/_explain'],
-    body: 'json',
-    summary: 'Translate a SQL query to Query DSL (SQL plugin).',
-  },
-  {
-    name: 'opensearch.ppl',
-    methods: ['POST'],
-    paths: ['/_plugins/_ppl'],
-    params: ['format'],
-    body: 'json',
-    summary: 'Run a PPL query (SQL plugin).',
-  },
-  {
-    name: 'opensearch.create_pit',
-    methods: ['POST'],
-    paths: ['/{index}/_search/point_in_time'],
-    params: [
-      'keep_alive',
-      'preference',
-      'routing',
-      'expand_wildcards',
-      'allow_partial_pit_creation',
-    ],
-    summary: 'Open a point in time.',
-  },
-  {
-    name: 'opensearch.delete_pit',
-    methods: ['DELETE'],
-    paths: ['/_search/point_in_time', '/_search/point_in_time/_all'],
-    body: 'json',
-    summary: 'Close points in time.',
-  },
-  {
-    name: 'opensearch.ism.policies',
-    methods: ['GET', 'PUT', 'DELETE'],
-    paths: ['/_plugins/_ism/policies', '/_plugins/_ism/policies/{policy_id}'],
-    body: 'json',
-    summary: 'Index State Management policies.',
-  },
-  {
-    name: 'opensearch.security.authinfo',
-    methods: ['GET'],
-    paths: ['/_plugins/_security/authinfo'],
-    summary: 'Who the current user is (security plugin).',
-  },
-];
-
 function endpointsFor(options: ConsoleCompletionOptions): readonly ApiEndpoint[] {
-  const spec = options.spec ?? API_SPEC;
-  if (options.distribution !== 'opensearch') return spec.endpoints;
-  return [
-    ...spec.endpoints.filter(
-      (e) => !ELASTIC_ONLY.has(e.name.split('.')[0]!) && !ELASTIC_ONLY_ENDPOINTS.has(e.name),
-    ),
-    ...OPENSEARCH_ENDPOINTS,
-  ];
+  return (options.spec ?? API_SPEC).endpoints;
 }
 
 // ---------------------------------------------------------------------------------------------

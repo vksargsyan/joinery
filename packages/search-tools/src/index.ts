@@ -1,5 +1,5 @@
 /**
- * @joinery/search-tools — what the Elasticsearch and OpenSearch module (spec §11) needs on both
+ * @joinery/search-tools — what the Elasticsearch module (spec §11) needs on both
  * sides of the process boundary: the Kibana console parser and formatter, lossless JSON text
  * helpers, the request safety classifier behind the write rules, the wire types, the capability
  * flags, reply readers, and autocomplete from the open Elasticsearch API specification. No Node
@@ -17,12 +17,9 @@ export {
   type EndpointMatch,
 } from './api/spec';
 export {
-  SEARCH_DISTRIBUTIONS,
-  distributionName,
   searchCapabilities,
   versionAtLeast,
   type SearchCapabilities,
-  type SearchDistribution,
   type SearchServerFacts,
 } from './capabilities';
 export {
@@ -175,7 +172,6 @@ export {
   translatedDsl,
   type SearchTable,
   type SearchTableColumn,
-  type SqlDialect,
   type SqlRequestOptions,
   type SqlTranslation,
 } from './sql';

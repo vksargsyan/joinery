@@ -32,7 +32,7 @@ import {
 } from './mongo-tool-fixtures';
 
 /**
- * The Elasticsearch / OpenSearch panels' flows (spec §11) against a fake connection host: the
+ * The Elasticsearch panels' flows (spec §11) against a fake connection host: the
  * document grid's paging and its edit, conflict and bulk paths, the document editor, the query
  * bar, the create-index form, the reindex plan runner and the index panel's mapping editor.
  */
@@ -45,7 +45,7 @@ vi.mock('../src/renderer/src/lib/main-client', async (importOriginal) => ({
 
 afterEach(() => disconnectAll());
 
-const CAPS = searchCapabilities({ distribution: 'elasticsearch', version: '9.4.0' });
+const CAPS = searchCapabilities({ version: '9.4.0' });
 
 function page(from: number, count: number, extra: Partial<SearchPage> = {}): SearchPage {
   return {
@@ -69,7 +69,6 @@ function fakeHost(overrides: Record<string, unknown> = {}) {
   const calls = recorder();
   const search = {
     clusterInfo: async () => ({
-      distribution: 'elasticsearch',
       version: '9.4.0',
       clusterName: 'c',
       plugins: [],
@@ -459,7 +458,6 @@ describe('the index panel', () => {
       closeSession: async () => undefined,
       search: {
         clusterInfo: async () => ({
-          distribution: 'elasticsearch',
           version: '9.4.0',
           clusterName: 'c',
           plugins: [],

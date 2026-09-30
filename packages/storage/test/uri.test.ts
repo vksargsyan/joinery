@@ -501,7 +501,7 @@ const CASES: readonly Case[] = [
     profileOptions: { defaultDatabase: '0' },
   },
 
-  // Elasticsearch and OpenSearch.
+  // Elasticsearch: http(s):// URLs need no engine option.
   {
     uri: 'https://elastic:changeme@localhost:9200',
     options: { engine: 'elasticsearch' },
@@ -513,14 +513,14 @@ const CASES: readonly Case[] = [
     password: 'changeme',
   },
   {
-    uri: 'http://admin:0pen-Search!@localhost:9200',
-    options: { engine: 'opensearch', name: 'Local OpenSearch' },
-    name: 'Local OpenSearch',
-    engine: 'opensearch',
+    uri: 'http://admin:s3cret!@localhost:9200',
+    options: { name: 'Local Elasticsearch' },
+    name: 'Local Elasticsearch',
+    engine: 'elasticsearch',
     endpoint: { kind: 'urls', urls: ['http://localhost:9200'] },
     auth: { method: 'password', user: 'admin', password: REF },
     tls: { mode: 'disable' },
-    password: '0pen-Search!',
+    password: 's3cret!',
   },
   {
     uri: 'https://my-deployment.es.us-central1.gcp.cloud.es.io',
@@ -537,7 +537,6 @@ const CASES: readonly Case[] = [
   },
   {
     uri: 'http://[::1]:9200,[::2]:9200',
-    options: { engine: 'opensearch' },
     endpoint: { kind: 'urls', urls: ['http://[::1]:9200', 'http://[::2]:9200'] },
     tls: { mode: 'disable' },
   },
@@ -586,7 +585,7 @@ describe('parseConnectionUri', () => {
     ['', undefined, /must start with a scheme/],
     ['localhost:5432', undefined, /must start with a scheme/],
     ['ftp://files.example.com', undefined, /scheme "ftp" is not supported/],
-    ['http://localhost:9200', undefined, /Elasticsearch or OpenSearch/],
+    ['http://localhost:9200', { engine: 'postgres' }, /cannot describe a PostgreSQL server/],
     ['postgres://h/db', { engine: 'mysql' }, /cannot describe a MySQL server/],
     ['postgres://u:hunter2@h:99999/db', undefined, /port/],
     ['postgres://user:hunt/er2@host/db', undefined, /port/],

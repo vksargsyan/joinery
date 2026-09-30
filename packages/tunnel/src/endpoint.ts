@@ -10,7 +10,7 @@ function notTunnellable(message: string, hint: string): JoineryError {
 }
 
 /**
- * The host and port of an Elasticsearch / OpenSearch node URL: the URL's port, else 443 for
+ * The host and port of an Elasticsearch node URL: the URL's port, else 443 for
  * https and 80 for http. A URL without a scheme is https unless TLS is off. Never echoes the URL.
  */
 export function searchUrlTarget(url: string, tlsByDefault: boolean): HostPort {
@@ -111,7 +111,7 @@ export function tunnelReach(profile: ConnectionProfile): TunnelReach {
     case 'cluster':
       return { kind: 'nodes', seeds: endpoint.seeds.map(({ host, port }) => ({ host, port })) };
     case 'urls': {
-      // Elasticsearch / OpenSearch: one node URL (the others would bypass the tunnel).
+      // Elasticsearch: one node URL (the others would bypass the tunnel).
       if (endpoint.urls.length !== 1) {
         throw notTunnellable(
           'Only a single node URL can be reached through an SSH tunnel or a proxy',

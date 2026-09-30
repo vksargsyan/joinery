@@ -2,7 +2,7 @@ import { JoineryError, requiresWriteConfirmation, type ConnectionProfile } from 
 import { classifyRequest, type RequestSafety, type SearchRequest } from '@joinery/search-tools';
 
 /**
- * The write rules for Elasticsearch and OpenSearch (spec §4, §11), shared by the connection host
+ * The write rules for Elasticsearch (spec §4, §11), shared by the connection host
  * (which enforces them whatever the page sends) and the page (which asks before it sends): a
  * read-only profile refuses every write; destructive requests (index and document deletes,
  * close, delete by query, force merge, bulk deletes) ask on every profile; every write asks on

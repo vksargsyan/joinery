@@ -16,7 +16,7 @@ import {
   type ParseUri,
 } from '../src/renderer/src/state/connection-form';
 
-/** The connection dialog for Elasticsearch and OpenSearch (spec §4, §11). */
+/** The connection dialog for Elasticsearch (spec §4, §11). */
 
 function elastic(overrides: Partial<ConnectionFormValues> = {}): ConnectionFormValues {
   return {
@@ -55,8 +55,8 @@ const parse: ParseUri = ({ uri, engine }) => {
   );
 };
 
-describe('Elasticsearch and OpenSearch defaults', () => {
-  it('start on an https node URL with verified TLS; Elasticsearch signs in, OpenSearch not', () => {
+describe('Elasticsearch defaults', () => {
+  it('start on an https node URL with verified TLS and basic authentication', () => {
     expect(defaultFormValues('elasticsearch')).toMatchObject({
       endpointKind: 'urls',
       urls: [{ url: 'https://localhost:9200' }],
@@ -64,25 +64,27 @@ describe('Elasticsearch and OpenSearch defaults', () => {
       tlsMode: 'verify-full',
       sniff: false,
     });
-    expect(defaultFormValues('opensearch')).toMatchObject({
-      endpointKind: 'urls',
-      authMethod: 'none',
-    });
     expect(issues(elastic())).toEqual({});
   });
 
-  it('keeps the URLs between the two, and resets the endpoint for other engines', () => {
+  it('starts the node URLs, Cloud ID and sniffing over when the engine changes', () => {
     const urls = [{ url: 'https://es1:9200' }, { url: 'https://es2:9200' }];
-    const opensearch = switchEngine(elastic({ urls, authMethod: 'apiKey' }), 'opensearch');
-    expect(opensearch).toMatchObject({ endpointKind: 'urls', urls, authMethod: 'none' });
-    const fromCloud = switchEngine(elastic({ endpointKind: 'cloudId', cloudId }), 'opensearch');
-    expect(fromCloud).toMatchObject({ endpointKind: 'urls', cloudId: '' });
     expect(switchEngine(elastic(), 'redis')).toMatchObject({ endpointKind: 'host', port: '6379' });
+    const back = switchEngine(
+      switchEngine(elastic({ urls, endpointKind: 'cloudId', cloudId, sniff: true }), 'redis'),
+      'elasticsearch',
+    );
+    expect(back).toMatchObject({
+      endpointKind: 'urls',
+      urls: [{ url: 'https://localhost:9200' }],
+      cloudId: '',
+      sniff: false,
+    });
     expect(switchEngine(defaultFormValues('postgres'), 'elasticsearch').endpointKind).toBe('urls');
   });
 });
 
-describe('Elasticsearch and OpenSearch validation', () => {
+describe('Elasticsearch validation', () => {
   it('checks every node URL', () => {
     expect(issues(elastic({ urls: [{ url: '' }] }))).toEqual({
       'urls.0.url': 'Enter a URL such as https://localhost:9200',
@@ -122,11 +124,6 @@ describe('Elasticsearch and OpenSearch validation', () => {
     );
     expect(issues(elastic({ endpointKind: 'cloudId', cloudId }))).toEqual({});
     expect(isCloudId(cloudId)).toBe(true);
-    // OpenSearch has no Cloud ID.
-    expect(
-      issues({ ...elastic({ endpointKind: 'cloudId', cloudId }), engine: 'opensearch' })
-        .endpointKind,
-    ).toBeDefined();
   });
 
   it('needs a user for basic authentication and a storage policy for keys and tokens', () => {
@@ -137,13 +134,10 @@ describe('Elasticsearch and OpenSearch validation', () => {
     expect(issues(elastic({ authMethod: 'bearer', passwordMode: 'none' })).passwordMode).toContain(
       'token',
     );
-    expect(
-      issues({ ...elastic({ authMethod: 'apiKey' }), engine: 'opensearch' }).authMethod,
-    ).toBeDefined();
   });
 });
 
-describe('Elasticsearch and OpenSearch profiles', () => {
+describe('Elasticsearch profiles', () => {
   it('builds node URLs, basic credentials, sniffing and TLS', () => {
     const { profile, secrets } = formToProfile(
       elastic({ urls: [{ url: 'https://es1:9200' }, { url: 'https://es2:9200' }], sniff: true }),
@@ -187,16 +181,16 @@ describe('Elasticsearch and OpenSearch profiles', () => {
     expect(cloud.profile.options?.sniff).toBeUndefined();
   });
 
-  it('fills the form from a pasted URL for the chosen engine', async () => {
-    const current = { ...defaultFormValues('opensearch'), name: '' };
+  it('fills the form from a pasted URL', async () => {
+    const current = { ...defaultFormValues('elasticsearch'), name: '' };
     const { values } = await formFromUri('http://admin:secret@127.0.0.1:9201', {
-      engine: 'opensearch',
+      engine: 'elasticsearch',
       parse,
       current: () => current,
       canSave: true,
     });
     expect(values).toMatchObject({
-      engine: 'opensearch',
+      engine: 'elasticsearch',
       endpointKind: 'urls',
       urls: [{ url: 'http://127.0.0.1:9201' }],
       authMethod: 'password',

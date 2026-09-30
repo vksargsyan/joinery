@@ -27,8 +27,7 @@ import type {
  * Readers for the administration replies of spec §11 (tasks, shards, allocation explain, disk
  * watermarks, templates, lifecycle policies, pipelines, repositories, snapshots, pipeline
  * simulation) and the requests of the named resources. Shared by the driver, which fetches,
- * and the tests, which feed them recorded replies. Elasticsearch and OpenSearch differences sit
- * here, keyed by the lifecycle flavour (ILM or ISM) where the two disagree.
+ * and the tests, which feed them recorded replies.
  */
 
 function iso(millis: number | undefined): string | undefined {
@@ -301,12 +300,8 @@ export function watermarkPercent(value: string): number | undefined {
 // ---------------------------------------------------------------------------------------------
 // Named resources
 
-/** Where a resource kind lives; `lifecycle` picks ILM or ISM for lifecycle policies. */
-export function resourcePath(
-  kind: SearchResourceKind,
-  lifecycle: 'ilm' | 'ism' | null,
-  name?: string,
-): string {
+/** Where a resource kind lives. */
+export function resourcePath(kind: SearchResourceKind, name?: string): string {
   const tail = name === undefined ? '' : `/${encodeURIComponent(name)}`;
   switch (kind) {
     case 'index-template':
@@ -316,8 +311,7 @@ export function resourcePath(
     case 'legacy-template':
       return `/_template${tail}`;
     case 'lifecycle-policy':
-      if (lifecycle === null) throw new Error('This cluster has no index lifecycle management');
-      return lifecycle === 'ism' ? `/_plugins/_ism/policies${tail}` : `/_ilm/policy${tail}`;
+      return `/_ilm/policy${tail}`;
     case 'ingest-pipeline':
       return `/_ingest/pipeline${tail}`;
     case 'snapshot-repository':
@@ -328,24 +322,10 @@ export function resourcePath(
 /** The request that creates or replaces a resource with `body` (the JSON its PUT takes). */
 export function resourcePutRequest(
   kind: SearchResourceKind,
-  lifecycle: 'ilm' | 'ism' | null,
   name: string,
   body: string,
-  concurrency: { readonly seqNo?: number; readonly primaryTerm?: number } = {},
 ): SearchRequest {
-  const query =
-    kind === 'lifecycle-policy' &&
-    lifecycle === 'ism' &&
-    concurrency.seqNo !== undefined &&
-    concurrency.primaryTerm !== undefined
-      ? `if_seq_no=${concurrency.seqNo}&if_primary_term=${concurrency.primaryTerm}`
-      : undefined;
-  return {
-    method: 'PUT',
-    path: resourcePath(kind, lifecycle, name),
-    ...(query !== undefined ? { query } : {}),
-    body,
-  };
+  return { method: 'PUT', path: resourcePath(kind, name), body };
 }
 
 /** Members the server adds that its PUT refuses. */
@@ -354,9 +334,6 @@ const READ_ONLY_MEMBERS = new Set([
   'created_date_millis',
   'modified_date',
   'modified_date_millis',
-  'policy_id',
-  'last_updated_time',
-  'schema_version',
 ]);
 
 /** An object's text without the read-only members (compact JSON, other tokens untouched). */
@@ -390,12 +367,11 @@ function summaryOf(
 
 /**
  * The resources of a kind from its list reply (`GET /_index_template`, `/_ilm/policy`,
- * `/_plugins/_ism/policies`, `/_ingest/pipeline`, `/_snapshot`...), sorted by name. Hidden
- * (dot-prefixed) resources are left out unless `includeHidden`.
+ * `/_ingest/pipeline`, `/_snapshot`...), sorted by name. Hidden (dot-prefixed) resources are
+ * left out unless `includeHidden`.
  */
 export function parseResources(
   kind: SearchResourceKind,
-  lifecycle: 'ilm' | 'ism' | null,
   body: string,
   options: { readonly includeHidden?: boolean } = {},
 ): SearchResourceInfo[] {
@@ -480,35 +456,6 @@ export function parseResources(
       break;
     }
     case 'lifecycle-policy': {
-      if (lifecycle === 'ism') {
-        const policies = member(root, 'policies');
-        if (policies?.type !== 'array') break;
-        for (const item of policies.items) {
-          const policy = member(item, 'policy');
-          if (!policy) continue;
-          const states = member(policy, 'states');
-          const seqNo = numberAt(item, '_seq_no');
-          const primaryTerm = numberAt(item, '_primary_term');
-          push({
-            kind,
-            name: stringAt(item, '_id') ?? stringAt(policy, 'policy_id') ?? '',
-            summary: summaryOf([
-              ['Description', stringAt(policy, 'description')],
-              ['Default state', stringAt(policy, 'default_state')],
-              [
-                'States',
-                states?.type === 'array'
-                  ? states.items.map((s) => stringAt(s, 'name') ?? '').join(', ')
-                  : undefined,
-              ],
-            ]),
-            body: `{"policy":${editable(body, policy)}}`,
-            ...(seqNo !== undefined ? { seqNo } : {}),
-            ...(primaryTerm !== undefined ? { primaryTerm } : {}),
-          });
-        }
-        break;
-      }
       if (root.type !== 'object') break;
       for (const m of root.members) {
         const policy = member(m.value, 'policy');

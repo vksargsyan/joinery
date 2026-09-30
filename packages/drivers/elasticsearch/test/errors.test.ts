@@ -124,7 +124,7 @@ describe('mapResponseError', () => {
     expect(
       mapResponseError(
         400,
-        '{"error":"no handler found for uri [/_plugins/_sql] and method [POST]"}',
+        '{"error":"no handler found for uri [/_query] and method [POST]"}',
         context,
       ),
     ).toMatchObject({ code: 'NOT_SUPPORTED', hint: expect.stringContaining('plugins') });

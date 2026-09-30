@@ -10,30 +10,24 @@ import {
   translatedDsl,
   type SearchRequest,
   type SearchTable,
-  type SqlDialect,
 } from '@joinery/search-tools';
 
 import type { SearchContext } from './context';
 import type { SearchOpOptions, SqlQueryOptions, SqlTranslation } from './types';
 
 /**
- * SQL and ES|QL (spec §11): SQL through Elasticsearch's SQL API or OpenSearch's SQL plugin,
- * paged with the server's cursor (closed when the reader stops early), "Translate to DSL", and
- * ES|QL where the cluster has it. Which of them a cluster offers is a capability flag.
+ * SQL and ES|QL (spec §11): SQL through the SQL API, paged with the server's cursor (closed
+ * when the reader stops early), "Translate to DSL", and ES|QL where the cluster has it. Which
+ * of them a cluster offers is a capability flag.
  */
 
-function dialectOf(ctx: SearchContext): SqlDialect {
-  const dialect = ctx.facts.capabilities.sql;
-  if (dialect === null) {
+function checkSql(ctx: SearchContext): void {
+  if (!ctx.facts.capabilities.sql) {
     throw new JoineryError({
       code: 'NOT_SUPPORTED',
-      message:
-        ctx.facts.distribution === 'opensearch'
-          ? 'This OpenSearch cluster has no SQL plugin (opensearch-sql)'
-          : 'This Elasticsearch cluster has no SQL API (the OSS distribution lacks it)',
+      message: 'This Elasticsearch cluster has no SQL API (the OSS distribution lacks it)',
     });
   }
-  return dialect;
 }
 
 async function send(ctx: SearchContext, request: SearchRequest, opts: SearchOpOptions) {
@@ -54,14 +48,14 @@ export async function* sqlQuery(
   query: string,
   opts: SqlQueryOptions = {},
 ): AsyncGenerator<SearchTable> {
-  const dialect = dialectOf(ctx);
+  checkSql(ctx);
   if (query.trim() === '') {
     throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Write a SQL query to run' });
   }
   const maxRows = opts.maxRows ?? Number.POSITIVE_INFINITY;
   const first = await send(
     ctx,
-    sqlRequest(dialect, query, {
+    sqlRequest(query, {
       ...(opts.fetchSize !== undefined ? { fetchSize: opts.fetchSize } : {}),
       ...(opts.timeZone !== undefined ? { timeZone: opts.timeZone } : {}),
     }),
@@ -80,7 +74,7 @@ export async function* sqlQuery(
       // The cursor stays in the driver; the page only says whether more follow.
       yield { ...rest, columns, rows, ...(done ? {} : { more: true }) };
       if (done || cursor === undefined) return;
-      const next = await send(ctx, sqlCursorRequest(dialect, cursor), opts);
+      const next = await send(ctx, sqlCursorRequest(cursor), opts);
       page = parseTableReply(next.text);
       // The last page answers without a cursor: the server closed it.
       cursor = page.cursor;
@@ -88,7 +82,7 @@ export async function* sqlQuery(
     }
   } finally {
     if (cursor !== undefined) {
-      const close = sqlCloseRequest(dialect, cursor);
+      const close = sqlCloseRequest(cursor);
       await ctx.http
         .request({ method: close.method, path: close.path, body: close.body!, timeoutMs: 10_000 })
         .catch(() => undefined);
@@ -102,9 +96,9 @@ export async function translateSql(
   query: string,
   opts: SearchOpOptions = {},
 ): Promise<SqlTranslation> {
-  const dialect = dialectOf(ctx);
-  const { text } = await send(ctx, sqlTranslateRequest(dialect, query), opts);
-  const dsl = translatedDsl(dialect, text);
+  checkSql(ctx);
+  const { text } = await send(ctx, sqlTranslateRequest(query), opts);
+  const dsl = translatedDsl(text);
   const target = sqlFromTarget(query);
   return {
     ...(dsl !== undefined ? { dsl } : {}),
