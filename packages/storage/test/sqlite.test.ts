@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -136,5 +136,15 @@ describe('transactions', () => {
       }),
     ).toThrow(/NOT NULL/);
     expect(values(db)).toEqual([]);
+  });
+});
+
+describe('loading node:sqlite', () => {
+  it('waits for the first database, so a program can hide the SQLite warning first', () => {
+    // A static import loads node:sqlite while the program's imports are linked, and its
+    // "experimental" warning then prints before the CLI's filter is installed (Node 22.17).
+    const source = readFileSync(new URL('../src/sqlite.ts', import.meta.url), 'utf8');
+    const imports = source.match(/^import .*'node:sqlite';$/gm) ?? [];
+    expect(imports.every((line) => line.startsWith('import type '))).toBe(true);
   });
 });
