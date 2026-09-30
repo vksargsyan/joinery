@@ -50,10 +50,15 @@ test('creates a PostgreSQL connection from a URI and tests it', async () => {
   await expect(dialog.getByLabel('Password', { exact: true })).not.toHaveValue('');
 
   await dialog.getByLabel('Name').fill(NAME);
-  // TLS starts off (the test server has none), and its tab shows the persistent warning.
+  // TLS starts off (the test server has none). A remote server would keep a warning; a local
+  // one only gets a note.
   await dialog.getByRole('tab', { name: /TLS/ }).click();
   await expect(dialog.getByLabel('TLS mode')).toHaveValue('disable');
-  await expect(dialog.getByText('TLS is disabled')).toBeVisible();
+  const host = new URL(PG_URL!).hostname;
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
+  await expect(
+    local ? dialog.getByTestId('tls-local-note') : dialog.getByText('TLS is disabled'),
+  ).toBeVisible();
   await dialog.getByRole('tab', { name: /General/ }).click();
   await dialog.getByLabel('Password storage').selectOption('session');
 

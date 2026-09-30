@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ENGINES,
   hasWeakTls,
+  isLocalEndpoint,
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type ConnectionProfile,
@@ -403,6 +404,8 @@ export function ConnectionDialog(props: {
         : 'New connection';
 
   const draft = weakTls ? draftProfile() : undefined;
+  // Nothing to intercept on a local server (localhost, a socket): no warning, a note instead.
+  const localServer = draft !== undefined && isLocalEndpoint(draft);
   const errorTabs = tabsWithErrors(errors, engine);
   const tabOn: Readonly<Partial<Record<TabId, boolean>>> = {
     tls: values.tlsMode !== undefined && values.tlsMode !== 'disable',
@@ -773,7 +776,13 @@ export function ConnectionDialog(props: {
                       />
                     </>
                   )}
-                  {weakTls && (
+                  {weakTls && localServer && (
+                    <p className="col-span-2 text-xs text-muted" data-testid="tls-local-note">
+                      A local server: the traffic does not leave this computer, so the connection
+                      shows no TLS warning.
+                    </p>
+                  )}
+                  {weakTls && !localServer && (
                     <div
                       role="alert"
                       className="col-span-2 flex items-start gap-2 rounded border border-warning/50 bg-warning/10 p-2 text-xs text-warning"

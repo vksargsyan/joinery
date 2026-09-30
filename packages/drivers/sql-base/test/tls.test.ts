@@ -65,8 +65,12 @@ describe('buildTlsSettings', () => {
     ).toBeUndefined();
   });
 
-  it('verify-full checks chain and host name, with the default mode being verify-full', () => {
-    const tls = settings({});
+  it('is off for a profile that states no mode', () => {
+    expect(settings({})).toMatchObject({ mode: 'disable' });
+  });
+
+  it('verify-full checks chain and host name', () => {
+    const tls = settings({ mode: 'verify-full' });
     expect(tls).toMatchObject({ mode: 'verify-full', verifyChain: true, verifyHostname: true });
     expect(tls.expectedHostname).toBe('db.example.com');
     expect(tls.options?.servername).toBe('db.example.com');

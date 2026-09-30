@@ -65,8 +65,15 @@ across tabs and steps.
 - **Switching engines:** a sign-in left at the old engine's default, with no user or password
   typed, takes the new engine's default.
 
-The persistent weak-TLS warning (spec §4) is unchanged. It still marks a connection whose
-TLS is off or not fully verified.
+**The weak-TLS warning** (spec §4) now marks only a connection that crosses a network with TLS
+off or not fully verified (`hasWeakTls`, `isLocalEndpoint` in core). It no longer shows for:
+
+- localhost and loopback addresses, and `*.localhost` names;
+- a Unix socket;
+- loopback at the far end of an SSH tunnel, whose own leg is encrypted.
+
+A proxy without a tunnel carries the traffic over the network, so it still warns there. On the
+TLS tab, a local server gets a note in place of the warning.
 
 ## Consequences
 
