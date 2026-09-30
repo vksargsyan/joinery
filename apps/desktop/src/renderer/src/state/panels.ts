@@ -14,7 +14,8 @@ export type PanelKind =
   | 'sync'
   | 'server-tools'
   | 'search'
-  | 'query-builder';
+  | 'query-builder'
+  | 'er-diagram';
 
 export interface PanelInfo {
   readonly id: string;

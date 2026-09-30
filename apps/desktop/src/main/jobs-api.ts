@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
 import {
@@ -293,11 +294,14 @@ export function jobHandlers(
   };
 }
 
-/** `dialogs.saveFile` and `dialogs.openDirectory`: the picked paths become write grants. */
+/**
+ * `dialogs.saveFile` and `dialogs.openDirectory`: the picked paths become write grants, and
+ * `dialogs.writeFile` writes only to a path granted that way.
+ */
 export function fileDialogHandlers(
   dialogs: FileDialogs,
   grants: FileGrants,
-): Pick<MainHandlers['dialogs'], 'saveFile' | 'openDirectory'> {
+): Pick<MainHandlers['dialogs'], 'saveFile' | 'openDirectory' | 'writeFile'> {
   return {
     saveFile: async (options) => {
       if (!dialogs.saveFile) throw jobsUnavailable();
@@ -310,6 +314,13 @@ export function fileDialogHandlers(
       const path = await dialogs.openDirectory(options);
       if (path !== null) grants.grantDirectory(path);
       return { path };
+    },
+    writeFile: async (input) => {
+      grants.checkWrite(input.path);
+      const bytes =
+        'text' in input ? Buffer.from(input.text, 'utf8') : Buffer.from(input.base64, 'base64');
+      await writeFile(input.path, bytes);
+      return { bytes: bytes.length };
     },
   };
 }

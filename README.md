@@ -33,6 +33,11 @@ What works today:
   from foreign keys, side panels for columns, criteria, grouping, sort and limit, and the SQL
   kept in step both ways; SQL the builder cannot show opens read-only. Runs go through the query
   tab, with its safety checks, streaming and history.
+- **ER diagrams** (MySQL, MariaDB, PostgreSQL): a database or schema reverse-engineered into
+  tables, keys and crow's-foot relationships, laid out automatically and draggable; all columns,
+  keys only or names only; a table selected brings out its relationships, with its columns and
+  references beside the canvas; search, hide and show only related tables; export as SVG, PNG or
+  Mermaid.
 - **Autocomplete**: keywords, schemas, tables, columns with alias resolution, join conditions
   from foreign keys, functions with signature help, and snippets, computed in a Web Worker from
   a per-connection metadata cache that is ready at connect and refreshes after DDL.
@@ -115,9 +120,9 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: the scheduler, Parquet, ER modelling for SQL, cloud sync and the AI assistant; the
-embedded mongosh shell for MongoDB; RediSearch and offline RDB analysis; a query builder for
-Elasticsearch. The product specification lists the full scope.
+Not built yet: the scheduler, Parquet, ER model editing (forward engineering), cloud sync and
+the AI assistant; the embedded mongosh shell for MongoDB; RediSearch and offline RDB analysis; a
+query builder for Elasticsearch. The product specification lists the full scope.
 
 ## Repository layout
 

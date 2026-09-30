@@ -1,3 +1,6 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
 
 import type { ConnectionProfileInput } from '@joinery/core';
@@ -293,6 +296,33 @@ describe('jobs', () => {
       main.jobs.start({ job: { ...exportJob, output: { kind: 'directory', path: '/out' } } }),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(runners[0]!.sent.filter((m) => m.type === 'start')).toHaveLength(1);
+  });
+
+  it('writes text or bytes only to a path picked in the save dialog', async () => {
+    const folder = mkdtempSync(join(tmpdir(), 'joinery-write-'));
+    try {
+      const svg = join(folder, 'shop-erd.svg');
+      const { main } = setup({ save: svg });
+      await expect(main.dialogs.writeFile({ path: svg, text: '<svg/>' })).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+      });
+      await main.dialogs.saveFile({ defaultName: 'shop-erd.svg' });
+      expect(await main.dialogs.writeFile({ path: svg, text: '<svg/>' })).toEqual({ bytes: 6 });
+      expect(readFileSync(svg, 'utf8')).toBe('<svg/>');
+      await main.dialogs.writeFile({
+        path: svg,
+        base64: Buffer.from([137, 80, 78, 71]).toString('base64'),
+      });
+      expect([...readFileSync(svg)]).toEqual([137, 80, 78, 71]);
+      await expect(
+        main.dialogs.writeFile({ path: join(folder, 'other.svg'), text: 'x' }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      await expect(
+        main.dialogs.writeFile({ path: svg, base64: 'not base64!' }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 
   it('writes one file per table only into a folder picked in the dialog', async () => {

@@ -114,3 +114,60 @@ select {
   left: 0;
   z-index: 35;
 }
+
+/* The ER diagram's canvas: React Flow in the app's colours. */
+.er-canvas {
+  --er-line: color-mix(in srgb, var(--muted) 72%, var(--bg));
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-dots-color-default: color-mix(in srgb, var(--muted) 28%, transparent);
+  --xy-minimap-background-color: var(--panel);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 70%, transparent);
+  --xy-minimap-mask-stroke-color: var(--accent);
+  --xy-minimap-mask-stroke-width: 1.5;
+  --xy-controls-button-background-color: var(--panel);
+  --xy-controls-button-background-color-hover: var(--hover);
+  --xy-controls-button-color: var(--fg);
+  --xy-controls-button-color-hover: var(--fg);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: 0 6px 20px -8px rgb(0 0 0 / 0.45);
+}
+
+.er-canvas .react-flow__controls,
+.er-canvas .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.er-canvas .react-flow__node {
+  cursor: default;
+}
+
+.er-canvas .react-flow__node.dragging {
+  cursor: grabbing;
+}
+
+.er-canvas .react-flow__node:focus-visible {
+  outline: none;
+}
+
+.er-canvas .react-flow__node:focus-visible .er-table {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.er-canvas .er-handle {
+  opacity: 0;
+  pointer-events: none;
+  min-width: 0;
+  min-height: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+}
+
+.er-canvas .er-edge {
+  transition:
+    opacity 150ms,
+    stroke 150ms;
+}

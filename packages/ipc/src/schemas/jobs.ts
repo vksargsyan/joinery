@@ -521,6 +521,24 @@ export const saveFileInputSchema = openFileInputSchema.extend({
 
 export const openDirectoryInputSchema = z.object({ title: z.string().max(200).optional() });
 
+/** The largest file `dialogs.writeFile` takes, as text or as base64 (an exported image). */
+export const WRITE_FILE_LIMIT = 64 * 1024 * 1024;
+
+/**
+ * Text, or bytes as base64, for `dialogs.writeFile` to write to a path the user picked with
+ * `saveFile` (an exported diagram or image).
+ */
+export const writeFileInputSchema = z.union([
+  z.object({ path: z.string().min(1).max(4096), text: z.string().max(WRITE_FILE_LIMIT) }),
+  z.object({
+    path: z.string().min(1).max(4096),
+    base64: z
+      .string()
+      .max(WRITE_FILE_LIMIT)
+      .regex(/^[A-Za-z0-9+/]*={0,2}$/, 'Not base64'),
+  }),
+]);
+
 /** Import wizard options worth reusing (spec §12: every wizard saves its settings). */
 export const importSettingsSchema = z.object({
   format: transferRowFormatSchema.optional(),

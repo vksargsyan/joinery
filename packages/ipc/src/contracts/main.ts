@@ -52,6 +52,7 @@ import {
   transferPreviewSchema,
   transferProfileSaveSchema,
   transferProfileSchema,
+  writeFileInputSchema,
 } from '../schemas/jobs';
 import {
   cachedSnapshotInfoSchema,
@@ -183,6 +184,11 @@ export const mainContract = defineContract({
      * a folder picked with `openDirectory`), and read only files picked with `openFile`.
      */
     saveFile: { input: saveFileInputSchema, output: z.object({ path: z.string().nullable() }) },
+    /** Writes text or bytes to a path picked with `saveFile`; returns the bytes written. */
+    writeFile: {
+      input: writeFileInputSchema,
+      output: z.object({ bytes: z.number().int().nonnegative() }),
+    },
     /** A native folder picker, for exports with one file per table; null when cancelled. */
     openDirectory: {
       input: openDirectoryInputSchema,

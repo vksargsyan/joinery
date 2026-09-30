@@ -12,6 +12,7 @@ import {
   type HandlersOf,
   type JobEvent,
   type JobInfo,
+  writeFileInputSchema,
 } from '../src';
 import { portPair } from './helpers';
 
@@ -186,6 +187,23 @@ describe('jobs contract', () => {
       'enum("a")',
     ]) {
       expect(DATA_TYPE_PATTERN.test(bad), bad).toBe(false);
+    }
+  });
+
+  it('takes text or base64 bytes for dialogs.writeFile, nothing else', () => {
+    expect(writeFileInputSchema.safeParse({ path: '/out/a.svg', text: '<svg/>' }).success).toBe(
+      true,
+    );
+    expect(writeFileInputSchema.safeParse({ path: '/out/a.png', base64: 'iVBORw==' }).success).toBe(
+      true,
+    );
+    for (const bad of [
+      { path: '/out/a.png', base64: 'not base64!' },
+      { path: '', text: 'x' },
+      { path: '/out/a.svg' },
+      { path: '/out/a.svg', text: 5 },
+    ]) {
+      expect(writeFileInputSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }
   });
 });

@@ -29,6 +29,7 @@ import type { DesignerTarget } from '../state/designer';
 import { openExportTables, openImportWizard, openRunSqlFile } from '../state/transfer-dialogs';
 import { openDataCompare, openStructureCompare } from '../state/sync/panels';
 import { openTransferFrom } from '../state/transfer-db/api';
+import { openErDiagram } from '../state/er-diagram/panels';
 import { openQueryBuilder } from '../state/query-builder/panels';
 import { BackupMenuItems } from './backup/BackupDialogs';
 import { DropTableDialog } from './designer/ReviewDialogs';
@@ -390,6 +391,11 @@ function ProfileItem(props: {
                     New query builder
                   </MenuItem>
                 )}
+                {isSqlEngine(profile.engine) && (
+                  <MenuItem onSelect={() => openErDiagram({ profileId: profile.id })}>
+                    ER diagram
+                  </MenuItem>
+                )}
                 {hasServerTools(profile.engine) && (
                   <MenuItem onSelect={() => openServerTools(profile)}>Server tools</MenuItem>
                 )}
@@ -655,6 +661,13 @@ function ObjectNode(props: {
                   New query builder
                 </MenuItem>
               )}
+              {node.kind === 'database' && node.path.length === 1 && (
+                <MenuItem
+                  onSelect={() => openErDiagram({ profileId: profile.id, database: node.name })}
+                >
+                  ER diagram
+                </MenuItem>
+              )}
               {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
                 <MenuItem
                   onSelect={() =>
@@ -666,6 +679,19 @@ function ObjectNode(props: {
                   }
                 >
                   New query builder
+                </MenuItem>
+              )}
+              {node.kind === 'schema' && dialect === 'postgres' && node.path.length === 2 && (
+                <MenuItem
+                  onSelect={() =>
+                    openErDiagram({
+                      profileId: profile.id,
+                      database: node.path[0],
+                      schema: node.name,
+                    })
+                  }
+                >
+                  ER diagram
                 </MenuItem>
               )}
               {node.kind === 'database' && node.path.length === 1 && (
