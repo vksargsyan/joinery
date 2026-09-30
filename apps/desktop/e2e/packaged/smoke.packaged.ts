@@ -23,7 +23,8 @@ test('starts, loads its window from the archive and runs a connection host', asy
   app = await launchPackaged(EXECUTABLE!);
   const { page } = app;
 
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('button', { name: 'Connection actions' }).click();
+  await page.getByRole('menuitem', { name: 'New connection' }).click();
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await expect(dialog).toBeVisible();
   // Without a test server, port 9 on the loopback address, where nothing listens.
@@ -50,7 +51,7 @@ test('starts, loads its window from the archive and runs a connection host', asy
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = page.getByRole('treeitem', { name: 'Smoke' });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await page.getByRole('button', { name: 'New query' }).click();
   const editor = page.getByTestId('sql-editor').last();

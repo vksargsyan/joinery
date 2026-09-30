@@ -198,7 +198,11 @@ function ToolRow(props: {
             <span className="truncate">{props.label}</span>
           </span>
         }
-        menu={<MenuItem onSelect={props.onOpen}>Open {props.label}</MenuItem>}
+        menu={
+          <MenuItem icon="open" onSelect={props.onOpen}>
+            Open {props.label}
+          </MenuItem>
+        }
       />
     </div>
   );
@@ -382,24 +386,41 @@ function SearchNode(props: {
         }
         menu={
           <>
-            {object && <MenuItem onSelect={() => browse(object)}>Browse documents</MenuItem>}
-            {object?.kind === 'index' && (
-              <MenuItem onSelect={() => manage(object)}>Open index (mappings, settings…)</MenuItem>
+            {object && (
+              <MenuItem icon="table" onSelect={() => browse(object)}>
+                Browse documents
+              </MenuItem>
             )}
-            {object && <MenuItem onSelect={() => search(object)}>Search in console</MenuItem>}
+            {object?.kind === 'index' && (
+              <MenuItem icon="open" onSelect={() => manage(object)}>
+                Open index (mappings, settings…)
+              </MenuItem>
+            )}
+            {object && (
+              <MenuItem icon="query" onSelect={() => search(object)}>
+                Search in console
+              </MenuItem>
+            )}
             {indicesFolder && !readOnly && (
-              <MenuItem onSelect={props.onCreateIndex}>Create index…</MenuItem>
+              <MenuItem icon="table-new" onSelect={props.onCreateIndex}>
+                Create index…
+              </MenuItem>
             )}
             {node.hasChildren && (
-              <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>Refresh</MenuItem>
+              <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, node.path)}>
+                Refresh
+              </MenuItem>
             )}
             {!object && !node.hasChildren && (
-              <MenuItem onSelect={() => void loadChildren(profile.id, [])}>Refresh</MenuItem>
+              <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, [])}>
+                Refresh
+              </MenuItem>
             )}
             {object && request && (
               <>
                 <DropdownMenu.Separator className="my-1 h-px bg-border" />
                 <MenuItem
+                  icon="trash"
                   danger
                   onSelect={() => void remove(object, `${request.method} ${request.path}`)}
                 >

@@ -215,7 +215,36 @@ export function Icon({
     | 'schedule'
     | 'jobs'
     | 'sun'
-    | 'moon';
+    | 'moon'
+    | 'query'
+    | 'file-run'
+    | 'builder'
+    | 'diagram'
+    | 'server'
+    | 'transfer'
+    | 'edit'
+    | 'trash'
+    | 'design'
+    | 'import'
+    | 'export'
+    | 'wrench'
+    | 'table-new'
+    | 'compare-rows'
+    | 'key'
+    | 'chart'
+    | 'pulse'
+    | 'users'
+    | 'gauge'
+    | 'archive'
+    | 'restore'
+    | 'open'
+    | 'kebab'
+    | 'search'
+    | 'filter'
+    | 'connection-new'
+    | 'folder-new'
+    | 'disconnect'
+    | 'plug';
   readonly className?: string;
 }) {
   // Kiln Glyphs' drawing: a 16px grid, 1.3 strokes with round caps and joins, closed shapes
@@ -325,6 +354,188 @@ export function Icon({
       </>
     ),
     moon: <path d="M13.25 9.6A5.5 5.5 0 0 1 6.4 2.75a5.5 5.5 0 1 0 6.85 6.85z" {...wash} />,
+    query: (
+      <>
+        <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.2" {...wash} />
+        <path d="M4.6 6.2 6.7 8.1 4.6 10M8.4 10.2h3" />
+      </>
+    ),
+    'file-run': (
+      <>
+        <path
+          d="M9.2 1.9H4.1A1.1 1.1 0 0 0 3 3v10a1.1 1.1 0 0 0 1.1 1.1h7.8A1.1 1.1 0 0 0 13 13V5.7z"
+          {...wash}
+        />
+        <path d="M9.2 1.9v3.8H13M6.8 8.3v3.5l2.8-1.75z" />
+      </>
+    ),
+    builder: (
+      <>
+        <rect x="1.9" y="2.3" width="5.2" height="4.4" rx="1" {...wash} />
+        <rect x="8.9" y="2.3" width="5.2" height="4.4" rx="1" />
+        <rect x="5.4" y="9.3" width="5.2" height="4.4" rx="1" />
+      </>
+    ),
+    diagram: (
+      <>
+        <rect x="1.8" y="2.3" width="5.4" height="4.6" rx="1" {...wash} />
+        <rect x="8.8" y="9.1" width="5.4" height="4.6" rx="1" />
+        <path d="M4.5 6.9v4.5h4.3" />
+      </>
+    ),
+    server: (
+      <>
+        <rect x="2.25" y="2.5" width="11.5" height="4.6" rx="1.1" {...wash} />
+        <rect x="2.25" y="8.9" width="11.5" height="4.6" rx="1.1" />
+        <path d="M4.8 4.8h.1M4.8 11.2h.1M8 4.8h3M8 11.2h3" />
+      </>
+    ),
+    transfer: <path d="M2.5 5.2h10M10 2.7l2.5 2.5L10 7.7M13.5 10.8h-10M6 8.3l-2.5 2.5L6 13.3" />,
+    edit: (
+      <>
+        <path
+          d="M10.6 2.6a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-7.5 7.5-3.2.8.8-3.2z"
+          {...wash}
+        />
+        <path d="M9.4 3.8l2.8 2.8" />
+      </>
+    ),
+    trash: (
+      <>
+        <path d="M3.8 4.6h8.4l-.7 8.3a1.1 1.1 0 0 1-1.1 1H5.6a1.1 1.1 0 0 1-1.1-1z" {...wash} />
+        <path d="M2.4 4.6h11.2M6.2 4.6V3a.8.8 0 0 1 .8-.8h2a.8.8 0 0 1 .8.8v1.6M6.8 7.2v4.2M9.2 7.2v4.2" />
+      </>
+    ),
+    design: (
+      <>
+        <path d="M2.5 13.5V2.5l11 11z" {...wash} />
+        <path d="M5.2 10.8V8.3l2.5 2.5zM2.5 5.5h1.4M2.5 8.5h1.4" />
+      </>
+    ),
+    import: (
+      <path d="M2.5 9.8v2.6a1.1 1.1 0 0 0 1.1 1.1h8.8a1.1 1.1 0 0 0 1.1-1.1V9.8M8 2.4v7.4M5.2 7.1 8 9.9l2.8-2.8" />
+    ),
+    export: (
+      <path d="M2.5 9.8v2.6a1.1 1.1 0 0 0 1.1 1.1h8.8a1.1 1.1 0 0 0 1.1-1.1V9.8M8 10V2.6M5.2 5.3 8 2.5l2.8 2.8" />
+    ),
+    wrench: (
+      <path
+        d="M13.3 4.6a3.3 3.3 0 0 1-4.4 3.9l-5 5a1.3 1.3 0 0 1-1.8-1.8l5-5A3.3 3.3 0 0 1 11 2.3L9.2 4.1l.4 1.9 1.9.4z"
+        {...wash}
+      />
+    ),
+    'table-new': (
+      <>
+        <path d="M8.5 13.25H3a1.2 1.2 0 0 1-1.2-1.2V3.95A1.2 1.2 0 0 1 3 2.75h10a1.2 1.2 0 0 1 1.2 1.2V8.3" />
+        <path
+          d="M3 2.75h10a1.2 1.2 0 0 1 1.2 1.2v2.3H1.8v-2.3A1.2 1.2 0 0 1 3 2.75z"
+          {...wash}
+          stroke="none"
+        />
+        <path d="M1.8 6.25h12.4M12 9.8v4.2M9.9 11.9h4.2" />
+      </>
+    ),
+    'compare-rows': (
+      <>
+        <rect x="1.8" y="2.5" width="5.2" height="11" rx="1" {...wash} />
+        <rect x="9" y="2.5" width="5.2" height="11" rx="1" />
+        <path d="M1.8 6h5.2M1.8 9.5h5.2M9 6h5.2M9 9.5h5.2" />
+      </>
+    ),
+    key: (
+      <>
+        <circle cx="5.3" cy="10.7" r="2.8" {...wash} />
+        <path d="M7.3 8.7 13 3M10.8 5.2l1.6 1.6M12.4 3.6l1.2 1.2" />
+      </>
+    ),
+    chart: (
+      <>
+        <path d="M2.2 13.5h11.6" />
+        <rect x="3.4" y="8" width="2.2" height="5.5" rx=".5" {...wash} />
+        <rect x="6.9" y="4.5" width="2.2" height="9" rx=".5" />
+        <rect x="10.4" y="6.5" width="2.2" height="7" rx=".5" />
+      </>
+    ),
+    pulse: <path d="M1.8 8.4h2.6l1.6-4.2 3 8.2 1.7-4h3.5" />,
+    users: (
+      <>
+        <circle cx="6" cy="5.4" r="2.4" {...wash} />
+        <path d="M1.9 13.2c.4-2.3 2.1-3.7 4.1-3.7s3.7 1.4 4.1 3.7M10.4 3.2a2.3 2.3 0 0 1 0 4.4M12 9.8c1.2.5 2 1.7 2.2 3.4" />
+      </>
+    ),
+    gauge: (
+      <>
+        <path d="M2.7 12.3a5.6 5.6 0 1 1 10.6 0" />
+        <circle cx="8" cy="10.4" r="1.2" {...wash} />
+        <path d="M8.8 9.5l2.1-3" />
+      </>
+    ),
+    archive: (
+      <>
+        <rect x="1.9" y="2.6" width="12.2" height="3.4" rx=".9" {...wash} />
+        <path d="M3 6v6.4a1.1 1.1 0 0 0 1.1 1.1h7.8a1.1 1.1 0 0 0 1.1-1.1V6M6.5 8.8h3" />
+      </>
+    ),
+    restore: <path d="M2.9 8a5.1 5.1 0 1 0 1.5-3.6L2.6 6.2M2.6 2.9v3.3h3.3M8 5.4v2.8l1.9 1.2" />,
+    open: (
+      <path d="M12.8 9.2v3.2a1.1 1.1 0 0 1-1.1 1.1H3.6a1.1 1.1 0 0 1-1.1-1.1V4.3a1.1 1.1 0 0 1 1.1-1.1h3.2M9.6 2.5h3.9v3.9M13.3 2.7 7.6 8.4" />
+    ),
+    kebab: (
+      <>
+        <circle cx="8" cy="3.5" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="8" cy="12.5" r="1.15" fill="currentColor" stroke="none" />
+      </>
+    ),
+    search: (
+      <>
+        <circle cx="7" cy="7" r="4.4" {...wash} />
+        <path d="m10.3 10.3 3.45 3.45" />
+      </>
+    ),
+    // A funnel: narrow what the tree shows.
+    filter: <path d="M2.25 3h11.5L9.2 8.6v4.2l-2.4 1.2V8.6z" {...wash} />,
+    // The database cylinder with a plus: a new connection.
+    'connection-new': (
+      <>
+        <ellipse cx="7" cy="3.8" rx="4.6" ry="1.75" {...wash} />
+        <path d="M2.4 3.8v7.4c0 .9 2 1.7 4.6 1.7M11.6 3.8v3.1M2.4 7.5c0 .9 2 1.7 4.6 1.7" />
+        <path d="M12 9.75v4.5M9.75 12h4.5" />
+      </>
+    ),
+    'folder-new': (
+      <>
+        <path
+          d="M8.4 12.8H2.75a1 1 0 0 1-1-1V4.2a1 1 0 0 1 1-1h3.3l1.6 1.6h5.6a1 1 0 0 1 1 1v2.4"
+          {...wash}
+        />
+        <path d="M12 9.75v4.5M9.75 12h4.5" />
+      </>
+    ),
+    // A plug pulled out of its socket: close connections.
+    disconnect: (
+      <>
+        <path
+          d="M5.3 8.3 3.9 9.7a2.3 2.3 0 0 0 0 3.25l-.85-.85a2.3 2.3 0 0 0 3.25 0l1.4-1.4z"
+          {...wash}
+        />
+        <path
+          d="M10.7 7.7l1.4-1.4a2.3 2.3 0 0 0 0-3.25l.85.85a2.3 2.3 0 0 0-3.25 0L8.3 5.3z"
+          {...wash}
+        />
+        <path d="M2 14l1.9-1.9M14 2l-1.9 1.9M6.9 5.4 5.6 4.1M5.3 7.1 3.6 6.6M9.1 10.6l1.3 1.3M10.7 8.9l.5 1.7" />
+      </>
+    ),
+    // A plug in its socket: connected.
+    plug: (
+      <>
+        <path
+          d="M6.1 6.6 4.2 8.5a2.5 2.5 0 0 0 0 3.5l-.2-.2a2.5 2.5 0 0 0 3.5 0l1.9-1.9z"
+          {...wash}
+        />
+        <path d="M2 14l2-2M8.2 5.3l2.4-2.4M10.7 7.8l2.4-2.4" />
+      </>
+    ),
   };
   return (
     <svg
@@ -341,3 +552,5 @@ export function Icon({
     </svg>
   );
 }
+
+export type IconName = Parameters<typeof Icon>[0]['name'];

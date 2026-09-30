@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import type { Session } from '@joinery/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
@@ -91,7 +91,7 @@ async function stubDialog(kind: 'open' | 'save', path: string): Promise<void> {
 }
 
 test('connects and shows the database', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -103,7 +103,7 @@ test('connects and shows the database', async () => {
   await expect(dialog).toBeHidden();
 
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(treeRow(database!.name)).toBeVisible();
 });
 

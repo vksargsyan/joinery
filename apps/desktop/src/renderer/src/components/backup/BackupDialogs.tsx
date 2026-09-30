@@ -49,12 +49,12 @@ export function BackupMenuItems(props: {
   return (
     <>
       {backup && (
-        <MenuItem onSelect={() => openBackupDialog(profile, props.location)}>
+        <MenuItem icon="archive" onSelect={() => openBackupDialog(profile, props.location)}>
           {keys ? 'Back up keys…' : 'Back up…'}
         </MenuItem>
       )}
       {props.restore !== false && !profile.presentation.readOnly && (
-        <MenuItem onSelect={() => openRestoreDialog(profile, props.location)}>
+        <MenuItem icon="restore" onSelect={() => openRestoreDialog(profile, props.location)}>
           {keys ? 'Restore keys…' : 'Restore…'}
         </MenuItem>
       )}

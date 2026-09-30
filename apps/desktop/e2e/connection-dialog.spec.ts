@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 
 /**
  * The connection dialog for MongoDB and Redis (spec §4), with no server: the engine picker, the
@@ -23,7 +23,7 @@ test.afterAll(async () => {
 });
 
 async function newConnection(): Promise<Locator> {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await expect(dialog).toBeVisible();
   return dialog;

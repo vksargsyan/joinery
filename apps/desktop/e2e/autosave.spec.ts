@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { openDatabase } from '@joinery/storage';
 import { expect, test, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 
 /**
  * Editor autosave and crash restore (spec §18) with a real store: a query tab's text is saved
@@ -69,7 +69,7 @@ test.afterAll(async () => {
 });
 
 test('saves a query tab a few seconds after typing', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(PG_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -80,7 +80,7 @@ test('saves a query tab a few seconds after typing', async () => {
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await page.getByRole('button', { name: 'New query' }).click();
   await typeInEditor("select 'crash_survivor' as marker");

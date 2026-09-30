@@ -188,25 +188,34 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
     const target = { profileId, db, collection: object.name };
     return (
       <>
-        <MenuItem onSelect={() => openMongoTool({ tool: 'aggregation', target })}>
+        <MenuItem icon="filter" onSelect={() => openMongoTool({ tool: 'aggregation', target })}>
           Aggregate…
         </MenuItem>
-        <MenuItem onSelect={() => openMongoSql({ profileId, db, collection: object.name })}>
+        <MenuItem
+          icon="query"
+          onSelect={() => openMongoSql({ profileId, db, collection: object.name })}
+        >
           Query with SQL
         </MenuItem>
         {object.kind !== 'view' && (
-          <MenuItem onSelect={() => openMongoTool({ tool: 'indexes', target })}>Indexes</MenuItem>
+          <MenuItem icon="key" onSelect={() => openMongoTool({ tool: 'indexes', target })}>
+            Indexes
+          </MenuItem>
         )}
         <MenuItem
+          icon="chart"
           onSelect={() =>
             openMongoTool({ tool: 'schema', target: { ...target, kind: object.kind } })
           }
         >
           Analyse schema
         </MenuItem>
-        <MenuItem onSelect={() => openMongoTool({ tool: 'options', target })}>Options</MenuItem>
+        <MenuItem icon="design" onSelect={() => openMongoTool({ tool: 'options', target })}>
+          Options
+        </MenuItem>
         {object.kind !== 'view' && (
           <MenuItem
+            icon="wrench"
             onSelect={() =>
               openServerTools(profile, {
                 tab: 'maintenance',
@@ -219,6 +228,7 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
         )}
         {object.kind !== 'view' && (
           <MenuItem
+            icon="pulse"
             onSelect={() =>
               openMongoTool({
                 tool: 'changes',
@@ -233,11 +243,12 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
           </MenuItem>
         )}
         {!readOnly && (
-          <MenuItem onSelect={() => openCreateView(profileId, db, object.name)}>
+          <MenuItem icon="plus" onSelect={() => openCreateView(profileId, db, object.name)}>
             Create view on it…
           </MenuItem>
         )}
         <MenuItem
+          icon="transfer"
           onSelect={() => openTransferFrom(profile, { database: db, objects: [object.name] })}
         >
           Transfer data to…
@@ -248,16 +259,21 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
   if (node.kind === 'database') {
     return (
       <>
-        <MenuItem onSelect={() => openMongoSql({ profileId, db })}>New SQL query</MenuItem>
+        <MenuItem icon="query" onSelect={() => openMongoSql({ profileId, db })}>
+          New SQL query
+        </MenuItem>
         {!readOnly && (
           <>
-            <MenuItem onSelect={() => openCreateCollection(profileId, db)}>
+            <MenuItem icon="table-new" onSelect={() => openCreateCollection(profileId, db)}>
               Create collection…
             </MenuItem>
-            <MenuItem onSelect={() => openCreateView(profileId, db)}>Create view…</MenuItem>
+            <MenuItem icon="plus" onSelect={() => openCreateView(profileId, db)}>
+              Create view…
+            </MenuItem>
           </>
         )}
         <MenuItem
+          icon="pulse"
           onSelect={() =>
             openMongoTool({
               tool: 'changes',
@@ -268,6 +284,7 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
           Watch changes
         </MenuItem>
         <MenuItem
+          icon="pulse"
           onSelect={() =>
             openMongoTool({ tool: 'changes', target: { profileId, scope: { kind: 'cluster' } } })
           }
@@ -275,16 +292,18 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
           Watch the whole deployment
         </MenuItem>
         <MenuItem
+          icon="users"
           onSelect={() => openMongoTool({ tool: 'users', target: { profileId, db, tab: 'users' } })}
         >
           Users and roles
         </MenuItem>
         <MenuItem
+          icon="gauge"
           onSelect={() => openServerTools(profile, { tab: 'topQueries', focus: { container: db } })}
         >
           Profiler…
         </MenuItem>
-        <MenuItem onSelect={() => openTransferFrom(profile, { database: db })}>
+        <MenuItem icon="transfer" onSelect={() => openTransferFrom(profile, { database: db })}>
           Transfer data to…
         </MenuItem>
         <BackupMenuItems profile={profile} location={{ database: db }} />
@@ -295,6 +314,7 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
   if (sub === 'indexes' && name !== undefined) {
     return (
       <MenuItem
+        icon="key"
         onSelect={() =>
           openMongoTool({ tool: 'indexes', target: { profileId, db, collection: name } })
         }
@@ -308,6 +328,7 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
     case 'roles':
       return (
         <MenuItem
+          icon="users"
           onSelect={() => openMongoTool({ tool: 'users', target: { profileId, db, tab: folder } })}
         >
           {folder === 'users' ? 'Manage users' : 'Manage roles'}
@@ -315,17 +336,24 @@ function ToolItems(props: { readonly profile: StoredProfile; readonly node: Brow
       );
     case 'collections':
       return readOnly ? null : (
-        <MenuItem onSelect={() => openCreateCollection(profileId, db)}>Create collection…</MenuItem>
+        <MenuItem icon="table-new" onSelect={() => openCreateCollection(profileId, db)}>
+          Create collection…
+        </MenuItem>
       );
     case 'time-series':
       return readOnly ? null : (
-        <MenuItem onSelect={() => openCreateCollection(profileId, db, 'timeseries')}>
+        <MenuItem
+          icon="table-new"
+          onSelect={() => openCreateCollection(profileId, db, 'timeseries')}
+        >
           Create time series collection…
         </MenuItem>
       );
     case 'views':
       return readOnly ? null : (
-        <MenuItem onSelect={() => openCreateView(profileId, db)}>Create view…</MenuItem>
+        <MenuItem icon="plus" onSelect={() => openCreateView(profileId, db)}>
+          Create view…
+        </MenuItem>
       );
     default:
       return null;
@@ -455,9 +483,13 @@ function MongoNode(props: {
         menu={
           hasMenu ? (
             <>
-              {opens && <MenuItem onSelect={open}>Open documents</MenuItem>}
+              {opens && (
+                <MenuItem icon="table" onSelect={open}>
+                  Open documents
+                </MenuItem>
+              )}
               {tool && (
-                <MenuItem onSelect={tool}>
+                <MenuItem icon="open" onSelect={tool}>
                   {node.kind === 'gridfs-bucket'
                     ? 'Open files'
                     : node.kind === 'index'
@@ -468,6 +500,7 @@ function MongoNode(props: {
               <ToolItems profile={profile} node={node} />
               {database !== undefined && (node.kind === 'database' || opens) && (
                 <MenuItem
+                  icon="query"
                   onSelect={() =>
                     openMongoConsole({
                       profileId: profile.id,
@@ -480,14 +513,14 @@ function MongoNode(props: {
                 </MenuItem>
               )}
               {node.hasChildren && (
-                <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>
+                <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, node.path)}>
                   Refresh
                 </MenuItem>
               )}
               {object && command && (
                 <>
                   <DropdownMenu.Separator className="my-1 h-px bg-border" />
-                  <MenuItem danger onSelect={() => void drop(object, command)}>
+                  <MenuItem icon="trash" danger onSelect={() => void drop(object, command)}>
                     {object.kind === 'database'
                       ? 'Drop database…'
                       : object.kind === 'index'

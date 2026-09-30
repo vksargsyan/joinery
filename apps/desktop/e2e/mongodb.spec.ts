@@ -5,7 +5,7 @@ import type { MongoSession } from '@joinery/driver-mongodb';
 import { toEjson } from '@joinery/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
 
 /**
@@ -111,7 +111,7 @@ async function confirmDialog(label: string): Promise<Locator> {
 }
 
 test('creates a MongoDB connection from a URI and tests it', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(withoutTls(MONGO_URL!));
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -128,7 +128,7 @@ test('creates a MongoDB connection from a URI and tests it', async () => {
 
 test('browses databases, collections, views and indexes', async () => {
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await treeRow(db).click();
   await treeRow('Collections').click();
   await expect(treeRow('orders')).toContainText('150');

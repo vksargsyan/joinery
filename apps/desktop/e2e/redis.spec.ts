@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { RedisSession } from '@joinery/driver-redis';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectRedis, deletePrefix, e2ePrefix, redisCommand, redisText } from './redis';
 
 /**
@@ -73,7 +73,7 @@ async function openTool(profile: string, tool: string): Promise<void> {
 }
 
 test('connects and browses the namespace tree', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(REDIS_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -85,7 +85,7 @@ test('connects and browses the namespace tree', async () => {
   await expect(dialog).toBeHidden();
 
   const profile = profileItem(NAME);
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await treeRow(profile, 'db0').click();
   await treeRow(profile, 'joinery').click();
@@ -381,7 +381,7 @@ test('shows the Cluster topology with the slot map', async () => {
   test.skip(!REDIS_CLUSTER, 'Set JOINERY_TEST_REDIS_CLUSTER for the Cluster topology');
   const [seed] = REDIS_CLUSTER!.split(',');
   const [host, port] = seed!.trim().split(':') as [string, string];
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Name', { exact: true }).fill(CLUSTER_NAME);
   await dialog.getByLabel('Database engine', { exact: true }).selectOption('redis');
@@ -397,7 +397,7 @@ test('shows the Cluster topology with the slot map', async () => {
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = profileItem(CLUSTER_NAME);
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   // Cluster primaries replace the logical databases at the root of the tree.
   await expect(treeRow(profile, `${host}:${port}`)).toBeVisible();

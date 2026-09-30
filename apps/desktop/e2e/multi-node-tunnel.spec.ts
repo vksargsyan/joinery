@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { startSshServer, type TestSshServer } from '../test/ssh-server';
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { withoutTls } from './mongo-db';
 
 /**
@@ -70,7 +70,7 @@ async function testConnection(dialog: Locator): Promise<void> {
 test('connects to a MongoDB replica set through SSH', async () => {
   test.skip(!MONGO_URL, 'Set JOINERY_TEST_MONGODB_URL');
   const name = 'E2E replica set via SSH';
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(withoutTls(MONGO_URL!));
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -87,7 +87,7 @@ test('connects to a MongoDB replica set through SSH', async () => {
 
   const forwards = ssh.stats.forwards;
   const profile = page.getByRole('treeitem', { name, exact: true });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await expect(treeRow(profile, 'admin')).toBeVisible();
   expect(ssh.stats.forwards).toBeGreaterThan(forwards);
@@ -98,7 +98,7 @@ test('connects to a Redis Cluster through SSH', async () => {
   const name = 'E2E cluster via SSH';
   const seeds = REDIS_CLUSTER!.split(',').map((seed) => seed.trim());
   const [host, port] = seeds[0]!.split(':') as [string, string];
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await field(dialog, 'Name').fill(name);
   await field(dialog, 'Database engine').selectOption('redis');
@@ -120,7 +120,7 @@ test('connects to a Redis Cluster through SSH', async () => {
 
   const forwards = ssh.stats.forwards;
   const profile = page.getByRole('treeitem', { name, exact: true });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   // Every primary, by the address it announces (reached through the tunnel's forwards).
   for (const seed of seeds) await expect(treeRow(profile, seed)).toBeVisible();
