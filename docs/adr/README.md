@@ -25,3 +25,4 @@ supersede it with a new one.
 | [0018](0018-saved-er-models.md)              | Saved ER models: drafts in the store, model files as documents   | Accepted |
 | [0019](0019-scheduler.md)                    | Scheduler: jobs run from main while Joinery is open              | Accepted |
 | [0020](0020-parquet.md)                      | Parquet on hyparquet and hyparquet-writer, streamed by row group | Accepted |
+| [0023](0023-redis-search-indexes.md)         | Redis search indexes: FT.* services read by redis-tools          | Accepted |

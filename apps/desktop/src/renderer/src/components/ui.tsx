@@ -192,7 +192,10 @@ export function Icon({
     | 'close'
     | 'history'
     | 'format'
-    | 'warning';
+    | 'warning'
+    | 'download'
+    | 'copy'
+    | 'check';
   readonly className?: string;
 }) {
   const paths: Record<string, ReactNode> = {
@@ -256,6 +259,25 @@ export function Icon({
         <path d="M8 6.5v3.5M8 11.5v.5" stroke="currentColor" strokeWidth="1.4" />
       </>
     ),
+    download: (
+      <path
+        d="M8 2.5v7.5M4.5 7l3.5 3.5L11.5 7M3 13.5h10"
+        stroke="currentColor"
+        fill="none"
+        strokeWidth="1.4"
+      />
+    ),
+    copy: (
+      <>
+        <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" stroke="currentColor" fill="none" />
+        <path
+          d="M10.5 5.5V3.7c0-.7-.5-1.2-1.2-1.2H3.7c-.7 0-1.2.5-1.2 1.2v5.6c0 .7.5 1.2 1.2 1.2h1.8"
+          stroke="currentColor"
+          fill="none"
+        />
+      </>
+    ),
+    check: <path d="M3 8.5l3 3 7-7" stroke="currentColor" fill="none" strokeWidth="1.6" />,
   };
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true" className={cx('h-4 w-4 shrink-0', className)}>

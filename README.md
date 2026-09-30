@@ -103,7 +103,9 @@ What works today:
   RedisJSON, HyperLogLog, bitmaps and geo; TTL, rename and copy; bulk delete with a dry run; a CLI
   with autocomplete and inline docs; Pub/Sub, an INFO dashboard, slow log, clients, latency,
   MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
-  Sentinel/Cluster topology.
+  Sentinel/Cluster topology. Search indexes (RediSearch, the Redis Query Engine; valkey-search):
+  list, query with sort, paging, scores and FT.EXPLAIN, read the schema and the FT.CREATE that
+  rebuilds it, create an index with fields suggested from sample keys, drop one.
 - **Elasticsearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
   bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
   health, data streams and aliases; a Kibana-style console with autocomplete from the open API
@@ -133,9 +135,8 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: Parquet, cloud sync and the AI assistant; the embedded mongosh shell for MongoDB;
-RediSearch and offline RDB analysis; a query builder for Elasticsearch; schedules that run while
-Joinery is closed. The product specification lists the full scope.
+Not built yet: cloud sync and the AI assistant; the embedded mongosh shell for MongoDB; a query
+builder for Elasticsearch. The product specification lists the full scope.
 
 ## Repository layout
 

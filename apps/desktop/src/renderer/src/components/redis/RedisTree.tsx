@@ -40,6 +40,7 @@ const TOOLS: readonly RedisTool[] = [
   'latency',
   'monitor',
   'bigkeys',
+  'search',
   'acl',
   'topology',
 ];

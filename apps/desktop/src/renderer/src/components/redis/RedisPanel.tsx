@@ -1,5 +1,6 @@
 import { useRedisPanels } from '../../state/redis/panels';
 import { CliPanel } from './CliPanel';
+import { SearchPanel } from './SearchPanel';
 import { KeyBrowserPanel } from './KeyBrowserPanel';
 import { ConfigPanel } from './tools/ConfigPanel';
 import { DashboardPanel } from './tools/DashboardPanel';
@@ -47,5 +48,7 @@ export function RedisPanel(props: { readonly panelId: string }) {
       return <AclPanel {...tool} />;
     case 'topology':
       return <TopologyPanel {...tool} />;
+    case 'search':
+      return <SearchPanel {...tool} />;
   }
 }
