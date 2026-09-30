@@ -5,7 +5,16 @@
  */
 
 /** File formats the readers understand. `sql` files are run statement by statement. */
-export const FILE_FORMATS = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml', 'sql'] as const;
+export const FILE_FORMATS = [
+  'csv',
+  'tsv',
+  'json',
+  'jsonl',
+  'xlsx',
+  'xml',
+  'parquet',
+  'sql',
+] as const;
 export type FileFormat = (typeof FILE_FORMATS)[number];
 
 /**
@@ -19,6 +28,7 @@ export const EXPORT_FORMATS = [
   'jsonl',
   'xlsx',
   'xml',
+  'parquet',
   'sql',
   'sql-ddl',
   'html',

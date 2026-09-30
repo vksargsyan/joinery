@@ -248,6 +248,13 @@ const EXTENSIONS: Readonly<Record<string, string>> = {
   custom: '.dump',
 };
 
+/** An export format's name in a sentence: CSV, JSONL, Parquet, SQL with DDL. */
+function formatName(format: string): string {
+  if (format === 'parquet') return 'Parquet';
+  if (format === 'sql-ddl') return 'SQL with DDL';
+  return format.toUpperCase();
+}
+
 /** What a task does, in words. */
 export function whatOf(task: ScheduleTask, target: string): string {
   switch (task.kind) {
@@ -257,8 +264,8 @@ export function whatOf(task: ScheduleTask, target: string): string {
       return `Run ${task.job.path.split(/[\\/]/).pop() ?? task.job.path} on ${target}`;
     case 'export':
       return task.job.source.kind === 'query'
-        ? `Export a query on ${target} as ${task.job.format.toUpperCase()}`
-        : `Export ${task.job.source.tables.length === 1 ? task.job.source.tables[0] : `${task.job.source.tables.length} tables`} of ${target} as ${task.job.format.toUpperCase()}`;
+        ? `Export a query on ${target} as ${formatName(task.job.format)}`
+        : `Export ${task.job.source.tables.length === 1 ? task.job.source.tables[0] : `${task.job.source.tables.length} tables`} of ${target} as ${formatName(task.job.format)}`;
     case 'comparison':
       return `Run the comparison ${target}`;
   }

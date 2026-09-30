@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   JoineryError,
   connectionProfileSchema,
+  tableDefSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
 } from '@joinery/core';
@@ -13,11 +14,13 @@ import {
   EXPORT_FORMATS,
   FILE_FORMATS,
   INFERRED_TYPES,
+  PARQUET_COMPRESSIONS,
   ZipReader,
   openFileReader,
 } from '@joinery/transfer';
 import {
   INFERRED_COLUMN_TYPES,
+  PARQUET_COMPRESSIONS as IPC_PARQUET_COMPRESSIONS,
   TRANSFER_EXPORT_FORMATS,
   TRANSFER_FILE_FORMATS,
 } from '@joinery/ipc';
@@ -592,6 +595,85 @@ describe('JobRunner Excel, XML and ZIP', () => {
     ]);
   });
 
+  it('exports a table to Parquet, previews it and imports it back', async () => {
+    const { runner, session, done, response } = setup();
+    session.result = {
+      columns: [
+        ...columns,
+        { name: 'price', nativeType: 'numeric(8,2)', kind: 'decimal' as const },
+      ],
+      rows: [
+        [1, 'Ada', '12.50'],
+        [2, null, null],
+        [3, 'Grace & <co>', '-0.01'],
+      ],
+    };
+    const path = join(dir, 'people.parquet');
+    runner.handle({
+      type: 'start',
+      jobId: 'q1',
+      job: {
+        kind: 'export',
+        profileId: 'p1',
+        source: { kind: 'tables', schema: 'public', tables: ['people'] },
+        format: 'parquet',
+        parquet: { compression: 'zstd' },
+        output: { kind: 'file', path },
+      },
+      resolved: resolved(),
+    });
+    expect((await done('q1')).summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+    expect(readFileSync(path).subarray(0, 4).toString()).toBe('PAR1');
+
+    runner.handle({
+      type: 'request',
+      requestId: 'q',
+      request: { kind: 'preview', input: { path } },
+    });
+    const preview = (await response('q')).result as TransferPreview;
+    expect(preview).toMatchObject({
+      format: 'parquet',
+      parquet: { rows: 3, rowGroups: 1, compressions: ['ZSTD'] },
+      rows: [
+        ['1', 'Ada', '12.50'],
+        ['2', null, null],
+        ['3', 'Grace & <co>', '-0.01'],
+      ],
+    });
+    expect(preview.columns.map((c) => [c.name, c.type, c.precision, c.scale])).toEqual([
+      ['id', 'integer', undefined, undefined],
+      ['name', 'text', undefined, undefined],
+      ['price', 'decimal', 8, 2],
+    ]);
+
+    session.table = tableDefSchema.parse({
+      ...session.table,
+      columns: [
+        ...session.table.columns,
+        { name: 'price', ordinal: 3, dataType: 'numeric(8,2)', nullable: true },
+      ],
+    });
+    runner.handle({
+      type: 'start',
+      jobId: 'q2',
+      job: importJob(path, {
+        file: { path, format: 'parquet' },
+        mapping: [
+          { source: 'id', target: 'id' },
+          { source: 'name', target: 'name' },
+          { source: 'price', target: 'price' },
+        ],
+      }),
+      resolved: resolved(),
+    });
+    expect((await done('q2')).summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+    expect(session.committed).toEqual([
+      [1, 'Ada', '12.50'],
+      [2, null, null],
+      [3, 'Grace & <co>', '-0.01'],
+    ]);
+  });
+
   it('imports XML rows from the chosen path, reporting bad rows by row and line', async () => {
     const { runner, session, done } = setup();
     const path = file(
@@ -668,5 +750,9 @@ describe('protocol mirrors', () => {
   it('lists the same file and export formats as @joinery/transfer', () => {
     expect([...TRANSFER_FILE_FORMATS]).toEqual([...FILE_FORMATS]);
     expect([...TRANSFER_EXPORT_FORMATS]).toEqual([...EXPORT_FORMATS]);
+  });
+
+  it('lists the same Parquet codecs as @joinery/transfer', () => {
+    expect([...IPC_PARQUET_COMPRESSIONS]).toEqual([...PARQUET_COMPRESSIONS]);
   });
 });

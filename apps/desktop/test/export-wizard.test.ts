@@ -164,6 +164,39 @@ describe('export wizard', () => {
     });
   });
 
+  it('exports to Parquet with its codec, one file per table, never gzipped or re-encoded', async () => {
+    const { api, dialogs, started } = fakeApi();
+    const wizard = new ExportWizard({ ...TABLES, tables: ['a', 'b'] }, api);
+    wizard.next();
+    wizard.setOptions({ format: 'json', layout: 'combined', gzip: true, bom: true });
+    wizard.setOptions({ format: 'parquet' });
+    expect(wizard.state).toMatchObject({ gzip: false, layout: 'per-table' });
+    wizard.setOptions({ layout: 'combined' });
+    expect(exportStepProblem(wizard.state)).toBe(
+      'A combined file is not available for Parquet; export one file per table',
+    );
+    wizard.setOptions({ layout: 'per-table', compression: 'zstd' });
+    wizard.toggleTable('b');
+    expect(suggestedName(wizard.state)).toBe('a.parquet');
+    wizard.next();
+    await wizard.chooseDestination();
+    expect(dialogs.at(-1)).toEqual({
+      kind: 'file',
+      defaultName: 'a.parquet',
+      extensions: ['parquet'],
+    });
+    await wizard.run();
+    expect(started[0]).toEqual({
+      kind: 'export',
+      profileId: 'p1',
+      database: 'shop',
+      source: { kind: 'tables', schema: 'public', tables: ['a'] },
+      format: 'parquet',
+      parquet: { compression: 'zstd' },
+      output: { kind: 'file', path: '/out/a.parquet' },
+    });
+  });
+
   it('combines tables into one workbook, XML, HTML or Markdown file', () => {
     const { api } = fakeApi();
     const wizard = new ExportWizard({ ...TABLES, tables: ['a', 'b'] }, api);

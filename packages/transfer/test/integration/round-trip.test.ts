@@ -41,7 +41,7 @@ import {
  */
 
 const SERVERS = configuredServers();
-const ROW_FORMATS: FileFormat[] = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml'];
+const ROW_FORMATS: FileFormat[] = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml', 'parquet'];
 /** Formats whose export of a table created from the file is byte for byte the same. */
 const TEXT_FORMATS: FileFormat[] = ['csv', 'tsv', 'json', 'jsonl', 'xml'];
 
@@ -145,6 +145,45 @@ describe.skipIf(SERVERS.length === 0)('round trips', () => {
           expect(sink.text()).toBe(original.text());
         });
       }
+
+      it('parquet: creates a new table typed from the file with the same contents', async () => {
+        const bytes = await exportTable(session, 'src', 'parquet');
+        const preview = await previewSource(bytesSource(bytes), {});
+        expect(preview.format).toBe('parquet');
+        const { table, mapping } = tableFromColumns(preview.columns, {
+          name: 'new_parquet',
+          dialect,
+          primaryKey: ['id'],
+        });
+        await createTable(session, table);
+        const summary = await importRows({
+          session,
+          table,
+          rows: readRows(bytesSource(bytes), preview.read!),
+          mapping,
+        });
+        expect(summary.errors).toEqual([]);
+        expect(summary.rowsWritten).toBe(5);
+        const csv = async (name: string): Promise<string> => {
+          const sink = memorySink();
+          await exportRows({
+            session,
+            query: `SELECT * FROM ${q(name)} ORDER BY 1`,
+            format: 'csv',
+            sink,
+          });
+          return sink.text();
+        };
+        if (dialect === 'postgres') {
+          // Every PostgreSQL type the file holds comes back as it was.
+          expect(await csv('new_parquet')).toBe(await csv('src'));
+        } else {
+          // MySQL: DATETIME(6) and TIME(6) columns print their microseconds.
+          const lines = (await csv('new_parquet')).split('\r\n');
+          expect(lines[0]).toBe((await csv('src')).split('\r\n')[0]);
+          expect(lines).toHaveLength(7);
+        }
+      });
 
       it('sql: INSERTs run back into an existing table', async () => {
         await copyStructure('into_sql');

@@ -1,5 +1,10 @@
 import type { CellValue, SqlDialect } from '@joinery/core';
-import type { ExportJob, ExportSettings, TransferExportFormat } from '@joinery/ipc';
+import type {
+  ExportJob,
+  ExportSettings,
+  PARQUET_COMPRESSIONS,
+  TransferExportFormat,
+} from '@joinery/ipc';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorMessage } from '../lib/errors';
@@ -7,8 +12,8 @@ import { errorMessage } from '../lib/errors';
 /**
  * The export wizard (spec §12) as a state machine: the tables to export (several from one
  * database or schema), or a query result that the job runner runs again → the format and its
- * options (header, delimiter, NULL marker, JSON pretty or lines, Excel decimals, SQL INSERT
- * batch size, with DDL, gzip or a ZIP archive, byte order mark) and one file per table or one
+ * options (header, delimiter, NULL marker, JSON pretty or lines, Excel decimals, Parquet
+ * compression, SQL INSERT batch size, with DDL, gzip or a ZIP archive, byte order mark) and one file per table or one
  * combined file → the destination → run as a job. The page never touches the file system: the
  * destination comes from main's save or folder dialog, and the job runner writes it.
  */
@@ -49,6 +54,8 @@ export interface ExportWizardApi {
   start(job: ExportJob): Promise<string | undefined>;
 }
 
+export type ParquetCompression = (typeof PARQUET_COMPRESSIONS)[number];
+
 export interface ExportWizardState {
   readonly step: ExportStep;
   readonly source: ExportSource;
@@ -66,6 +73,8 @@ export interface ExportWizardState {
   readonly dropTable: boolean;
   /** Excel: decimals that fit a double exactly as numbers (else every decimal as text). */
   readonly decimalsAsNumbers: boolean;
+  /** Parquet: the page codec. */
+  readonly compression: ParquetCompression;
   readonly gzip: boolean;
   /** A ZIP archive holding a file per table (or the query's file); never with gzip. */
   readonly zip: boolean;
@@ -87,6 +96,7 @@ export const EXPORT_FORMAT_LABELS: Readonly<Record<TransferExportFormat, string>
   jsonl: 'JSON Lines',
   xlsx: 'Excel workbook (.xlsx)',
   xml: 'XML',
+  parquet: 'Parquet',
   sql: 'SQL INSERT statements',
   'sql-ddl': 'SQL with DDL (CREATE TABLE and INSERTs)',
   html: 'HTML page',
@@ -100,6 +110,7 @@ const EXTENSIONS: Readonly<Record<TransferExportFormat, string>> = {
   jsonl: 'jsonl',
   xlsx: 'xlsx',
   xml: 'xml',
+  parquet: 'parquet',
   sql: 'sql',
   'sql-ddl': 'sql',
   html: 'html',
@@ -108,12 +119,17 @@ const EXTENSIONS: Readonly<Record<TransferExportFormat, string>> = {
 
 /** Formats that can hold several tables in one file. */
 export function combinable(format: TransferExportFormat): boolean {
-  return format !== 'csv' && format !== 'tsv' && format !== 'jsonl';
+  return format !== 'csv' && format !== 'tsv' && format !== 'jsonl' && format !== 'parquet';
 }
 
 /** Formats written as text, where encoding and byte order mark apply. */
 export function textFormat(format: TransferExportFormat): boolean {
-  return format !== 'xlsx';
+  return format !== 'xlsx' && format !== 'parquet';
+}
+
+/** Binary formats compress themselves; gzip around them only stops other tools reading them. */
+export function gzipAllowed(format: TransferExportFormat): boolean {
+  return format !== 'xlsx' && format !== 'parquet';
 }
 
 export function initialExportState(
@@ -133,6 +149,7 @@ export function initialExportState(
     rowsPerStatement: 100,
     dropTable: false,
     decimalsAsNumbers: false,
+    compression: 'snappy',
     gzip: false,
     zip: false,
     bom: false,
@@ -250,6 +267,7 @@ export function buildExportJob(state: ExportWizardState): ExportJob {
           },
         }
       : {}),
+    ...(state.format === 'parquet' ? { parquet: { compression: state.compression } } : {}),
     ...(text && state.encoding !== 'utf-8' ? { encoding: state.encoding } : {}),
     ...(text && state.bom ? { bom: true } : {}),
     ...(zip ? { zip: true } : state.gzip ? { gzip: true } : {}),
@@ -271,6 +289,7 @@ export function exportSettingsOf(state: ExportWizardState): ExportSettings {
     json: { pretty: state.pretty },
     sql: { rowsPerStatement: state.rowsPerStatement, dropTable: state.dropTable },
     xlsx: { header: state.header, decimals: state.decimalsAsNumbers ? 'number' : 'text' },
+    parquet: { compression: state.compression },
     encoding: state.encoding,
     bom: state.bom,
     gzip: state.gzip,
@@ -332,6 +351,7 @@ export class ExportWizard {
         | 'rowsPerStatement'
         | 'dropTable'
         | 'decimalsAsNumbers'
+        | 'compression'
         | 'gzip'
         | 'zip'
         | 'bom'
@@ -346,12 +366,12 @@ export class ExportWizard {
       patch.zip !== undefined ||
       patch.layout;
     this.#set({ ...patch, ...(resets ? { path: undefined } : {}) });
-    // gzip and ZIP exclude each other; a workbook is compressed already; a ZIP holds a file
-    // per table, not a combined one.
+    // gzip and ZIP exclude each other; workbooks and Parquet files are compressed already; a
+    // ZIP holds a file per table, not a combined one.
     if (patch.zip === true) this.#set({ gzip: false, layout: 'per-table' });
     if (patch.gzip === true) this.#set({ zip: false });
     if (patch.layout === 'combined') this.#set({ zip: false });
-    if (this.state.format === 'xlsx' && this.state.gzip) this.#set({ gzip: false });
+    if (!gzipAllowed(this.state.format) && this.state.gzip) this.#set({ gzip: false });
     if (
       patch.format !== undefined &&
       !combinable(patch.format) &&
@@ -382,6 +402,9 @@ export class ExportWizard {
         : {}),
       ...(settings.xlsx?.decimals !== undefined
         ? { decimalsAsNumbers: settings.xlsx.decimals === 'number' }
+        : {}),
+      ...(settings.parquet?.compression !== undefined
+        ? { compression: settings.parquet.compression }
         : {}),
       ...(settings.encoding !== undefined ? { encoding: settings.encoding } : {}),
       ...(settings.bom !== undefined ? { bom: settings.bom } : {}),

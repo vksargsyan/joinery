@@ -10,6 +10,7 @@ import {
   buildExportJob,
   combinable,
   exportSettingsOf,
+  gzipAllowed,
   textFormat,
   exportStepProblem,
   suggestedName,
@@ -18,6 +19,7 @@ import {
   type ExportStep,
   type ExportWizardApi,
   type ExportWizardState,
+  type ParquetCompression,
 } from '../../state/export-wizard';
 import { loadChildren, pathKey, useExplorer } from '../../state/explorer';
 import { startJob } from '../../state/jobs';
@@ -36,11 +38,21 @@ const FORMAT_NOTES: Partial<Readonly<Record<TransferExportFormat, string>>> = {
   jsonl: 'One JSON object per line.',
   xlsx: 'Typed cells: numbers, booleans, and dates as Excel dates. Several tables go on one worksheet each.',
   xml: 'An <export> of <table> elements with one <row> per row; NULL is xsi:nil.',
+  parquet:
+    'Columnar and typed, for DuckDB, Spark, pandas and warehouses: integers, exact decimals, dates, timestamps and UUIDs keep their types. One table per file.',
   html: 'A self-contained page with one table per result, readable in any browser.',
   markdown: 'Pipe tables, as GitHub and most wikis render them.',
 };
 
 type Compression = 'none' | 'gzip' | 'zip';
+
+/** Parquet page codecs, as the codec picker names them. */
+const PARQUET_CODECS: Readonly<Record<ParquetCompression, string>> = {
+  snappy: 'Snappy (fast, read everywhere)',
+  zstd: 'ZSTD (smaller files)',
+  gzip: 'GZIP (for older readers)',
+  none: 'None',
+};
 
 const STEP_LABELS: Readonly<Record<ExportStep, string>> = {
   source: 'Tables',
@@ -262,7 +274,8 @@ function FormatStep({ wizard, state }: StepProps) {
                 checked={state.layout === 'combined'}
                 onChange={() => wizard.setOptions({ layout: 'combined' })}
               />
-              One combined file{combinable(state.format) ? '' : ' (not for CSV, TSV or JSON Lines)'}
+              One combined file
+              {combinable(state.format) ? '' : ' (not for CSV, TSV, JSON Lines or Parquet)'}
             </label>
           </fieldset>
         )}
@@ -285,6 +298,27 @@ function FormatStep({ wizard, state }: StepProps) {
               onChange={(event) => wizard.setOptions({ decimalsAsNumbers: event.target.checked })}
             />
             Decimals as Excel numbers when exact (up to 15 digits); otherwise decimals are text
+          </label>
+        </div>
+      )}
+      {state.format === 'parquet' && (
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-1.5">
+            Codec
+            <SelectField
+              aria-label="Parquet codec"
+              className="w-64"
+              value={state.compression}
+              onChange={(event) =>
+                wizard.setOptions({ compression: event.target.value as ParquetCompression })
+              }
+            >
+              {(Object.keys(PARQUET_CODECS) as ParquetCompression[]).map((codec) => (
+                <option key={codec} value={codec}>
+                  {PARQUET_CODECS[codec]}
+                </option>
+              ))}
+            </SelectField>
           </label>
         </div>
       )}
@@ -381,7 +415,7 @@ function FormatStep({ wizard, state }: StepProps) {
             }}
           >
             <option value="none">None</option>
-            {state.format !== 'xlsx' && <option value="gzip">gzip</option>}
+            {gzipAllowed(state.format) && <option value="gzip">gzip</option>}
             <option value="zip">
               {several ? 'ZIP archive, one file per table' : 'ZIP archive'}
             </option>

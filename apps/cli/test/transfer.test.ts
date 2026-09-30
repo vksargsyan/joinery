@@ -369,9 +369,12 @@ describe('export', () => {
       [['--query', 'select 1', '--format', 'sql-ddl', '--out', 'x'], 'exports tables'],
       [
         ['--table', 'a', '--table', 'b', '--format', 'csv', '--one-file', '--out', 'x'],
-        'every format but csv, tsv and jsonl',
+        'every format but csv, tsv, jsonl and parquet',
       ],
       [['--table', 'a', '--format', 'xlsx', '--out', '-'], 'An Excel workbook writes a file'],
+      [['--table', 'a', '--format', 'parquet', '--out', '-'], 'A Parquet file writes a file'],
+      [['--table', 'a', '--format', 'parquet', '--gzip', '--out', 'x'], 'other tools cannot read'],
+      [['--table', 'a', '--format', 'csv', '--codec', 'zstd', '--out', 'x'], '--codec is for'],
       [['--table', 'a', '--format', 'csv', '--zip', '--out', '-'], '--zip writes a file'],
       [['--table', 'a', '--format', 'csv', '--zip', '--gzip', '--out', 'x'], 'not both'],
       [
@@ -431,6 +434,42 @@ describe('Excel, XML and ZIP', () => {
     });
     expect(fromStdin.code).toBe(0);
     expect(inserted(piped)).toEqual([1, 'Ada', 2, 'Grace']);
+  });
+
+  it('exports Parquet and imports it back, from a file or from stdin', async () => {
+    const exported = await run(
+      [
+        'export',
+        URI,
+        '--table',
+        'people',
+        '--format',
+        'parquet',
+        '--codec',
+        'zstd',
+        '--out',
+        'people.parquet',
+      ],
+      { session: session(), cwd: dir },
+    );
+    expect(exported.code).toBe(0);
+    const file = readFileSync(join(dir, 'people.parquet'));
+    expect(file.subarray(0, 4).toString()).toBe('PAR1');
+
+    const argv = ['import', URI, '--table', 'people'];
+    const s = session();
+    const fromFile = await run([...argv, '--file', 'people.parquet'], { session: s, cwd: dir });
+    expect(fromFile.stderr).toContain('Imported 3 rows into public.people');
+    expect(fromFile.code).toBe(0);
+    expect(inserted(s)).toEqual([1, 'Ada', 2, 'Hopper, Grace', 3, null]);
+
+    const piped = session();
+    const fromStdin = await run([...argv, '--file', '-'], {
+      session: piped,
+      stdin: memoryInput([file.subarray(0, 10), file.subarray(10)], false),
+    });
+    expect(fromStdin.code).toBe(0);
+    expect(inserted(piped)).toEqual([1, 'Ada', 2, 'Hopper, Grace', 3, null]);
   });
 
   it('imports the XML rows at --row-path', async () => {

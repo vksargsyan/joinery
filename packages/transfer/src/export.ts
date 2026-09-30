@@ -16,6 +16,7 @@ import { renderForeignKey, renderSequence, renderTableStatements, sqlLiteral } f
 
 import { CsvFormatter, type CsvDialect, type CsvQuoting } from './csv';
 import type { Sink } from './io';
+import { ParquetFileWriter, type ParquetExportOptions } from './parquet';
 import { dialectOf } from './session';
 import { qualifiedTable } from './statements';
 import { TextOutput, type OutputEncoding } from './text';
@@ -91,6 +92,7 @@ export interface ExportCommonOptions {
   readonly json?: JsonExportOptions;
   readonly sql?: SqlExportOptions;
   readonly xlsx?: XlsxExportOptions;
+  readonly parquet?: ParquetExportOptions;
   /** Output encoding of the text formats (default UTF-8; workbooks are always Unicode). */
   readonly encoding?: OutputEncoding;
   /** Start with a byte order mark (default false). */
@@ -549,7 +551,7 @@ interface ExportSource {
 }
 
 function textWriterFor(
-  format: Exclude<ExportFormat, 'xlsx'>,
+  format: Exclude<ExportFormat, 'xlsx' | 'parquet'>,
   options: ExportCommonOptions,
   dialect: SqlDialect,
   source: ExportSource,
@@ -709,6 +711,29 @@ function openDocument(
       },
       close: () => book.close(),
       abort: (reason) => book.abort(reason),
+    };
+  }
+  if (format === 'parquet') {
+    // One table per file (combinableFormat): the file is the result's row groups and footer.
+    const output = new Output(sink, 'utf-8', false);
+    const file = new ParquetFileWriter(
+      {
+        write: (chunk) => output.writeBytes(chunk),
+        close: () => sink.close(),
+        abort: (reason) => sink.abort(reason),
+      },
+      options.parquet ?? {},
+      dialectOf(options.session),
+    );
+    return {
+      output,
+      result: async () => ({
+        begin: async (columns) => file.begin(columns, uniqueNames(columns.map((c) => c.name))),
+        page: (chunk) => file.page(chunk.data, chunk.rowCount),
+        end: () => file.end(),
+      }),
+      close: () => file.close(),
+      abort: (reason) => file.abort(reason),
     };
   }
   const encoding = options.encoding ?? 'utf-8';
@@ -926,7 +951,7 @@ function invalidExport(message: string): JoineryError {
 
 /** Formats that can hold several tables in one file. */
 export function combinableFormat(format: ExportFormat): boolean {
-  return format !== 'csv' && format !== 'tsv' && format !== 'jsonl';
+  return format !== 'csv' && format !== 'tsv' && format !== 'jsonl' && format !== 'parquet';
 }
 
 /** Option combinations that can never work; checked before anything runs. */
@@ -1038,6 +1063,7 @@ export const EXPORT_EXTENSIONS: Readonly<Record<ExportFormat, string>> = {
   jsonl: 'jsonl',
   xlsx: 'xlsx',
   xml: 'xml',
+  parquet: 'parquet',
   sql: 'sql',
   'sql-ddl': 'sql',
   html: 'html',
@@ -1057,7 +1083,7 @@ export function exportFileName(table: string, format: ExportFormat, gzip = false
 export interface ExportTablesOptions extends ExportCommonOptions {
   readonly tables: readonly ExportTable[];
   /**
-   * `combined`: every table into one sink (every format but CSV, TSV and JSON Lines: SQL one
+   * `combined`: every table into one sink (every format but CSV, TSV, JSON Lines and Parquet: SQL one
    * table after another, JSON an object keyed by table name, XML a `<table>` each, HTML and
    * Markdown a section each, Excel a worksheet each). `per-table`: a sink per table from
    * `sinkFor`. `zip`: a file per table inside one ZIP archive written to `sink`.

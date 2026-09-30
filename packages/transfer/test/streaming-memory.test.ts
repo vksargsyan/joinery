@@ -6,13 +6,17 @@ import { runInNewContext } from 'node:vm';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { fileSource, readRows } from '../src';
-import { writeLargeWorkbook } from './xlsx-helpers';
+import type { CellValue } from '@joinery/core';
+
+import { exportRows, fileSink, fileSource, readRows } from '../src';
+import { FakeSession } from './fake-session';
+import { col, writeLargeWorkbook } from './xlsx-helpers';
 
 /**
  * The xlsx reader streams (spec §12, §18): a 200,000-row workbook written the way Excel
  * writes one (every text in the shared string table) reads with well under 200 MB of RSS
- * growth, less than the worksheet XML itself would take held as a string.
+ * growth, less than the worksheet XML itself would take held as a string. Parquet holds one
+ * row group at a time, both ways: 200,000 rows export and import within the same bound.
  */
 
 const ROWS = 200_000;
@@ -69,5 +73,83 @@ describe('xlsx streaming', () => {
     expect(batches).toBeGreaterThan(100);
     expect(growth).toBeLessThan(LIMIT);
     expect(growth).toBeLessThan(sheetBytes * 2);
+  }, 120_000);
+});
+
+describe('Parquet streaming', () => {
+  const columns = [
+    col('id', 'integer', 'int4'),
+    col('name', 'string', 'text'),
+    col('city', 'string', 'text'),
+    col('amount', 'decimal', 'numeric(12,2)'),
+    col('ratio', 'float', 'float8'),
+    col('active', 'boolean', 'bool'),
+    col('day', 'date', 'date'),
+    col('stamp', 'timestamp', 'timestamptz'),
+  ];
+  const cities = ['Yerevan', 'Riga', 'Lisbon', 'Osaka'];
+  const row = (i: number): CellValue[] => [
+    i + 1,
+    `Customer ${i} & Sons`,
+    cities[i % cities.length]!,
+    `${(i * 7) % 100000}.25`,
+    (i % 1000) / 1000,
+    i % 3 !== 0,
+    '2031-02-20',
+    `2031-02-20 12:00:${String(i % 60).padStart(2, '0')}+00`,
+  ];
+  const mb = (bytes: number): string => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+  it(`writes and reads ${ROWS.toLocaleString('en-US')} rows with bounded memory`, async () => {
+    const parquet = join(dir, 'large.parquet');
+    const session = new FakeSession('postgres');
+    session.result = { columns, rows: Array.from({ length: ROWS }, (_, i) => row(i)) };
+
+    gc();
+    let baseline = process.memoryUsage.rss();
+    let peak = baseline;
+    const summary = await exportRows({
+      session,
+      query: 'SELECT * FROM customers',
+      format: 'parquet',
+      sink: fileSink(parquet),
+      onProgress: () => (peak = Math.max(peak, process.memoryUsage.rss())),
+      progressIntervalMs: 0,
+    });
+    const written = peak - baseline;
+    expect(summary.status).toBe('completed');
+    expect(summary.rowsWritten).toBe(ROWS);
+    session.result = { columns, rows: [] };
+
+    gc();
+    baseline = process.memoryUsage.rss();
+    peak = baseline;
+    let rows = 0;
+    let batches = 0;
+    let last: unknown[] = [];
+    for await (const batch of readRows(fileSource(parquet), { format: 'parquet' })) {
+      rows += batch.rows.length;
+      batches++;
+      if (batch.rows.length > 0) last = [...batch.rows[batch.rows.length - 1]!];
+      peak = Math.max(peak, process.memoryUsage.rss());
+    }
+    const read = peak - baseline;
+    console.info(
+      `parquet ${mb(statSync(parquet).size)} on disk: export RSS growth ${mb(written)}, ${rows} rows read in ${batches} batches, RSS growth ${mb(read)}`,
+    );
+    expect(rows).toBe(ROWS);
+    expect(last).toEqual([
+      ROWS,
+      `Customer ${ROWS - 1} & Sons`,
+      'Osaka',
+      `${((ROWS - 1) * 7) % 100000}.25`,
+      ((ROWS - 1) % 1000) / 1000,
+      true,
+      '2031-02-20',
+      `2031-02-20 12:00:${String((ROWS - 1) % 60).padStart(2, '0')}Z`,
+    ]);
+    expect(batches).toBeGreaterThan(10);
+    expect(written).toBeLessThan(LIMIT);
+    expect(read).toBeLessThan(LIMIT);
   }, 120_000);
 });

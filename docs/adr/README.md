@@ -24,3 +24,4 @@ supersede it with a new one.
 | [0017](0017-search-module.md)                | Search module: documents, SQL, index and cluster administration  | Accepted |
 | [0018](0018-saved-er-models.md)              | Saved ER models: drafts in the store, model files as documents   | Accepted |
 | [0019](0019-scheduler.md)                    | Scheduler: jobs run from main while Joinery is open              | Accepted |
+| [0020](0020-parquet.md)                      | Parquet on hyparquet and hyparquet-writer, streamed by row group | Accepted |
