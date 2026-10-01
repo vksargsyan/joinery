@@ -293,7 +293,13 @@ function start(): void {
         platform: process.platform,
         appName: app.getName(),
         development: !app.isPackaged,
-        commands: { about: () => appCommands.send('about'), ...menuCommands },
+        commands: {
+          about: () => appCommands.send('about'),
+          commandPalette: () => appCommands.send('command-palette'),
+          quickOpen: () => appCommands.send('quick-open'),
+          keyboardShortcuts: () => appCommands.send('keyboard-shortcuts'),
+          ...menuCommands,
+        },
       }),
     ),
   );

@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import { useWindowState } from '../state/window';
 import { SyncMenu } from './sync/SyncMenu';
 import { Icon, cx } from './ui';
+import { bindingLabel } from '../lib/keys';
+import { useBindingOf } from '../state/keybindings';
+import { openPalette } from '../state/palette';
 import { WindowMenuBar } from './WindowMenuBar';
 
 /**
@@ -32,6 +35,10 @@ export function TitleBar(props: {
   const platform = useWindowState((s) => s.platform);
   const mac = platform === 'darwin';
   const fullScreen = useWindowState((s) => s.fullScreen);
+  const quickOpenBinding = useBindingOf('workbench.quickOpen');
+  const commandBinding = useBindingOf('workbench.commandPalette');
+  const quickOpenKeys = quickOpenBinding ? bindingLabel(quickOpenBinding, mac) : 'no keys';
+  const commandKeys = commandBinding ? bindingLabel(commandBinding, mac) : 'no keys';
   return (
     <header
       className="relative flex h-[35px] shrink-0 items-center border-b border-border bg-panel text-muted select-none [-webkit-app-region:drag]"
@@ -53,11 +60,21 @@ export function TitleBar(props: {
             Production · {props.production}
           </span>
         ) : (
-          props.title !== undefined && (
-            <span className="truncate text-xs" data-testid="window-title">
-              {props.title}
+          // VS Code's command center: the active tab's title in a search box that opens Go to
+          // Object (and with ">" the commands).
+          <button
+            type="button"
+            data-testid="command-center"
+            aria-label="Search tables, collections and commands"
+            title={`Go to a table or collection (${quickOpenKeys}), run a command (${commandKeys})`}
+            onClick={() => openPalette('')}
+            className="pointer-events-auto flex h-[22px] w-full max-w-[460px] items-center justify-center gap-2 rounded-md border border-border bg-deep/60 px-3 text-xs text-muted hover:border-strong hover:bg-hover hover:text-fg [-webkit-app-region:no-drag]"
+          >
+            <Icon name="search" className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate" data-testid="window-title">
+              {props.title ?? 'Joinery'}
             </span>
-          )
+          </button>
         )}
       </div>
       {!mac && <WindowMenuBar platform={platform} />}

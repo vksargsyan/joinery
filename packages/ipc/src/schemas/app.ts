@@ -209,6 +209,12 @@ export type HistoryPage = z.infer<typeof historyPageSchema>;
 export const keywordCaseSchema = z.enum(['upper', 'lower', 'preserve']);
 export type KeywordCase = z.infer<typeof keywordCaseSchema>;
 
+export const keybindingOverrideSchema = z.object({
+  command: z.string().min(1).max(200),
+  key: z.string().max(100),
+});
+export type KeybindingOverride = z.infer<typeof keybindingOverrideSchema>;
+
 export const appSettingsSchema = z.object({
   theme: z.enum(['system', 'light', 'dark', 'high-contrast']),
   /** BCP 47 tag; English at launch (spec §18). */
@@ -241,6 +247,11 @@ export const appSettingsSchema = z.object({
     /** Ask before Joinery closes while schedules are on: they run only while it is open. */
     confirmClose: z.boolean(),
   }),
+  /**
+   * The user's key bindings over the defaults, as VS Code's keybindings.json: a command's key
+   * ("mod+shift+p", a chord as "mod+k mod+s"), or "" for none. Replaced whole on update.
+   */
+  keybindings: z.array(keybindingOverrideSchema).max(500),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
@@ -265,6 +276,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   results: { pageSize: 1000, rowLimit: 10_000 },
   connections: { hostPoolCap: 8 },
   schedules: { confirmClose: true },
+  keybindings: [],
 };
 
 export const appInfoSchema = z.object({

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import { mainApi } from '../lib/main-client';
 import { keys, queryClient } from './data';
+import { runCommand } from './commands';
 import { setFullScreen } from './window';
 
 /**
@@ -131,6 +132,9 @@ export async function watchAppCommands(): Promise<void> {
     try {
       for await (const { command } of mainApi().app.commands()) {
         if (command === 'about') openAbout();
+        else if (command === 'command-palette') void runCommand('workbench.commandPalette');
+        else if (command === 'quick-open') void runCommand('workbench.quickOpen');
+        else if (command === 'keyboard-shortcuts') void runCommand('workbench.keyboardShortcuts');
         else setFullScreen(command === 'enter-full-screen');
       }
       return;

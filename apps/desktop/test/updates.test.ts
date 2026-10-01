@@ -395,7 +395,14 @@ describe('the window menu bar (Windows, Linux)', () => {
           platform,
           appName: 'Joinery',
           development,
-          commands: { about: () => {}, checkForUpdates: () => {}, releaseNotes: () => {} },
+          commands: {
+            about: () => {},
+            checkForUpdates: () => {},
+            releaseNotes: () => {},
+            commandPalette: () => {},
+            quickOpen: () => {},
+            keyboardShortcuts: () => {},
+          },
         });
         const page = windowMenus({ platform, appName: 'Joinery', development });
         expect(page.map((m) => m.label)).toEqual(native.map((m) => m.label ?? 'Help'));
@@ -411,7 +418,14 @@ describe('the window menu bar (Windows, Linux)', () => {
             page[i]!.items.map((item) =>
               item === 'separator'
                 ? 'separator'
-                : ['checkForUpdates', 'releaseNotes', 'about'].includes(item.command)
+                : [
+                      'checkForUpdates',
+                      'releaseNotes',
+                      'about',
+                      'command-palette',
+                      'quick-open',
+                      'keyboard-shortcuts',
+                    ].includes(item.command)
                   ? item.label
                   : item.command,
             ),

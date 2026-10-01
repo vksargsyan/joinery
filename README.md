@@ -20,6 +20,9 @@ What works today:
   modes (off by default; a URI's sslmode, rediss://, https:// or mongodb+srv:// turns it on);
   passwords saved in the OS keychain, remembered for the session, or asked every time; URI and
   pgpass import; encrypted profile export; stepwise Test Connection.
+- **Command palette**: ⌘P (Ctrl+P) goes to a table, view or collection by a few of its
+  letters; ⌘⇧P (Ctrl+Shift+P) runs any command; key bindings as VS Code's, with chords, and a
+  Keyboard Shortcuts editor (⌘K ⌘S) to change them.
 - **Explorer**: a side bar with search and a filter by engine, environment and state; a click on
   a database, schema or folder lists its objects in the Objects tab with rows, sizes, engine,
   dates and comments (documents, sizes and indexes for MongoDB); a click on a table or

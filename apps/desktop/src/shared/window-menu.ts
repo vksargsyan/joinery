@@ -7,10 +7,20 @@ import type { WindowMenuCommand } from '@joinery/ipc';
  * runs in main (`app.menu`), except About, which the page opens itself.
  */
 
+/** Items the page runs itself: About, and its command palette, Go to Object and shortcuts. */
+export type PageMenuCommand = 'about' | 'command-palette' | 'quick-open' | 'keyboard-shortcuts';
+
+export const PAGE_MENU_COMMANDS: readonly PageMenuCommand[] = [
+  'about',
+  'command-palette',
+  'quick-open',
+  'keyboard-shortcuts',
+];
+
 export type WindowMenuItem =
   | {
       readonly label: string;
-      readonly command: WindowMenuCommand | 'about';
+      readonly command: WindowMenuCommand | PageMenuCommand;
       /** The accelerator as the native menu shows it. */
       readonly shortcut?: string;
     }
@@ -44,6 +54,11 @@ export function windowMenus(options: {
     {
       label: 'View',
       items: [
+        // The page shows its own (rebindable) keys for these.
+        { label: 'Command Palette…', command: 'command-palette' },
+        { label: 'Go to Table or Collection…', command: 'quick-open' },
+        { label: 'Keyboard Shortcuts', command: 'keyboard-shortcuts' },
+        'separator',
         ...(options.development
           ? ([
               { label: 'Reload', command: 'reload', shortcut: 'Ctrl+R' },
@@ -66,7 +81,7 @@ export function windowMenus(options: {
       label: 'Window',
       items: [
         { label: 'Minimize', command: 'minimize' },
-        { label: 'Close', command: 'close', shortcut: 'Ctrl+W' },
+        { label: 'Close', command: 'close', shortcut: 'Ctrl+Shift+W' },
       ],
     },
     {

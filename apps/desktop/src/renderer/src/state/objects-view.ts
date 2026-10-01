@@ -86,6 +86,14 @@ function openObjectsPanel(profileId: string): void {
   });
 }
 
+/** Brings the Objects tab back on what it showed last; false when it has shown nothing yet. */
+export function revealObjects(): boolean {
+  const location = useObjectsView.getState().location;
+  if (!location) return false;
+  openObjectsPanel(location.profileId);
+  return true;
+}
+
 export function disposeObjectsPanel(panelId: string): void {
   unregisterPanel(panelId);
   useObjectsView.setState({ location: undefined });

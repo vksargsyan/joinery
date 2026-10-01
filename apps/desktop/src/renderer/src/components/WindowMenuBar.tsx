@@ -2,7 +2,13 @@ import { Menubar } from 'radix-ui';
 
 import { mainApi } from '../lib/main-client';
 import { openAbout } from '../state/updates';
-import { windowMenus } from '../../../shared/window-menu';
+import type { WindowMenuCommand } from '@joinery/ipc';
+
+import { bindingLabel } from '../lib/keys';
+import { useBindingOf } from '../state/keybindings';
+import { openKeybindingsPanel } from '../state/keybindings-panel';
+import { openPalette } from '../state/palette';
+import { windowMenus, type PageMenuCommand } from '../../../shared/window-menu';
 
 /**
  * The window's menu bar on Windows and Linux, in the title bar as VS Code draws it: the native
@@ -10,6 +16,30 @@ import { windowMenus } from '../../../shared/window-menu';
  * (shared/window-menu.ts); each runs in main, except About, which opens here. Kiln's floating
  * surface, a rust wash on the highlighted item, the accelerator right-aligned in `faint`.
  */
+
+const PAGE_BINDINGS: Readonly<Partial<Record<PageMenuCommand, string>>> = {
+  'command-palette': 'workbench.commandPalette',
+  'quick-open': 'workbench.quickOpen',
+  'keyboard-shortcuts': 'workbench.keyboardShortcuts',
+};
+
+function runMenuItem(command: WindowMenuCommand | PageMenuCommand): void {
+  if (command === 'about') openAbout();
+  else if (command === 'command-palette') openPalette('>');
+  else if (command === 'quick-open') openPalette('');
+  else if (command === 'keyboard-shortcuts') openKeybindingsPanel();
+  else void mainApi().app.menu({ command });
+}
+
+/** The item's keys: the page's own binding for its commands (the user may change them). */
+function MenuShortcut(props: {
+  readonly command: WindowMenuCommand | PageMenuCommand;
+  readonly shortcut: string | undefined;
+}) {
+  const binding = useBindingOf(PAGE_BINDINGS[props.command as PageMenuCommand] ?? 'none');
+  const text = binding !== undefined ? bindingLabel(binding, false) : props.shortcut;
+  return text === undefined ? null : <span className="text-xs text-faint">{text}</span>;
+}
 
 export function WindowMenuBar(props: { readonly platform: string }) {
   const menus = windowMenus({
@@ -40,15 +70,12 @@ export function WindowMenuBar(props: { readonly platform: string }) {
                   <Menubar.Item
                     key={item.label}
                     onSelect={() => {
-                      if (item.command === 'about') openAbout();
-                      else void mainApi().app.menu({ command: item.command });
+                      runMenuItem(item.command);
                     }}
                     className="flex cursor-default items-center gap-6 rounded-sm px-2 py-1 outline-none data-[highlighted]:bg-list-active"
                   >
                     <span className="flex-1">{item.label}</span>
-                    {item.shortcut !== undefined && (
-                      <span className="text-xs text-faint">{item.shortcut}</span>
-                    )}
+                    <MenuShortcut command={item.command} shortcut={item.shortcut} />
                   </Menubar.Item>
                 ),
               )}

@@ -133,6 +133,11 @@ function mergeSettings(base: AppSettings, patch: AppSettingsPatch): AppSettings 
     results: { ...base.results, ...stripUndefined(patch.results ?? {}) },
     connections: { ...base.connections, ...stripUndefined(patch.connections ?? {}) },
     schedules: { ...base.schedules, ...stripUndefined(patch.schedules ?? {}) },
+    // A list is replaced whole: removing an override must be possible.
+    keybindings:
+      patch.keybindings === undefined
+        ? base.keybindings
+        : (patch.keybindings as AppSettings['keybindings']),
   };
 }
 
