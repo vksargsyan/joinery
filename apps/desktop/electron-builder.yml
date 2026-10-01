@@ -67,7 +67,15 @@ mac:
   # The bundle is Joinery.app: the top-level executableName (joinery, for Linux and Windows)
   # would otherwise name it, and the DMG's volume, in lower case.
   executableName: Joinery
+  # macOS 15 and earlier read the .icns; macOS 26 and later the Icon Composer icon compiled into
+  # Assets.car (scripts/icons.ts compiles it, so packaging needs no Xcode 26), named by
+  # CFBundleIconName. Without it they shrink the .icns into a grey tile of their own.
   icon: build/icon.icns
+  extraResources:
+    - from: build/Assets.car
+      to: Assets.car
+  extendInfo:
+    CFBundleIconName: Icon
   category: public.app-category.developer-tools
   hardenedRuntime: true
   gatekeeperAssess: false

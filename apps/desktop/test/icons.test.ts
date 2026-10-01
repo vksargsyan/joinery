@@ -6,12 +6,18 @@ import { inflateSync } from 'node:zlib';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
+  ASSET_CATALOG,
+  ASSET_ICON_NAME,
   BUILD_DIR,
   ICNS_ENTRIES,
   ICO_SIZES,
+  ICON_COMPOSER,
+  MAC_ARTWORK_SHARE,
+  MAC_TILE,
   PNG_SIZES,
   expectedIcons,
   generateIcons,
+  iconComposerJson,
   pngSize,
   readIcns,
   readIco,
@@ -65,6 +71,21 @@ function decodePng(png: Buffer): { width: number; height: number; pixels: Buffer
 const alphaAt = (image: { width: number; pixels: Buffer }, x: number, y: number): number =>
   image.pixels[(y * image.width + x) * 4 + 3]!;
 
+/** The box around an image's opaque pixels: [left, top, right, bottom), in pixels. */
+function opaqueBox(image: { width: number; height: number; pixels: Buffer }): number[] {
+  let [left, top, right, bottom] = [image.width, image.height, -1, -1];
+  for (let y = 0; y < image.height; y++) {
+    for (let x = 0; x < image.width; x++) {
+      if (alphaAt(image, x, y) === 0) continue;
+      left = Math.min(left, x);
+      right = Math.max(right, x + 1);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y + 1);
+    }
+  }
+  return [left, top, right, bottom];
+}
+
 /** The PNG payload of one ICNS entry. */
 function icnsPng(data: Buffer, type: string): Buffer {
   for (let at = 8; at < data.length;) {
@@ -84,6 +105,7 @@ function sizesIn(dir: string, icon: GeneratedIcon): number[] {
     return [width];
   }
   if (icon.format === 'ico') return readIco(data).map((image) => image.size);
+  if (icon.format === 'json') return [];
   return readIcns(data).map((entry) => entry.size);
 }
 
@@ -96,6 +118,8 @@ describe('generateIcons', () => {
       ...PNG_SIZES.map((size) => `icons/${size}x${size}.png`),
       'icon.ico',
       'icon.icns',
+      'icon.icon/icon.json',
+      'icon.icon/Assets/artwork.png',
     ]);
     for (const icon of written) expect(sizesIn(out, icon)).toEqual(icon.sizes);
   });
@@ -114,16 +138,43 @@ describe('generateIcons', () => {
     expect(entries).toEqual(ICNS_ENTRIES.map(([type, size]) => ({ type, size })));
   });
 
-  it('leaves a margin around the macOS artwork and fills the canvas elsewhere', () => {
-    // Halfway down the left edge: inside the tile on the full-bleed icon, in Apple's margin
-    // (100 of 1024 px) on the macOS one.
+  it('shows the artwork free-standing outside macOS', () => {
     const full = decodePng(readFileSync(join(out, 'icon.png')));
-    const mac = decodePng(icnsPng(readFileSync(join(out, 'icon.icns')), 'ic10'));
-    expect(alphaAt(full, 50, 512)).toBe(255);
-    expect(alphaAt(mac, 50, 512)).toBe(0);
-    expect(alphaAt(mac, 150, 512)).toBe(255);
-    // The rounded corners are transparent everywhere.
     expect(alphaAt(full, 0, 0)).toBe(0);
+    expect(alphaAt(full, 50, 512)).toBe(0);
+    expect(alphaAt(full, 512, 512)).toBe(255);
+  });
+
+  it("sets the macOS artwork on a tile in Apple's margin", () => {
+    // Halfway down the left edge: in Apple's margin (100 of 1024 px), then on the tile.
+    const mac = decodePng(icnsPng(readFileSync(join(out, 'icon.icns')), 'ic10'));
+    expect(alphaAt(mac, 50, 512)).toBe(0);
+    expect(alphaAt(mac, 110, 512)).toBe(255);
+    // The tile's corners are rounded.
+    expect(alphaAt(mac, 105, 105)).toBe(0);
+    // Tenmoku at the tile's foot, under the artwork.
+    const foot = (900 * 1024 + 512) * 4;
+    const hex = (at: number): string =>
+      [0, 1, 2].map((c) => mac.pixels[at + c]!.toString(16).padStart(2, '0')).join('');
+    expect(`#${hex(foot)}`).toBe(MAC_TILE[1]);
+  });
+
+  it('centres the Icon Composer layer on the artwork at the tile share', () => {
+    const layer = decodePng(readFileSync(join(out, ICON_COMPOSER, 'Assets', 'artwork.png')));
+    const [left, top, right, bottom] = opaqueBox(layer);
+    // The artwork is taller than wide, so its height is the share.
+    expect(Math.abs((bottom! - top!) / 1024 - MAC_ARTWORK_SHARE)).toBeLessThan(0.01);
+    expect(Math.abs((left! + right!) / 2 - 512)).toBeLessThanOrEqual(2);
+    expect(Math.abs((top! + bottom!) / 2 - 512)).toBeLessThanOrEqual(2);
+  });
+
+  it('writes the Icon Composer document for the layer, on the tile', () => {
+    const document = JSON.parse(readFileSync(join(out, ICON_COMPOSER, 'icon.json'), 'utf8'));
+    expect(document.groups[0].layers[0]['image-name']).toBe('artwork.png');
+    expect(document.fill['linear-gradient']).toEqual([
+      'srgb:0.14118,0.12549,0.10980,1.00000',
+      'srgb:0.06667,0.05882,0.05490,1.00000',
+    ]);
   });
 });
 
@@ -132,7 +183,18 @@ describe('the committed icons', () => {
     for (const icon of expectedIcons()) expect(sizesIn(BUILD_DIR, icon)).toEqual(icon.sizes);
   });
 
+  it('include the asset catalog macOS 26 reads, and the packaging bundles it', () => {
+    const catalog = readFileSync(join(BUILD_DIR, ASSET_CATALOG));
+    expect(catalog.toString('ascii', 0, 8)).toBe('BOMStore');
+    const config = readFileSync(join(BUILD_DIR, '..', 'electron-builder.yml'), 'utf8');
+    expect(config).toContain(`from: build/${ASSET_CATALOG}`);
+    expect(config).toContain(`CFBundleIconName: ${ASSET_ICON_NAME}`);
+  });
+
   it('are what the generator makes from build/icon.svg', () => {
+    expect(readFileSync(join(BUILD_DIR, ICON_COMPOSER, 'icon.json'), 'utf8')).toBe(
+      iconComposerJson(),
+    );
     // Pixels, not bytes: resvg may round differently on another CPU.
     const pngs = expectedIcons().filter((icon) => icon.format === 'png');
     for (const icon of pngs) {
