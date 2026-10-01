@@ -5,6 +5,10 @@ export interface MenuCommands {
   readonly about: () => void;
   readonly checkForUpdates: () => void;
   readonly releaseNotes: () => void;
+  /** The page's command palette, Go to Object and Keyboard Shortcuts (the page holds the keys). */
+  readonly commandPalette?: () => void;
+  readonly quickOpen?: () => void;
+  readonly keyboardShortcuts?: () => void;
 }
 
 /**
@@ -57,6 +61,18 @@ export function menuTemplate(options: {
   template.push({
     label: 'View',
     submenu: [
+      ...(commands?.commandPalette && commands.quickOpen
+        ? ([
+            { label: 'Command Palette…', click: commands.commandPalette },
+            { label: 'Go to Table or Collection…', click: commands.quickOpen },
+            ...(commands.keyboardShortcuts
+              ? ([
+                  { label: 'Keyboard Shortcuts', click: commands.keyboardShortcuts },
+                ] satisfies MenuItemConstructorOptions[])
+              : []),
+            { type: 'separator' },
+          ] satisfies MenuItemConstructorOptions[])
+        : []),
       ...(options.development
         ? ([
             { role: 'reload' },
@@ -75,7 +91,8 @@ export function menuTemplate(options: {
     label: 'Window',
     submenu: mac
       ? [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }]
-      : [{ role: 'minimize' }, { role: 'close' }],
+      : // Ctrl+W closes the tab (the page's key binding), as in VS Code.
+        [{ role: 'minimize' }, { role: 'close', accelerator: 'Ctrl+Shift+W' }],
   });
   if (commands) {
     template.push({

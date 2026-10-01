@@ -8,6 +8,8 @@ import {
   type SelectHTMLAttributes,
 } from 'react';
 
+import type { IconName } from './icon-names';
+
 /**
  * Small building blocks shared by the app: buttons, fields, badges and the dialog frame, in the
  * Kiln design system's VS Code geometry (26px controls, 2px corners). Rust is the only fill: one
@@ -199,88 +201,14 @@ export function Modal(props: {
   );
 }
 
+export type { IconName };
+
 /** Tiny inline icons (no icon font: nothing is fetched). */
 export function Icon({
   name,
   className,
 }: {
-  readonly name:
-    | 'play'
-    | 'play-all'
-    | 'stop'
-    | 'plus'
-    | 'refresh'
-    | 'chevron-right'
-    | 'chevron-down'
-    | 'more'
-    | 'database'
-    | 'table'
-    | 'folder'
-    | 'close'
-    | 'history'
-    | 'format'
-    | 'warning'
-    | 'download'
-    | 'copy'
-    | 'check'
-    | 'compare'
-    | 'schedule'
-    | 'jobs'
-    | 'sun'
-    | 'moon'
-    | 'undo'
-    | 'redo'
-    | 'discard'
-    | 'columns'
-    | 'bookmark'
-    | 'folder-move'
-    | 'folder-up'
-    | 'set-null'
-    | 'set-default'
-    | 'sort-asc'
-    | 'sort-desc'
-    | 'eye-off'
-    | 'pin'
-    | 'width'
-    | 'page-first'
-    | 'page-previous'
-    | 'page-next'
-    | 'page-last'
-    | 'settings'
-    | 'view-grid'
-    | 'view-form'
-    | 'view-json'
-    | 'view-tree'
-    | 'query'
-    | 'file-run'
-    | 'builder'
-    | 'diagram'
-    | 'server'
-    | 'transfer'
-    | 'edit'
-    | 'trash'
-    | 'design'
-    | 'import'
-    | 'export'
-    | 'wrench'
-    | 'table-new'
-    | 'compare-rows'
-    | 'key'
-    | 'chart'
-    | 'pulse'
-    | 'users'
-    | 'gauge'
-    | 'archive'
-    | 'restore'
-    | 'open'
-    | 'kebab'
-    | 'search'
-    | 'filter'
-    | 'connection-new'
-    | 'folder-new'
-    | 'disconnect'
-    | 'plug'
-    | 'link';
+  readonly name: IconName;
   readonly className?: string;
 }) {
   // Kiln Glyphs' drawing: a 16px grid, 1.3 strokes with round caps and joins, closed shapes
@@ -706,5 +634,3 @@ export function Icon({
     </svg>
   );
 }
-
-export type IconName = Parameters<typeof Icon>[0]['name'];

@@ -1,9 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { mainApi } from './lib/main-client';
 import { AboutDialog } from './components/AboutDialog';
+import { registerAppCommands, type AppActions } from './components/app-commands';
+import { CommandPalette } from './components/CommandPalette';
+import { CommandStatus } from './components/CommandStatus';
 import { ConnectionDialog, type ConnectionDialogMode } from './components/ConnectionDialog';
 import { Dock, openQueryTab } from './components/dock';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -20,7 +23,8 @@ import { TitleBar } from './components/TitleBar';
 import { useTheme } from './components/theme';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useConnections } from './state/connections';
-import { keys, useProfiles } from './state/data';
+import { keys, useProfiles, useSettings } from './state/data';
+import { startKeybindings, useKeybindings } from './state/keybindings';
 import { runningCount, showJobs, useJobs, watchJobs } from './state/jobs';
 import { usePanels } from './state/panels';
 import { openSchedulesPanel } from './state/schedules';
@@ -45,8 +49,9 @@ export function App() {
   );
   // Table data views and designers count as the active tab too.
   const activeId = useWorkspace((state) => state.activeTabId);
+  // Panels of no connection (Schedules, Keyboard Shortcuts) have the empty id.
   const activePanelProfile = usePanels((state) =>
-    activeId ? state.panels[activeId]?.profileId : undefined,
+    activeId ? state.panels[activeId]?.profileId || undefined : undefined,
   );
   const activePanelTitle = usePanels((state) =>
     activeId ? state.panels[activeId]?.title : undefined,
@@ -101,6 +106,23 @@ export function App() {
     else if (profile) openQueryTab({ profileId: profile.id, title: `${profile.name} query` });
   };
 
+  // The palette's commands and the key bindings (what App holds comes through `actions`).
+  const actions = useRef<AppActions>(undefined as unknown as AppActions);
+  actions.current = {
+    newConnection: () => setDialog({ kind: 'create' }),
+    editConnection: (profile) => setDialog({ kind: 'edit', profile }),
+    newQuery,
+    canNewQuery: () => activeTab !== undefined || readyProfiles.length > 0,
+    toggleHistory: () => setHistoryOpen((open) => !open),
+    toggleTheme: () => void toggleTheme(),
+  };
+  useEffect(() => registerAppCommands(() => actions.current), []);
+  useEffect(() => startKeybindings(), []);
+  const settings = useSettings();
+  useEffect(() => {
+    if (settings.data) useKeybindings.setState({ overrides: settings.data.keybindings });
+  }, [settings.data]);
+
   return (
     <div className="flex h-full flex-col">
       <TitleBar
@@ -149,6 +171,8 @@ export function App() {
       <TransferDbHost />
       <BackupDialogs />
       <AboutDialog />
+      <CommandPalette />
+      <CommandStatus />
       <UpdateNotice />
       {dialog && <ConnectionDialog mode={dialog} onClose={() => setDialog(undefined)} />}
     </div>

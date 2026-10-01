@@ -18,7 +18,8 @@ export type PanelKind =
   | 'er-diagram'
   | 'schedules'
   | 'redis-dump'
-  | 'objects';
+  | 'objects'
+  | 'keybindings';
 
 export interface PanelInfo {
   readonly id: string;

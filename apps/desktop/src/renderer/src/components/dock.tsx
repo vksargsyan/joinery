@@ -38,6 +38,7 @@ import { disposeSearchPanel } from '../state/search/panels';
 import { disposeErDiagram } from '../state/er-diagram/panels';
 import { disposeSchedulesPanel } from '../state/schedules';
 import { disposeDumpAnalysis } from '../state/redis/dump';
+import { disposeKeybindingsPanel } from '../state/keybindings-panel';
 import { disposeObjectsPanel } from '../state/objects-view';
 import { disposeQueryBuilder } from '../state/query-builder/panels';
 import { closeTab } from '../state/runner';
@@ -46,6 +47,7 @@ import { createTab, useWorkspace } from '../state/workspace';
 import { TableDesignerPanel } from './designer/TableDesignerPanel';
 import { EngineIcon } from './EngineIcon';
 import { QueryPanel } from './QueryPanel';
+import { KeybindingsPanel } from './KeybindingsPanel';
 import { ObjectsPanel } from './ObjectsPanel';
 import { RedisPanel } from './redis/RedisPanel';
 import { MongoPanel } from './mongo/MongoPanel';
@@ -189,6 +191,7 @@ function disposePanel(id: string): void {
   else if (info.kind === 'schedules') disposeSchedulesPanel(id);
   else if (info.kind === 'redis-dump') disposeDumpAnalysis(id);
   else if (info.kind === 'objects') disposeObjectsPanel(id);
+  else if (info.kind === 'keybindings') disposeKeybindingsPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -414,6 +417,10 @@ function ObjectsHost() {
   return <ObjectsPanel />;
 }
 
+function KeybindingsHost() {
+  return <KeybindingsPanel />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
@@ -436,7 +443,16 @@ function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
       {engine ? (
         <EngineIcon engine={engine} className="h-3.5 w-3.5" />
       ) : (
-        <Icon name="table" className="h-3.5 w-3.5 text-muted" />
+        <Icon
+          name={
+            info?.kind === 'keybindings'
+              ? 'settings'
+              : info?.kind === 'schedules'
+                ? 'schedule'
+                : 'table'
+          }
+          className="h-3.5 w-3.5 text-muted"
+        />
       )}
       <span className="max-w-48 truncate">{title}</span>
       <RestoredMarker id={panelId} />
@@ -491,6 +507,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         schedules: SchedulesHost,
         redisDump: RedisDumpHost,
         objects: ObjectsHost,
+        keybindings: KeybindingsHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}
