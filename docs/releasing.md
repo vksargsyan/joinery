@@ -212,10 +212,13 @@ reg add HKLM\SOFTWARE\Policies\Joinery /v DisableUpdates /t REG_DWORD /d 1 /f
 
 ## Icons
 
-Every icon comes from `apps/desktop/build/icon.svg` (a dovetail joint): `pnpm --filter
-@joinery/desktop icons` renders `icon.icns` (macOS, with Apple's margin), `icon.ico` (16–256 px),
-`icons/<n>x<n>.png` (Linux, and the window icon) and `icon.png`. The outputs are committed; a
-unit test fails when they no longer match the SVG.
+Every icon comes from `apps/desktop/build/icon.svg` (a joined database cylinder, ADR 0032):
+`pnpm --filter @joinery/desktop icons` renders `icon.ico` (16–256 px), `icons/<n>x<n>.png`
+(Linux, and the window icon) and `icon.png`, the artwork free-standing; and for macOS the
+artwork on a Tenmoku tile: `icon.icns` (macOS 15 and earlier, with Apple's margin) and the Icon
+Composer package `icon.icon`, which it compiles into `Assets.car` (macOS 26 and later) when Xcode
+26 or later is installed. The outputs are committed, so packaging needs no Xcode 26; regenerate
+on a Mac after changing the SVG. A unit test fails when they no longer match the SVG.
 
 ## Local builds
 
