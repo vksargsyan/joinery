@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { expect, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from '../app';
+import { connectionTab, launchApp, openNewConnection, type LaunchedApp } from '../app';
 
 /**
  * The screenshot harness for the Joinery website (docs/website-spec.md §6). Every scene is
@@ -144,10 +144,10 @@ export async function capture(
 /**
  * Creates a demo connection through the New connection dialog: filled from its URI, TLS verified
  * against the demo CA, the password remembered for this session, the environment set. Returns
- * with the dialog closed and the profile in the sidebar.
+ * with the dialog closed and the profile in the side bar.
  */
 export async function addConnection(page: Page, profile: DemoProfile): Promise<void> {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await expect(dialog).toBeVisible();
   await fillConnection(page, profile);
@@ -156,27 +156,29 @@ export async function addConnection(page: Page, profile: DemoProfile): Promise<v
   await expect(page.getByRole('treeitem', { name: profile.name })).toBeVisible();
 }
 
-/** Fills the open New connection dialog for a demo profile, without saving. */
+/**
+ * Fills the open New connection dialog for a demo profile, without saving: the URI on the first
+ * step, then the General and TLS tabs of the form (ADR 0028).
+ */
 export async function fillConnection(page: Page, profile: DemoProfile): Promise<void> {
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(profile.uri);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await dialog.getByLabel('Name').fill(profile.name);
-  const tls = dialog.getByLabel('TLS', { exact: true });
-  if (await tls.isVisible().catch(() => false)) {
-    await tls.selectOption('verify-full');
-    const ca = dialog.locator('#cx-ca');
-    if (await ca.isVisible().catch(() => false)) await ca.fill(DEMO_CA);
-  }
+  await dialog.getByLabel('Environment').selectOption(profile.environment);
   const storage = dialog.getByLabel('Password storage');
   if (await storage.isVisible().catch(() => false)) await storage.selectOption('session');
-  await dialog.getByLabel('Environment').selectOption(profile.environment);
+  await connectionTab(dialog, 'TLS');
+  await dialog.getByLabel('TLS mode').selectOption('verify-full');
+  await dialog.locator('#cx-ca').fill(DEMO_CA);
+  await connectionTab(dialog, 'General');
 }
 
 /** Connects a saved profile from the sidebar. */
 export async function connectProfile(page: Page, name: string): Promise<void> {
   const profile = page.getByRole('treeitem', { name });
-  await profile.locator('[data-tree-row]').first().click();
+  // A double-click connects (ADR 0027), as in the end-to-end tests.
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached({ timeout: 30_000 });
 }
 
