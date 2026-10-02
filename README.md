@@ -4,7 +4,10 @@ A cross-platform desktop database manager built with Electron, React and Node.js
 end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreSQL, Studio
 3T-level tooling for MongoDB, and first-class Redis and Elasticsearch support in one app.
 
-![Joinery running a query against PostgreSQL](docs/images/desktop-query.png)
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/desktop-query-light.png">
+  <img alt="Joinery running a query against PostgreSQL: the shop schema in the side bar, a monthly revenue query in the editor and its 54 rows in the grid" src="docs/images/desktop-query-dark.png">
+</picture>
 
 ## Status
 
@@ -148,8 +151,6 @@ What works today:
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
-
-Not built yet: cloud sync. The product specification lists the full scope.
 
 ## Repository layout
 

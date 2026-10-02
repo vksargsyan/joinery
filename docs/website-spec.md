@@ -36,7 +36,7 @@ Joinery is a cross-platform desktop database manager (Electron, React, TypeScrip
 
 Before writing anything, read the following in `~/My/joinery`:
 
-- `README.md`. The "What works today" section is the feature inventory. "Not built yet" is the roadmap.
+- `README.md`. The "What works today" section is the feature inventory.
 - `docs/adr/*.md`. These say how things work: process model, tunnels, job runner, sync, query builder, ER diagrams, search module, packaging.
 - `docs/releasing.md`. Covers installers, platforms, update channels, staged rollout and the managed-fleet policy switch.
 - `docs/backup-archive-format.md`. The `.jbak` format.
@@ -50,7 +50,7 @@ Rules for accuracy:
 
 - **Traceability.** Every statement on the site must trace back to one of these sources.
 - **Unverified behaviour.** If you can't confirm a behaviour from code, docs or a run of the app, leave it out. Never pad.
-- **Roadmap features** (the README's "Not built yet": today only cloud sync) appear **only** on a "Roadmap" page, labelled "Not available yet". Never present them as shipped, and never mention features that are in neither list.
+- **Unreleased features** (cloud sync of connections and credentials, for one) never appear on the site: no roadmap page, no teaser, no "coming soon". Never mention a feature that is not in "What works today".
 - **Banned content:**
   - invented metrics, benchmarks, user counts, testimonials or customer logos
   - pricing
@@ -174,8 +174,7 @@ Build these sections in order. Each feature section shows a real screenshot (§6
      - Linux: AppImage, deb and rpm, for x64 and arm64
    - Notes on stable and beta update channels.
    - The honest note that test builds are unsigned, and how to open them on macOS.
-9. **Roadmap teaser.** "Coming later", taken from "Not built yet", with a link to `/docs/roadmap`.
-10. **Footer.** Docs sections, GitHub, Releases and a "Built from Joinery {version} @ {short SHA}" line.
+9. **Footer.** Docs sections, GitHub, Releases and a "Built from Joinery {version} @ {short SHA}" line.
 
 Copy tone: confident, concrete, short. Every sentence names a real capability. No superlatives the product can't back up.
 
@@ -308,7 +307,6 @@ Copy tone: confident, concrete, short. Every sentence names a real capability. N
 - Data and settings locations
 - Updates, channels, staged rollout and managed-fleet policy
 - Troubleshooting and FAQ
-- Roadmap
 
 ### 5.2 Page template
 
@@ -338,7 +336,7 @@ These must stay in sync with the product, so generate them with scripts in the w
 Add `scripts/coverage.ts` and wire it into `pnpm check`. It:
 
 - maps every bullet of README "What works today" to the page(s) that cover it, and fails if a bullet has no page
-- fails if a roadmap item is mentioned outside `roadmap.mdx` without a "Not available yet" callout
+- fails if an unreleased feature (the script keeps the list) is mentioned on any page
 
 ---
 
@@ -560,7 +558,7 @@ Each animation depicts the **real mechanism** as described in the ADRs and sourc
 | `postgres compare`   | Structure sync       |
 | `ttl`                | Redis TTL            |
 | `staged rollout`     | Updates              |
-| `parquet`            | Roadmap              |
+| `parquet`            | Export               |
 
 ---
 
@@ -637,7 +635,7 @@ joinery-website/
 
 - All §8 search queries pass.
 - Every README feature bullet is covered (`coverage.ts`).
-- No roadmap item is presented as shipped.
+- No unreleased feature is mentioned.
 
 **Assets**
 
