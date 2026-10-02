@@ -331,6 +331,11 @@ progress {
   z-index: 35;
 }
 
+/* The Elasticsearch console's request at the cursor (ConsoleEditor): a rust wash, as selections are. */
+.monaco-editor .joinery-console-request {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 /* The ER diagram's canvas: React Flow in the app's colours. */
 .er-canvas {
   --er-line: color-mix(in srgb, var(--muted) 72%, var(--bg));

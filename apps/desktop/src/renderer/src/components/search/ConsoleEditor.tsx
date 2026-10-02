@@ -105,7 +105,9 @@ export function ConsoleEditor(props: {
           range: new monaco.Range(start.lineNumber, 1, end.lineNumber, 1),
           options: {
             isWholeLine: true,
-            className: 'bg-accent/10',
+            // Monaco keeps only letters, digits, - and _ in decoration classes, so a Tailwind
+            // class with an opacity (bg-accent/10) would lose it: styles.css defines the wash.
+            className: 'joinery-console-request',
             linesDecorationsClassName: 'border-l-2 border-accent',
           },
         },

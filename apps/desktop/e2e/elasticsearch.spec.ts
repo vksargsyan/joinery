@@ -166,6 +166,17 @@ test('completes endpoints and index names in the console', async () => {
   await page.keyboard.press('Escape');
 });
 
+test('marks the request at the cursor with a wash that keeps its text readable', async () => {
+  await replaceText('GET _cat/indices');
+  const request = consolePanel().locator('.joinery-console-request');
+  await expect(request).toHaveCount(1);
+  const background = await request.evaluate((element) => getComputedStyle(element).backgroundColor);
+  // `color(srgb r g b / a)` or `rgba(r, g, b, a)`: a translucent wash, never the solid accent.
+  const alpha = Number(/[/,]\s*([\d.]+)\)$/.exec(background)?.[1] ?? 1);
+  expect(alpha).toBeGreaterThan(0);
+  expect(alpha).toBeLessThanOrEqual(0.2);
+});
+
 test('asks before a destructive request, and sends nothing when declined', async () => {
   await replaceText(`DELETE /${index}`);
   await consolePanel().getByRole('button', { name: 'Send', exact: true }).click();
