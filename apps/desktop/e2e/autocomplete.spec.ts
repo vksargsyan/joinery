@@ -117,6 +117,11 @@ test('suggests the columns after WHERE', async () => {
   const list = suggestions();
   await expect(list).toContainText('author_id');
   await expect(list).toContainText('title');
+  // Under the cursor, not shifted by the dock panel's offset in the window.
+  const cursor = await editor().locator('.cursor').first().boundingBox();
+  const box = await list.boundingBox();
+  expect(Math.abs(box!.x - cursor!.x)).toBeLessThan(60);
+  expect(Math.abs(box!.y - (cursor!.y + cursor!.height))).toBeLessThan(40);
   await page.keyboard.press('Escape');
 });
 

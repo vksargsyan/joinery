@@ -321,6 +321,16 @@ progress {
   z-index: 35;
 }
 
+/* An editor's suggestions and hovers (createEditor in lib/monaco.ts): above the dock panels. */
+.monaco-editor.joinery-editor-overflow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 35;
+}
+
 /* The ER diagram's canvas: React Flow in the app's colours. */
 .er-canvas {
   --er-line: color-mix(in srgb, var(--muted) 72%, var(--bg));

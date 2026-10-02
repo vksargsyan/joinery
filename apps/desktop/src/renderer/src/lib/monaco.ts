@@ -129,6 +129,34 @@ export const EDITOR_FONT: monaco.editor.IEditorOptions = {
   cursorSmoothCaretAnimation: 'on',
 };
 
+/**
+ * An editor whose overflowing widgets (suggestions, hovers, parameter hints) render in a layer
+ * of their own on the document body. Monaco places them `position: fixed` at window coordinates,
+ * but a dock panel lives in dockview's render overlay, whose paint containment and GPU transform
+ * make it the containing block for fixed descendants: the list landed offset by the panel's
+ * position from the window's corner, and was clipped to the panel. An editor in a dialog keeps
+ * Monaco's own layer, so a click on a suggestion stays inside the dialog and does not dismiss it.
+ */
+export function createEditor(
+  element: HTMLElement,
+  options: monaco.editor.IStandaloneEditorConstructionOptions,
+): monaco.editor.IStandaloneCodeEditor {
+  if (element.closest('[role="dialog"], [role="alertdialog"]')) {
+    return monaco.editor.create(element, { ...options, fixedOverflowWidgets: true });
+  }
+  const layer = document.createElement('div');
+  // `monaco-editor` scopes the widgets' styles and the theme's colour variables.
+  layer.className = 'monaco-editor joinery-editor-overflow';
+  document.body.append(layer);
+  const editor = monaco.editor.create(element, {
+    ...options,
+    fixedOverflowWidgets: true,
+    overflowWidgetsDomNode: layer,
+  });
+  editor.onDidDispose(() => layer.remove());
+  return editor;
+}
+
 /** Monaco's SQL language for a dialect. */
 export function languageFor(dialect: SqlDialect): string {
   return dialect === 'postgres' ? 'pgsql' : 'mysql';

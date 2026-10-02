@@ -1,7 +1,7 @@
 import { parseConsole, requestAt, type ConsoleCompletionOptions } from '@joinery/search-tools';
 import { useEffect, useRef } from 'react';
 
-import { EDITOR_FONT, monaco } from '../../lib/monaco';
+import { createEditor, EDITOR_FONT, monaco } from '../../lib/monaco';
 import {
   CONSOLE_LANGUAGE,
   bindConsoleModel,
@@ -37,7 +37,7 @@ export function ConsoleEditor(props: {
     registerConsoleLanguage();
     const model = monaco.editor.createModel(latest.current.initialText, CONSOLE_LANGUAGE);
     bindConsoleModel(model, () => latest.current.completion());
-    const editor = monaco.editor.create(element, {
+    const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
       theme: latest.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
@@ -45,7 +45,6 @@ export function ConsoleEditor(props: {
       fontSize: 13,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      fixedOverflowWidgets: true,
       lineNumbersMinChars: 3,
       tabSize: 2,
       insertSpaces: true,

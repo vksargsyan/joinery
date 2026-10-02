@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import { EDITOR_FONT, monaco } from '../../lib/monaco';
+import { createEditor, EDITOR_FONT, monaco } from '../../lib/monaco';
 import { CONSOLE_LANGUAGE, registerConsoleLanguage } from './language';
 
 /**
@@ -34,7 +34,7 @@ export function JsonEditor(props: {
       latest.current.value,
       latest.current.language ?? CONSOLE_LANGUAGE,
     );
-    const editor = monaco.editor.create(element, {
+    const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
       theme: latest.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
@@ -42,7 +42,6 @@ export function JsonEditor(props: {
       fontSize: 13,
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      fixedOverflowWidgets: true,
       lineNumbersMinChars: 3,
       tabSize: 2,
       insertSpaces: true,
