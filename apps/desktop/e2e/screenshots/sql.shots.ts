@@ -296,21 +296,19 @@ test('explain', async () => {
   await openShopTables();
   await newQuery();
   await pasteInEditor(`-- Revenue by country from delivered orders
-select c.country,
-       count(distinct o.id)             as orders,
+select c.country, count(distinct o.id) as orders,
        sum(oi.quantity * oi.unit_price) as revenue
 from shop.customers c
 join shop.orders o       on o.customer_id = c.id
 join shop.order_items oi on oi.order_id = o.id
 where o.status = 'delivered'
-group by c.country
-order by revenue desc;`);
+group by c.country order by revenue desc;`);
   await page.getByRole('button', { name: 'Explain Analyze' }).click();
   const plan = visible('sql-plan');
   await expect(plan.getByTestId('plan-kind')).toHaveText('Analyzed');
   const hottest = plan.locator('[data-testid="plan-node"][data-hottest="true"]');
   await expect(hottest).toHaveCount(1);
-  await splitEditor(0.3);
+  await splitEditor(0.25);
   await hottest.click();
   await capture(page, 'explain');
 });

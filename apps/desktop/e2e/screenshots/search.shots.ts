@@ -168,10 +168,10 @@ test('es-sql', async () => {
   await replaceText(
     page,
     sql.getByTestId('sql-editor'),
-    'SELECT wood, COUNT(*) AS products, ROUND(AVG(price), 2) AS avg_price\nFROM products\nWHERE active = true\nGROUP BY wood\nORDER BY avg_price DESC',
+    'SELECT wood, COUNT(*) AS products, ROUND(AVG(price), 2) AS avg_price\nFROM products\nWHERE active = true\nGROUP BY wood\nORDER BY wood',
   );
   await sql.getByRole('button', { name: 'Run', exact: true }).click();
-  await expect(sql.getByTestId('sql-row-count')).toContainText('rows');
+  await expect(sql.getByTestId('sql-row-count')).toHaveText('7 rows');
   await sql.getByRole('button', { name: 'Translate to DSL' }).click();
   await expect(sql.getByTestId('sql-dsl')).toContainText('"aggregations"');
   await capture(page, 'es-sql');
