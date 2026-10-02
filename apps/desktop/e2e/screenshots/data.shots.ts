@@ -155,7 +155,8 @@ async function menu(row: Locator, item: string): Promise<void> {
 }
 
 async function expand(row: Locator, child: string, within?: Locator): Promise<void> {
-  if (!(await treeRow(child, within).isVisible())) await row.click();
+  // The chevron only expands; a click on the row also opens the object (an Objects tab).
+  if (!(await treeRow(child, within).isVisible())) await row.locator('[data-tree-chevron]').click();
   await expect(treeRow(child, within)).toBeVisible();
 }
 
@@ -471,10 +472,10 @@ test('schedules', async () => {
   await editor.getByRole('button', { name: 'Choose folder…' }).click();
   await page.getByTestId('schedule-save').click();
   await expect(editor).toBeHidden();
-  await closeTabs();
   // Only the connection stays open in the explorer.
-  await treeRow('larchwood').click();
+  await treeRow('larchwood').locator('[data-tree-chevron]').click();
   await expect(treeRow('shop')).toBeHidden();
+  await closeTabs();
 
   await page
     .getByRole('toolbar', { name: 'Window' })
