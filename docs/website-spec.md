@@ -32,7 +32,7 @@ Joinery is a cross-platform desktop database manager (Electron, React, TypeScrip
 
 - **Engines:** MySQL, MariaDB, PostgreSQL, MongoDB, Redis/Valkey and Elasticsearch, all in one app.
 - **CLI:** a headless CLI, `joinery`, runs the same engine.
-- **Version:** the current version is `0.1.0-beta.2`, a **beta**.
+- **Version:** read it from `apps/desktop/package.json` on `main` (a **beta**). Always work from `main`; other branches can be far behind.
 
 Before writing anything, read the following in `~/My/joinery`:
 
@@ -50,7 +50,7 @@ Rules for accuracy:
 
 - **Traceability.** Every statement on the site must trace back to one of these sources.
 - **Unverified behaviour.** If you can't confirm a behaviour from code, docs or a run of the app, leave it out. Never pad.
-- **Roadmap features** (scheduler, Parquet, saved ER models, cloud sync, AI assistant, embedded mongosh, RediSearch, RDB analysis, Elasticsearch query builder) appear **only** on a "Roadmap" page, labelled "Not available yet". Never present them as shipped.
+- **Roadmap features** (the README's "Not built yet": today only cloud sync) appear **only** on a "Roadmap" page, labelled "Not available yet". Never present them as shipped, and never mention features that are in neither list.
 - **Banned content:**
   - invented metrics, benchmarks, user counts, testimonials or customer logos
   - pricing
@@ -76,12 +76,12 @@ Rules for accuracy:
 
 ## 3. Design direction: "utterly beautiful", made testable
 
-**Concept: precision joinery.** Fine hairlines, an exact grid, and parts that interlock the way the dovetail in the logo does. The dovetail is the one recurring motif, used for section dividers, the focus ring accent and the loading state. Never use wood textures, woodgrain or clip art.
+**Concept: precision joinery.** Fine hairlines, an exact grid, and parts that interlock, like the joined cylinder of the logo. A small dovetail is the one recurring motif, used for section dividers and list markers. Never use wood textures, woodgrain or clip art.
 
 **Brand palette.** Derive it from the product:
 
-- **Icon colours:** amber `#f5a524` (signature accent, use it sparingly) and navy `#26407a`.
-- **App dark theme:** bg `#101216`, panel `#161a20`, border `#2b313c`, fg `#e6e8ec`, muted `#98a2b3`, accent blue `#4f8cff`.
+- **The app's design system is Kiln** (ADR 0025): Tenmoku (dark) and Bisque (light), rust as the only accent, the other glazes (celadon, ochre, red, cobalt, lilac) carrying meaning. Take the exact values from `styles.css` and `lib/kiln.ts`.
+- **Logo:** the joined-cylinder icon (ADR 0032), `apps/desktop/build/icon.svg`.
 - **App light theme:** bg `#f6f7f9`, panel `#ffffff`, fg `#1a1e24`, accent `#2f6fec`.
 
 **Tokens.** Define every colour, space, radius, shadow and duration as a CSS custom property in one tokens file. Both the landing page and the Starlight theme override use that file. Components never use raw hex values.
@@ -130,13 +130,13 @@ Fix whatever fails these checks.
 Build these sections in order. Each feature section shows a real screenshot (§6) or a motion piece (§7) and links to its docs page.
 
 1. **Navigation bar.** It is sticky and turns translucent on scroll. It holds:
-   - the logo (the dovetail from `icon.svg`) with the "Joinery" wordmark
+   - the logo (`icon.svg`) with the "Joinery" wordmark
    - links: Docs, CLI, Download, GitHub
    - a search button showing `⌘K` / `Ctrl K`, which opens the same Pagefind search as the docs
    - the theme toggle
 2. **Hero.**
    - A headline and a one-sentence subhead: one app for six engines, plus a CLI.
-   - A "Beta · v0.1.0-beta.2" pill.
+   - A "Beta · v{version}" pill.
    - A primary CTA, **Download for {detected OS}**, and a secondary CTA, **Read the docs**. The primary CTA links to `releases/latest`. If OS detection fails, link to the releases page instead.
    - The hero screenshot: a PostgreSQL query tab with results.
 3. **Engines.** Six engine tiles with one line each on what Joinery does for that engine. Use text wordmarks or neutral glyphs, not third-party logos.
@@ -157,7 +157,7 @@ Build these sections in order. Each feature section shows a real screenshot (§6
 6. **Secure by default.**
    - SSH (jump hosts, a shared session, `known_hosts` checks)
    - SOCKS5/HTTP proxies
-   - TLS `verify-full` by default
+   - TLS in four modes, up to verify-full (off by default; a URI's sslmode, rediss://, https:// or mongodb+srv:// turns it on)
    - passwords in the OS keychain
    - confirmations for risky writes and production profiles
    - sandboxed renderer
@@ -474,7 +474,7 @@ Each animation depicts the **real mechanism** as described in the ADRs and sourc
 
 **Rendering.**
 
-- Inline SVG, drawn in the site's visual language (hairlines, the grid, dovetail-shaped connectors).
+- Inline SVG, drawn in the site's visual language (hairlines, the grid, Kiln glazes for each kind of data).
 - Colours come only from tokens, so each piece re-themes instantly with dark/light.
 - Each piece weighs at most ~30 KB gzipped (SVG plus its script).
 
@@ -594,7 +594,7 @@ joinery-website/
 ## 10. SEO, social and metadata
 
 - Every page has a unique `<title>` and meta description, a canonical URL from `SITE_URL`, a `sitemap.xml` and a `robots.txt`.
-- Generate an Open Graph image per page at build time: the dovetail mark, the page title and the section name, in brand colours.
+- Generate an Open Graph image per page at build time: the logo, the page title and the section name, in brand colours.
 - Favicons and the touch icon come from `icon.svg`.
 - Add a `SoftwareApplication` JSON-LD block on the landing page, with no rating or price fields.
 
