@@ -13,13 +13,14 @@ export interface LaunchedApp {
 /**
  * Launches the built app (`out/`) with a throwaway user data directory, so every run starts with
  * an empty local store. With `userData`, it uses (and keeps) that directory instead, so a test
- * can relaunch the app on the same store, after a crash for instance.
+ * can relaunch the app on the same store, after a crash for instance. `args` are extra Chromium
+ * switches (the screenshot harness passes `--force-device-scale-factor`).
  */
 export async function launchApp(
-  options: { readonly userData?: string } = {},
+  options: { readonly userData?: string; readonly args?: readonly string[] } = {},
 ): Promise<LaunchedApp> {
   const userData = options.userData ?? mkdtempSync(join(tmpdir(), 'joinery-e2e-'));
-  const args = [resolve(import.meta.dirname, '..')];
+  const args = [resolve(import.meta.dirname, '..'), ...(options.args ?? [])];
   // Chromium refuses to start its sandbox as root (e.g. in a CI or dev container). Only then,
   // and only from this launcher, is --no-sandbox passed; the app itself always runs sandboxed.
   if (process.getuid?.() === 0 || process.env['JOINERY_E2E_NO_SANDBOX'] === '1') {
