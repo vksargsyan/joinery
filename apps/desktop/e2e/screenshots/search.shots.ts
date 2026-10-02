@@ -86,12 +86,7 @@ test('es-console', async () => {
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Home');
-  await page.keyboard.type('GET /products/_se');
-  await page.waitForTimeout(1500);
-  await page.screenshot({
-    path: '/tmp/claude-0/-home-user-joinery/958c0980-fb91-511c-827a-391763c85772/scratchpad/dbg1.png',
-  });
-  await page.keyboard.press('ControlOrMeta+Space');
+  await page.keyboard.type('GET /products/_sea');
   const suggestions = page.locator('.monaco-editor .suggest-widget').filter({ visible: true });
   await expect(suggestions).toContainText('_search');
   await capture(page, 'es-console');
@@ -116,25 +111,42 @@ test('es-builder', async () => {
   const condition = (field: string): Locator =>
     builder.locator(`[data-testid="search-builder-condition"][data-field="${field}"]`);
 
-  // "table" in the description, from walnut or oak, under 1,500 euros, still sold.
+  // Tables and desks in walnut, oak or cherry, up to 1,500 euros, still sold.
   await addTo('description', 'Must');
-  await condition('description').getByTestId('search-builder-value').fill('table');
+  await condition('description').getByTestId('search-builder-value').fill('table desk');
   await addTo('wood', 'Filter');
   await condition('wood').getByTestId('search-builder-operator').selectOption('terms');
-  await condition('wood').getByTestId('search-builder-value').fill('walnut\noak');
+  await condition('wood').getByTestId('search-builder-value').fill('walnut, oak, cherry');
   await addTo('price', 'Filter');
   await condition('price').getByTestId('search-builder-operator').selectOption('range');
   await condition('price').getByTestId('search-builder-upper').fill('1500');
   await addTo('active', 'Filter');
   await condition('active').getByTestId('search-builder-value').selectOption('true');
-  // Average price per wood, and the sort.
-  await addTo('wood', 'Aggregate: Terms');
-  await builder.getByTestId('search-builder-tab-query').click();
+  // The most expensive first.
   await addTo('price', /^Sort by/);
+  await builder
+    .getByTestId('search-builder-sort-entry')
+    .getByRole('radio', { name: 'Descending' })
+    .click();
+  // Products per wood, with the lowest price of each.
+  await addTo('wood', 'Aggregate: Terms');
+  const byWood = builder.getByTestId('search-builder-agg').first();
+  await byWood.getByTestId('search-builder-add-sub-agg').selectOption('min');
+  await byWood
+    .getByTestId('search-builder-agg')
+    .last()
+    .getByTestId('search-builder-agg-field')
+    .selectOption('price');
   await builder.getByTestId('search-builder-tab-query').click();
   await documents().getByRole('button', { name: 'Search', exact: true }).click();
   await expect(documents().getByTestId('documents-total')).toContainText('matching');
   await capture(page, 'es-builder');
+
+  // The aggregations: as built, and their buckets in place of the documents.
+  await builder.getByTestId('search-builder-tab-aggs').click();
+  await documents().getByTestId('documents-tab-aggregations').click();
+  await expect(documents().getByTestId('search-aggregations')).toContainText('min_price');
+  await capture(page, 'es-builder-aggregations');
 });
 
 test('es-documents', async () => {
@@ -165,7 +177,15 @@ test('es-documents', async () => {
   }
   const product = JSON.parse(stored) as Record<string, unknown>;
   const edited = { ...product, price: 1849.0, lead_time_days: 42 };
-  await replaceText(page, source, JSON.stringify(edited, null, 2));
+  // Pasted, so the editor keeps the text as it is (typing would auto-indent and auto-close).
+  await launched!.app.evaluate(
+    ({ clipboard }, text) => clipboard.writeText(text),
+    JSON.stringify(edited, null, 2),
+  );
+  await source.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect(source).toContainText('"lead_time_days": 42');
   await capture(page, 'es-documents');
   await editor.getByRole('button', { name: 'Cancel' }).click();
 });
@@ -177,13 +197,24 @@ test('es-sql', async () => {
   await replaceText(
     page,
     sql.getByTestId('sql-editor'),
-    'SELECT wood, COUNT(*) AS products, ROUND(AVG(price), 2) AS avg_price\nFROM products\nWHERE active = true\nGROUP BY wood\nORDER BY wood',
+    'SELECT wood, COUNT(*) AS products, MIN(price) AS from_eur, MAX(price) AS to_eur\nFROM products\nWHERE active = true\nGROUP BY wood\nORDER BY wood',
   );
   await sql.getByRole('button', { name: 'Run', exact: true }).click();
   await expect(sql.getByTestId('sql-row-count')).toHaveText('7 rows');
   await sql.getByRole('button', { name: 'Translate to DSL' }).click();
   await expect(sql.getByTestId('sql-dsl')).toContainText('"aggregations"');
   await capture(page, 'es-sql');
+
+  // The same question in ES|QL.
+  await sql.getByRole('radio', { name: 'ES|QL' }).click();
+  await replaceText(
+    page,
+    sql.getByTestId('sql-editor'),
+    'FROM products\n| WHERE active == true\n| STATS products = COUNT(*), avg_price = ROUND(AVG(price), 2) BY wood\n| SORT avg_price DESC',
+  );
+  await sql.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(sql.getByTestId('sql-row-count')).toHaveText('7 rows');
+  await capture(page, 'es-esql');
 });
 
 test('es-cluster', async () => {
