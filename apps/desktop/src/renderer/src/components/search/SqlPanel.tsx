@@ -6,7 +6,7 @@ import { monaco } from '../../lib/monaco';
 import { ESQL_WELCOME, SQL_WELCOME, type SqlView } from '../../state/search/sql';
 import { useSearchView } from '../../state/search/view';
 import { useTheme } from '../theme';
-import { Button, Icon, cx } from '../ui';
+import { Button, cx, Icon, TAB } from '../ui';
 import { AggregationView, FlatTable } from './AggregationView';
 import { JsonEditor } from './JsonEditor';
 import { openSearchConsole } from './open';
@@ -98,7 +98,7 @@ export function SqlPanel({ view }: { readonly view: SqlView }) {
               }
               className={cx(
                 'px-2 py-0.5 text-xs disabled:opacity-40',
-                mode === option ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                mode === option ? 'bg-badge text-fg' : 'hover:bg-hover',
               )}
               onClick={() => view.setMode(option)}
             >
@@ -157,7 +157,7 @@ export function SqlPanel({ view }: { readonly view: SqlView }) {
         </div>
         {mode === 'sql' && translation !== undefined && (
           <div
-            className="flex gap-1 border-b border-border bg-panel px-2 pt-1"
+            className="flex gap-1 border-b border-border bg-panel px-2"
             role="tablist"
             aria-label="Results"
           >
@@ -167,12 +167,7 @@ export function SqlPanel({ view }: { readonly view: SqlView }) {
                 type="button"
                 role="tab"
                 aria-selected={tab === id}
-                className={cx(
-                  '-mb-px rounded-t border border-b-0 px-3 py-1 text-xs',
-                  tab === id
-                    ? 'border-border bg-bg'
-                    : 'border-transparent text-muted hover:text-fg',
-                )}
+                className={TAB}
                 onClick={() => setTab(id)}
               >
                 {id === 'results' ? 'Results' : 'DSL'}
@@ -350,7 +345,7 @@ function DslPane(props: { readonly view: SqlView; readonly theme: 'dark' | 'ligh
                       aria-checked={pane === option}
                       className={cx(
                         'px-2 py-0.5',
-                        pane === option ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                        pane === option ? 'bg-badge text-fg' : 'hover:bg-hover',
                       )}
                       onClick={() => setPane(option)}
                     >

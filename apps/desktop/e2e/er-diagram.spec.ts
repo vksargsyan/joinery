@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { Session } from '@joinery/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
@@ -96,17 +96,16 @@ function edges(): Locator {
 }
 
 test('draws the whole database, then one schema', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name', { exact: true }).fill(NAME);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
-  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().click();
+  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().dblclick();
   await expect(treeRow(database!.name)).toBeVisible();
 
   await treeRow(database!.name).click({ button: 'right' });
@@ -139,7 +138,8 @@ test('draws the whole database, then one schema', async () => {
 });
 
 test('a sales schema diagram shows the referenced table as a stub', async () => {
-  await treeRow(database!.name).click();
+  // The chevron only expands; a click on the row would also bring the Objects tab forward.
+  await treeRow(database!.name).locator('[data-tree-chevron]').click();
   await treeRow('sales').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'ER diagram' }).click();
   const view = diagram();

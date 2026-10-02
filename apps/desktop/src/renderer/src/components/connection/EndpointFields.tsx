@@ -113,7 +113,7 @@ export function EndpointFields(props: {
             />
           </Field>
           {engine === 'redis' && /^rediss:/i.test(uri) && (
-            <Note>rediss:// connects with TLS, configured under TLS below.</Note>
+            <Note>rediss:// connects with TLS, configured on the TLS tab.</Note>
           )}
         </>
       );
@@ -135,9 +135,9 @@ export function EndpointFields(props: {
           </Field>
           <Note>
             Joinery looks up the hosts (the _mongodb._tcp SRV record) and default options in DNS, as
-            a mongodb+srv:// URI does, and connects with TLS unless you turn it off below. The
-            lookup happens on this computer, also when the servers are reached through an SSH tunnel
-            or a proxy.
+            a mongodb+srv:// URI does, and connects with TLS unless you turn it off on the TLS tab.
+            The lookup happens on this computer, also when the servers are reached through an SSH
+            tunnel or a proxy.
           </Note>
         </>
       );

@@ -6,7 +6,7 @@ import type { MongoSession } from '@joinery/driver-mongodb';
 import { toEjson } from '@joinery/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
 
 /**
@@ -94,7 +94,7 @@ async function stubSaveDialog(path: string): Promise<void> {
 }
 
 test('connects and shows the scratch database', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(withoutTls(MONGO_URL!));
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -104,7 +104,7 @@ test('connects and shows the scratch database', async () => {
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await treeRow(db).click();
   await treeRow('Collections').click();
   await expect(treeRow('orders')).toBeVisible();
@@ -201,7 +201,8 @@ test('exports the collection view query as Python and saves it', async () => {
 
 test("opens a collection's SQL tab with a starter query, and exports a translation", async () => {
   const collection = visible('mongo-collection-panel');
-  await collection.getByRole('button', { name: 'SQL', exact: true }).click();
+  await collection.getByRole('button', { name: 'Tools' }).click();
+  await page.getByRole('menuitem', { name: /^SQL/ }).click();
   const tab = page.getByTestId('mongo-sql').filter({ visible: true });
   await expect(tab.getByTestId('mongo-sql-editor')).toContainText('FROM orders');
   await expect(tab.getByTestId('mongo-sql-mql')).toContainText('.limit(100)');

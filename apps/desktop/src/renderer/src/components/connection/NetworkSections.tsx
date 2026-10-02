@@ -39,10 +39,7 @@ export function SshSection(props: {
   const enabled = useWatch({ control, name: 'sshEnabled' });
   const errors = formState.errors;
   return (
-    <fieldset
-      className="col-span-2 flex flex-col gap-3 rounded border border-border p-3"
-      aria-label="SSH tunnel"
-    >
+    <fieldset className="col-span-2 flex flex-col gap-3" aria-label="SSH tunnel">
       <label className="flex items-center gap-2 text-[13px] font-medium">
         <input type="checkbox" {...register('sshEnabled')} />
         Connect through an SSH tunnel
@@ -335,10 +332,10 @@ export function ProxySection(props: {
   const errors = formState.errors;
   return (
     <fieldset
-      className="col-span-2 grid grid-cols-[1fr_90px_1fr] gap-x-3 gap-y-2 rounded border border-border p-3"
+      className="col-span-2 grid grid-cols-[1fr_90px_1fr] gap-x-3 gap-y-2"
       aria-label="Proxy settings"
     >
-      <Field label="Proxy" htmlFor="cx-proxy-kind" className="col-span-3">
+      <Field label="Proxy type" htmlFor="cx-proxy-kind" className="col-span-3">
         <Select id="cx-proxy-kind" {...register('proxyKind')}>
           <option value="none">No proxy</option>
           <option value="socks5">SOCKS5</option>

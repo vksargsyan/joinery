@@ -1,6 +1,6 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
 
-import { languageFor, monaco } from '../../lib/monaco';
+import { EDITOR_FONT, languageFor, monaco } from '../../lib/monaco';
 import { bindModel, registerSqlLanguage, unbindModel } from '../../lib/sql-language';
 import { useWorkspace } from '../../state/workspace';
 import { useBuilder, useBuilderSelector } from './parts';
@@ -39,6 +39,7 @@ export function SqlPane(props: {
     if (!element) return;
     const model = monaco.editor.createModel(builder.state.sql, languageFor(builder.target.dialect));
     const editor = monaco.editor.create(element, {
+      ...EDITOR_FONT,
       model,
       theme: props.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
       automaticLayout: true,

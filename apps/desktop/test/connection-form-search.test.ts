@@ -21,6 +21,10 @@ import {
 function elastic(overrides: Partial<ConnectionFormValues> = {}): ConnectionFormValues {
   return {
     ...defaultFormValues('elasticsearch'),
+    // A secured cluster: https, verified TLS, basic authentication.
+    urls: [{ url: 'https://localhost:9200' }],
+    tlsMode: 'verify-full',
+    authMethod: 'password',
     name: 'Logs',
     user: 'elastic',
     password: 'changeme',
@@ -56,14 +60,15 @@ const parse: ParseUri = ({ uri, engine }) => {
 };
 
 describe('Elasticsearch defaults', () => {
-  it('start on an https node URL with verified TLS and basic authentication', () => {
+  it('start on an http node URL with TLS off and no sign-in', () => {
     expect(defaultFormValues('elasticsearch')).toMatchObject({
       endpointKind: 'urls',
-      urls: [{ url: 'https://localhost:9200' }],
-      authMethod: 'password',
-      tlsMode: 'verify-full',
+      urls: [{ url: 'http://localhost:9200' }],
+      authMethod: 'none',
+      tlsMode: 'disable',
       sniff: false,
     });
+    expect(issues({ ...defaultFormValues('elasticsearch'), name: 'Logs' })).toEqual({});
     expect(issues(elastic())).toEqual({});
   });
 
@@ -76,7 +81,7 @@ describe('Elasticsearch defaults', () => {
     );
     expect(back).toMatchObject({
       endpointKind: 'urls',
-      urls: [{ url: 'https://localhost:9200' }],
+      urls: [{ url: 'http://localhost:9200' }],
       cloudId: '',
       sniff: false,
     });

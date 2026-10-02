@@ -29,7 +29,7 @@ export function StepBar<S extends string>(props: {
           className={cx(
             'flex items-center gap-1 rounded px-2 py-0.5',
             step === props.current
-              ? 'bg-accent text-accent-fg'
+              ? 'bg-badge text-rust'
               : index < at
                 ? 'bg-panel-2 text-fg'
                 : 'text-muted',

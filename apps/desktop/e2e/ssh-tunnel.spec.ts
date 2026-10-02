@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { startSshServer, type TestSshServer } from '../test/ssh-server';
-import { launchApp, type LaunchedApp } from './app';
+import { connectionTab, launchApp, openNewConnection, type LaunchedApp } from './app';
 
 /**
  * An SSH tunnel end to end (spec §4): an in-process SSH server in the test process forwards to
@@ -53,16 +53,15 @@ function hostKeyPrompt() {
 
 test('asks about the host key, runs a query through the tunnel and reconnects without asking', async () => {
   // Create the connection: the database as the SSH server sees it, plus the tunnel.
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(PG_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   // Main parses the URI asynchronously; typing before it answers races the fill.
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
-  await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
+  await connectionTab(dialog, 'SSH');
   await dialog.getByLabel('Connect through an SSH tunnel').check();
   await dialog.getByLabel('SSH host').fill('127.0.0.1');
   await dialog.getByLabel('SSH port').fill(String(ssh.port));
@@ -84,7 +83,7 @@ test('asks about the host key, runs a query through the tunnel and reconnects wi
 
   // Connecting asks again; this time the key is trusted and remembered.
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(hostKeyPrompt()).toBeVisible();
   await hostKeyPrompt().getByRole('button', { name: 'Trust and remember' }).click();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
@@ -105,7 +104,7 @@ test('asks about the host key, runs a query through the tunnel and reconnects wi
   await profile.getByRole('button', { name: 'Actions' }).first().click();
   await page.getByRole('menuitem', { name: 'Disconnect' }).click();
   await expect(profile.getByText('Not connected', { exact: true })).toBeAttached();
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await expect(hostKeyPrompt()).toHaveCount(0);
 
@@ -138,7 +137,7 @@ test('warns about a changed host key and trusts the new one only after the old o
   writeFileSync(knownHosts, `[127.0.0.1]:${ssh.port} ssh-ed25519 ${remembered}\n`);
 
   const warning = page.getByRole('alertdialog', { name: 'Warning: the SSH host key has changed' });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(warning).toBeVisible();
   await expect(warning).toContainText('man-in-the-middle');
   await expect(warning).toContainText(remembered);
@@ -150,7 +149,7 @@ test('warns about a changed host key and trusts the new one only after the old o
   await expect(profile.getByText(/has CHANGED/)).toBeVisible();
   expect(readFileSync(knownHosts, 'utf8')).toContain(remembered);
 
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(warning).toBeVisible();
   await warning.getByLabel('The administrator confirmed that the host key changed').check();
   await warning.getByRole('button', { name: 'Remove the remembered key' }).click();

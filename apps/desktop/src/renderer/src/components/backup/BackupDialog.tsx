@@ -31,6 +31,7 @@ import {
   type CatalogGroup,
 } from '../../state/backup/options';
 import { loadSnapshot } from '../../state/metadata';
+import { backupDraft, editSchedule } from '../../state/schedules';
 import { SelectField, TextField } from '../designer/fields';
 import { StepBar } from '../jobs/shared';
 import { Button, Modal } from '../ui';
@@ -131,6 +132,41 @@ export function BackupDialog(props: {
     }
   };
 
+  const buildJob = (withOptions: BackupOptions) => {
+    const allChecked = checked.size === items.length;
+    return backupJobSpec(target, withOptions, {
+      ...(sql
+        ? {
+            selection: sqlSelection(
+              groups,
+              checked,
+              withoutRows,
+              target.schema !== undefined ? [target.schema] : undefined,
+            ),
+          }
+        : {}),
+      ...(target.engine === 'mongodb' && !allChecked
+        ? { collections: items.filter((i) => checked.has(i.key)).map((i) => i.ref.name) }
+        : {}),
+    });
+  };
+
+  // A schedule writes a new file each run, named in the schedule editor: no file is chosen here.
+  const scheduleOptions: BackupOptions = { ...options, path: options.path ?? 'scheduled' };
+  const scheduleProblem = backupProblem(target, scheduleOptions, { empty: selectionEmpty });
+  const schedule = (): void => {
+    if (scheduleProblem !== undefined) return;
+    const job = buildJob(scheduleOptions);
+    editSchedule(
+      backupDraft(
+        job,
+        { profileName: target.profileName, database: target.database },
+        job.encryption?.passphrase,
+      ),
+    );
+    props.onClose();
+  };
+
   const start = async (): Promise<void> => {
     if (problem !== undefined) return;
     setBusy(true);
@@ -138,22 +174,7 @@ export function BackupDialog(props: {
     try {
       const secrets = await wizardSecrets(target);
       if (secrets === null) return;
-      const allChecked = checked.size === items.length;
-      const job = backupJobSpec(target, options, {
-        ...(sql
-          ? {
-              selection: sqlSelection(
-                groups,
-                checked,
-                withoutRows,
-                target.schema !== undefined ? [target.schema] : undefined,
-              ),
-            }
-          : {}),
-        ...(target.engine === 'mongodb' && !allChecked
-          ? { collections: items.filter((i) => checked.has(i.key)).map((i) => i.ref.name) }
-          : {}),
-      });
+      const job = buildJob(options);
       const id = await startBackupJob(target, job, secrets);
       // The passphrase went with the job; the page forgets it.
       setOptions((current) => ({ ...current, passphrase: '', passphraseAgain: '' }));
@@ -211,14 +232,23 @@ export function BackupDialog(props: {
                   Next
                 </Button>
               ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => void start()}
-                  disabled={problem !== undefined || busy}
-                  title={problem}
-                >
-                  Back up
-                </Button>
+                <>
+                  <Button
+                    onClick={schedule}
+                    disabled={scheduleProblem !== undefined || busy}
+                    title={scheduleProblem ?? 'Run this backup on a schedule instead'}
+                  >
+                    Schedule…
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => void start()}
+                    disabled={problem !== undefined || busy}
+                    title={problem}
+                  >
+                    Back up
+                  </Button>
+                </>
               )}
             </>
           )}

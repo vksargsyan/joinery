@@ -16,7 +16,8 @@ import {
   searchText,
   type SearchObject,
 } from '../../state/search/explorer';
-import { MenuItem, Row } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
+import { Row } from '../Sidebar';
 import { Icon, cx } from '../ui';
 import { CreateIndexDialog } from './CreateIndexDialog';
 import { openSearchConsole, openSearchTool } from './open';
@@ -107,7 +108,14 @@ function SearchIcon({ name }: { readonly name: SearchIconName }) {
     ),
   };
   return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className="h-4 w-4 shrink-0 text-muted">
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4 shrink-0 text-muted"
+    >
       {paths[name]}
     </svg>
   );
@@ -191,7 +199,11 @@ function ToolRow(props: {
             <span className="truncate">{props.label}</span>
           </span>
         }
-        menu={<MenuItem onSelect={props.onOpen}>Open {props.label}</MenuItem>}
+        menu={
+          <MenuItem icon="open" onSelect={props.onOpen}>
+            Open {props.label}
+          </MenuItem>
+        }
       />
     </div>
   );
@@ -375,24 +387,41 @@ function SearchNode(props: {
         }
         menu={
           <>
-            {object && <MenuItem onSelect={() => browse(object)}>Browse documents</MenuItem>}
-            {object?.kind === 'index' && (
-              <MenuItem onSelect={() => manage(object)}>Open index (mappings, settings…)</MenuItem>
+            {object && (
+              <MenuItem icon="table" onSelect={() => browse(object)}>
+                Browse documents
+              </MenuItem>
             )}
-            {object && <MenuItem onSelect={() => search(object)}>Search in console</MenuItem>}
+            {object?.kind === 'index' && (
+              <MenuItem icon="open" onSelect={() => manage(object)}>
+                Open index (mappings, settings…)
+              </MenuItem>
+            )}
+            {object && (
+              <MenuItem icon="query" onSelect={() => search(object)}>
+                Search in console
+              </MenuItem>
+            )}
             {indicesFolder && !readOnly && (
-              <MenuItem onSelect={props.onCreateIndex}>Create index…</MenuItem>
+              <MenuItem icon="table-new" onSelect={props.onCreateIndex}>
+                Create index…
+              </MenuItem>
             )}
             {node.hasChildren && (
-              <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>Refresh</MenuItem>
+              <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, node.path)}>
+                Refresh
+              </MenuItem>
             )}
             {!object && !node.hasChildren && (
-              <MenuItem onSelect={() => void loadChildren(profile.id, [])}>Refresh</MenuItem>
+              <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, [])}>
+                Refresh
+              </MenuItem>
             )}
             {object && request && (
               <>
                 <DropdownMenu.Separator className="my-1 h-px bg-border" />
                 <MenuItem
+                  icon="trash"
                   danger
                   onSelect={() => void remove(object, `${request.method} ${request.path}`)}
                 >

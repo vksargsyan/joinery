@@ -8,6 +8,8 @@ import {
   jobSpecSchema,
   jobSummarySchema,
   newTablePlanInputSchema,
+  rdbAnalyzeInputSchema,
+  rdbAnalyzeProgressSchema,
   transferJobSchema,
   transferPreviewInputSchema,
 } from '@joinery/ipc';
@@ -60,6 +62,8 @@ export const runnerRequestSchema = z.discriminatedUnion('kind', [
   backupInspectRequestSchema,
   restorePlanRequestSchema,
   nativeToolsRequestSchema,
+  /** A Redis or Valkey RDB file read to its end and summed; long, with progress. */
+  z.object({ kind: z.literal('rdb-analyze'), input: rdbAnalyzeInputSchema }),
 ]);
 export type RunnerRequest = z.infer<typeof runnerRequestSchema>;
 
@@ -82,6 +86,8 @@ export const mainToRunnerSchema = z.discriminatedUnion('type', [
   /** Stop a job: its signal aborts, and an import rolls back. */
   z.object({ type: z.literal('cancel'), jobId: idSchema }),
   z.object({ type: z.literal('request'), requestId: idSchema, request: runnerRequestSchema }),
+  /** Stop a long request (an RDB analysis): it answers with a CANCELLED error. */
+  z.object({ type: z.literal('cancel-request'), requestId: idSchema }),
   z.object({
     type: z.literal('host-key-decision'),
     requestId: z.string().min(1).max(128),
@@ -113,6 +119,12 @@ export const runnerToMainSchema = z.discriminatedUnion('type', [
     error: errorDataSchema.optional(),
     /** A sync job's result (main checks it against the sync result schema). */
     result: z.unknown().optional(),
+  }),
+  /** A long request's progress (an RDB analysis: bytes read of the file's size). */
+  z.object({
+    type: z.literal('request-progress'),
+    requestId: idSchema,
+    progress: rdbAnalyzeProgressSchema,
   }),
   /** The answer to a `request`: `result` (checked by main against the method's schema) or `error`. */
   z.object({

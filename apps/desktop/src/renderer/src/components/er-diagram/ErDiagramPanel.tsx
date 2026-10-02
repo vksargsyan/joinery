@@ -23,7 +23,8 @@ import {
   type ErTable,
 } from '../../state/er-diagram/model';
 import { useErDiagrams } from '../../state/er-diagram/panels';
-import { useErDiagram, type ErDiagramView } from '../../state/er-diagram/view';
+import { savedWhen, useErDiagram, type ErDiagramView } from '../../state/er-diagram/view';
+import { confirm } from '../../state/dialogs';
 import { ReviewDialog } from './ReviewDialog';
 import { useTheme } from '../theme';
 import { Button, EnvironmentBadge, Icon, cx } from '../ui';
@@ -107,6 +108,7 @@ function Panel({ view }: { readonly view: ErDiagramView }) {
     >
       <Toolbar view={view} listOpen={listOpen} onToggleList={() => setListOpen((v) => !v)} />
       {editor && <EditBar editor={editor} />}
+      <DraftsBanner view={view} />
       <NoticeBar view={view} />
       <div className="flex min-h-0 flex-1">
         {listOpen && diagram && (
@@ -310,6 +312,31 @@ function Toolbar(props: {
           Edit model
         </Button>
       )}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <Button size="sm" variant="ghost" disabled={!diagram} data-testid="er-model-menu">
+            Model
+            <Icon name="chevron-down" className="h-3 w-3" />
+          </Button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={4}
+            className="z-50 min-w-60 rounded-md border border-border bg-raised p-1 text-[13px] text-fg shadow-widget"
+          >
+            <MenuItem hint="to review and apply" onSelect={() => void openModel(view)}>
+              Open model file…
+            </MenuItem>
+            <MenuItem
+              hint={editor ? 'with your changes' : 'as it is'}
+              onSelect={() => void view.saveModelFile()}
+            >
+              Save as model file…
+            </MenuItem>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
       <Button
         size="sm"
         variant="ghost"
@@ -335,7 +362,7 @@ function Toolbar(props: {
           <DropdownMenu.Content
             align="end"
             sideOffset={4}
-            className="z-50 min-w-56 rounded-md border border-border bg-panel p-1 text-[13px] text-fg shadow-xl"
+            className="z-50 min-w-56 rounded-md border border-border bg-raised p-1 text-[13px] text-fg shadow-widget"
           >
             <MenuLabel>Save as</MenuLabel>
             <MenuItem hint="vector" onSelect={() => void view.export('svg')}>
@@ -362,6 +389,73 @@ function Toolbar(props: {
   );
 }
 
+/** Opens a model file, after asking before it replaces a model being edited. */
+async function openModel(view: ErDiagramView): Promise<void> {
+  const changes = view.state.editor?.state.changes.count ?? 0;
+  if (changes > 0) {
+    const ok = await confirm({
+      title: 'Open a model file instead?',
+      message: `The model you are editing has ${changes} ${changes === 1 ? 'change' : 'changes'}. They stay kept for its schema if you open a file for another schema; a file for the same schema replaces them.`,
+      confirmLabel: 'Open a file',
+    });
+    if (!ok) return;
+  }
+  await view.openModelFile();
+}
+
+/** Unapplied changes kept for other schemas of this database, to resume or discard. */
+function DraftsBanner({ view }: { readonly view: ErDiagramView }) {
+  const drafts = useErDiagram(view, (s) => s.drafts);
+  const editor = useErDiagram(view, (s) => s.editor);
+  const others = drafts.filter((draft) => draft.schema !== editor?.context.schema);
+  if (others.length === 0) return null;
+  return (
+    <ul
+      data-testid="er-drafts"
+      aria-label="Unapplied changes"
+      className="flex flex-col border-b border-accent/25 bg-accent/6 px-3 py-1 text-xs"
+    >
+      {others.slice(0, 3).map((draft) => (
+        <li key={draft.schema} className="flex items-center gap-2 py-0.5">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-accent" />
+          <span className="min-w-0 flex-1 truncate">
+            Unapplied changes to <strong>{draft.schema}</strong>
+            <span className="text-muted">
+              {' '}
+              · {draft.changes} {draft.changes === 1 ? 'table' : 'tables'} ·{' '}
+              {savedWhen(draft.savedAt)}
+            </span>
+          </span>
+          <Button size="sm" variant="ghost" onClick={() => void view.resumeDraft(draft.schema)}>
+            Resume
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted"
+            onClick={() => void discardDraft(view, draft.schema, draft.changes)}
+          >
+            Discard
+          </Button>
+        </li>
+      ))}
+      {others.length > 3 && (
+        <li className="py-0.5 text-muted">and {others.length - 3} more schemas</li>
+      )}
+    </ul>
+  );
+}
+
+async function discardDraft(view: ErDiagramView, schema: string, changes: number): Promise<void> {
+  const ok = await confirm({
+    title: `Discard the changes to ${schema}?`,
+    message: `The ${changes === 1 ? 'change' : `${changes} changes`} to ${schema} will be lost; the database is not touched.`,
+    confirmLabel: 'Discard',
+    danger: true,
+  });
+  if (ok) await view.discardDraft(schema);
+}
+
 function Divider() {
   return <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />;
 }
@@ -382,7 +476,7 @@ function MenuItem(props: {
   return (
     <DropdownMenu.Item
       onSelect={props.onSelect}
-      className="flex cursor-default items-center gap-3 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+      className="flex cursor-default items-center gap-3 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
     >
       <span className="flex-1">{props.children}</span>
       {props.hint && <span className="text-[11px] text-muted">{props.hint}</span>}
@@ -584,7 +678,10 @@ function Empty({ view, diagram }: { readonly view: ErDiagramView; readonly diagr
             : 'There are no tables here yet. Views are left out unless you turn them on.'}
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button size="sm" onClick={() => void view.openModelFile()}>
+          Open model file…
+        </Button>
         {!includeViews && (
           <Button size="sm" onClick={() => void view.setIncludeViews(true)}>
             Show views
@@ -616,7 +713,7 @@ function LayingOut({ view }: { readonly view: ErDiagramView }) {
   return (
     <div
       role="status"
-      className="pointer-events-none absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-panel/95 px-3 py-1 text-xs text-muted shadow-lg"
+      className="pointer-events-none absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-raised px-3 py-1 text-xs text-muted shadow-widget"
     >
       <span className="h-3 w-3 animate-spin rounded-full border-2 border-border border-t-accent" />
       Laying out…
@@ -634,7 +731,7 @@ function Legend() {
   return (
     <section
       aria-label="Legend"
-      className="absolute bottom-3 left-3 z-10 rounded-lg border border-border bg-panel/95 text-[11px] shadow-lg backdrop-blur"
+      className="absolute bottom-3 left-3 z-10 rounded-lg border border-border bg-raised text-[11px] shadow-widget backdrop-blur"
     >
       <button
         type="button"

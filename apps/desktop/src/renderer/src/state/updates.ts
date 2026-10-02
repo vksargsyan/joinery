@@ -3,6 +3,8 @@ import { create } from 'zustand';
 
 import { mainApi } from '../lib/main-client';
 import { keys, queryClient } from './data';
+import { runCommand } from './commands';
+import { setFullScreen } from './window';
 
 /**
  * Auto-update in the page (spec §20): main's updater status, the About box (which also holds
@@ -124,12 +126,16 @@ export async function watchUpdates(): Promise<void> {
   }
 }
 
-/** Follows the application menu's commands (About) for the life of the page. */
+/** Follows main's commands (the menu's About, full screen) for the life of the page. */
 export async function watchAppCommands(): Promise<void> {
   for (;;) {
     try {
       for await (const { command } of mainApi().app.commands()) {
         if (command === 'about') openAbout();
+        else if (command === 'command-palette') void runCommand('workbench.commandPalette');
+        else if (command === 'quick-open') void runCommand('workbench.quickOpen');
+        else if (command === 'keyboard-shortcuts') void runCommand('workbench.keyboardShortcuts');
+        else setFullScreen(command === 'enter-full-screen');
       }
       return;
     } catch {

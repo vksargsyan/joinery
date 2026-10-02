@@ -124,7 +124,7 @@ export interface ImportWizardState {
   readonly jobId: string | undefined;
 }
 
-const ROW_FORMATS: readonly string[] = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml'];
+const ROW_FORMATS: readonly string[] = ['csv', 'tsv', 'json', 'jsonl', 'xlsx', 'xml', 'parquet'];
 
 /** A table name from a file name: `Orders 2024.csv.gz` → `orders_2024`. */
 export function tableNameFromFile(path: string): string {
@@ -264,7 +264,7 @@ export function buildImportJob(state: ImportWizardState, confirmed: boolean): Im
     file: {
       path: state.path,
       format,
-      ...(format !== 'xlsx' ? { encoding: preview.encoding } : {}),
+      ...(format !== 'xlsx' && format !== 'parquet' ? { encoding: preview.encoding } : {}),
       ...(csv ? { csv } : {}),
       ...(format === 'xlsx' && preview.xlsx
         ? { xlsx: { sheet: preview.xlsx.sheet, headerRow: preview.xlsx.headerRow } }

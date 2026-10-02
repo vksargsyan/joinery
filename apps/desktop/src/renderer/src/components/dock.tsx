@@ -36,12 +36,19 @@ import { disposeSyncPanel } from '../state/sync/panels';
 import { disposeServerToolsPanel } from '../state/server-tools/panels';
 import { disposeSearchPanel } from '../state/search/panels';
 import { disposeErDiagram } from '../state/er-diagram/panels';
+import { disposeSchedulesPanel } from '../state/schedules';
+import { disposeDumpAnalysis } from '../state/redis/dump';
+import { disposeKeybindingsPanel } from '../state/keybindings-panel';
+import { disposeObjectsPanel } from '../state/objects-view';
 import { disposeQueryBuilder } from '../state/query-builder/panels';
 import { closeTab } from '../state/runner';
 import { createTableView, disposeTableView, type TableTarget } from '../state/table-view';
 import { createTab, useWorkspace } from '../state/workspace';
 import { TableDesignerPanel } from './designer/TableDesignerPanel';
+import { EngineIcon } from './EngineIcon';
 import { QueryPanel } from './QueryPanel';
+import { KeybindingsPanel } from './KeybindingsPanel';
+import { ObjectsPanel } from './ObjectsPanel';
 import { RedisPanel } from './redis/RedisPanel';
 import { MongoPanel } from './mongo/MongoPanel';
 import { SyncPanel } from './sync/SyncPanel';
@@ -50,6 +57,8 @@ import { ServerToolsPanel } from './server-tools/ServerToolsPanel';
 import { openSearchConsole } from './search/open';
 import { SearchPanel } from './search/SearchPanel';
 import { ErDiagramPanel } from './er-diagram/ErDiagramPanel';
+import { SchedulesPanel } from './schedules/SchedulesPanel';
+import { DumpAnalysisPanel } from './redis/DumpAnalysisPanel';
 import { QueryBuilderPanel } from './query-builder/QueryBuilderPanel';
 import { TableDataPanel } from './table/TableDataPanel';
 import { Icon, cx } from './ui';
@@ -179,6 +188,10 @@ function disposePanel(id: string): void {
   else if (info.kind === 'search') disposeSearchPanel(id);
   else if (info.kind === 'query-builder') disposeQueryBuilder(id);
   else if (info.kind === 'er-diagram') disposeErDiagram(id);
+  else if (info.kind === 'schedules') disposeSchedulesPanel(id);
+  else if (info.kind === 'redis-dump') disposeDumpAnalysis(id);
+  else if (info.kind === 'objects') disposeObjectsPanel(id);
+  else if (info.kind === 'keybindings') disposeKeybindingsPanel(id);
   else void disposeDesigner(id);
 }
 
@@ -316,6 +329,7 @@ function RestoredMarker({ id }: { readonly id: string }) {
 function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
   const tabId = props.params.tabId;
   const tab = useWorkspace((state) => state.tabs[tabId]);
+  const engine = tab ? cachedProfile(tab.profileId)?.engine : undefined;
   return (
     <div
       className="flex h-full items-center gap-1.5 px-2 text-[13px]"
@@ -329,6 +343,7 @@ function QueryTabHeader(props: IDockviewPanelHeaderProps<QueryPanelParams>) {
       {tab?.running && (
         <span aria-label="Running" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
       )}
+      {engine && <EngineIcon engine={engine} className="h-3.5 w-3.5" />}
       <span className="max-w-48 truncate">{tab?.title ?? props.api.title}</span>
       <RestoredMarker id={tabId} />
       {tab?.inTransaction && (
@@ -390,10 +405,28 @@ function ErDiagramHost(props: IDockviewPanelProps<PanelParams>) {
   return <ErDiagramPanel panelId={props.params.panelId} />;
 }
 
+function SchedulesHost() {
+  return <SchedulesPanel />;
+}
+
+function RedisDumpHost() {
+  return <DumpAnalysisPanel />;
+}
+
+function ObjectsHost() {
+  return <ObjectsPanel />;
+}
+
+function KeybindingsHost() {
+  return <KeybindingsPanel />;
+}
+
 function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
   const panelId = props.params.panelId;
   const info = usePanels((state) => state.panels[panelId]);
   const title = info?.title ?? props.api.title ?? '';
+  // A tab on a connection carries its engine's icon, like the connection in the tree.
+  const engine = info?.profileId !== undefined ? cachedProfile(info.profileId)?.engine : undefined;
   return (
     <div
       className="flex h-full items-center gap-1.5 px-2 text-[13px]"
@@ -407,7 +440,20 @@ function PanelTabHeader(props: IDockviewPanelHeaderProps<PanelParams>) {
       {info?.busy && (
         <span aria-label="Working" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
       )}
-      <Icon name="table" className="h-3.5 w-3.5 text-muted" />
+      {engine ? (
+        <EngineIcon engine={engine} className="h-3.5 w-3.5" />
+      ) : (
+        <Icon
+          name={
+            info?.kind === 'keybindings'
+              ? 'settings'
+              : info?.kind === 'schedules'
+                ? 'schedule'
+                : 'table'
+          }
+          className="h-3.5 w-3.5 text-muted"
+        />
+      )}
       <span className="max-w-48 truncate">{title}</span>
       <RestoredMarker id={panelId} />
       {info?.dirty && (
@@ -458,6 +504,10 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
         search: SearchPanelHost,
         queryBuilder: QueryBuilderHost,
         erDiagram: ErDiagramHost,
+        schedules: SchedulesHost,
+        redisDump: RedisDumpHost,
+        objects: ObjectsHost,
+        keybindings: KeybindingsHost,
       }}
       tabComponents={{ queryTab: QueryTabHeader, panelTab: PanelTabHeader }}
       watermarkComponent={Watermark}

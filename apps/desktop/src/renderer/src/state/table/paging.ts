@@ -2,6 +2,7 @@ import { JoineryError, type CellValue } from '@joinery/core';
 import {
   buildBrowseQuery,
   pageAfter,
+  pageBefore,
   rowKeyAt,
   type BrowseOptions,
   type BrowsePage,
@@ -12,12 +13,13 @@ import {
 import type { LoadedRows } from './grid-model';
 
 /**
- * Paging for the table data grid (spec §7: keyset paging when a key exists, OFFSET otherwise).
- * The controller holds the loaded rows and asks for the next page when the user scrolls near
- * the end. Keyset pages continue after the last row the server returned (not the last row
- * shown, which may be edited locally); offset pages continue at the number of rows read, less
- * the rows deleted since. A reset (new sort or filter) bumps the generation, so a page still in
- * flight for the old query is dropped when it arrives.
+ * Pages of the table data grid, as Navicat pages them (spec §7): one page of rows at a time,
+ * with first, previous, next and last, and a page chosen by number. Page boundaries are those of
+ * LIMIT and OFFSET; how a page is read depends on the move. The next and previous pages continue
+ * from the first or last row the server returned for this one, by key when the table has one
+ * (keyset paging, cheap on any page); a page chosen by number, and every move of a keyless
+ * table, reads at its offset. A reset (new sort, filter or page size) bumps the generation, so a
+ * page still in flight for the old query is dropped when it arrives.
  */
 
 /** Runs one browse query and returns its rows in server order. */
@@ -29,35 +31,43 @@ export type PagingOptions = Omit<BrowseOptions, 'page' | 'limit'>;
 export interface PagingState extends LoadedRows {
   readonly paging: 'keyset' | 'offset' | undefined;
   readonly offsetReason: string | undefined;
-  /** More rows may exist past the last loaded one. */
-  readonly hasMore: boolean;
+  /** The page shown, from 1. */
+  readonly page: number;
+  readonly pageSize: number;
+  /** A next page may exist: this one is full. */
+  readonly hasNext: boolean;
   readonly loading: boolean;
   readonly error: unknown;
   /** Bumps whenever the rows change. */
   readonly version: number;
 }
 
-export const DEFAULT_TABLE_PAGE = 500;
+/** Where to go: a page by number, or a step from the page shown. */
+export type PageMove = 'first' | 'previous' | 'next' | number;
 
-/** Rows from the end at which the next page is requested. */
-const PREFETCH_ROWS = 150;
+/** Rows per page, as Navicat's default. */
+export const DEFAULT_TABLE_PAGE = 1000;
+
+/** Page sizes the settings offer. */
+export const PAGE_SIZES = [100, 500, 1000, 5000, 10000] as const;
 
 export class PagingController {
   readonly #fetch: PageFetcher;
-  readonly #pageSize: number;
   readonly #onChange: () => void;
+  #pageSize: number;
   #options: PagingOptions | undefined;
   #query: BrowseQuery | undefined;
   #rows: CellValue[][] = [];
   #keys: (RowKey | null)[] = [];
-  #cursor: readonly CellValue[] | undefined;
-  #fetched = 0;
-  #hasMore = false;
+  /** The first and last rows the server returned for the page, for keyset steps. */
+  #edges: { first: readonly CellValue[]; last: readonly CellValue[] } | undefined;
+  #page = 1;
+  #hasNext = false;
   #loading = false;
   #error: unknown = undefined;
   #generation = 0;
   #version = 0;
-  #inFlight: { controller: AbortController; promise: Promise<void> } | undefined;
+  #inFlight: AbortController | undefined;
 
   constructor(fetch: PageFetcher, onChange: () => void, pageSize = DEFAULT_TABLE_PAGE) {
     this.#fetch = fetch;
@@ -72,7 +82,9 @@ export class PagingController {
       keys: this.#keys,
       paging: this.#query?.paging,
       offsetReason: this.#query?.offsetReason,
-      hasMore: this.#hasMore,
+      page: this.#page,
+      pageSize: this.#pageSize,
+      hasNext: this.#hasNext,
       loading: this.#loading,
       error: this.#error,
       version: this.#version,
@@ -87,74 +99,73 @@ export class PagingController {
     return this.#pageSize;
   }
 
+  /** The number of rows before the page shown. */
+  get offset(): number {
+    return (this.#page - 1) * this.#pageSize;
+  }
+
   /**
-   * Starts over with new options (sort, filter, identity) and loads the first page. Rejects
-   * with VALIDATION_FAILED when the options do not make a query; a failed fetch is kept in
-   * `state.error` instead.
+   * Starts over with new options (sort, filter, identity), and a new page size when given, on
+   * the first page. Rejects with VALIDATION_FAILED when the options do not make a query; a failed
+   * fetch is kept in `state.error` instead.
    */
-  async reset(options: PagingOptions): Promise<void> {
-    this.#inFlight?.controller.abort();
-    this.#inFlight = undefined;
+  async reset(options: PagingOptions, pageSize?: number): Promise<void> {
+    this.#abort();
     this.#generation++;
     this.#options = options;
+    if (pageSize !== undefined) this.#pageSize = pageSize;
     this.#rows = [];
     this.#keys = [];
-    this.#cursor = undefined;
-    this.#fetched = 0;
-    this.#hasMore = false;
+    this.#edges = undefined;
+    this.#page = 1;
+    this.#hasNext = false;
     this.#error = undefined;
     this.#query = undefined;
     this.#loading = false;
     this.#version++;
     try {
-      this.#query = buildBrowseQuery({
-        ...options,
-        limit: this.#pageSize,
-        page: { kind: 'first' },
-      });
+      this.#query = this.#build({ kind: 'first' });
     } catch (error) {
       this.#error = error;
       this.#onChange();
       throw error;
     }
-    this.#hasMore = true;
-    await this.#load(this.#query);
-  }
-
-  /** Loads the next page, unless one is loading or nothing is left. */
-  async loadMore(): Promise<void> {
-    if (this.#inFlight) return this.#inFlight.promise;
-    const options = this.#options;
-    const first = this.#query;
-    if (!options || !first || !this.#hasMore) return;
-    let page: BrowsePage;
-    if (first.paging === 'keyset') {
-      if (this.#cursor === undefined) return;
-      page = pageAfter(first, this.#cursor);
-    } else {
-      page = { kind: 'offset', offset: this.#fetched };
-    }
-    await this.#load(buildBrowseQuery({ ...options, limit: this.#pageSize, page }));
-  }
-
-  /** Whether a grid showing rows up to `lastVisible` should ask for the next page. */
-  shouldLoadMore(lastVisible: number): boolean {
-    return (
-      this.#hasMore &&
-      !this.#loading &&
-      this.#error === undefined &&
-      lastVisible >= this.#rows.length - PREFETCH_ROWS
-    );
+    await this.#load(this.#query, 1, 'replace');
   }
 
   /**
-   * Replaces the loaded rows after Apply merged its results in. `removed` is the number of
-   * rows the server no longer has (deletes), which moves an offset cursor back.
+   * Shows another page. A step past the last page keeps the page shown (it was the last one);
+   * a page by number past the end shows an empty page, as the server has no rows there.
    */
-  replaceRows(rows: CellValue[][], keys: (RowKey | null)[], removed: number): void {
+  async goTo(move: PageMove): Promise<void> {
+    const options = this.#options;
+    const first = this.#query;
+    if (!options || !first) return;
+    const target =
+      move === 'first'
+        ? 1
+        : move === 'previous'
+          ? this.#page - 1
+          : move === 'next'
+            ? this.#page + 1
+            : Math.floor(move);
+    if (target < 1 || (move === 'next' && !this.#hasNext)) return;
+    const keyset = first.paging === 'keyset' && this.#edges !== undefined;
+    let page: BrowsePage;
+    if (target === 1) page = { kind: 'first' };
+    else if (keyset && target === this.#page + 1) page = pageAfter(first, this.#edges!.last);
+    else if (keyset && target === this.#page - 1) page = pageBefore(first, this.#edges!.first);
+    else page = { kind: 'offset', offset: (target - 1) * this.#pageSize };
+    await this.#load(this.#build(page), target, move === 'next' ? 'unless-empty' : 'replace');
+  }
+
+  /**
+   * Replaces the page's rows after Apply merged its results in (inserted rows join the page,
+   * deleted ones leave it).
+   */
+  replaceRows(rows: CellValue[][], keys: (RowKey | null)[]): void {
     this.#rows = rows;
     this.#keys = keys;
-    this.#fetched = Math.max(0, this.#fetched - removed);
     this.#version++;
     this.#onChange();
   }
@@ -162,43 +173,54 @@ export class PagingController {
   /** Stops a page in flight (the panel closed). */
   dispose(): void {
     this.#generation++;
-    this.#inFlight?.controller.abort();
+    this.#abort();
+  }
+
+  #build(page: BrowsePage): BrowseQuery {
+    return buildBrowseQuery({ ...this.#options!, limit: this.#pageSize, page });
+  }
+
+  #abort(): void {
+    this.#inFlight?.abort();
     this.#inFlight = undefined;
   }
 
-  async #load(query: BrowseQuery): Promise<void> {
-    const generation = this.#generation;
+  /**
+   * Reads one page and shows it as page `target`. With 'unless-empty' an empty answer (the page
+   * shown was the last, exactly full) keeps the page shown and marks it the last.
+   */
+  async #load(query: BrowseQuery, target: number, mode: 'replace' | 'unless-empty'): Promise<void> {
+    this.#abort();
+    const generation = ++this.#generation;
     const controller = new AbortController();
+    this.#inFlight = controller;
     this.#loading = true;
     this.#onChange();
-    const promise = (async () => {
-      try {
-        const fetched = await this.#fetch(query, controller.signal);
-        if (generation !== this.#generation) return;
-        const rows = query.reversed ? fetched.reverse() : fetched;
+    try {
+      const fetched = await this.#fetch(query, controller.signal);
+      if (generation !== this.#generation) return;
+      const rows = query.reversed ? fetched.reverse() : fetched;
+      if (rows.length === 0 && mode === 'unless-empty') {
+        this.#hasNext = false;
+      } else {
         const identity = this.#options!.identity;
-        for (const row of rows) {
-          this.#rows.push(row);
-          this.#keys.push(rowKeyAt(identity, query.columns, row));
-        }
-        this.#fetched += rows.length;
-        if (rows.length > 0) this.#cursor = rows.at(-1);
-        this.#hasMore = rows.length >= query.limit;
-        this.#error = undefined;
+        this.#rows = rows;
+        this.#keys = rows.map((row) => rowKeyAt(identity, query.columns, row));
+        this.#edges = rows.length > 0 ? { first: rows[0]!, last: rows.at(-1)! } : undefined;
+        this.#page = target;
+        this.#hasNext = rows.length >= query.limit;
         this.#version++;
-      } catch (error) {
-        if (generation !== this.#generation) return;
-        this.#error =
-          error instanceof JoineryError && error.code === 'CANCELLED' ? undefined : error;
-      } finally {
-        if (generation === this.#generation) {
-          this.#loading = false;
-          this.#inFlight = undefined;
-          this.#onChange();
-        }
       }
-    })();
-    this.#inFlight = { controller, promise };
-    await promise;
+      this.#error = undefined;
+    } catch (error) {
+      if (generation !== this.#generation) return;
+      this.#error = error instanceof JoineryError && error.code === 'CANCELLED' ? undefined : error;
+    } finally {
+      if (generation === this.#generation) {
+        this.#loading = false;
+        this.#inFlight = undefined;
+        this.#onChange();
+      }
+    }
   }
 }

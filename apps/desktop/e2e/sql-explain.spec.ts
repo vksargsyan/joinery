@@ -6,7 +6,7 @@ import { createMysqlAdapter } from '@joinery/driver-mysql';
 import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
@@ -73,18 +73,17 @@ function visible(testId: string): Locator {
 }
 
 async function addConnection(url: string, name: string): Promise<void> {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name', { exact: true }).fill(name);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = page.getByRole('treeitem', { name });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
 }
 

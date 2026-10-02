@@ -12,7 +12,7 @@ import {
   streamFields,
   streamIdTime,
 } from '../../../state/redis/value-model';
-import { Button, Input, cx } from '../../ui';
+import { Button, cx, Input, TAB } from '../../ui';
 import { EmptyState, Notice, Toolbar } from '../common';
 import { useValueEditor } from '../ValueEditorPanel';
 
@@ -39,10 +39,7 @@ export function StreamEditor() {
             type="button"
             role="tab"
             aria-selected={tab === t}
-            className={cx(
-              'rounded-t px-2.5 py-1 text-xs',
-              tab === t ? 'bg-bg text-fg' : 'text-muted hover:text-fg',
-            )}
+            className={TAB}
             onClick={() => setTab(t)}
           >
             {t === 'entries' ? 'Entries' : 'Consumer groups'}

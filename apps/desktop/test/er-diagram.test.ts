@@ -21,7 +21,7 @@ import {
   type ErTable,
 } from '../src/renderer/src/state/er-diagram/model';
 import { STUB, relationRoute, roundedPath } from '../src/renderer/src/state/er-diagram/route';
-import { diagramSvg, escapeXml } from '../src/renderer/src/state/er-diagram/svg';
+import { LIGHT_PALETTE, diagramSvg, escapeXml } from '../src/renderer/src/state/er-diagram/svg';
 
 const mocks = vi.hoisted(() => ({
   loadSnapshot: vi.fn(),
@@ -324,12 +324,12 @@ describe('the exported SVG', () => {
       expect(svg).toContain(`>${name}<`);
     }
     expect(svg).toContain('numeric(10,2)');
-    expect(svg).toContain('<tspan fill="#b45309">P</tspan><tspan fill="#2563eb">F</tspan>');
-    expect(svg).toContain(markerSvg('one', false, '#7b8494', '#ffffff'));
+    expect(svg).toContain('<tspan fill="#8f5d0e">P</tspan><tspan fill="#2d5bb5">F</tspan>');
+    expect(svg).toContain(markerSvg('one', false, LIGHT_PALETTE.line, LIGHT_PALETTE.background));
     expect(svg.match(/<path d="M[^"]*" marker-start/g)).toHaveLength(3);
     expect(svg).toContain('marker-start="url(#er-zero-or-one)" marker-end="url(#er-one)"');
     // NOT NULL columns carry a star; the primary key does not.
-    expect(svg).toContain('name<tspan fill="#6b7280"> *</tspan>');
+    expect(svg).toContain(`name<tspan fill="${LIGHT_PALETTE.muted}"> *</tspan>`);
   });
 
   it('leaves out hidden tables and their lines, and the types when asked', () => {

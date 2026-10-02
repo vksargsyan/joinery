@@ -771,6 +771,12 @@ importers:
       '@joinery/sync':
         specifier: workspace:*
         version: link:../sync
+      hyparquet:
+        specifier: 1.31.1
+        version: 1.31.1
+      hyparquet-writer:
+        specifier: 0.16.10
+        version: 0.16.10
     devDependencies:
       '@joinery/driver-mongodb':
         specifier: workspace:*
@@ -3898,6 +3904,12 @@ packages:
   https-proxy-agent@7.0.6:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
     engines: {node: '>= 14'}
+
+  hyparquet-writer@0.16.10:
+    resolution: {integrity: sha512-53fpiA57kdJ2V7X97/VSAzHr8rb8Z2cr126T1pTL9TapZNOP/wNJqFh+jc7dRwwg9TpVMYeRNDMb+r5oiLqwjg==}
+
+  hyparquet@1.31.1:
+    resolution: {integrity: sha512-tF9580Xb+41+Eb+mH0av1k7m1PWl+PSKrX66Yd7UOZ760cwEXP9/enwHRMSCeVncaubRI8XPb3v580/ujYKK5w==}
 
   iconv-lite@0.7.3:
     resolution: {integrity: sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==}
@@ -8386,6 +8398,12 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+
+  hyparquet-writer@0.16.10:
+    dependencies:
+      hyparquet: 1.31.1
+
+  hyparquet@1.31.1: {}
 
   iconv-lite@0.7.3:
     dependencies:

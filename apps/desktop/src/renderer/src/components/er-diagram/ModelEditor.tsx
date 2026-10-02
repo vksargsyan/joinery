@@ -35,6 +35,7 @@ export function EditBar(props: { readonly editor: ErModelEditor }) {
   const canUndo = useEditor(editor, (s) => s.canUndo);
   const canRedo = useEditor(editor, (s) => s.canRedo);
   const stale = useEditor(editor, (s) => s.stale);
+  const kept = useEditor(editor, (s) => s.kept);
   const errors = issues.filter((i) => i.severity === 'error').length;
   const view = editor.view;
   const mod = navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl+';
@@ -138,12 +139,12 @@ export function EditBar(props: { readonly editor: ErModelEditor }) {
           <DropdownMenu.Content
             align="start"
             sideOffset={4}
-            className="z-50 max-h-80 min-w-60 overflow-auto rounded-md border border-border bg-panel p-1 text-[13px] text-fg shadow-xl"
+            className="z-50 max-h-80 min-w-60 overflow-auto rounded-md border border-border bg-raised p-1 text-[13px] text-fg shadow-widget"
           >
             {edited.map(([name, mark]) => (
               <DropdownMenu.Item
                 key={name}
-                className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+                className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
                 onSelect={() => view.focus(view.tableIdOf(name))}
               >
                 <MarkDot mark={mark} />
@@ -175,6 +176,7 @@ export function EditBar(props: { readonly editor: ErModelEditor }) {
         </span>
       )}
       <span className="flex-1" />
+      <KeptIndicator kept={kept} />
       <Button size="sm" variant="ghost" onClick={() => void discard()}>
         Discard
       </Button>
@@ -188,6 +190,45 @@ export function EditBar(props: { readonly editor: ErModelEditor }) {
         Review &amp; apply…
       </Button>
     </div>
+  );
+}
+
+/** Whether the unapplied changes are safe in the local store. */
+function KeptIndicator(props: { readonly kept: 'none' | 'pending' | 'kept' | 'failed' }) {
+  if (props.kept === 'none') return null;
+  const failed = props.kept === 'failed';
+  return (
+    <span
+      data-testid="er-kept"
+      data-kept={props.kept}
+      className={cx('flex items-center gap-1 text-[11px]', failed ? 'text-danger' : 'text-muted')}
+      title={
+        failed
+          ? 'The changes could not be kept: they are lost if the diagram closes'
+          : 'Unapplied changes are kept: close the diagram or Joinery and they come back'
+      }
+    >
+      {props.kept === 'pending' ? (
+        <span
+          aria-hidden
+          className="h-2.5 w-2.5 animate-spin rounded-full border border-muted border-t-transparent"
+        />
+      ) : failed ? (
+        <Icon name="warning" className="h-3 w-3" />
+      ) : (
+        <svg
+          viewBox="0 0 16 16"
+          className="h-3 w-3 text-success"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden
+        >
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" />
+        </svg>
+      )}
+      {props.kept === 'pending' ? 'Keeping…' : failed ? 'Not kept' : 'Kept'}
+    </span>
   );
 }
 

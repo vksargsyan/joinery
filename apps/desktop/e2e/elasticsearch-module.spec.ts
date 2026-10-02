@@ -5,12 +5,13 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SearchSession } from '@joinery/driver-elasticsearch';
 import { parseJsonTree, stringAt } from '@joinery/search-tools';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectSearch, e2eIndex } from './search';
 
 /**
  * The Elasticsearch module's documents, queries and index management end to end (spec §11):
  * the document grid pages past its first page and edits a document through the conflict path;
+ * the query builder builds a query, a sort and aggregations, and reads typed Query DSL back;
  * SQL runs and translates to Query DSL whose aggregations show as a table; an index is created
  * from the explorer, reindexed with a changed mapping (a server task) with its alias moved in
  * the same plan, and the alias is swapped back from the aliases panel. Indices are named for
@@ -118,9 +119,9 @@ function cell(scope: Locator, column: number, row: number): Locator {
 }
 
 test('connects to Elasticsearch and lists the indices', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
-  await dialog.getByLabel('Database engine', { exact: true }).selectOption('elasticsearch');
+  await dialog.getByRole('radio', { name: 'Elasticsearch', exact: true }).click();
   await dialog.getByLabel('Paste a URI to fill the form').fill(ES_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
@@ -128,7 +129,7 @@ test('connects to Elasticsearch and lists the indices', async () => {
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
-  await profileItem().locator('[data-tree-row]').first().click();
+  await profileItem().locator('[data-tree-row]').first().dblclick();
   await expect(profileItem().getByText('Connected', { exact: true })).toBeAttached();
   for (const tool of ['Console', 'SQL', 'Cluster', 'Templates and pipelines', 'Snapshots']) {
     await expect(treeRow(tool)).toBeVisible();
@@ -203,6 +204,103 @@ test('edits a document, and shows the stored version when it changed meanwhile',
   const stored = await direct!.getDocument(docs, 'doc-7');
   expect(stringAt(parseJsonTree(stored.source!), 'name')).toBe('edited in the app');
   expect(stored.source).toContain('1234567890123456789');
+});
+
+test('builds a query, a sort and aggregations visually, and reads typed Query DSL back', async () => {
+  const view = visible('search-documents');
+  await view.getByRole('radio', { name: 'Builder' }).click();
+  const builder = view.getByTestId('search-builder');
+  await expect(builder).toBeVisible();
+  // The bar's Lucene query from the last test shows as a condition; start over.
+  await expect(builder.getByTestId('search-builder-condition').first()).toHaveAttribute(
+    'data-operator',
+    'query_string',
+  );
+  await builder.getByRole('button', { name: 'Clear all' }).click();
+  await expect(builder.getByTestId('search-builder-condition')).toHaveCount(0);
+
+  // team is t1, as a filter.
+  await builder.getByRole('button', { name: 'Add team to…' }).click();
+  await page.getByRole('menuitem', { name: 'Filter' }).click();
+  const team = builder.locator('[data-testid="search-builder-condition"][data-field="team"]');
+  await expect(team.getByTestId('search-builder-value')).toBeFocused();
+  await expect(view.getByTestId('search-builder-pending')).toContainText('team: type a value');
+  // Pick t1 from the field's most common values.
+  await team.getByTestId('search-builder-top-values').click();
+  const topValues = page.getByTestId('search-builder-top-value');
+  await expect(topValues).toHaveCount(3);
+  await shot('search-builder-top-values');
+  await topValues.filter({ hasText: 't1' }).click();
+  await expect(team.getByTestId('search-builder-value')).toHaveValue('t1');
+  // 100 ≤ n < 200, dragged into Must.
+  const must = builder.locator('[data-testid="search-builder-section"][data-occur="must"]');
+  await builder
+    .locator('[data-testid="search-builder-field"][data-path="n"]')
+    .dragTo(must.getByText('drop fields or clauses here'));
+  const n = builder.locator('[data-testid="search-builder-condition"][data-field="n"]');
+  await n.getByTestId('search-builder-operator').selectOption('range');
+  await n.getByTestId('search-builder-lower').fill('100');
+  await n.getByTestId('search-builder-upper').fill('200');
+  await n.getByLabel('n upper bound').selectOption('ex');
+  await expect(view.getByTestId('documents-built-query')).toContainText(
+    '{"bool": {"must": [{"range": {"n": {"gte": 100, "lt": 200}}}], "filter": [{"term": {"team": "t1"}}]}}',
+  );
+  await shot('search-builder-query');
+
+  // Sort by n, descending.
+  await builder.getByTestId('search-builder-tab-sort').click();
+  await builder.getByTestId('search-builder-add-sort').selectOption('n');
+  const sortKey = builder.getByTestId('search-builder-sort-entry');
+  await sortKey.getByRole('radio', { name: 'Descending' }).click();
+  // Documents per city, with the stats of n in each.
+  await builder.getByRole('button', { name: 'Add customer.city to…' }).click();
+  await page.getByRole('menuitem', { name: 'Aggregate: Terms' }).click();
+  const city = builder.locator('[data-testid="search-builder-agg"][data-name="by_customer_city"]');
+  await city.getByTestId('search-builder-add-sub-agg').selectOption('stats');
+  const stats = city.locator('[data-testid="search-builder-agg"][data-name="stats_field"]');
+  await stats.getByTestId('search-builder-agg-field').selectOption('n');
+  await expect(
+    city.locator('[data-testid="search-builder-agg"][data-name="stats_n"]'),
+  ).toBeVisible();
+  await shot('search-builder-aggregations');
+  await builder.getByTestId('search-builder-tab-request').click();
+  await expect(builder.getByTestId('search-builder-request-text')).toContainText(
+    `GET /${docs}/_search`,
+  );
+  await expect(builder.getByTestId('search-builder-request-text')).toContainText('"stats_n": {');
+
+  await view.getByRole('button', { name: 'Search', exact: true }).click();
+  // n in [100, 200) with n % 3 === 1: 100, 103, … 199.
+  await expect(view.getByTestId('documents-total')).toHaveText('· 34 matching');
+  await expect(cell(view, 0, 0)).toHaveText('doc-199');
+  await view.getByTestId('documents-tab-aggregations').click();
+  const aggregations = view.getByTestId('search-aggregations');
+  await expect(aggregations).toContainText('by_customer_city');
+  await expect(aggregations).toContainText('stats_n');
+  await shot('search-builder-results');
+  await view.getByTestId('documents-tab-documents').click();
+
+  // Typed Query DSL comes back into the builder; what it does not break down stays JSON.
+  await view.getByRole('radio', { name: 'Text' }).click();
+  await expect(view.getByTestId('documents-sort')).toHaveValue('[{"n": "desc"}]');
+  await view
+    .getByTestId('documents-query')
+    .fill('{"bool": {"filter": [{"term": {"team": "t2"}}, {"ids": {"values": ["doc-2"]}}]}}');
+  await view.getByRole('radio', { name: 'Builder' }).click();
+  await builder.getByTestId('search-builder-tab-query').click();
+  const filter = builder.locator('[data-testid="search-builder-section"][data-occur="filter"]');
+  await expect(filter.getByTestId('search-builder-condition')).toHaveAttribute(
+    'data-field',
+    'team',
+  );
+  await expect(filter.getByTestId('search-builder-json').getByRole('textbox')).toHaveValue(
+    '{"ids": {"values": ["doc-2"]}}',
+  );
+  await view.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(view.getByTestId('documents-total')).toHaveText('· 1 matching');
+  // Back to plain text for the tests after this one.
+  await builder.getByRole('button', { name: 'Clear all' }).click();
+  await view.getByRole('radio', { name: 'Text' }).click();
 });
 
 test('runs SQL and translates it to Query DSL with its aggregations as a table', async () => {

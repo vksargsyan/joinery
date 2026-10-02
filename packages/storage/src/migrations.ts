@@ -236,11 +236,79 @@ const gridViewsAndAutosave: Migration = {
   },
 };
 
+const erModelDrafts: Migration = {
+  version: 5,
+  name: 'ER model drafts',
+  up(db) {
+    // Unapplied ER model changes (spec §8), one per connection, database and schema: kept
+    // while the user edits, gone once applied or discarded, and with the connection.
+    db.exec(`
+      CREATE TABLE er_model_drafts (
+        profile_id TEXT NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
+        database_name TEXT NOT NULL,
+        schema_name TEXT NOT NULL,
+        document TEXT NOT NULL,
+        changes INTEGER NOT NULL,
+        saved_at TEXT NOT NULL,
+        PRIMARY KEY (profile_id, database_name, schema_name)
+      ) STRICT;
+    `);
+  },
+};
+
+const schedules: Migration = {
+  version: 6,
+  name: 'schedules',
+  up(db) {
+    // Scheduled backups, SQL scripts, exports and comparisons, and their run history. A
+    // schedule goes with the connection or saved comparison it runs on.
+    db.exec(`
+      CREATE TABLE schedules (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+        kind TEXT NOT NULL CHECK (kind IN ('backup', 'sql', 'export', 'comparison')),
+        profile_id TEXT REFERENCES profiles (id) ON DELETE CASCADE,
+        comparison_id TEXT REFERENCES saved_comparisons (id) ON DELETE CASCADE,
+        task TEXT NOT NULL,
+        rule TEXT NOT NULL,
+        missed TEXT NOT NULL,
+        notify TEXT NOT NULL,
+        next_run_at TEXT,
+        last_run_at TEXT,
+        last_status TEXT,
+        version INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        CHECK ((profile_id IS NULL) <> (comparison_id IS NULL))
+      ) STRICT;
+      CREATE INDEX schedules_by_name ON schedules (name COLLATE NOCASE);
+      CREATE INDEX schedules_by_profile ON schedules (profile_id);
+      CREATE INDEX schedules_by_comparison ON schedules (comparison_id);
+
+      CREATE TABLE schedule_runs (
+        id TEXT PRIMARY KEY,
+        schedule_id TEXT NOT NULL REFERENCES schedules (id) ON DELETE CASCADE,
+        trigger TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        message TEXT,
+        outputs TEXT NOT NULL,
+        job_id TEXT
+      ) STRICT;
+      CREATE INDEX schedule_runs_by_schedule ON schedule_runs (schedule_id, started_at);
+    `);
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   initialSchema,
   historyFullText,
   savedComparisons,
   gridViewsAndAutosave,
+  erModelDrafts,
+  schedules,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

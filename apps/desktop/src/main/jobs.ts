@@ -76,18 +76,31 @@ export interface JobStartExtras {
    * `done` (sync jobs), unchecked.
    */
   readonly onDone?: (job: JobInfo, result: unknown) => void;
+  /** No desktop notification when it ends: its caller tells the user (a scheduled run). */
+  readonly silent?: boolean;
 }
 
 interface LiveJob {
   info: JobInfo;
   readonly startedAt: number;
   readonly onDone?: ((job: JobInfo, result: unknown) => void) | undefined;
+  readonly silent: boolean;
 }
 
 interface PendingRequest {
   resolve(value: unknown): void;
   reject(error: JoineryError): void;
-  readonly timer: ReturnType<typeof setTimeout>;
+  readonly timer: ReturnType<typeof setTimeout> | undefined;
+  readonly onProgress?: ((progress: unknown) => void) | undefined;
+}
+
+export interface RunnerRequestOptions {
+  /** How long it may take; null for no limit (default: `requestTimeoutMs`). */
+  readonly timeoutMs?: number | null;
+  /** A long request's progress messages. */
+  readonly onProgress?: (progress: unknown) => void;
+  /** Cancels the request in the runner; it then rejects with CANCELLED. */
+  readonly signal?: AbortSignal;
 }
 
 const MAX_LOG = 500;
@@ -179,7 +192,12 @@ export class JobManager {
       log: [],
       target: description.target,
     };
-    const job: LiveJob = { info, startedAt: this.#now(), onDone: extras.onDone };
+    const job: LiveJob = {
+      info,
+      startedAt: this.#now(),
+      onDone: extras.onDone,
+      silent: extras.silent === true,
+    };
     this.#running.set(id, job);
     this.#publish({ type: 'job', job: info });
     let process: JobRunnerProcess;
@@ -219,18 +237,48 @@ export class JobManager {
     }
   }
 
-  /** Asks the runner for a wizard's quick work (preview, auto-match, new table plan). */
-  request(request: RunnerRequest): Promise<unknown> {
+  /**
+   * Asks the runner for a wizard's quick work (preview, auto-match, new table plan), or a long
+   * request with progress and cancel (an RDB analysis).
+   */
+  request(request: RunnerRequest, options: RunnerRequestOptions = {}): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const requestId = newId();
-      const timer = setTimeout(() => {
-        this.#requests.delete(requestId);
-        reject(new JoineryError({ code: 'TIMEOUT', message: 'The job runner did not answer' }));
-        this.#scheduleIdle();
-      }, this.#requestTimeoutMs);
-      this.#requests.set(requestId, { resolve, reject, timer });
+      const limit = options.timeoutMs === undefined ? this.#requestTimeoutMs : options.timeoutMs;
+      const timer =
+        limit === null
+          ? undefined
+          : setTimeout(() => {
+              this.#requests.delete(requestId);
+              reject(
+                new JoineryError({ code: 'TIMEOUT', message: 'The job runner did not answer' }),
+              );
+              this.#scheduleIdle();
+            }, limit);
+      const signal = options.signal;
+      const onAbort = (): void => {
+        try {
+          this.#process?.send({ type: 'cancel-request', requestId });
+        } catch {
+          // The runner is gone; its exit rejects the request.
+        }
+      };
+      const settle =
+        <T>(done: (value: T) => void) =>
+        (value: T): void => {
+          signal?.removeEventListener('abort', onAbort);
+          done(value);
+        };
+      this.#requests.set(requestId, {
+        resolve: settle(resolve),
+        reject: settle(reject),
+        timer,
+        onProgress: options.onProgress,
+      });
       try {
         this.#ensureProcess().send({ type: 'request', requestId, request });
+        if (signal?.aborted === true) onAbort();
+        else signal?.addEventListener('abort', onAbort, { once: true });
       } catch (error) {
         clearTimeout(timer);
         this.#requests.delete(requestId);
@@ -326,6 +374,9 @@ export class JobManager {
       }
       case 'done':
         this.#done(message);
+        return;
+      case 'request-progress':
+        this.#requests.get(message.requestId)?.onProgress?.(message.progress);
         return;
       case 'response': {
         const pending = this.#requests.get(message.requestId);
@@ -435,7 +486,7 @@ export class JobManager {
       // A result that cannot be kept fails its reader, not the job list.
     }
     this.#publish({ type: 'job', job: finished });
-    if (this.#notify && this.#now() - job.startedAt >= this.#notifyAfterMs) {
+    if (this.#notify && !job.silent && this.#now() - job.startedAt >= this.#notifyAfterMs) {
       try {
         this.#notify(finished);
       } catch {

@@ -7,6 +7,16 @@ import {
   redisBigKeyInputSchema,
   redisBigKeyProgressSchema,
   redisBigKeyReportSchema,
+  redisSearchCreateInputSchema,
+  redisSearchDropInputSchema,
+  redisSearchExplainInputSchema,
+  redisSearchInfoInputSchema,
+  redisSearchInfoSchema,
+  redisSearchListInputSchema,
+  redisSearchQueryInputSchema,
+  redisSearchResultSchema,
+  redisSearchSuggestInputSchema,
+  redisSearchSuggestionSchema,
   redisBulkDeleteProgressSchema,
   redisBulkDeleteResultSchema,
   redisBytesInputSchema,
@@ -513,6 +523,21 @@ export const redisHostContractShape = {
     input: redisBigKeyInputSchema,
     output: redisBigKeyReportSchema,
     progress: redisBigKeyProgressSchema,
+  },
+  /**
+   * RediSearch, the Redis Query Engine (FT.*): indexes listed, described, queried and explained;
+   * created (a write) and dropped (destructive; with its documents when asked). NOT_SUPPORTED
+   * when the search module is not loaded.
+   */
+  search: {
+    list: { input: redisSearchListInputSchema, output: z.array(z.string()) },
+    info: { input: redisSearchInfoInputSchema, output: redisSearchInfoSchema },
+    query: { input: redisSearchQueryInputSchema, output: redisSearchResultSchema },
+    explain: { input: redisSearchExplainInputSchema, output: z.string() },
+    create: { input: redisSearchCreateInputSchema, output: z.void() },
+    drop: { input: redisSearchDropInputSchema, output: z.void() },
+    /** Fields for a new index from sample keys under a prefix. */
+    suggest: { input: redisSearchSuggestInputSchema, output: z.array(redisSearchSuggestionSchema) },
   },
   acl: {
     users: { input: z.object({ sessionId }), output: z.array(z.string()) },

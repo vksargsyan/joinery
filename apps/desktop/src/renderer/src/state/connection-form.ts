@@ -580,20 +580,22 @@ export function defaultSentinelRow(): HostRowValues {
   return { host: 'localhost', port: String(SENTINEL_PORT) };
 }
 
-/** Sign-in method of a new form: SQL takes a user and password, MongoDB and Redis start open. */
-const DEFAULT_AUTH_METHOD: Readonly<Record<DialogEngine, FormAuthMethod>> = {
+/**
+ * Sign-in method of a new form: SQL takes a user and password; MongoDB, Redis and Elasticsearch
+ * start without one, as a local server usually runs.
+ */
+export const DEFAULT_AUTH_METHOD: Readonly<Record<DialogEngine, FormAuthMethod>> = {
   postgres: 'password',
   mysql: 'password',
   mariadb: 'password',
   mongodb: 'none',
   redis: 'none',
-  // Elasticsearch 8 and later have security on by default.
-  elasticsearch: 'password',
+  elasticsearch: 'none',
 };
 
-/** A new node URL row: the engine's port on localhost, over https. */
+/** A new node URL row: the engine's port on localhost, over http (a new form has TLS off). */
 export function defaultUrlRow(): UrlRowValues {
-  return { url: 'https://localhost:9200' };
+  return { url: 'http://localhost:9200' };
 }
 
 export function defaultFormValues(engine: DialogEngine = 'postgres'): ConnectionFormValues {
@@ -622,7 +624,9 @@ export function defaultFormValues(engine: DialogEngine = 'postgres'): Connection
     directConnection: false,
     readPreference: '',
     keyDelimiter: ':',
-    tlsMode: 'verify-full',
+    // Off until chosen: most servers a new connection points at (local, in a private network)
+    // have no TLS, and a stated TLS mode (sslmode, rediss://, https://) comes with a pasted URI.
+    tlsMode: 'disable',
     caPath: '',
     certPath: '',
     keyPath: '',
@@ -675,9 +679,15 @@ export function switchEngine(
     sentinels: fresh.sentinels,
     masterName: '',
     database: bothSql ? values.database : '',
-    authMethod: ENGINE_AUTH_METHODS[engine].includes(values.authMethod)
-      ? values.authMethod
-      : fresh.authMethod,
+    // A sign-in left at the old engine's default, with nothing typed, takes the new engine's
+    // default (none for MongoDB, Redis and Elasticsearch).
+    authMethod:
+      ENGINE_AUTH_METHODS[engine].includes(values.authMethod) &&
+      (values.authMethod !== DEFAULT_AUTH_METHOD[values.engine] ||
+        values.user !== '' ||
+        values.password !== '')
+        ? values.authMethod
+        : fresh.authMethod,
     mechanism: fresh.mechanism,
     authSource: '',
     directConnection: false,
@@ -691,7 +701,8 @@ export function switchEngine(
 
 /**
  * The form after the user picks another way to connect. An SRV record implies TLS, as in MongoDB
- * drivers, so choosing it turns TLS back on (the user may turn it off again). A host or seed list
+ * drivers, and Elastic Cloud has TLS only, so choosing either turns TLS on (the user may turn it
+ * off again). A host or seed list
  * still holding its default row starts from the single host typed so far, and the single host,
  * while untouched, from the list's first row.
  */
@@ -700,7 +711,9 @@ export function switchEndpointKind(
   kind: FormEndpointKind,
 ): ConnectionFormValues {
   const next: ConnectionFormValues = { ...values, endpointKind: kind };
-  if (kind === 'srv' && values.tlsMode === 'disable') next.tlsMode = 'verify-full';
+  if ((kind === 'srv' || kind === 'cloudId') && values.tlsMode === 'disable') {
+    next.tlsMode = 'verify-full';
+  }
   const [only, ...others] = values.hostList;
   const pristine =
     others.length === 0 &&

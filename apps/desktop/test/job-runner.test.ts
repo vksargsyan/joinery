@@ -5,19 +5,28 @@ import { join } from 'node:path';
 import {
   JoineryError,
   connectionProfileSchema,
+  tableDefSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
 } from '@joinery/core';
-import type { ExportJob, ImportJob, RunSqlFileJob, TransferPreview } from '@joinery/ipc';
+import {
+  rdbReportSchema,
+  type ExportJob,
+  type ImportJob,
+  type RunSqlFileJob,
+  type TransferPreview,
+} from '@joinery/ipc';
 import {
   EXPORT_FORMATS,
   FILE_FORMATS,
   INFERRED_TYPES,
+  PARQUET_COMPRESSIONS,
   ZipReader,
   openFileReader,
 } from '@joinery/transfer';
 import {
   INFERRED_COLUMN_TYPES,
+  PARQUET_COMPRESSIONS as IPC_PARQUET_COMPRESSIONS,
   TRANSFER_EXPORT_FORMATS,
   TRANSFER_FILE_FORMATS,
 } from '@joinery/ipc';
@@ -592,6 +601,85 @@ describe('JobRunner Excel, XML and ZIP', () => {
     ]);
   });
 
+  it('exports a table to Parquet, previews it and imports it back', async () => {
+    const { runner, session, done, response } = setup();
+    session.result = {
+      columns: [
+        ...columns,
+        { name: 'price', nativeType: 'numeric(8,2)', kind: 'decimal' as const },
+      ],
+      rows: [
+        [1, 'Ada', '12.50'],
+        [2, null, null],
+        [3, 'Grace & <co>', '-0.01'],
+      ],
+    };
+    const path = join(dir, 'people.parquet');
+    runner.handle({
+      type: 'start',
+      jobId: 'q1',
+      job: {
+        kind: 'export',
+        profileId: 'p1',
+        source: { kind: 'tables', schema: 'public', tables: ['people'] },
+        format: 'parquet',
+        parquet: { compression: 'zstd' },
+        output: { kind: 'file', path },
+      },
+      resolved: resolved(),
+    });
+    expect((await done('q1')).summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+    expect(readFileSync(path).subarray(0, 4).toString()).toBe('PAR1');
+
+    runner.handle({
+      type: 'request',
+      requestId: 'q',
+      request: { kind: 'preview', input: { path } },
+    });
+    const preview = (await response('q')).result as TransferPreview;
+    expect(preview).toMatchObject({
+      format: 'parquet',
+      parquet: { rows: 3, rowGroups: 1, compressions: ['ZSTD'] },
+      rows: [
+        ['1', 'Ada', '12.50'],
+        ['2', null, null],
+        ['3', 'Grace & <co>', '-0.01'],
+      ],
+    });
+    expect(preview.columns.map((c) => [c.name, c.type, c.precision, c.scale])).toEqual([
+      ['id', 'integer', undefined, undefined],
+      ['name', 'text', undefined, undefined],
+      ['price', 'decimal', 8, 2],
+    ]);
+
+    session.table = tableDefSchema.parse({
+      ...session.table,
+      columns: [
+        ...session.table.columns,
+        { name: 'price', ordinal: 3, dataType: 'numeric(8,2)', nullable: true },
+      ],
+    });
+    runner.handle({
+      type: 'start',
+      jobId: 'q2',
+      job: importJob(path, {
+        file: { path, format: 'parquet' },
+        mapping: [
+          { source: 'id', target: 'id' },
+          { source: 'name', target: 'name' },
+          { source: 'price', target: 'price' },
+        ],
+      }),
+      resolved: resolved(),
+    });
+    expect((await done('q2')).summary).toMatchObject({ status: 'completed', rowsWritten: 3 });
+    expect(session.committed).toEqual([
+      [1, 'Ada', '12.50'],
+      [2, null, null],
+      [3, 'Grace & <co>', '-0.01'],
+    ]);
+  });
+
   it('imports XML rows from the chosen path, reporting bad rows by row and line', async () => {
     const { runner, session, done } = setup();
     const path = file(
@@ -660,6 +748,66 @@ describe('JobRunner Excel, XML and ZIP', () => {
   });
 });
 
+describe('JobRunner RDB analysis', () => {
+  const fixture = join(
+    import.meta.dirname,
+    '../../../packages/redis-tools/test/fixtures/rdb/redis-7.4.rdb',
+  );
+
+  it('reads an RDB file with progress and answers with its report', async () => {
+    const { runner, posted, response } = setup();
+    runner.handle({
+      type: 'request',
+      requestId: 'r1',
+      request: { kind: 'rdb-analyze', input: { path: fixture } },
+    });
+    const answer = await response('r1');
+    expect(answer.error).toBeUndefined();
+    const report = rdbReportSchema.parse(answer.result);
+    expect(report).toMatchObject({
+      file: 'redis-7.4.rdb',
+      size: readFileSync(fixture).length,
+      bytes: readFileSync(fixture).length,
+      version: 12,
+      keys: 20,
+    });
+    // Key names cross as display text.
+    expect(report.patterns.some((p) => p.pattern === 'user:*:profile')).toBe(true);
+    expect(report.biggest[0]!.key).toBe('hash:big');
+    const progress = posted.filter((m) => m.type === 'request-progress');
+    expect(progress[0]).toMatchObject({ requestId: 'r1', progress: { bytes: 0 } });
+  });
+
+  it('refuses a file that is not an RDB, and cancels on request', async () => {
+    const { runner, response } = setup();
+    runner.handle({
+      type: 'request',
+      requestId: 'r2',
+      request: { kind: 'rdb-analyze', input: { path: file('notes.txt', 'hello, world') } },
+    });
+    expect((await response('r2')).error).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      message: expect.stringContaining('This is not an RDB file'),
+    });
+
+    // A large synthetic dump, cancelled as soon as it starts.
+    const keys = Array.from({ length: 200_000 }, (_, i) => `k${i}`);
+    const body = keys.map((k) => `\x00${String.fromCharCode(k.length)}${k}\x01v`).join('');
+    const big = join(dir, 'big.rdb');
+    writeFileSync(
+      big,
+      Buffer.from(`REDIS0011\xfe\x00${body}\xff\x00\x00\x00\x00\x00\x00\x00\x00`, 'latin1'),
+    );
+    runner.handle({
+      type: 'request',
+      requestId: 'r3',
+      request: { kind: 'rdb-analyze', input: { path: big } },
+    });
+    runner.handle({ type: 'cancel-request', requestId: 'r3' });
+    expect((await response('r3')).error).toMatchObject({ code: 'CANCELLED' });
+  });
+});
+
 describe('protocol mirrors', () => {
   it('lists the same inferred column types as @joinery/transfer', () => {
     expect([...INFERRED_COLUMN_TYPES]).toEqual([...INFERRED_TYPES]);
@@ -668,5 +816,9 @@ describe('protocol mirrors', () => {
   it('lists the same file and export formats as @joinery/transfer', () => {
     expect([...TRANSFER_FILE_FORMATS]).toEqual([...FILE_FORMATS]);
     expect([...TRANSFER_EXPORT_FORMATS]).toEqual([...EXPORT_FORMATS]);
+  });
+
+  it('lists the same Parquet codecs as @joinery/transfer', () => {
+    expect([...IPC_PARQUET_COMPRESSIONS]).toEqual([...PARQUET_COMPRESSIONS]);
   });
 });

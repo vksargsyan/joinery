@@ -24,6 +24,8 @@ function profile(
       engine: 'postgres',
       endpoint: { kind: 'host', host: 'db.example.com', port: 5432 },
       auth: { method: 'password', user: 'app', password: { id: 'pw' } },
+      // A remote server with verified TLS (a new profile's default is TLS off).
+      tls: { mode: 'verify-full' },
       createdAt: now,
       updatedAt: now,
       ...input,

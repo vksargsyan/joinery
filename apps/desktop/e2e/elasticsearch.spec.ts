@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SearchSession } from '@joinery/driver-elasticsearch';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectSearch, e2eIndex, indexExists } from './search';
 
 /**
@@ -77,17 +77,17 @@ async function send(text: string, status: string): Promise<Locator> {
 }
 
 async function connectFromUrl(url: string, name: string) {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   // The pasted http:// URL makes the connection an Elasticsearch one.
-  await expect(dialog.getByLabel('Database engine', { exact: true })).toHaveValue('elasticsearch');
+  await expect(dialog.getByTestId('connection-engine')).toHaveText('Elasticsearch');
   await expect(dialog.getByLabel('Node URL 1', { exact: true })).toHaveValue(
     `http://${new URL(url).host}`,
   );
-  await expect(dialog.getByLabel('TLS', { exact: true })).toHaveValue('disable');
+  await expect(dialog.getByLabel('TLS mode', { exact: true })).toHaveValue('disable');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   return dialog;
 }
@@ -105,7 +105,7 @@ test('connects to Elasticsearch from a pasted URL, step by step', async () => {
   await expect(dialog).toBeHidden();
 
   const profile = profileItem(NAME);
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await expect(treeRow(profile, 'Indices')).toBeVisible();
   await expect(treeRow(profile, 'Aliases')).toBeVisible();

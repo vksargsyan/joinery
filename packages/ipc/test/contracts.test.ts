@@ -30,6 +30,9 @@ import {
   transferDbMainContractShape,
   backupMainContractShape,
   updatesMainContractShape,
+  erModelsMainContractShape,
+  redisDumpMainContractShape,
+  schedulesMainContractShape,
   parseRequest,
   syncMainContractShape,
   safeProfileSchema,
@@ -450,8 +453,15 @@ describe('mainContract never hands a secret to the renderer', () => {
         }),
         openExternal: notUsed,
         commands: notUsed,
+        menu: notUsed,
       },
-      dialogs: { openFile: notUsed, saveFile: notUsed, openDirectory: notUsed, writeFile: notUsed },
+      dialogs: {
+        openFile: notUsed,
+        saveFile: notUsed,
+        openDirectory: notUsed,
+        readFile: notUsed,
+        writeFile: notUsed,
+      },
       hostKeys: { prompts: notUsed, answer: notUsed },
       ssh: { inspectKey: notUsed },
       metadata: { get: () => [], put: notUsed, invalidate: notUsed },
@@ -470,6 +480,9 @@ describe('mainContract never hands a secret to the renderer', () => {
       transferDb: unusedHandlers(transferDbMainContractShape),
       backup: unusedHandlers(backupMainContractShape),
       updates: unusedHandlers(updatesMainContractShape),
+      erModels: unusedHandlers(erModelsMainContractShape),
+      schedules: unusedHandlers(schedulesMainContractShape),
+      redisDump: unusedHandlers(redisDumpMainContractShape),
     });
     const main = createClient(ports.client, mainContract);
     for (const received of [
@@ -617,11 +630,13 @@ describe('desktop additions', () => {
         info: notUsed,
         openExternal: () => {},
         commands: notUsed,
+        menu: notUsed,
       },
       dialogs: {
         openFile: () => ({ path: null }),
         saveFile: () => ({ path: null }),
         openDirectory: () => ({ path: null }),
+        readFile: notUsed,
         writeFile: notUsed,
       },
       hostKeys: { prompts: notUsed, answer: () => {} },
@@ -642,6 +657,9 @@ describe('desktop additions', () => {
       transferDb: unusedHandlers(transferDbMainContractShape),
       backup: unusedHandlers(backupMainContractShape),
       updates: unusedHandlers(updatesMainContractShape),
+      erModels: unusedHandlers(erModelsMainContractShape),
+      schedules: unusedHandlers(schedulesMainContractShape),
+      redisDump: unusedHandlers(redisDumpMainContractShape),
       ...overrides,
     };
     serve(ports.server, mainContract, handlers);

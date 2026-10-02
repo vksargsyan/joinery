@@ -417,7 +417,7 @@ function TableDetails(props: {
                 aria-selected={state.rowAction === action}
                 className={cx(
                   'rounded px-2 py-0.5',
-                  state.rowAction === action ? 'bg-accent text-accent-fg' : 'hover:bg-hover',
+                  state.rowAction === action ? 'bg-badge text-fg' : 'hover:bg-hover',
                 )}
                 onClick={() => void model.showRows(action, 0)}
               >

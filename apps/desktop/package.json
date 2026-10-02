@@ -1,7 +1,7 @@
 {
   "name": "@joinery/desktop",
   "productName": "Joinery",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.6",
   "private": true,
   "description": "Joinery desktop app: Electron main, sandboxed preload, React renderer and connection hosts.",
   "author": "Joinery",
@@ -10,7 +10,7 @@
   "type": "module",
   "main": "./out/main/index.cjs",
   "scripts": {
-    "dev": "install-electron && electron-vite dev",
+    "dev": "install-electron && node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/dev-app-name.ts && electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",

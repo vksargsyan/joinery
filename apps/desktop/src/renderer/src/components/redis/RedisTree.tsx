@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { formatCount } from '../../lib/format';
 import { destructive } from '../../../../shared/redis-safety';
 import { loadChildren, pathKey, toggleNode, useExplorer } from '../../state/explorer';
+import { openDumpAnalysis } from '../../state/redis/dump';
 import { namespacePattern } from '../../state/redis/key-browser';
 import { openTransferFrom } from '../../state/transfer-db/api';
 import {
@@ -17,7 +18,8 @@ import {
   type RedisTool,
 } from '../../state/redis/panels';
 import { BackupMenuItems } from '../backup/BackupDialogs';
-import { MenuItem, Row } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
+import { Row } from '../Sidebar';
 import { Icon } from '../ui';
 import { TypeBadge } from './common';
 
@@ -40,6 +42,7 @@ const TOOLS: readonly RedisTool[] = [
   'latency',
   'monitor',
   'bigkeys',
+  'search',
   'acl',
   'topology',
 ];
@@ -92,6 +95,17 @@ export function RedisTree(props: { readonly profile: StoredProfile; readonly dep
                 />
               </div>
             ))}
+            {/* Offline: a dump file, from this server or any other. */}
+            <div role="treeitem" aria-selected={false}>
+              <Row
+                depth={depth + 1}
+                expandable={false}
+                expanded={false}
+                onToggle={() => openDumpAnalysis()}
+                onActivate={() => openDumpAnalysis()}
+                label={<span className="truncate">Dump analysis</span>}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -226,8 +240,10 @@ function TreeNode(props: {
           }
           menu={
             <>
-              <MenuItem onSelect={open}>Open value</MenuItem>
-              <MenuItem danger onSelect={() => void remove()}>
+              <MenuItem icon="open" onSelect={open}>
+                Open value
+              </MenuItem>
+              <MenuItem icon="trash" danger onSelect={() => void remove()}>
                 Delete key…
               </MenuItem>
             </>
@@ -260,7 +276,10 @@ function TreeNode(props: {
         title="Double-click to open the key browser"
         label={
           <span className="flex min-w-0 items-center gap-1.5">
-            <Icon name={node.kind === 'namespace' ? 'folder' : 'database'} className="text-muted" />
+            <Icon
+              name={node.kind === 'namespace' ? 'folder' : 'database'}
+              className={node.kind === 'namespace' ? 'text-muted' : 'text-lilac'}
+            />
             <span className="truncate font-mono text-[12.5px]">{node.name}</span>
             {keys !== undefined && (
               <span
@@ -275,9 +294,12 @@ function TreeNode(props: {
         }
         menu={
           <>
-            <MenuItem onSelect={() => browse(pattern)}>Browse keys</MenuItem>
+            <MenuItem icon="key" onSelect={() => browse(pattern)}>
+              Browse keys
+            </MenuItem>
             {node.kind !== 'namespace' && (
               <MenuItem
+                icon="query"
                 onSelect={() =>
                   openRedisPanel({
                     profileId: profile.id,
@@ -292,6 +314,7 @@ function TreeNode(props: {
             )}
             {clusterNode === undefined && (
               <MenuItem
+                icon="transfer"
                 onSelect={() =>
                   openTransferFrom(profile, {
                     ...(database !== undefined ? { database: String(database) } : {}),
@@ -311,7 +334,9 @@ function TreeNode(props: {
               }}
               restore={node.kind !== 'namespace'}
             />
-            <MenuItem onSelect={() => void loadChildren(profile.id, node.path)}>Refresh</MenuItem>
+            <MenuItem icon="refresh" onSelect={() => void loadChildren(profile.id, node.path)}>
+              Refresh
+            </MenuItem>
           </>
         }
       />

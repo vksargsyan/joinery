@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { defineContract } from '../contract';
 import { backupMainContractShape } from './backup';
+import { erModelsMainContractShape } from './er-models';
+import { schedulesMainContractShape } from './schedules';
 import { mongoMainContractShape } from './mongo';
+import { redisDumpMainContractShape } from './redis-dump';
 import { syncMainContractShape } from './sync';
 import { autosaveMainContractShape, gridViewsMainContractShape } from './workspace';
 import { transferDbMainContractShape } from './transfer-db';
@@ -36,7 +39,7 @@ import {
   transientSecretsSchema,
 } from '../schemas/app';
 import { idSchema, taskProgressSchema } from '../schemas/common';
-import { appCommandSchema } from '../schemas/updates';
+import { appCommandSchema, windowMenuCommandSchema } from '../schemas/updates';
 import { connectionCheckResultSchema } from '../schemas/driver';
 import {
   autoMatchInputSchema,
@@ -52,6 +55,7 @@ import {
   transferPreviewSchema,
   transferProfileSaveSchema,
   transferProfileSchema,
+  readFileInputSchema,
   writeFileInputSchema,
 } from '../schemas/jobs';
 import {
@@ -175,6 +179,8 @@ export const mainContract = defineContract({
     openExternal: { input: z.object({ url: externalUrlSchema }), output: z.void() },
     /** Commands from the application menu (About...), for as long as the caller reads. */
     commands: { input: z.void(), item: appCommandSchema },
+    /** Runs an item of the window's own menu bar (Windows and Linux) in main. */
+    menu: { input: z.object({ command: windowMenuCommandSchema }), output: z.void() },
   },
   dialogs: {
     /** A native open-file dialog (TLS CA, certificate and key paths); null when cancelled. */
@@ -184,6 +190,8 @@ export const mainContract = defineContract({
      * a folder picked with `openDirectory`), and read only files picked with `openFile`.
      */
     saveFile: { input: saveFileInputSchema, output: z.object({ path: z.string().nullable() }) },
+    /** Reads a text file picked with `openFile` (an ER model file), up to 64 MB. */
+    readFile: { input: readFileInputSchema, output: z.object({ text: z.string() }) },
     /** Writes text or bytes to a path picked with `saveFile`; returns the bytes written. */
     writeFile: {
       input: writeFileInputSchema,
@@ -286,6 +294,12 @@ export const mainContract = defineContract({
   backup: backupMainContractShape,
   /** Auto-update (spec §20): status, check now, restart into the update. */
   updates: updatesMainContractShape,
+  /** Unapplied ER model changes (spec §8). */
+  erModels: erModelsMainContractShape,
+  /** Scheduled backups, SQL files, exports and comparisons, and their runs. */
+  schedules: schedulesMainContractShape,
+  /** Redis and Valkey RDB files, analysed offline. */
+  redisDump: redisDumpMainContractShape,
 });
 
 export type MainContract = typeof mainContract;

@@ -5,9 +5,11 @@ import {
   mainContract,
   serve,
   DEFAULT_APP_SETTINGS,
+  type AppSettings,
   type Server,
+  type WindowMenuCommand,
 } from '@joinery/ipc';
-import { openStore, type Store } from '@joinery/storage';
+import { openStore, type ScheduleRecord, type ScheduleRun, type Store } from '@joinery/storage';
 import {
   BrowserWindow,
   Menu,
@@ -16,6 +18,8 @@ import {
   app,
   dialog,
   ipcMain,
+  nativeTheme,
+  powerMonitor,
   protocol,
   safeStorage,
   session,
@@ -30,6 +34,7 @@ import { buildContentSecurityPolicy } from '../shared/csp';
 import {
   createMainHandlers,
   readAppSettings,
+  writeAppSettings,
   type MainServices,
   type OpenFileOptions,
 } from './api';
@@ -38,7 +43,12 @@ import { HostKeyBroker, knownHostsFile } from './host-keys';
 import { utilityJobRunnerFactory } from './job-runner-process';
 import { JobManager } from './jobs';
 import { notificationFor, settingsJobHistory, type SaveFileOptions } from './jobs-api';
+import { executeSchedule } from './schedule-tasks';
+import { Scheduler, type TaskOutcome } from './scheduler';
+import { ScheduleEvents } from './schedules-api';
 import { menuTemplate } from './menu';
+import { effectiveTheme, titleBarOverlay, windowChrome } from './window-chrome';
+import { QuitGuard } from './quit-guard';
 import { createSafeStorageSealer } from './sealer';
 import {
   hardenSession,
@@ -100,6 +110,9 @@ if (!app.requestSingleInstanceLock()) {
     if (window) {
       if (window.isMinimized()) window.restore();
       window.focus();
+    } else if (app.isReady()) {
+      // Running without a window (macOS): opening Joinery again opens one.
+      createMainWindow();
     }
   });
   void app.whenReady().then(start);
@@ -110,6 +123,11 @@ let supervisor: ConnectionSupervisor<MessagePortMain> | undefined;
 let jobs: JobManager | undefined;
 let sync: SyncService | undefined;
 let updates: UpdateController | undefined;
+let scheduler: Scheduler | undefined;
+let quitGuard: QuitGuard<BrowserWindow> | undefined;
+/** The theme setting the window chrome follows, and where full-screen changes are sent. */
+let themeSetting: AppSettings['theme'] = 'dark';
+let windowCommands: AppCommands | undefined;
 
 function start(): void {
   hardenSession(session.defaultSession);
@@ -168,6 +186,15 @@ function start(): void {
   const jobManager = startJobs(openedStore, hostKeys);
   // Data compare jobs spool their rows under the temporary folder, for this app run only.
   sync = new SyncService({ jobs: jobManager, spoolRoot: app.getPath('temp') });
+  const scheduleEvents = new ScheduleEvents();
+  const syncService = sync;
+  scheduler = new Scheduler({
+    store: openedStore.schedules,
+    execute: (schedule) =>
+      executeSchedule({ store: openedStore, jobs: jobManager, sync: syncService }, schedule),
+    notify: notifySchedule,
+    onEvent: (event) => scheduleEvents.publish(event),
+  });
   // The desktop starts dark and without the editor minimap; users change both in settings.
   const defaultSettings = {
     ...DEFAULT_APP_SETTINGS,
@@ -175,7 +202,51 @@ function start(): void {
     editor: { ...DEFAULT_APP_SETTINGS.editor, minimap: false },
   };
   const appCommands = new AppCommands();
+  windowCommands = appCommands;
+  themeSetting = readAppSettings(openedStore, defaultSettings).theme;
+  const activeScheduler = scheduler;
+  quitGuard = new QuitGuard<BrowserWindow>({
+    platform: process.platform,
+    enabled: () => readAppSettings(openedStore, defaultSettings).schedules.confirmClose,
+    paused: () => activeScheduler.paused,
+    schedules: () =>
+      openedStore.schedules.list().map((schedule) => ({
+        name: schedule.name,
+        enabled: schedule.enabled,
+        nextRunAt: schedule.nextRunAt,
+        running: activeScheduler.isRunning(schedule.id),
+      })),
+    ask: async (question, window) => {
+      const options = {
+        type: 'question' as const,
+        message: question.message,
+        detail: question.detail,
+        buttons: [...question.buttons],
+        defaultId: 0,
+        cancelId: 1,
+        checkboxLabel: question.checkboxLabel,
+        noLink: true,
+      };
+      const answer =
+        window && !window.isDestroyed()
+          ? await dialog.showMessageBox(window, options)
+          : await dialog.showMessageBox(options);
+      return { confirmed: answer.response === 0, dontAskAgain: answer.checkboxChecked };
+    },
+    stopAsking: () => {
+      writeAppSettings(openedStore, defaultSettings, { schedules: { confirmClose: false } });
+    },
+    quit: () => app.quit(),
+  });
+  // Nothing may hold up a shutdown or a logout.
+  powerMonitor.on('shutdown', () => quitGuard?.bypass());
   const updater = startUpdates(readAppSettings(openedStore, defaultSettings));
+  const menuCommands = {
+    checkForUpdates: () => void updater.check(),
+    releaseNotes: () => {
+      openExternal(updater.status().releaseNotesUrl ?? RELEASES_PAGE).catch(() => undefined);
+    },
+  };
   const services: MainServices<MessagePortMain> = {
     store: openedStore,
     supervisor: connections,
@@ -200,11 +271,19 @@ function start(): void {
     keysDir: join(app.getPath('userData'), 'ssh-keys'),
     jobs: jobManager,
     sync,
+    scheduler,
+    scheduleEvents,
     previousRun,
     defaultSettings,
     updates: updater,
     appCommands,
-    onSettingsChanged: (settings) => updater.applySettings(settings),
+    menuCommands,
+    development: !app.isPackaged,
+    onSettingsChanged: (settings) => {
+      updater.applySettings(settings);
+      themeSetting = settings.theme;
+      for (const window of BrowserWindow.getAllWindows()) applyChrome(window);
+    },
   };
   serveMainContract(services);
 
@@ -216,10 +295,10 @@ function start(): void {
         development: !app.isPackaged,
         commands: {
           about: () => appCommands.send('about'),
-          checkForUpdates: () => void updater.check(),
-          releaseNotes: () => {
-            openExternal(updater.status().releaseNotesUrl ?? RELEASES_PAGE).catch(() => undefined);
-          },
+          commandPalette: () => appCommands.send('command-palette'),
+          quickOpen: () => appCommands.send('quick-open'),
+          keyboardShortcuts: () => appCommands.send('keyboard-shortcuts'),
+          ...menuCommands,
         },
       }),
     ),
@@ -227,8 +306,16 @@ function start(): void {
   if (!app.isPackaged) app.dock?.setIcon(windowIcon);
   createMainWindow();
   void updater.start();
+  // Schedules run while Joinery is open; a sleep or a clock change is checked at once.
+  scheduler.start();
+  powerMonitor.on('resume', () => scheduler?.wake());
+  powerMonitor.on('unlock-screen', () => scheduler?.wake());
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+  });
+  // "System" follows the OS appearance, in the window controls too.
+  nativeTheme.on('updated', () => {
+    for (const window of BrowserWindow.getAllWindows()) applyChrome(window);
   });
 }
 
@@ -288,10 +375,47 @@ function serveMainContract(services: MainServices<MessagePortMain>): void {
       });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     };
+    const runMenu = (command: WindowMenuCommand): void => {
+      switch (command) {
+        case 'undo':
+        case 'redo':
+        case 'cut':
+        case 'copy':
+        case 'paste':
+        case 'selectAll':
+        case 'reload':
+          contents[command]();
+          break;
+        case 'toggleDevTools':
+          contents.toggleDevTools();
+          break;
+        case 'resetZoom':
+          contents.setZoomLevel(0);
+          break;
+        case 'zoomIn':
+        case 'zoomOut':
+          contents.setZoomLevel(contents.getZoomLevel() + (command === 'zoomIn' ? 0.5 : -0.5));
+          break;
+        case 'toggleFullScreen':
+          owner.setFullScreen(!owner.isFullScreen());
+          break;
+        case 'minimize':
+          owner.minimize();
+          break;
+        case 'close':
+          owner.close();
+          break;
+        case 'quit':
+          app.quit();
+          break;
+        default:
+          break;
+      }
+    };
     const server = serve(
       fromElectronPort(port1),
       mainContract,
-      createMainHandlers(services, { sendPort, openFile, saveFile, openDirectory }),
+      createMainHandlers(services, { sendPort, openFile, saveFile, openDirectory, runMenu }),
     );
     servers.set(contents, { server, port: port1 });
     sendPort({ kind: 'main' }, port2);
@@ -319,6 +443,8 @@ function startUpdates(settings: UpdateSettings): UpdateController {
     },
     settings,
     log: (message) => console.info(`[updates] ${message}`),
+    // Restarting into the update is the user's own choice: it does not ask again.
+    beforeInstall: () => quitGuard?.bypass(),
   });
   return updates;
 }
@@ -340,6 +466,14 @@ function startJobs(openedStore: Store, hostKeys: HostKeyBroker): JobManager {
   return jobs;
 }
 
+/** The chrome's colours for the current theme (the Windows and Linux controls overlay). */
+function applyChrome(window: BrowserWindow): void {
+  const theme = effectiveTheme(themeSetting, nativeTheme.shouldUseDarkColors);
+  const chrome = windowChrome(process.platform, theme);
+  window.setBackgroundColor(chrome.backgroundColor!);
+  if (process.platform !== 'darwin') window.setTitleBarOverlay(titleBarOverlay(theme));
+}
+
 function createMainWindow(): void {
   const window = new BrowserWindow({
     width: 1440,
@@ -348,20 +482,70 @@ function createMainWindow(): void {
     minHeight: 600,
     show: false,
     title: 'Joinery',
-    backgroundColor: '#101216',
+    ...windowChrome(
+      process.platform,
+      effectiveTheme(themeSetting, nativeTheme.shouldUseDarkColors),
+    ),
     // Windows and macOS take the icon from the executable and the bundle; Linux needs it here.
     ...(process.platform === 'linux' || !app.isPackaged ? { icon: windowIcon } : {}),
     webPreferences: secureWebPreferences(join(__dirname, '../preload/index.cjs'), !app.isPackaged),
   });
   window.once('ready-to-show', () => window.show());
+  // The title bar leaves room for the traffic lights, which macOS hides in full screen.
+  window.on('enter-full-screen', () => windowCommands?.send('enter-full-screen'));
+  window.on('leave-full-screen', () => windowCommands?.send('leave-full-screen'));
+  // Windows and Linux quit with their last window: with schedules on, ask first.
+  window.on('close', (event) => {
+    const last = BrowserWindow.getAllWindows().every((other) => other === window);
+    if (last && quitGuard && !quitGuard.lastWindowClosing(window)) event.preventDefault();
+  });
+  // Windows: the session is ending (shut down, restart, sign out); never hold it up.
+  window.on('query-session-end', () => quitGuard?.bypass());
+  window.on('session-end', () => quitGuard?.bypass());
   void window.loadURL(devServerUrl ?? APP_ENTRY_URL);
 }
 
+/** A scheduled run's desktop notification, as its schedule says (failures by default). */
+function notifySchedule(schedule: ScheduleRecord, run: ScheduleRun, outcome: TaskOutcome): void {
+  if (!Notification.isSupported() || schedule.notify === 'never') return;
+  const failed = run.status === 'failed';
+  if (schedule.notify === 'failures' && !failed && !outcome.attention) return;
+  const notification = new Notification({
+    title: failed
+      ? `Scheduled run failed: ${schedule.name}`
+      : outcome.attention
+        ? `${schedule.name}: worth a look`
+        : `${schedule.name} finished`,
+    body: run.message ?? (failed ? 'The run failed' : 'Done'),
+  });
+  notification.on('click', () => showMainWindow());
+  notification.show();
+}
+
+function showMainWindow(): void {
+  const [window] = BrowserWindow.getAllWindows();
+  if (!window) {
+    createMainWindow();
+    return;
+  }
+  if (window.isMinimized()) window.restore();
+  window.focus();
+}
+
 app.on('window-all-closed', () => {
+  // macOS apps keep running without windows; elsewhere the last window closing quits.
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  // With schedules on, the question comes first; confirming quits again.
+  const [window] = BrowserWindow.getAllWindows();
+  if (quitGuard && !quitGuard.beforeQuit(BrowserWindow.getFocusedWindow() ?? window)) {
+    event.preventDefault();
+    return;
+  }
+  scheduler?.stop();
+  scheduler = undefined;
   updates?.dispose();
   supervisor?.closeAll();
   jobs?.shutdown();

@@ -1,9 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { mainApi } from './lib/main-client';
 import { AboutDialog } from './components/AboutDialog';
+import { registerAppCommands, type AppActions } from './components/app-commands';
+import { CommandPalette } from './components/CommandPalette';
+import { CommandStatus } from './components/CommandStatus';
 import { ConnectionDialog, type ConnectionDialogMode } from './components/ConnectionDialog';
 import { Dock, openQueryTab } from './components/dock';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -13,22 +16,24 @@ import { TransferDialogs } from './components/jobs/TransferDialogs';
 import { TransferDbHost } from './components/transfer-db/TransferDbDialog';
 import { BackupDialogs } from './components/backup/BackupDialogs';
 import { Prompts } from './components/Prompts';
+import { ScheduleDialog } from './components/schedules/ScheduleDialog';
 import { openRedisTool } from './components/redis/RedisTree';
 import { Sidebar } from './components/Sidebar';
-import { SyncMenu } from './components/sync/SyncMenu';
+import { TitleBar } from './components/TitleBar';
 import { useTheme } from './components/theme';
-import { Button, Icon } from './components/ui';
 import { UpdateNotice } from './components/UpdateNotice';
 import { useConnections } from './state/connections';
-import { keys, useProfiles } from './state/data';
+import { keys, useProfiles, useSettings } from './state/data';
+import { startKeybindings, useKeybindings } from './state/keybindings';
 import { runningCount, showJobs, useJobs, watchJobs } from './state/jobs';
 import { usePanels } from './state/panels';
+import { openSchedulesPanel } from './state/schedules';
 import { openAbout, watchAppCommands, watchUpdates } from './state/updates';
 import { useWorkspace } from './state/workspace';
 
 /**
- * The window: connections and objects on the left, dockable query tabs in the middle, history on
- * the right. The active tab's connection drives the production guardrail: a red frame around the
+ * The window: the title bar, connections and objects on the left, dockable query tabs in the
+ * middle, history on the right. The active tab's connection drives the production guardrail: a red frame around the
  * whole window and a banner naming the connection (spec §4).
  */
 export function App() {
@@ -44,9 +49,14 @@ export function App() {
   );
   // Table data views and designers count as the active tab too.
   const activeId = useWorkspace((state) => state.activeTabId);
+  // Panels of no connection (Schedules, Keyboard Shortcuts) have the empty id.
   const activePanelProfile = usePanels((state) =>
-    activeId ? state.panels[activeId]?.profileId : undefined,
+    activeId ? state.panels[activeId]?.profileId || undefined : undefined,
   );
+  const activePanelTitle = usePanels((state) =>
+    activeId ? state.panels[activeId]?.title : undefined,
+  );
+  const activeTitle = activeTab?.title ?? activePanelTitle;
   const activeProfileId = activeTab?.profileId ?? activePanelProfile;
   const activeProfile = profiles.data?.find((p) => p.id === activeProfileId);
   const production = activeProfile?.presentation.environment === 'production';
@@ -71,6 +81,19 @@ export function App() {
     void watchAppCommands();
   }, []);
 
+  // `#about` opens the About box: a link for what cannot reach the application menu (the
+  // packaged-app tests drive the page only).
+  useEffect(() => {
+    const follow = (): void => {
+      if (location.hash !== '#about') return;
+      history.replaceState(null, '', location.pathname + location.search);
+      openAbout();
+    };
+    follow();
+    window.addEventListener('hashchange', follow);
+    return () => window.removeEventListener('hashchange', follow);
+  }, []);
+
   const toggleTheme = async (): Promise<void> => {
     await mainApi().settings.set({ theme: theme === 'dark' ? 'light' : 'dark' });
     await queryClient.invalidateQueries({ queryKey: keys.settings });
@@ -83,67 +106,39 @@ export function App() {
     else if (profile) openQueryTab({ profileId: profile.id, title: `${profile.name} query` });
   };
 
+  // The palette's commands and the key bindings (what App holds comes through `actions`).
+  const actions = useRef<AppActions>(undefined as unknown as AppActions);
+  actions.current = {
+    newConnection: () => setDialog({ kind: 'create' }),
+    editConnection: (profile) => setDialog({ kind: 'edit', profile }),
+    newQuery,
+    canNewQuery: () => activeTab !== undefined || readyProfiles.length > 0,
+    toggleHistory: () => setHistoryOpen((open) => !open),
+    toggleTheme: () => void toggleTheme(),
+  };
+  useEffect(() => registerAppCommands(() => actions.current), []);
+  useEffect(() => startKeybindings(), []);
+  const settings = useSettings();
+  useEffect(() => {
+    if (settings.data) useKeybindings.setState({ overrides: settings.data.keybindings });
+  }, [settings.data]);
+
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-panel px-3">
-        <span className="text-[13px] font-semibold tracking-tight">Joinery</span>
-        {production && activeProfile && (
-          <span
-            role="status"
-            data-testid="production-banner"
-            className="rounded bg-env-production px-2 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase"
-          >
-            Production · {activeProfile.name}
-          </span>
-        )}
-        <span className="flex-1" />
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={newQuery}
-          disabled={!activeTab && readyProfiles.length === 0}
-        >
-          <Icon name="plus" className="h-3.5 w-3.5" />
-          New query
-        </Button>
-        <Button
-          size="sm"
-          variant={historyOpen ? 'secondary' : 'ghost'}
-          onClick={() => setHistoryOpen(!historyOpen)}
-          aria-pressed={historyOpen}
-        >
-          <Icon name="history" className="h-3.5 w-3.5" />
-          History
-        </Button>
-        <SyncMenu />
-        <Button
-          size="sm"
-          variant={jobsOpen ? 'secondary' : 'ghost'}
-          onClick={() => showJobs(!jobsOpen)}
-          aria-pressed={jobsOpen}
-        >
-          Jobs
-          {jobsRunning > 0 && (
-            <span
-              className="rounded bg-accent px-1 text-[10px] text-accent-fg"
-              aria-label={`${jobsRunning} running`}
-            >
-              {jobsRunning}
-            </span>
-          )}
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => void toggleTheme()}
-          aria-label="Switch theme"
-        >
-          {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => openAbout()} aria-label="About Joinery">
-          About
-        </Button>
-      </header>
+      <TitleBar
+        title={activeTitle}
+        production={production ? activeProfile?.name : undefined}
+        theme={theme}
+        onToggleTheme={() => void toggleTheme()}
+        onNewQuery={newQuery}
+        newQueryDisabled={!activeTab && readyProfiles.length === 0}
+        historyOpen={historyOpen}
+        onToggleHistory={() => setHistoryOpen(!historyOpen)}
+        onSchedules={() => openSchedulesPanel()}
+        jobsOpen={jobsOpen}
+        jobsRunning={jobsRunning}
+        onToggleJobs={() => showJobs(!jobsOpen)}
+      />
       <div className="flex min-h-0 flex-1">
         <div className="w-72 shrink-0">
           <Sidebar onEdit={setDialog} />
@@ -170,11 +165,14 @@ export function App() {
         />
       )}
       <Prompts />
+      <ScheduleDialog />
       <HostKeyPrompts />
       <TransferDialogs />
       <TransferDbHost />
       <BackupDialogs />
       <AboutDialog />
+      <CommandPalette />
+      <CommandStatus />
       <UpdateNotice />
       {dialog && <ConnectionDialog mode={dialog} onClose={() => setDialog(undefined)} />}
     </div>

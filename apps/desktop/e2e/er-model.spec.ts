@@ -1,9 +1,11 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { Session } from '@joinery/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
@@ -27,6 +29,7 @@ let launched: LaunchedApp | undefined;
 let page: Page;
 let database: Awaited<ReturnType<typeof scratchDatabase>> | undefined;
 let direct: Session | undefined;
+let files: string;
 
 test.beforeAll(async () => {
   database = await scratchDatabase(PG_URL!);
@@ -37,6 +40,7 @@ test.beforeAll(async () => {
   ]) {
     await query(direct, sql);
   }
+  files = mkdtempSync(join(tmpdir(), 'joinery-er-model-'));
   launched = await launchApp();
   page = launched.page;
 });
@@ -45,7 +49,17 @@ test.afterAll(async () => {
   await launched?.close();
   await direct?.close();
   await database?.drop();
+  rmSync(files, { recursive: true, force: true });
 });
+
+async function stubDialogs(path: string): Promise<void> {
+  await launched!.app.evaluate(({ dialog }, file) => {
+    dialog.showSaveDialog = (() =>
+      Promise.resolve({ canceled: false, filePath: file })) as typeof dialog.showSaveDialog;
+    dialog.showOpenDialog = (() =>
+      Promise.resolve({ canceled: false, filePaths: [file] })) as typeof dialog.showOpenDialog;
+  }, path);
+}
 
 async function shot(name: string): Promise<void> {
   if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`) });
@@ -86,17 +100,16 @@ async function columns(table: string): Promise<string[]> {
 }
 
 test('designs a table, relates it and applies the script', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name', { exact: true }).fill(NAME);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
-  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().click();
+  await page.getByRole('treeitem', { name: NAME }).locator('[data-tree-row]').first().dblclick();
   await treeRow(database!.name).click();
   await treeRow('public').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'ER diagram' }).click();
@@ -199,6 +212,77 @@ test('adds a relationship by dragging from a column to a table', async () => {
   await page.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click();
   await expect(box('notes')).toHaveCount(0);
   await expect(view.locator('.react-flow__edge')).toHaveCount(1);
+});
+
+test('keeps unapplied changes when the diagram closes, and brings them back', async () => {
+  const view = diagram();
+  await view.getByTestId('er-edit').click();
+  await view.getByTestId('er-edit-bar').getByRole('button', { name: 'Table' }).click();
+  await fill(editorPanel().getByTestId('er-table-name'), 'wishlist');
+  await expect(view.getByTestId('er-kept')).toHaveText('Kept');
+
+  // Closing asks nothing: the changes are kept.
+  await page.getByRole('button', { name: 'Close ER diagram (public)' }).click();
+  await expect(page.getByTestId('er-diagram')).toHaveCount(0);
+
+  await treeRow('public').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'ER diagram' }).click();
+  const reopened = diagram();
+  await expect(reopened.getByTestId('er-edit-bar')).toBeVisible();
+  await expect(box('wishlist')).toHaveAttribute('data-mark', 'new');
+  await expect(reopened.getByTestId('er-notice')).toContainText(
+    'Restored your unapplied changes to public',
+  );
+  await shot('er-model-restored');
+
+  await reopened.getByTestId('er-edit-bar').getByRole('button', { name: 'Discard' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click();
+  await expect(box('wishlist')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close ER diagram (public)' }).click();
+  await treeRow('public').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'ER diagram' }).click();
+  await expect(box('customers')).toBeVisible();
+  await expect(diagram().getByTestId('er-edit-bar')).toHaveCount(0);
+});
+
+test('saves the model to a file and applies it to another schema', async () => {
+  const file = join(files, 'shop.model.json');
+  await stubDialogs(file);
+  const view = diagram();
+  await view.getByTestId('er-model-menu').click();
+  await page.getByRole('menuitem', { name: /Save as model file/ }).click();
+  await expect(view.getByTestId('er-notice')).toContainText(`Saved the model to ${file}`);
+  const saved = JSON.parse(readFileSync(file, 'utf8')) as { format: string; base?: unknown };
+  expect(saved.format).toBe('joinery.er-model');
+  expect(saved.base).toBeUndefined();
+
+  // A new, empty schema: the model opens there as what it should become.
+  await query(direct!, 'CREATE SCHEMA staging');
+  await treeRow(database!.name).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Refresh', exact: true }).click();
+  await treeRow('staging').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'ER diagram' }).click();
+  const staging = diagram();
+  await staging.getByRole('button', { name: 'Open model file…' }).click();
+  await expect(staging.getByTestId('er-edit-bar')).toContainText('Editing staging');
+  await expect(staging.getByTestId('er-notice')).toContainText(
+    'Opened shop.model.json: it changes 2 tables of staging',
+  );
+  await expect(box('customers')).toHaveAttribute('data-mark', 'new');
+
+  await staging.getByTestId('er-review-button').click();
+  const script = page.getByTestId('er-script');
+  await expect(script).toContainText('CREATE TABLE "staging"."customers"');
+  await expect(script).toContainText('REFERENCES "staging"."customers" ("id")');
+  await page.getByTestId('er-apply').click();
+  await expect(staging.getByTestId('er-notice')).toContainText('Applied');
+  const tables = await query(
+    direct!,
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'staging' ORDER BY 1",
+  );
+  expect(tables.map((row) => row[0])).toEqual(['customers', 'orders']);
+  await page.getByRole('button', { name: 'Close ER diagram (staging)' }).click();
+  await expect(box('customers')).toBeVisible();
 });
 
 test('drops a table only once the data loss is acknowledged', async () => {

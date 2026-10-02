@@ -5,17 +5,19 @@ import { join } from 'node:path';
 import type { Session } from '@joinery/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
  * Import and export through the job runner against a real PostgreSQL server (spec §12, §14):
  * a CSV into an existing table and into a new one, a table exported to CSV and JSON and the
- * files compared, and a SQL file with one failing statement run in continue mode. Native file
+ * files compared, Excel and Parquet exports imported into new tables, and a SQL file with one
+ * failing statement run in continue mode. Native file
  * dialogs are stubbed in the main process, so they answer with files in a temporary folder.
  */
 
 const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const SHOTS = process.env['JOINERY_E2E_SHOTS'];
 const NAME = 'E2E Transfer';
 
 test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
@@ -72,6 +74,10 @@ test.afterAll(async () => {
   if (work) rmSync(work, { recursive: true, force: true });
 });
 
+async function shot(name: string): Promise<void> {
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`) });
+}
+
 function treeRow(text: string): Locator {
   return page.locator('[data-tree-row]').filter({ has: page.getByText(text, { exact: true }) });
 }
@@ -103,20 +109,19 @@ function job(title: string): Locator {
 }
 
 test('connects and shows the tables', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   // Main parses the URI asynchronously; typing before it answers races the fill.
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await treeRow(database!.name).click();
   await treeRow('public').click();
   await treeRow('Tables').click();
@@ -295,6 +300,61 @@ test('exports a table to an Excel workbook and imports it into a new table', asy
     [2, 'Grace, Hopper', '7.00', null],
     [3, 'Linus', '100.25', 'say "hi"'],
   ]);
+});
+
+test('exports a table to Parquet and imports it into a new table typed from the file', async () => {
+  const parquetPath = join(work, 'orders.parquet');
+  await stubDialog('save', parquetPath);
+  await menu(treeRow('orders'), 'Export…');
+  let wizard = page.getByRole('dialog', { name: 'Export tables of public' });
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await wizard.getByLabel('Format').selectOption('parquet');
+  await expect(wizard).toContainText('Columnar and typed');
+  await wizard.getByLabel('Parquet codec').selectOption('zstd');
+  // Parquet compresses its own pages and is binary: no gzip, no text encoding.
+  await expect(wizard.getByLabel('Encoding')).toHaveCount(0);
+  await expect(wizard.getByLabel('Compression').locator('option[value="gzip"]')).toHaveCount(0);
+  await shot('export-parquet');
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await wizard.getByRole('button', { name: 'Choose file…' }).click();
+  await expect(wizard.getByTestId('export-destination')).toHaveText(parquetPath);
+  await wizard.getByRole('button', { name: 'Export', exact: true }).click();
+  await expect(wizard).toBeHidden();
+  await expect(job('Export orders to Parquet')).toHaveAttribute('data-state', 'completed');
+  expect(readFileSync(parquetPath).subarray(0, 4).toString('latin1')).toBe('PAR1');
+
+  await stubDialog('open', parquetPath);
+  await menu(treeRow('Tables'), 'Import into new table…');
+  wizard = page.getByRole('dialog', { name: 'Import into a new table in public' });
+  await wizard.getByRole('button', { name: 'Choose file…' }).click();
+  await expect(wizard.getByTestId('import-parquet-summary')).toContainText(
+    '3 rows · 1 row group · ZSTD · written by hyparquet',
+  );
+  await expect(wizard.getByLabel('Encoding')).toHaveCount(0);
+  await expect(wizard.getByTestId('import-preview')).toContainText('Grace, Hopper');
+  await shot('import-parquet');
+  await wizard.getByRole('button', { name: 'Next' }).click();
+
+  await wizard.getByLabel('Table name').fill('orders_parquet');
+  await wizard.getByLabel('id is in the primary key').check();
+  // Types come from the file's schema, not from guessing at sample text.
+  await expect(wizard.getByTestId('import-ddl')).toContainText('"total" numeric(10,2)');
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await wizard.getByRole('button', { name: 'Next' }).click();
+  await expect(wizard.getByTestId('import-review')).toContainText(
+    'Parquet · 3 rows in 1 row group',
+  );
+  await wizard.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(wizard).toBeHidden();
+
+  const item = job('Import orders.parquet into new table public.orders_parquet');
+  await expect(item).toHaveAttribute('data-state', 'completed');
+  await expect(item.getByTestId('job-summary')).toContainText('3 rows imported');
+  const values = (table: string): string =>
+    `SELECT id, customer, total::text, note FROM ${table} ORDER BY id`;
+  expect(await query(direct!, values('orders_parquet'))).toEqual(
+    await query(direct!, values('orders')),
+  );
 });
 
 test('runs a SQL file past a failing statement and logs the error', async () => {

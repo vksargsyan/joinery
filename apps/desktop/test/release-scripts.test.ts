@@ -22,8 +22,10 @@ import {
   homepageOf,
   licenceProblem,
   packageDirOf,
+  readAsset,
   renderNotices,
   thirdPartyNotices,
+  withAssets,
 } from '../scripts/third-party';
 import { thirdPartyReportSchema } from '../src/shared/third-party';
 
@@ -167,6 +169,37 @@ describe('the third-party report', () => {
       'gamma@0.1.0': 'MIT',
     });
     expect(settled.packages[0]).toMatchObject({ name: 'gamma', licence: 'MIT' });
+  });
+});
+
+describe('bundled assets', () => {
+  it('lists a font with its licence file, marked as an asset, in name order', () => {
+    writeFileSync(join(scratch, 'OFL.txt'), 'SIL Open Font License, Version 1.1\n');
+    const font = readAsset(scratch, {
+      name: 'Rec Mono (Recursive)',
+      version: '1.085',
+      licence: 'OFL-1.1',
+      homepage: 'https://github.com/arrowtype/recursive',
+      licenceFile: 'OFL.txt',
+      shippedIn: 'renderer',
+    });
+    expect(font).toEqual({
+      name: 'Rec Mono (Recursive)',
+      version: '1.085',
+      licence: 'OFL-1.1',
+      homepage: 'https://github.com/arrowtype/recursive',
+      licenceText: 'SIL Open Font License, Version 1.1',
+      shippedIn: ['renderer'],
+      source: 'asset',
+    });
+    expect(licenceProblem(font.licence)).toBeUndefined();
+    const npm = { name: 'zod', version: '4.0.0', licence: 'MIT', shippedIn: ['renderer' as const] };
+    const report = withAssets({ format: 1, packages: [npm] }, [font]);
+    expect(report.packages.map((p) => p.name)).toEqual(['Rec Mono (Recursive)', 'zod']);
+    expect(thirdPartyReportSchema.parse(report)).toEqual(report);
+    expect(renderNotices(report, 'Joinery')).toContain(
+      'Rec Mono (Recursive) 1.085\nLicence: OFL-1.1',
+    );
   });
 });
 
@@ -363,6 +396,33 @@ describe('the SBOM', () => {
       for (const target of d.dependsOn) expect(refs.has(target)).toBe(true);
     const app = bom.dependencies.find((d) => d.ref === bom.metadata.component['bom-ref']);
     expect(app?.dependsOn).toContain('workspace:@joinery/core@0.0.0');
+  });
+
+  it('names a bundled asset as a generic component, outside the lockfile', () => {
+    const bom = buildSbom({
+      ...input,
+      shipped: [
+        ...input.shipped,
+        {
+          name: 'Rec Mono (Recursive)',
+          version: '1.085',
+          licence: 'OFL-1.1',
+          homepage: 'https://github.com/arrowtype/recursive',
+          source: 'asset' as const,
+        },
+      ],
+    }) as {
+      components: { name: string; 'bom-ref': string }[];
+      dependencies: { ref: string }[];
+    };
+    const font = bom.components.find((c) => c.name === 'Rec Mono (Recursive)');
+    expect(font).toMatchObject({
+      'bom-ref': 'pkg:generic/rec%20mono%20(recursive)@1.085',
+      scope: 'required',
+      licenses: [{ license: { id: 'OFL-1.1' } }],
+      externalReferences: [{ type: 'website', url: 'https://github.com/arrowtype/recursive' }],
+    });
+    expect(bom.dependencies.map((d) => d.ref)).toContain(font!['bom-ref']);
   });
 
   it('refuses a shipped package the lockfile does not explain', () => {

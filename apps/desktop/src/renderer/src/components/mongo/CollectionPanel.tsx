@@ -1,9 +1,9 @@
+import { DropdownMenu } from 'radix-ui';
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { formatCount } from '../../lib/format';
 import type { CodeExportRequest } from '../../state/mongo/code-export';
 import {
-  PAGE_SIZE,
   useCollectionState,
   type CollectionView,
   type ViewTab,
@@ -13,6 +13,10 @@ import { useQueryBuilder, type QueryEditorMode } from '../../state/mongo/query-b
 import { useResults } from '../../state/mongo/results';
 import { useTheme } from '../theme';
 import { Button, Icon, cx } from '../ui';
+import { MenuItem } from '../MenuItem';
+import { Pager } from '../Pager';
+import { ViewModeSwitch, type ViewModeOption } from '../ViewModeSwitch';
+import { DOCUMENT_PAGE_SIZES, queryTotal } from '../../state/mongo/pages';
 import { CodeExportDialog } from './CodeExportDialog';
 import { BulkDialog, DocumentEditorDialog } from './DocumentDialogs';
 import { ExplainView } from './ExplainView';
@@ -64,6 +68,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           Run
         </Button>
         <Button size="sm" variant="ghost" onClick={() => void view.reset()} title="Clear the query">
+          <Icon name="restore" className="h-3.5 w-3.5" />
           Reset
         </Button>
         <Button
@@ -72,6 +77,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           onClick={() => void view.explain('executionStats')}
           title="Run the query and show its plan with execution statistics"
         >
+          <Icon name="gauge" className="h-3.5 w-3.5" />
           Explain
         </Button>
         <Button
@@ -80,6 +86,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           onClick={() => void view.explain('queryPlanner')}
           title="Show the chosen plan without running the query"
         >
+          <Icon name="diagram" className="h-3.5 w-3.5" />
           Plan only
         </Button>
         <Button
@@ -88,6 +95,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           onClick={() => setExporting(view.exportRequest())}
           title="Export the query as Node.js, Python, Java, C#, Go or PHP code"
         >
+          <Icon name="export" className="h-3.5 w-3.5" />
           Export code…
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
@@ -106,6 +114,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           disabled={!writable}
           onClick={() => view.openBulk('update')}
         >
+          <Icon name="edit" className="h-3.5 w-3.5" />
           Bulk update…
         </Button>
         <Button
@@ -115,6 +124,7 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           disabled={!writable}
           onClick={() => view.openBulk('delete')}
         >
+          <Icon name="trash" className="h-3.5 w-3.5" />
           Bulk delete…
         </Button>
         <span className="mx-1 h-5 w-px bg-border" />
@@ -155,31 +165,6 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
           {notice.text}
         </Banner>
       )}
-      <div className="flex items-center gap-2 border-b border-border bg-panel px-2 py-1">
-        <div className="flex rounded border border-border" role="radiogroup" aria-label="View">
-          {(['tree', 'table', 'json', 'explain'] as ViewTab[]).map((option) => (
-            <button
-              key={option}
-              type="button"
-              role="radio"
-              aria-checked={tab === option}
-              className={cx(
-                'px-2 py-0.5 text-xs',
-                tab === option ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
-              )}
-              onClick={() => view.setTab(option)}
-            >
-              {option === 'tree'
-                ? 'Tree'
-                : option === 'table'
-                  ? 'Table'
-                  : option === 'json'
-                    ? 'JSON'
-                    : 'Explain'}
-            </button>
-          ))}
-        </div>
-      </div>
       <div className="min-h-0 flex-1">
         {tab === 'explain' ? (
           <ExplainView explain={explain} />
@@ -210,71 +195,84 @@ export function CollectionPanel({ view }: { readonly view: CollectionView }) {
   );
 }
 
-/** The collection's tool panels: aggregation, indexes, schema, options, change stream. */
+/**
+ * The collection's tools under one menu: aggregation (from the current filter), SQL, indexes,
+ * schema analysis, options and the change stream, each with its glyph and what it does.
+ */
 function CollectionTools({ view }: { readonly view: CollectionView }) {
   const { profileId, db, collection, kind } = view.target;
   const target = { profileId, db, collection };
   const filter = useCollectionState(view, (s) => s.fields.filter);
+  const item = (label: string, hint: string) => (
+    <span className="flex min-w-0 flex-col">
+      <span>{label}</span>
+      <span className="text-[11px] text-faint">{hint}</span>
+    </span>
+  );
   return (
-    <>
-      <Button
-        size="sm"
-        variant="ghost"
-        title="Open the aggregation editor, starting from the current filter"
-        onClick={() =>
-          openMongoTool({
-            tool: 'aggregation',
-            target: {
-              ...target,
-              ...(filter.trim() !== '' ? { text: `[{ $match: ${filter.trim()} }]` } : {}),
-            },
-          })
-        }
-      >
-        Aggregate
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        title="Query the collection with SQL in a new tab"
-        onClick={() => openMongoSql({ profileId, db, collection })}
-      >
-        SQL
-      </Button>
-      {kind !== 'view' && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => openMongoTool({ tool: 'indexes', target })}
-        >
-          Indexes
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <Button size="sm" variant="ghost" title="Aggregation, SQL, indexes, schema, options, watch">
+          <Icon name="wrench" className="h-3.5 w-3.5" />
+          Tools
+          <Icon name="chevron-down" className="h-3 w-3" />
         </Button>
-      )}
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => openMongoTool({ tool: 'schema', target: { ...target, kind } })}
-      >
-        Schema
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => openMongoTool({ tool: 'options', target })}>
-        Options
-      </Button>
-      {kind !== 'view' && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() =>
-            openMongoTool({
-              tool: 'changes',
-              target: { profileId, scope: { kind: 'collection', ns: { db, collection } } },
-            })
-          }
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="start"
+          sideOffset={4}
+          aria-label="Collection tools"
+          className="z-50 min-w-64 rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
-          Watch
-        </Button>
-      )}
-    </>
+          <MenuItem
+            icon="filter"
+            onSelect={() =>
+              openMongoTool({
+                tool: 'aggregation',
+                target: {
+                  ...target,
+                  ...(filter.trim() !== '' ? { text: `[{ $match: ${filter.trim()} }]` } : {}),
+                },
+              })
+            }
+          >
+            {item('Aggregate', 'A pipeline, starting from the current filter')}
+          </MenuItem>
+          <MenuItem icon="query" onSelect={() => openMongoSql({ profileId, db, collection })}>
+            {item('SQL', 'Query the collection with SQL in a new tab')}
+          </MenuItem>
+          <DropdownMenu.Separator className="my-1 h-px bg-border" />
+          {kind !== 'view' && (
+            <MenuItem icon="key" onSelect={() => openMongoTool({ tool: 'indexes', target })}>
+              {item('Indexes', 'Create, hide and drop indexes')}
+            </MenuItem>
+          )}
+          <MenuItem
+            icon="chart"
+            onSelect={() => openMongoTool({ tool: 'schema', target: { ...target, kind } })}
+          >
+            {item('Schema', 'The fields, their types and how often they occur')}
+          </MenuItem>
+          <MenuItem icon="design" onSelect={() => openMongoTool({ tool: 'options', target })}>
+            {item('Options', 'Validation, collation and the collection’s settings')}
+          </MenuItem>
+          {kind !== 'view' && (
+            <MenuItem
+              icon="pulse"
+              onSelect={() =>
+                openMongoTool({
+                  tool: 'changes',
+                  target: { profileId, scope: { kind: 'collection', ns: { db, collection } } },
+                })
+              }
+            >
+              {item('Watch', 'Follow inserts, updates and deletes as they happen')}
+            </MenuItem>
+          )}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
@@ -409,9 +407,16 @@ function QueryBar(props: { readonly view: CollectionView; readonly theme: 'dark'
   );
 }
 
+const VIEW_TABS: readonly ViewModeOption<ViewTab>[] = [
+  { value: 'tree', label: 'Tree', icon: 'view-tree' },
+  { value: 'table', label: 'Table', icon: 'view-grid' },
+  { value: 'json', label: 'JSON', icon: 'view-json' },
+  { value: 'explain', label: 'Explain', icon: 'gauge' },
+];
+
 function Footer({ view }: { readonly view: CollectionView }) {
+  const tab = useCollectionState(view, (s) => s.tab);
   const loaded = useResults(view.results, (s) => s.documents.length);
-  const hasMore = useResults(view.results, (s) => s.hasMore);
   const loading = useResults(view.results, (s) => s.loading);
   const estimate = useCollectionState(view, (s) => s.estimate);
   const exactCount = useCollectionState(view, (s) => s.exactCount);
@@ -421,16 +426,27 @@ function Footer({ view }: { readonly view: CollectionView }) {
     view,
     (s) => s.active !== undefined && Object.keys(s.active.filter).length > 0,
   );
-  const complete = !hasMore && !loading;
+  const page = useCollectionState(view, (s) => s.page);
+  const pageSize = useCollectionState(view, (s) => s.pageSize);
+  const hasNext = useCollectionState(view, (s) => s.hasNext);
+  const running = useCollectionState(view, (s) => s.running);
+  const active = useCollectionState(view, (s) => s.active);
+  // The first page holds every document: the total is known without counting.
+  const complete = page === 1 && !hasNext && !loading;
+  // Documents the query returns, within its own skip and limit, once counted.
+  const total =
+    exactCount !== undefined && active !== undefined
+      ? queryTotal(exactCount, active)
+      : complete && !filtered
+        ? loaded
+        : undefined;
   return (
     <footer className="flex flex-wrap items-center gap-2 border-t border-border bg-panel px-2 py-1 text-xs">
       <span data-testid="mongo-loaded" aria-live="polite">
         {formatCount(loaded)} {loaded === 1 ? 'document' : 'documents'} loaded
       </span>
       {loading && <span className="text-muted">· loading…</span>}
-      {hasMore && !loading && (
-        <span className="text-muted">· more on scroll ({formatCount(PAGE_SIZE)} per page)</span>
-      )}
+
       <span className="text-muted" data-testid="mongo-total">
         ·{' '}
         {exactCount !== undefined
@@ -464,6 +480,19 @@ function Footer({ view }: { readonly view: CollectionView }) {
       {durationMs !== undefined && (
         <span className="text-muted">first page in {durationMs} ms</span>
       )}
+      <Pager
+        page={page}
+        pageSize={pageSize}
+        pageSizes={DOCUMENT_PAGE_SIZES}
+        hasNext={hasNext}
+        total={total}
+        busy={running || loading || counting}
+        noun="documents"
+        testId="mongo"
+        onMove={(move) => void view.goToPage(move)}
+        onPageSize={(size) => void view.setPageSize(size)}
+      />
+      <ViewModeSwitch options={VIEW_TABS} value={tab} onChange={(next) => view.setTab(next)} />
     </footer>
   );
 }

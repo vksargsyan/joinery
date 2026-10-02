@@ -97,7 +97,7 @@ function LoadedPlan(props: {
               aria-checked={mode === option}
               className={cx(
                 'px-2 py-0.5 text-xs',
-                mode === option ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                mode === option ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
               )}
               onClick={() => setMode(option)}
             >

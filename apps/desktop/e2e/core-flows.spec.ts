@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 
 /**
  * The core flows against a real PostgreSQL server: create and test a connection, run a query
@@ -40,7 +40,7 @@ async function runStatement(): Promise<void> {
 }
 
 test('creates a PostgreSQL connection from a URI and tests it', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await expect(dialog).toBeVisible();
 
@@ -50,9 +50,16 @@ test('creates a PostgreSQL connection from a URI and tests it', async () => {
   await expect(dialog.getByLabel('Password', { exact: true })).not.toHaveValue('');
 
   await dialog.getByLabel('Name').fill(NAME);
-  // The test server has no TLS; turning it off must show the persistent warning.
-  await dialog.getByLabel('TLS').selectOption('disable');
-  await expect(dialog.getByText('TLS is disabled')).toBeVisible();
+  // TLS starts off (the test server has none). A remote server would keep a warning; a local
+  // one only gets a note.
+  await dialog.getByRole('tab', { name: /TLS/ }).click();
+  await expect(dialog.getByLabel('TLS mode')).toHaveValue('disable');
+  const host = new URL(PG_URL!).hostname;
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
+  await expect(
+    local ? dialog.getByTestId('tls-local-note') : dialog.getByText('TLS is disabled'),
+  ).toBeVisible();
+  await dialog.getByRole('tab', { name: /General/ }).click();
   await dialog.getByLabel('Password storage').selectOption('session');
 
   await dialog.getByRole('button', { name: 'Test Connection' }).click();
@@ -66,7 +73,7 @@ test('creates a PostgreSQL connection from a URI and tests it', async () => {
 
 test('streams a result past the row limit and fetches more', async () => {
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await page.getByRole('button', { name: 'New query' }).click();
   await expect(page.getByTestId('query-panel')).toBeVisible();

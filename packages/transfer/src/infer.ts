@@ -4,7 +4,8 @@ import { isJsonText, type SourceCell, type SourceRow } from './types';
  * Column type inference for previews and "create a new table from the file" (spec §12). Each
  * value narrows the set of types the column can still have; the most specific survivor wins,
  * in the order of INFERRED_TYPES. Text is classified the same way whether it came from CSV or
- * from a JSON string, so exported files re-infer the types they were written from.
+ * from a JSON string, so exported files re-infer the types they were written from. `time` and
+ * `binary` come only from typed sources (Parquet's schema), never from text.
  */
 
 export const INFERRED_TYPES = [
@@ -17,6 +18,8 @@ export const INFERRED_TYPES = [
   'timestamp',
   'uuid',
   'json',
+  'time',
+  'binary',
   'text',
 ] as const;
 export type InferredType = (typeof INFERRED_TYPES)[number];

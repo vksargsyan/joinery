@@ -3,42 +3,110 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /*
- * Theme tokens. Dark is the default (spec §18: dark and light themes); components use the
- * Tailwind colours below, never raw hex values, so both themes stay consistent.
+ * Theme tokens: the Kiln design system (Tenmoku dark, Bisque light). Grounds are a ladder of
+ * warm neutrals (chrome one step deeper than the working surface, floating surfaces one step
+ * raised); rust is the only accent; the other glazes carry meaning (celadon success, ochre
+ * warning, red error, cobalt info). Components use the Tailwind colours below, never raw hex,
+ * and the canvas-drawn parts (Monaco, the data grids) take the same values from lib/kiln.ts.
  */
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #101216;
-  --panel: #161a20;
-  --panel-2: #1d222a;
-  --hover: #252b35;
-  --border: #2b313c;
-  --fg: #e6e8ec;
-  --muted: #98a2b3;
-  --accent: #4f8cff;
-  --accent-fg: #ffffff;
-  --danger: #f2555a;
-  --warning: #f5a524;
-  --success: #3fb950;
-  --focus: #7aa7ff;
+  /* Kiln Tenmoku */
+  --k-bg: #161412;
+  --k-bg-deep: #110f0e;
+  --k-bg-raised: #1e1b18;
+  --k-bg-hover: #25211d;
+  --k-bg-active: #2c2722;
+  --k-border: #2a2520;
+  --k-border-strong: #3a342d;
+  --k-line-highlight: #1d1a17;
+  --k-fg: #e6ded0;
+  --k-muted: #a39a8b;
+  --k-faint: #6b6358;
+  --k-comment: #8a8172;
+  --k-punct: #9c9384;
+  --k-rust: #e8906a;
+  --k-cobalt: #8fb0f0;
+  --k-celadon: #a3cba8;
+  --k-ochre: #e9bc6c;
+  --k-lilac: #c9a8ee;
+  --k-peach: #edc7a3;
+  --k-teal: #7fcbc6;
+  --k-red: #f07d72;
+  --k-on-accent: #1a1310;
+  --k-accent-hover: #f0a07d;
+  --k-focus-border: #e8906a99;
+  --k-selection-text: #e8906a59;
+  --k-list-active: #e8906a29;
+  --k-list-focus: #e8906a1f;
+  --k-list-hover: #e6ded00d;
+  --k-badge-bg: #e8906a33;
+  --k-find-match: #e9bc6c66;
+  --k-scrollbar: #e6ded014;
+  --k-scrollbar-hover: #e6ded024;
+  --k-scrollbar-active: #e8906a66;
+  --k-shadow-widget: #00000066;
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f6f7f9;
-  --panel: #ffffff;
-  --panel-2: #eef0f3;
-  --hover: #e4e7ec;
-  --border: #d5dae1;
-  --fg: #1a1e24;
-  --muted: #5a6473;
-  --accent: #2f6fec;
-  --accent-fg: #ffffff;
-  --danger: #d1242f;
-  --warning: #9a6700;
-  --success: #1a7f37;
-  --focus: #2f6fec;
+  /* Kiln Bisque */
+  --k-bg: #f6f1e7;
+  --k-bg-deep: #eee7da;
+  --k-bg-raised: #fbf8f2;
+  --k-bg-hover: #e8e0d1;
+  --k-bg-active: #e0d6c4;
+  --k-border: #dfd5c3;
+  --k-border-strong: #cfc3ae;
+  --k-line-highlight: #efe8db;
+  --k-fg: #2b2620;
+  --k-muted: #6b6255;
+  --k-faint: #a89e8e;
+  --k-comment: #716759;
+  --k-punct: #6e6557;
+  --k-rust: #aa4924;
+  --k-cobalt: #2d5bb5;
+  --k-celadon: #3a7549;
+  --k-ochre: #8f5d0e;
+  --k-lilac: #7a48ac;
+  --k-peach: #9a4e28;
+  --k-teal: #1c7470;
+  --k-red: #c0392e;
+  --k-on-accent: #fff8f0;
+  --k-accent-hover: #933c1b;
+  --k-focus-border: #aa492499;
+  --k-selection-text: #aa492459;
+  --k-list-active: #aa492429;
+  --k-list-focus: #aa49241f;
+  --k-list-hover: #2b26200d;
+  --k-badge-bg: #aa492433;
+  --k-find-match: #8f5d0e66;
+  --k-scrollbar: #2b262014;
+  --k-scrollbar-hover: #2b262024;
+  --k-scrollbar-active: #aa492466;
+  --k-shadow-widget: #5a452a22;
+}
+
+/*
+ * The app's roles on the Kiln tokens. `panel` is chrome (toolbars, the side bar, tab strips,
+ * the status bar: bg-deep), `bg` the working surface (editors, grids), `panel-2` a raised
+ * surface (cards, chips, code blocks).
+ */
+:root {
+  --bg: var(--k-bg);
+  --panel: var(--k-bg-deep);
+  --panel-2: var(--k-bg-raised);
+  --hover: var(--k-bg-hover);
+  --border: var(--k-border);
+  --fg: var(--k-fg);
+  --muted: var(--k-muted);
+  --accent: var(--k-rust);
+  --accent-fg: var(--k-on-accent);
+  --danger: var(--k-red);
+  --warning: var(--k-ochre);
+  --success: var(--k-celadon);
+  --focus: var(--k-focus-border);
 }
 
 @theme inline {
@@ -55,12 +123,92 @@
   --color-warning: var(--warning);
   --color-success: var(--success);
   --color-focus: var(--focus);
-  --color-env-dev: #3fb950;
-  --color-env-test: #4f8cff;
-  --color-env-staging: #f5a524;
-  --color-env-production: #f2555a;
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+  /* Kiln by name */
+  --color-deep: var(--k-bg-deep);
+  --color-raised: var(--k-bg-raised);
+  --color-pressed: var(--k-bg-active);
+  --color-strong: var(--k-border-strong);
+  --color-faint: var(--k-faint);
+  --color-comment: var(--k-comment);
+  --color-punct: var(--k-punct);
+  --color-rust: var(--k-rust);
+  --color-cobalt: var(--k-cobalt);
+  --color-celadon: var(--k-celadon);
+  --color-ochre: var(--k-ochre);
+  --color-lilac: var(--k-lilac);
+  --color-peach: var(--k-peach);
+  --color-teal: var(--k-teal);
+  --color-accent-hover: var(--k-accent-hover);
+  --color-list-active: var(--k-list-active);
+  --color-list-focus: var(--k-list-focus);
+  --color-list-hover: var(--k-list-hover);
+  --color-badge: var(--k-badge-bg);
+  /* Connection environments: a glaze each, always with the word. */
+  --color-env-dev: var(--k-celadon);
+  --color-env-test: var(--k-cobalt);
+  --color-env-staging: var(--k-ochre);
+  --color-env-production: var(--k-red);
+  /* UI chrome is the platform font at 13px (as in VS Code); code and data are Rec Mono. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Rec Mono Duotone', 'SF Mono', Menlo, Consolas, monospace;
+  --font-terminal: 'Rec Mono Linear', 'SF Mono', Menlo, Consolas, monospace;
+  /* VS Code's workbench geometry: square-ish corners. */
+  --radius: 2px;
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  /* Only floating widgets cast a shadow. */
+  --shadow-widget: 0 0 8px 2px var(--k-shadow-widget);
+}
+
+@font-face {
+  font-family: 'Rec Mono Duotone';
+  src: url('./assets/fonts/RecMonoDuotone-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rec Mono Duotone';
+  src: url('./assets/fonts/RecMonoDuotone-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rec Mono Duotone';
+  src: url('./assets/fonts/RecMonoDuotone-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rec Mono Duotone';
+  src: url('./assets/fonts/RecMonoDuotone-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rec Mono Linear';
+  src: url('./assets/fonts/RecMonoLinear-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rec Mono Linear';
+  src: url('./assets/fonts/RecMonoLinear-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 
 html,
@@ -85,12 +233,45 @@ select {
   user-select: text;
 }
 
+/* Native checkboxes, radios and sliders take the one accent. */
+input,
+progress {
+  accent-color: var(--accent);
+}
+
 :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 1px solid var(--focus);
   outline-offset: 1px;
 }
 
-/* Dockview blends into the app theme. */
+::selection {
+  background: var(--k-selection-text);
+}
+
+/* Scrollbars: a quiet thumb that turns rust while dragged. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--k-scrollbar);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--k-scrollbar-hover);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--k-scrollbar-active);
+}
+
+/* Dockview as Kiln's editor tabs: chrome strip, the active tab opens onto the working surface. */
 .joinery-dock {
   --dv-group-view-background-color: var(--bg);
   --dv-tabs-and-actions-container-background-color: var(--panel);
@@ -99,12 +280,37 @@ select {
   --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
   --dv-inactivegroup-hiddenpanel-tab-background-color: var(--panel);
   --dv-activegroup-visiblepanel-tab-color: var(--fg);
-  --dv-activegroup-hiddenpanel-tab-color: var(--muted);
-  --dv-inactivegroup-visiblepanel-tab-color: var(--fg);
-  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-activegroup-hiddenpanel-tab-color: var(--k-faint);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--k-faint);
   --dv-separator-border: var(--border);
   --dv-paneview-header-border-color: var(--border);
-  --dv-tabs-and-actions-container-height: 34px;
+  --dv-tabs-and-actions-container-height: 35px;
+  --dv-tab-divider-color: var(--border);
+  --dv-active-sash-color: var(--focus);
+}
+
+/* The active tab's rust top hairline (dimmed in a group without focus). */
+.joinery-dock .dv-tab {
+  position: relative;
+  border-right: 1px solid var(--border);
+}
+
+.joinery-dock .dv-tab.dv-active-tab::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: color-mix(in srgb, var(--k-rust) 40%, transparent);
+}
+
+.joinery-dock .dv-active-group .dv-tab.dv-active-tab::before {
+  background: var(--k-rust);
+}
+
+.joinery-dock .dv-tab:not(.dv-active-tab):hover {
+  background: var(--k-bg-raised);
+  color: var(--muted);
 }
 
 /* Glide Data Grid's overlay editors render into #portal: keep it above the dock panels. */
@@ -129,7 +335,7 @@ select {
   --xy-controls-button-color: var(--fg);
   --xy-controls-button-color-hover: var(--fg);
   --xy-controls-button-border-color: var(--border);
-  --xy-controls-box-shadow: 0 6px 20px -8px rgb(0 0 0 / 0.45);
+  --xy-controls-box-shadow: 0 0 8px 2px var(--k-shadow-widget);
 }
 
 .er-canvas .react-flow__controls,

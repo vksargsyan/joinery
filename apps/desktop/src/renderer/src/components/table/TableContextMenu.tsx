@@ -1,13 +1,16 @@
 import type { GridSelection } from '@glideapps/glide-data-grid';
 import { COPY_FORMATS, DEFAULT, isDefault, type CopyFormat } from '@joinery/table-data';
 import { DropdownMenu } from 'radix-ui';
-import type { ReactNode } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';
 import { errorMessage } from '../../lib/errors';
 import type { RowRef } from '../../state/table/grid-model';
 import { useTableState, type TableView } from '../../state/table-view';
-import { cx } from '../ui';
+import { formatCount } from '../../lib/format';
+import { useWindowState } from '../../state/window';
+import { MenuItem, MenuSub } from '../MenuItem';
+import { PointerAnchor } from '../PointerAnchor';
+import type { IconName } from '../ui';
 
 /** Where the grid's context menu opened, and the selection it acts on (display positions). */
 export interface MenuAt {
@@ -17,6 +20,16 @@ export interface MenuAt {
   readonly row: number;
   readonly selection: GridSelection;
 }
+
+/** A glyph for each copy format. */
+const COPY_ICONS: Readonly<Record<CopyFormat, IconName>> = {
+  tsv: 'view-grid',
+  csv: 'format',
+  json: 'view-json',
+  markdown: 'table',
+  insert: 'table-new',
+  update: 'edit',
+};
 
 export const COPY_LABELS: Readonly<Record<CopyFormat, string>> = {
   tsv: 'TSV (Excel, Sheets)',
@@ -44,8 +57,9 @@ function columnsOf(selection: GridSelection, count: number): number[] {
 }
 
 /**
- * The grid's right-click menu: NULL and DEFAULT for the selected cells, the referenced row of a
- * foreign key, copy in every format, and the row actions.
+ * The grid's right-click menu, at the pointer: the column it was opened on, NULL and DEFAULT for
+ * the selected cells, the referenced row of a foreign key, copy (and copy as every format), and
+ * the row actions, each with its glyph and its shortcut where one exists.
  */
 export function TableContextMenu(props: {
   readonly view: TableView;
@@ -54,6 +68,7 @@ export function TableContextMenu(props: {
   readonly onOpenReferenced: (row: number, column: number) => void;
 }) {
   const { view, at } = props;
+  const platform = useWindowState((s) => s.platform);
   const columns = useTableState(view, (s) => s.columns);
   const identity = useTableState(view, (s) => s.identity);
   const index = view.modelColumn(at.col);
@@ -91,81 +106,89 @@ export function TableContextMenu(props: {
     }
   };
 
+  const mac = platform === 'darwin';
+  const rows = refs.length === 1 ? 'row' : `${formatCount(refs.length)} rows`;
+
   return (
     <DropdownMenu.Root open onOpenChange={(open) => !open && props.onClose()} modal={false}>
       <DropdownMenu.Trigger asChild>
-        <span
-          aria-hidden="true"
-          style={{ position: 'fixed', left: at.x, top: at.y, width: 1, height: 1 }}
-        />
+        <PointerAnchor x={at.x} y={at.y} />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="start"
+          sideOffset={2}
+          collisionPadding={8}
           aria-label="Row actions"
-          className="z-50 max-h-[80vh] min-w-52 overflow-auto rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+          className="z-50 max-h-[80vh] min-w-56 overflow-auto rounded-md border border-border bg-raised p-1 text-[13px] shadow-widget"
         >
+          {column && (
+            <div className="flex items-baseline gap-2 px-2 pt-1 pb-1.5">
+              <span className="truncate font-mono text-[12px] text-fg">{column.name}</span>
+              <span className="truncate font-mono text-[11px] text-faint">{column.dataType}</span>
+              {refs.length > 1 && (
+                <span className="ml-auto text-[11px] whitespace-nowrap text-muted">
+                  {formatCount(refs.length)} rows
+                </span>
+              )}
+            </div>
+          )}
           {editable && (
             <>
-              <Item disabled={!column?.nullable} onSelect={() => setAll(null)}>
+              <MenuItem icon="set-null" disabled={!column?.nullable} onSelect={() => setAll(null)}>
                 Set NULL
-              </Item>
-              <Item onSelect={() => setAll(DEFAULT)}>Set DEFAULT</Item>
+              </MenuItem>
+              <MenuItem
+                icon="set-default"
+                disabled={!column?.hasDefault}
+                onSelect={() => setAll(DEFAULT)}
+              >
+                Set DEFAULT
+              </MenuItem>
             </>
           )}
           {hasFk && (
-            <Item onSelect={() => props.onOpenReferenced(at.row, at.col)}>Open referenced row</Item>
+            <MenuItem icon="link" onSelect={() => props.onOpenReferenced(at.row, at.col)}>
+              Open referenced row
+            </MenuItem>
           )}
-          <Separator />
-          <DropdownMenu.Label className="px-2 py-1 text-[11px] text-muted">
-            Copy as
-          </DropdownMenu.Label>
-          {COPY_FORMATS.map((format) => (
-            <Item
-              key={format}
-              disabled={format === 'update' && identity.kind === 'none'}
-              onSelect={() => copy(format)}
-            >
-              {COPY_LABELS[format]}
-            </Item>
-          ))}
+          {(editable || hasFk) && <Separator />}
+          <MenuItem icon="copy" shortcut={mac ? '⌘C' : 'Ctrl+C'} onSelect={() => copy('tsv')}>
+            Copy
+          </MenuItem>
+          <MenuSub icon="export" label="Copy as">
+            {COPY_FORMATS.map((format) => (
+              <MenuItem
+                key={format}
+                icon={COPY_ICONS[format]}
+                disabled={format === 'update' && identity.kind === 'none'}
+                onSelect={() => copy(format)}
+              >
+                {COPY_LABELS[format]}
+              </MenuItem>
+            ))}
+          </MenuSub>
           {editable && (
             <>
               <Separator />
-              <Item onSelect={() => view.addRow()}>Add row</Item>
-              <Item onSelect={() => view.duplicateRows(refs)}>
-                Duplicate {refs.length === 1 ? 'row' : `${refs.length} rows`}
-              </Item>
-              <Item danger onSelect={() => view.deleteRows(refs)}>
-                Delete {refs.length === 1 ? 'row' : `${refs.length} rows`}
-              </Item>
-              <Item onSelect={() => view.revert(refs)}>Revert changes</Item>
+              <MenuItem icon="plus" onSelect={() => view.addRow()}>
+                Add row
+              </MenuItem>
+              <MenuItem icon="copy" onSelect={() => view.duplicateRows(refs)}>
+                Duplicate {rows}
+              </MenuItem>
+              <MenuItem icon="restore" onSelect={() => view.revert(refs)}>
+                Revert changes
+              </MenuItem>
+              <Separator />
+              <MenuItem icon="trash" danger onSelect={() => view.deleteRows(refs)}>
+                Delete {rows}
+              </MenuItem>
             </>
           )}
-          <p className="px-2 pt-1 text-[11px] text-muted">Paste with Ctrl/Cmd+V</p>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
-  );
-}
-
-function Item(props: {
-  readonly children: ReactNode;
-  readonly onSelect: () => void;
-  readonly danger?: boolean;
-  readonly disabled?: boolean;
-}) {
-  return (
-    <DropdownMenu.Item
-      disabled={props.disabled}
-      onSelect={props.onSelect}
-      className={cx(
-        'cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-hover',
-        props.danger && 'text-danger',
-      )}
-    >
-      {props.children}
-    </DropdownMenu.Item>
   );
 }
 

@@ -31,6 +31,7 @@ import { moveColumn, setWidth } from '../../state/grid-layout';
 import { cellErrorKey, displayCell, rowStatus } from '../../state/table/grid-model';
 import { sortMark } from '../../state/table/sort';
 import { useTableState, type TableView } from '../../state/table-view';
+import { BISQUE, TENMOKU, withAlpha, type KilnPalette } from '../../lib/kiln';
 import { DARK, LIGHT } from '../ResultGrid';
 import { CellEditor, type Draft } from './CellEditor';
 import { HeaderMenu, type HeaderMenuAt } from './ColumnMenus';
@@ -46,26 +47,20 @@ import { TableContextMenu, type MenuAt } from './TableContextMenu';
  * grid positions are display positions, mapped to the model's columns through `view.display`.
  */
 
-const PALETTE = {
-  dark: {
-    muted: '#6b7485',
-    edited: 'rgba(245, 165, 36, 0.20)',
-    inserted: 'rgba(63, 185, 80, 0.14)',
-    deleted: 'rgba(242, 85, 90, 0.16)',
-    error: 'rgba(242, 85, 90, 0.45)',
-    strike: '#f2555a',
-    link: '#7aa7ff',
-  },
-  light: {
-    muted: '#9aa2ae',
-    edited: 'rgba(154, 103, 0, 0.16)',
-    inserted: 'rgba(26, 127, 55, 0.12)',
-    deleted: 'rgba(209, 36, 47, 0.12)',
-    error: 'rgba(209, 36, 47, 0.35)',
-    strike: '#d1242f',
-    link: '#2f6fec',
-  },
-} as const;
+/** Staged changes in Kiln's diff colours: edits ochre, inserts celadon, deletes red. */
+function stagedPalette(p: KilnPalette) {
+  return {
+    muted: p.faint,
+    edited: withAlpha(p.ochre, 0.2),
+    inserted: withAlpha(p.celadon, 0.14),
+    deleted: withAlpha(p.red, 0.14),
+    error: withAlpha(p.red, 0.45),
+    strike: p.red,
+    link: p.cobalt,
+  };
+}
+
+const PALETTE = { dark: stagedPalette(TENMOKU), light: stagedPalette(BISQUE) } as const;
 
 /** Typed edit values the overlay hands to `onCellEdited`, keyed by a token in the cell text. */
 const TOKEN = '\u0000joinery-edit:';
@@ -439,6 +434,8 @@ export function TableGrid(props: {
         onCellEdited={onCellEdited}
         onFinishedEditing={() => pendingEdits.clear()}
         rowMarkers="clickable-number"
+        // Row numbers continue from the pages before this one.
+        rowMarkerStartIndex={(paging.page - 1) * paging.pageSize + 1}
         smoothScrollX
         smoothScrollY
         theme={props.theme === 'dark' ? DARK : LIGHT}
@@ -462,7 +459,6 @@ export function TableGrid(props: {
         }}
         freezeColumns={display.frozen}
         onColumnMoved={(from, to) => view.setLayout(moveColumn(view.state.layout, from, to))}
-        onVisibleRegionChanged={(range) => view.onVisibleRows(range.y + range.height)}
         onColumnResize={(column, width) => {
           const id = column.id;
           if (id !== undefined) view.setLayout(setWidth(view.state.layout, id, width));

@@ -21,7 +21,7 @@ import {
   type OrGroup,
   type ValueType,
 } from '../../state/mongo/query-builder-model';
-import { MenuItem } from '../Sidebar';
+import { MenuItem } from '../MenuItem';
 import { Button, Icon, cx } from '../ui';
 import { Segmented, SmallSelect } from './parts';
 
@@ -303,7 +303,7 @@ function FieldItem(props: {
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="start"
-            className="z-50 min-w-44 rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+            className="z-50 min-w-44 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
             onCloseAutoFocus={(event) => {
               const id = focusNext.current;
               focusNext.current = undefined;

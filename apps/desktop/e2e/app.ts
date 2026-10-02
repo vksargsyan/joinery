@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 
 export interface LaunchedApp {
   readonly app: ElectronApplication;
@@ -20,7 +25,12 @@ export async function launchApp(
   options: { readonly userData?: string; readonly args?: readonly string[] } = {},
 ): Promise<LaunchedApp> {
   const userData = options.userData ?? mkdtempSync(join(tmpdir(), 'joinery-e2e-'));
-  const args = [resolve(import.meta.dirname, '..'), ...(options.args ?? [])];
+  // JOINERY_E2E_APP_DIR runs another build of the app (one built with --outDir next to a
+  // package.json), e.g. while `pnpm dev` holds out/.
+  const args = [
+    process.env['JOINERY_E2E_APP_DIR'] ?? resolve(import.meta.dirname, '..'),
+    ...(options.args ?? []),
+  ];
   // Chromium refuses to start its sandbox as root (e.g. in a CI or dev container). Only then,
   // and only from this launcher, is --no-sandbox passed; the app itself always runs sandboxed.
   if (process.getuid?.() === 0 || process.env['JOINERY_E2E_NO_SANDBOX'] === '1') {
@@ -40,4 +50,20 @@ export async function launchApp(
       if (options.userData === undefined) rmSync(userData, { recursive: true, force: true });
     },
   };
+}
+
+/** Opens the new connection dialog from the side bar's actions menu. */
+export async function openNewConnection(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Connection actions' }).click();
+  await page.getByRole('menuitem', { name: 'New connection' }).click();
+}
+
+/** On the new connection dialog's first step, picks the engine and goes on to the form. */
+export async function chooseEngine(dialog: Locator, engine: string): Promise<void> {
+  await dialog.getByRole('radio', { name: engine, exact: true }).dblclick();
+}
+
+/** Opens a tab of the connection dialog's form (General, Advanced, TLS, SSH, Proxy). */
+export async function connectionTab(dialog: Locator, tab: string): Promise<void> {
+  await dialog.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
 }

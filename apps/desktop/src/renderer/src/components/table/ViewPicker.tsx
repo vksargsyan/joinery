@@ -41,6 +41,7 @@ export function ViewPicker({ view }: { readonly view: TableView }) {
             data-testid="view-picker"
             title="Saved views of this table: columns, sort and filter"
           >
+            <Icon name="bookmark" className="h-3.5 w-3.5" />
             View: {active?.name ?? 'Default'}
             {modified && (
               <span className="text-warning" aria-label="modified">
@@ -54,7 +55,7 @@ export function ViewPicker({ view }: { readonly view: TableView }) {
           <DropdownMenu.Content
             align="start"
             aria-label="Views"
-            className="z-50 max-h-[70vh] min-w-60 overflow-auto rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+            className="z-50 max-h-[70vh] min-w-60 overflow-auto rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
           >
             <DropdownMenu.RadioGroup
               value={activeId ?? ''}
@@ -190,7 +191,7 @@ function Radio(props: { readonly value: string; readonly children: ReactNode }) 
   return (
     <DropdownMenu.RadioItem
       value={props.value}
-      className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+      className="flex cursor-default items-center gap-2 rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
     >
       <span className="w-3 text-accent">
         <DropdownMenu.ItemIndicator>●</DropdownMenu.ItemIndicator>
@@ -211,7 +212,7 @@ function Item(props: {
       disabled={props.disabled}
       onSelect={props.onSelect}
       className={
-        'cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-hover' +
+        'cursor-default rounded px-2 py-1.5 outline-none data-[disabled]:opacity-40 data-[highlighted]:bg-list-active' +
         (props.danger ? ' text-danger' : '')
       }
     >

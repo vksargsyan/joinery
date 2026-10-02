@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { RedisSession } from '@joinery/driver-redis';
 
-import { launchApp, type LaunchedApp } from './app';
+import { chooseEngine, launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectRedis, deletePrefix, e2ePrefix, redisCommand, redisText } from './redis';
 
 /**
@@ -73,19 +73,19 @@ async function openTool(profile: string, tool: string): Promise<void> {
 }
 
 test('connects and browses the namespace tree', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(REDIS_URL!);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
-  await expect(dialog.getByLabel('Database engine', { exact: true })).toHaveValue('redis');
+  await expect(dialog.getByTestId('connection-engine')).toHaveText('Redis');
   await dialog.getByLabel('Name', { exact: true }).fill(NAME);
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 
   const profile = profileItem(NAME);
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await treeRow(profile, 'db0').click();
   await treeRow(profile, 'joinery').click();
@@ -270,14 +270,121 @@ test('shows the INFO dashboard and the slow log', async () => {
   await expect(slowlog.getByRole('table', { name: 'Slow log entries' })).toBeVisible();
 });
 
+test('creates a search index from suggested fields, queries it and drops it', async () => {
+  const supported = await redis!.searchIndexes().then(
+    () => true,
+    () => false,
+  );
+  test.skip(!supported, 'The server has no search module (Redis 8, Redis Stack, valkey-search)');
+  const index = `${segment}_books`;
+  for (const [id, title, year, tags] of [
+    ['1', 'Dune', '1965', 'scifi,classic'],
+    ['2', 'Neuromancer', '1984', 'scifi,cyberpunk'],
+    ['3', 'Emma', '1815', 'classic,romance'],
+  ] as const) {
+    await redisCommand(
+      redis!,
+      'HSET',
+      `${prefix}book:${id}`,
+      'title',
+      title,
+      'year',
+      year,
+      'tags',
+      tags,
+    );
+  }
+
+  await openTool(NAME, 'Search indexes');
+  const panel = visible('redis-search');
+  await panel.getByRole('button', { name: 'New index…' }).first().click();
+  const dialog = page.getByTestId('search-create-dialog');
+  await dialog.getByLabel('Index name').fill(index);
+  await dialog.getByLabel('Key prefixes').fill(`${prefix}book:`);
+  await dialog.getByRole('button', { name: 'Suggest from keys' }).click();
+  const rows = dialog.getByTestId('search-field-row');
+  await expect(rows).toHaveCount(3);
+  await expect(
+    rows.filter({ has: page.locator('input[value="year"]') }).getByLabel('Type'),
+  ).toHaveValue('NUMERIC');
+  await expect(
+    rows.filter({ has: page.locator('input[value="tags"]') }).getByLabel('Type'),
+  ).toHaveValue('TAG');
+  await expect(page.getByTestId('search-create-preview')).toContainText(
+    `FT.CREATE ${index} ON HASH PREFIX 1 ${prefix}book: SCHEMA`,
+  );
+  await shot('redis-search-create');
+  await page.getByTestId('search-create').click();
+  await expect(dialog).toBeHidden();
+
+  // The new index opens on its query view, every document listed.
+  const header = panel.getByTestId('search-header');
+  await expect(header).toContainText(index);
+  await expect(panel.getByTestId('search-figures')).toContainText('3 documents');
+  await expect(panel.getByTestId('search-total')).toHaveText('3 documents match');
+  await panel.getByTestId('search-query').fill('@tags:{scifi}');
+  await panel.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(panel.getByTestId('search-total')).toHaveText('2 documents match');
+  await expect(panel.getByTestId('search-document').first()).toContainText(`${prefix}book:`);
+  await panel.getByRole('button', { name: 'Explain' }).click();
+  await expect(panel.getByTestId('search-explain')).toContainText('TAG:@tags');
+  await shot('redis-search-query');
+
+  await panel.getByRole('button', { name: /^Schema/ }).click();
+  await expect(panel.getByTestId('search-field')).toHaveCount(3);
+  await expect(panel.getByTestId('search-create-command')).toContainText(
+    'SCHEMA tags TAG title TEXT year NUMERIC SORTABLE',
+  );
+
+  await panel.getByRole('button', { name: 'Drop…' }).click();
+  await panel.getByRole('menuitem', { name: /Drop the index and its documents/ }).click();
+  const confirm = page.getByRole('alertdialog');
+  await expect(confirm).toContainText(`FT.DROPINDEX ${index} DD`);
+  await confirm.getByRole('button', { name: 'Drop' }).click();
+  await expect(panel.getByTestId('search-index').filter({ hasText: index })).toHaveCount(0);
+  expect(await redisText(redis!, 'EXISTS', `${prefix}book:1`)).toBe('0');
+});
+
+test('analyses an RDB dump file offline', async () => {
+  const dump = join(
+    import.meta.dirname,
+    '../../../packages/redis-tools/test/fixtures/rdb/redis-8.2.rdb',
+  );
+  await launched!.app.evaluate(({ dialog }, file) => {
+    dialog.showOpenDialog = (() =>
+      Promise.resolve({ canceled: false, filePaths: [file] })) as typeof dialog.showOpenDialog;
+  }, dump);
+  await openTool(NAME, 'Dump analysis');
+  const panel = visible('dump-analysis');
+  await expect(panel.getByText('See what fills a Redis server')).toBeVisible();
+  await shot('redis-dump-welcome');
+  await panel.getByRole('button', { name: 'Choose RDB file…' }).first().click();
+
+  const report = panel.getByTestId('dump-report');
+  await expect(report.getByTestId('dump-file')).toHaveText('redis-8.2.rdb');
+  await expect(report).toContainText(/Redis 8\.2\.\d+ · RDB 12/);
+  await expect(report.getByTestId('stat-Keys')).toHaveText('23');
+  // Types with their encodings, module types named by module.
+  await expect(report.getByTestId('dump-type').first()).toContainText('HASH');
+  await expect(report.getByRole('table', { name: 'Types' })).toContainText('ReJSON-RL');
+  await expect(report.getByRole('table', { name: 'Types' })).toContainText('hashtable');
+  // Patterns: the three profiles in database 3 are one.
+  const profiles = report.getByTestId('dump-pattern').filter({ hasText: 'user:*:profile' });
+  await expect(profiles).toContainText('3');
+  await expect(report.getByTestId('dump-biggest').first()).toContainText('hash:big');
+  await expect(report.getByTestId('dump-longest').first()).toContainText('list:big');
+  await expect(report.getByRole('table', { name: 'Databases' })).toContainText('db3');
+  await shot('redis-dump-analysis');
+});
+
 test('shows the Cluster topology with the slot map', async () => {
   test.skip(!REDIS_CLUSTER, 'Set JOINERY_TEST_REDIS_CLUSTER for the Cluster topology');
   const [seed] = REDIS_CLUSTER!.split(',');
   const [host, port] = seed!.trim().split(':') as [string, string];
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
+  await chooseEngine(dialog, 'Redis');
   await dialog.getByLabel('Name', { exact: true }).fill(CLUSTER_NAME);
-  await dialog.getByLabel('Database engine', { exact: true }).selectOption('redis');
   await dialog.getByLabel('Connect with', { exact: true }).selectOption('cluster');
   await dialog.getByLabel('Seed 1', { exact: true }).fill(host);
   await dialog.getByLabel('Seed 1 port', { exact: true }).fill(port);
@@ -286,11 +393,10 @@ test('shows the Cluster topology with the slot map', async () => {
     .getByLabel('Password', { exact: true })
     .fill(decodeURIComponent(new URL(REDIS_URL!).password));
   await dialog.getByLabel('Password storage').selectOption('session');
-  await dialog.getByLabel('TLS', { exact: true }).selectOption('disable');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
   const profile = profileItem(CLUSTER_NAME);
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   // Cluster primaries replace the logical databases at the root of the tree.
   await expect(treeRow(profile, `${host}:${port}`)).toBeVisible();

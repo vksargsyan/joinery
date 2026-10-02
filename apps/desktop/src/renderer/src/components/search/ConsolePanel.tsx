@@ -7,7 +7,7 @@ import { cachedProfile } from '../../state/data';
 import { WELCOME, useSearchConsole, type SearchConsole } from '../../state/search/console';
 import { autoIndent, statusText, type ConsoleResponseView } from '../../state/search/console-flow';
 import { useTheme } from '../theme';
-import { Button, EnvironmentBadge, Icon, cx } from '../ui';
+import { Button, cx, EnvironmentBadge, Icon, TAB } from '../ui';
 import { AggregationView } from './AggregationView';
 import { ConsoleEditor, ResponseViewer } from './ConsoleEditor';
 
@@ -193,8 +193,8 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
                   role="tab"
                   aria-selected={response === shown}
                   className={cx(
-                    'rounded px-2 py-0.5 font-mono text-[11px]',
-                    response === shown ? 'bg-bg text-fg' : 'text-muted hover:bg-hover',
+                    'rounded-sm px-2 py-0.5 font-mono text-[11px]',
+                    response === shown ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
                   )}
                   onClick={() => setSelected(index)}
                 >
@@ -212,7 +212,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
           )}
           {shown?.aggregations !== undefined && (
             <div
-              className="flex gap-1 border-b border-border bg-panel px-2 pt-1"
+              className="flex gap-1 border-b border-border bg-panel px-2"
               role="tablist"
               aria-label="Response view"
             >
@@ -222,12 +222,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
                   type="button"
                   role="tab"
                   aria-selected={pane === id}
-                  className={cx(
-                    '-mb-px rounded-t border border-b-0 px-3 py-0.5 text-xs',
-                    pane === id
-                      ? 'border-border bg-bg'
-                      : 'border-transparent text-muted hover:text-fg',
-                  )}
+                  className={TAB}
                   onClick={() => setPane(id)}
                 >
                   {id === 'json' ? 'Response' : 'Aggregations'}

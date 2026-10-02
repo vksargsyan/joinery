@@ -8,7 +8,7 @@ import {
   type ServerToolsTab,
 } from '../../state/server-tools/panels';
 import { Notice } from '../redis/common';
-import { cx } from '../ui';
+import { TAB } from '../ui';
 import { NoticeList, useServerToolsInfo, type TabProps } from './common';
 import { MaintenanceTab } from './MaintenanceTab';
 import { MonitorPoller, MonitorTab } from './MonitorTab';
@@ -55,12 +55,7 @@ export function ServerToolsPanel(props: { readonly panelId: string }) {
               aria-selected={state.tab === tab}
               aria-controls={`${props.panelId}-panel`}
               tabIndex={state.tab === tab ? 0 : -1}
-              className={cx(
-                'border-b-2 px-3 py-1.5 text-xs',
-                state.tab === tab
-                  ? 'border-accent text-fg'
-                  : 'border-transparent text-muted hover:text-fg',
-              )}
+              className={TAB}
               onClick={() => showTab(props.panelId, tab)}
             >
               {TAB_TITLES[tab]}

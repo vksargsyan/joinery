@@ -25,9 +25,9 @@ function issues(values: ConnectionFormValues): Record<string, string> {
 }
 
 describe('connection form schema', () => {
-  it('accepts a complete host form and defaults to verified TLS', () => {
+  it('accepts a complete host form and starts with TLS off', () => {
     expect(connectionFormSchema.safeParse(form()).success).toBe(true);
-    expect(defaultFormValues('mysql')).toMatchObject({ port: '3306', tlsMode: 'verify-full' });
+    expect(defaultFormValues('mysql')).toMatchObject({ port: '3306', tlsMode: 'disable' });
     expect(defaultFormValues().port).toBe('5432');
   });
 

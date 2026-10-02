@@ -168,6 +168,47 @@ export function buildReport(
   };
 }
 
+/**
+ * A bundled file that is not an npm package (a font), with its licence file. It is listed in
+ * the report like a package, marked `source: 'asset'`, and the SBOM names it as a generic
+ * component instead of looking for it in the lockfile.
+ */
+export interface ThirdPartyAsset {
+  readonly name: string;
+  readonly version: string;
+  /** An SPDX expression, e.g. "OFL-1.1". */
+  readonly licence: string;
+  readonly homepage?: string;
+  /** The licence text, relative to the app directory. */
+  readonly licenceFile: string;
+  readonly shippedIn: ShippedIn;
+}
+
+export function readAsset(root: string, asset: ThirdPartyAsset): ThirdPartyPackage {
+  return {
+    name: asset.name,
+    version: asset.version,
+    licence: asset.licence,
+    ...(asset.homepage === undefined ? {} : { homepage: asset.homepage }),
+    licenceText: readFileSync(join(root, asset.licenceFile), 'utf8').trim(),
+    shippedIn: [asset.shippedIn],
+    source: 'asset',
+  };
+}
+
+/** The report with bundled assets added, in the same name order. */
+export function withAssets(
+  report: ThirdPartyReport,
+  assets: readonly ThirdPartyPackage[],
+): ThirdPartyReport {
+  return {
+    ...report,
+    packages: [...report.packages, ...assets].sort(
+      (a, b) => a.name.localeCompare(b.name, 'en') || a.version.localeCompare(b.version, 'en'),
+    ),
+  };
+}
+
 /** Licences whose terms the app cannot meet by shipping notices (spec §20: no GPL family). */
 const COPYLEFT = /\b(?:A|L)?GPL|\bSSPL\b/i;
 
@@ -194,7 +235,7 @@ export function renderNotices(report: ThirdPartyReport, productName: string): st
   const lines = [
     `${productName} third-party notices`,
     '',
-    `${productName} includes the open-source packages listed below, each under its own licence,`,
+    `${productName} includes the open-source packages and fonts listed below, each under its own licence,`,
     'reproduced after its name. The Electron runtime also carries the licences of Chromium and',
     'Node.js, in LICENSE.electron.txt and LICENSES.chromium.html next to the executable.',
     '',
@@ -239,6 +280,7 @@ export function thirdPartyNotices(options: {
   readonly productName: string;
   readonly extra?: readonly { readonly name: string; readonly shippedIn: ShippedIn }[];
   readonly reviewed?: Readonly<Record<string, string>>;
+  readonly assets?: readonly ThirdPartyAsset[];
 }): { collect(target: Exclude<ShippedIn, 'runtime'>): Plugin; emit(): Plugin } {
   const found = new Map<string, Set<ShippedIn>>();
   const add = (dir: string, target: ShippedIn): void => {
@@ -267,7 +309,10 @@ export function thirdPartyNotices(options: {
         for (const { name, shippedIn } of options.extra ?? []) {
           add(dirname(require.resolve(`${name}/package.json`)), shippedIn);
         }
-        const report = buildReport(found, options.reviewed);
+        const report = withAssets(
+          buildReport(found, options.reviewed),
+          (options.assets ?? []).map((asset) => readAsset(options.root, asset)),
+        );
         const problems = report.packages.flatMap((p) => {
           const problem = licenceProblem(p.licence);
           return problem === undefined ? [] : [`${p.name}@${p.version} ${problem}`];

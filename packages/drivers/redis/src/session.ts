@@ -27,6 +27,10 @@ import {
   type LatencySample,
   type RedisBytes,
   type RedisReply,
+  type SearchFieldSuggestion,
+  type SearchIndexDefinition,
+  type SearchIndexInfo,
+  type SearchKeyType,
   type SlowlogEntry,
 } from '@joinery/redis-tools';
 import { Cluster, type Redis } from 'ioredis';
@@ -41,6 +45,7 @@ import { executeText } from './execute';
 import * as keys from './keys';
 import { asArray, asNumber, asRecord, asText, isStatusReply, toRedisReply } from './replies';
 import { monitor as startMonitor, subscribe as startSubscription } from './streams';
+import * as search from './search';
 import * as tools from './tools';
 import type {
   BigKeyOptions,
@@ -78,6 +83,9 @@ import type {
   ScanPageOptions,
   ScanPageResult,
   ScanResult,
+  SearchQueryOptions,
+  SearchQueryResult,
+  SearchSuggestOptions,
   SetStringOptions,
   StreamAddOptions,
   StreamConsumer,
@@ -1032,6 +1040,53 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
 
   bigKeys(options?: BigKeyOptions): Promise<BigKeyReport> {
     return tools.bigKeys(this, options);
+  }
+
+  searchIndexes(options: { readonly node?: string } = {}): Promise<string[]> {
+    return search.searchIndexes(this, options.node);
+  }
+
+  searchInfo(index: string, options: { readonly node?: string } = {}): Promise<SearchIndexInfo> {
+    return search.searchInfo(this, index, options.node);
+  }
+
+  searchQuery(
+    index: string,
+    query: string,
+    options?: SearchQueryOptions,
+  ): Promise<SearchQueryResult> {
+    return search.searchQuery(this, index, query, options);
+  }
+
+  searchExplain(
+    index: string,
+    query: string,
+    options?: { readonly dialect?: number; readonly node?: string },
+  ): Promise<string> {
+    return search.searchExplain(this, index, query, options);
+  }
+
+  searchCreate(
+    definition: SearchIndexDefinition,
+    options: { readonly node?: string } = {},
+  ): Promise<void> {
+    return search.searchCreate(this, definition, options.node);
+  }
+
+  searchDrop(
+    index: string,
+    deleteDocuments: boolean,
+    options: { readonly node?: string } = {},
+  ): Promise<void> {
+    return search.searchDrop(this, index, deleteDocuments, options.node);
+  }
+
+  searchSuggest(
+    keyType: SearchKeyType,
+    prefix: string,
+    options?: SearchSuggestOptions,
+  ): Promise<SearchFieldSuggestion[]> {
+    return search.searchSuggest(this, keyType, prefix, options);
   }
 
   async aclList(): Promise<string[]> {

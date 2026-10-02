@@ -73,6 +73,8 @@ export function erDiagramView(panelId: string): ErDiagramView | undefined {
 
 /** Frees a closed panel's diagram. */
 export function disposeErDiagram(panelId: string): void {
+  // Unapplied changes still waiting to be kept are written now.
+  erDiagramView(panelId)?.state.editor?.dispose();
   cleanups.get(panelId)?.();
   cleanups.delete(panelId);
   useErDiagrams.setState((state) => {

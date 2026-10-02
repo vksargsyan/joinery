@@ -19,5 +19,6 @@ export type {
 export { mapRedisError, type RedisErrorContext } from './errors';
 export { assertAllowed } from './execute';
 export { isStatusReply, toRedisReply } from './replies';
+export { searchQueryArgs } from './search';
 export { redisProfileFromUrl } from './testing';
 export type * from './types';

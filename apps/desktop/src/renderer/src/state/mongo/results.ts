@@ -41,6 +41,8 @@ export interface ResultsState {
   readonly documents: readonly string[];
   /** Bumped whenever `documents` changes. */
   readonly version: number;
+  /** Documents before the first shown (a page's): numbers count on from it. */
+  readonly offset: number;
   readonly loading: boolean;
   /** The cursor has more documents to fetch. */
   readonly hasMore: boolean;
@@ -136,6 +138,7 @@ export class DocumentResults {
     this.store = createStore<ResultsState>()(() => ({
       documents: [],
       version: 0,
+      offset: 0,
       loading: false,
       hasMore: false,
       error: undefined,
@@ -168,13 +171,15 @@ export class DocumentResults {
 
   /**
    * Starts a new result: no documents, loading, drill and expansion reset. `columnOrder` puts
-   * those fields first in the table (a SQL query's select list).
+   * those fields first in the table (a SQL query's select list); `offset` numbers a page's
+   * documents on from those before it.
    */
-  begin(fetchMore?: () => Promise<void>, columnOrder: readonly string[] = []): void {
+  begin(fetchMore?: () => Promise<void>, columnOrder: readonly string[] = [], offset = 0): void {
     this.#fetchMore = fetchMore;
     this.#set({
       documents: [],
       version: this.state.version + 1,
+      offset,
       loading: true,
       hasMore: false,
       error: undefined,

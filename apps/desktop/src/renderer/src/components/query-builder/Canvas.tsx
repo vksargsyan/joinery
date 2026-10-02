@@ -275,7 +275,7 @@ function TableNode(props: NodeProps<TableNodeType>) {
       data-testid="builder-table"
       data-table={ref}
       className={cx(
-        'w-60 rounded border bg-panel text-xs text-fg shadow-lg',
+        'w-60 rounded border bg-raised text-xs text-fg shadow-widget',
         props.selected ? 'border-accent' : 'border-border',
       )}
     >

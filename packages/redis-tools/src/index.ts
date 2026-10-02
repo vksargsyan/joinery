@@ -108,7 +108,14 @@ export {
   type LevelGroups,
   type NamespaceEntry,
 } from './namespace';
-export { aggregateByPattern, keyPattern, type KeySample, type PatternStats } from './patterns';
+export {
+  OTHER_PATTERNS,
+  PatternAggregator,
+  aggregateByPattern,
+  keyPattern,
+  type KeySample,
+  type PatternStats,
+} from './patterns';
 export {
   NIL,
   RespError,
@@ -184,3 +191,55 @@ export {
   type JsonValue,
   type ValueFormat,
 } from './values';
+export {
+  SEARCH_FIELD_TYPES,
+  SEARCH_KEY_TYPES,
+  VECTOR_ALGORITHMS,
+  VECTOR_DATA_TYPES,
+  VECTOR_DISTANCES,
+  commandLine,
+  definitionOf,
+  hashFields,
+  jsonFields,
+  parseSearchInfo,
+  parseSearchReply,
+  searchCreateArgs,
+  suggestFieldType,
+  suggestSearchFields,
+  type SearchDocument,
+  type SearchField,
+  type SearchFieldDefinition,
+  type SearchFieldSuggestion,
+  type SearchFieldType,
+  type SearchIndexDefinition,
+  type SearchIndexInfo,
+  type SearchKeyType,
+  type SearchResult,
+  type SearchVectorOptions,
+} from './search';
+export {
+  RdbError,
+  intsetCount,
+  listpackCount,
+  listpackFieldTtls,
+  lzfDecompress,
+  moduleTypeName,
+  readRdb,
+  ziplistCount,
+  zipmapCount,
+  type RdbHandlers,
+  type RdbKey,
+  type RdbReadOptions,
+  type RdbSummary,
+} from './rdb';
+export {
+  EXPIRY_BUCKETS,
+  analyzeRdb,
+  type ExpiryBucket,
+  type RdbAnalysis,
+  type RdbAnalysisOptions,
+  type RdbDatabaseStats,
+  type RdbGroupStats,
+  type RdbKeyInfo,
+  type RdbTypeStats,
+} from './rdb-analysis';

@@ -15,7 +15,11 @@ export type PanelKind =
   | 'server-tools'
   | 'search'
   | 'query-builder'
-  | 'er-diagram';
+  | 'er-diagram'
+  | 'schedules'
+  | 'redis-dump'
+  | 'objects'
+  | 'keybindings';
 
 export interface PanelInfo {
   readonly id: string;

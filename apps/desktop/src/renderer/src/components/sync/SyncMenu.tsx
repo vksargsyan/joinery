@@ -2,7 +2,7 @@ import { ENGINES } from '@joinery/core';
 import type { SavedComparison } from '@joinery/ipc';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 
 import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';
@@ -16,6 +16,7 @@ import {
   useSyncPanels,
 } from '../../state/sync/panels';
 import { Button, Modal } from '../ui';
+import { comparisonDraft, editSchedule } from '../../state/schedules';
 
 /**
  * The window's Compare menu (spec §13): a new structure or data compare, and the saved
@@ -24,19 +25,16 @@ import { Button, Modal } from '../ui';
 
 export const SAVED_COMPARISONS_KEY = ['sync', 'saved'] as const;
 
-export function SyncMenu() {
+/** `trigger` is the button that opens the menu (the title bar's Compare icon). */
+export function SyncMenu(props: { readonly trigger: ReactElement }) {
   return (
     <>
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <Button size="sm" variant="ghost">
-            Compare
-          </Button>
-        </DropdownMenu.Trigger>
+        <DropdownMenu.Trigger asChild>{props.trigger}</DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="end"
-            className="z-50 min-w-48 rounded border border-border bg-panel p-1 text-[13px] shadow-xl"
+            className="z-50 min-w-48 rounded border border-border bg-raised p-1 text-[13px] shadow-widget"
           >
             <Item onSelect={() => openStructureCompare()}>Compare structure…</Item>
             <Item onSelect={() => openDataCompare()}>Compare data…</Item>
@@ -54,7 +52,7 @@ function Item(props: { readonly children: string; readonly onSelect: () => void 
   return (
     <DropdownMenu.Item
       onSelect={props.onSelect}
-      className="cursor-default rounded px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+      className="cursor-default rounded px-2 py-1.5 outline-none data-[highlighted]:bg-list-active"
     >
       {props.children}
     </DropdownMenu.Item>
@@ -149,6 +147,19 @@ export function SavedComparisonsDialog(props: { readonly onClose: () => void }) 
               }}
             >
               Open
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                editSchedule(comparisonDraft(comparison));
+                props.onClose();
+              }}
+              disabled={
+                comparison.source.profileId === null || comparison.target.profileId === null
+              }
+              title="Run this comparison on a schedule and keep a report when it finds differences"
+            >
+              Schedule…
             </Button>
             <Button size="sm" variant="ghost" onClick={() => void remove(comparison)}>
               Delete

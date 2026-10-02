@@ -8,7 +8,7 @@ import { useConsoleState, type MongoConsole } from '../../state/mongo/console';
 import { useResults, type ResultMode } from '../../state/mongo/results';
 import { usePanels } from '../../state/panels';
 import { useTheme } from '../theme';
-import { Button, EnvironmentBadge, Icon, Select, cx } from '../ui';
+import { Button, cx, EnvironmentBadge, Icon, Select, TAB } from '../ui';
 import { ResultViews } from './ResultViews';
 import { ShellEditor } from './ShellEditor';
 
@@ -116,10 +116,7 @@ export function ConsolePanel({ shell }: { readonly shell: MongoConsole }) {
             type="button"
             role="tab"
             aria-selected={pane === option}
-            className={cx(
-              'rounded-t px-2.5 py-1 text-xs',
-              pane === option ? 'bg-bg text-fg' : 'text-muted hover:bg-hover',
-            )}
+            className={TAB}
             onClick={() => shell.setPane(option)}
           >
             {option === 'results' ? 'Results' : 'Messages'}
@@ -142,7 +139,7 @@ export function ConsolePanel({ shell }: { readonly shell: MongoConsole }) {
                 aria-checked={mode === option}
                 className={cx(
                   'px-2 py-0.5 text-xs',
-                  mode === option ? 'bg-accent text-accent-fg' : 'text-muted hover:bg-hover',
+                  mode === option ? 'bg-badge text-fg' : 'text-muted hover:bg-hover',
                 )}
                 onClick={() => shell.results.setMode(option)}
               >

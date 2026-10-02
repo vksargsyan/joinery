@@ -9,6 +9,7 @@ import {
   DEFAULT_APP_SETTINGS,
   appSettingsPatchSchema,
   appSettingsSchema,
+  type WindowMenuCommand,
   type AppCommand,
   type AppInfo,
   type AppSettings,
@@ -32,10 +33,15 @@ import type { HostProcessFactory } from './host-process';
 import type { JobManager } from './jobs';
 import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
 import { resolveProfile } from './secrets';
+import { erModelHandlers } from './er-models';
+import type { MenuCommands } from './menu';
+import { scheduleHandlers, type ScheduleEvents } from './schedules-api';
+import type { Scheduler } from './scheduler';
 import { metadataHandlers, snippetHandlers } from './metadata';
 import { mongoMainHandlers } from './mongo-api';
 import { transferDbHandlers } from './transfer-db-api';
 import { backupMainHandlers } from './backup-api';
+import { redisDumpHandlers } from './redis-dump-api';
 import { isSafeExternalUrl } from './security';
 import type { ConnectionSupervisor } from './supervisor';
 import type { SyncService } from './sync';
@@ -80,10 +86,17 @@ export interface MainServices<P> {
   readonly jobs?: JobManager;
   /** Structure and data compare on the job runner (spec §13); without it they are refused. */
   readonly sync?: SyncService;
+  /** Runs scheduled jobs while Joinery is open; absent in tests that do not need it. */
+  readonly scheduler?: Scheduler;
+  readonly scheduleEvents?: ScheduleEvents;
   /** How the app's previous run ended (`unclean` after a crash), for editor restore. */
   readonly previousRun?: PreviousRun['ended'];
   /** Auto-update (spec §20); without it the status reports updates off. */
   readonly updates?: UpdatesService;
+  /** Check for Updates and Release Notes, shared by the native and the window menus. */
+  readonly menuCommands?: Pick<MenuCommands, 'checkForUpdates' | 'releaseNotes'>;
+  /** A development run: the window menu may reload and open the developer tools. */
+  readonly development?: boolean;
   /** Commands from the application menu for the page (About). */
   readonly appCommands?: {
     subscribe(listener: (command: AppCommand) => void): () => void;
@@ -96,6 +109,8 @@ export interface MainServices<P> {
 export interface WindowServices<P> extends FileDialogs {
   readonly sendPort: (payload: PortPayload, port: P) => void;
   readonly openFile: (options: OpenFileOptions) => Promise<string | null>;
+  /** Runs a window menu item on this window (Edit, View and Window roles, quitting). */
+  readonly runMenu?: (command: WindowMenuCommand) => void;
 }
 
 const SETTINGS_KEY = 'app';
@@ -117,6 +132,12 @@ function mergeSettings(base: AppSettings, patch: AppSettingsPatch): AppSettings 
     editor: { ...base.editor, ...stripUndefined(patch.editor ?? {}) },
     results: { ...base.results, ...stripUndefined(patch.results ?? {}) },
     connections: { ...base.connections, ...stripUndefined(patch.connections ?? {}) },
+    schedules: { ...base.schedules, ...stripUndefined(patch.schedules ?? {}) },
+    // A list is replaced whole: removing an override must be possible.
+    keybindings:
+      patch.keybindings === undefined
+        ? base.keybindings
+        : (patch.keybindings as AppSettings['keybindings']),
   };
 }
 
@@ -133,6 +154,17 @@ export function readAppSettings(
   if (stored === undefined) return defaults;
   const merged = appSettingsSchema.safeParse(mergeSettings(defaults, stored));
   return merged.success ? merged.data : defaults;
+}
+
+/** Saves a change to the settings over what is stored; returns the settings now in force. */
+export function writeAppSettings(
+  store: Pick<Store, 'settings'>,
+  defaults: AppSettings,
+  patch: AppSettingsPatch,
+): AppSettings {
+  const next = appSettingsSchema.parse(mergeSettings(readAppSettings(store, defaults), patch));
+  store.settings.set(SETTINGS_KEY, next);
+  return next;
 }
 
 export function createMainHandlers<P>(
@@ -263,8 +295,7 @@ export function createMainHandlers<P>(
     settings: {
       get: () => readSettings(),
       set: (patch) => {
-        const next = appSettingsSchema.parse(mergeSettings(readSettings(), patch));
-        store.settings.set(SETTINGS_KEY, next);
+        const next = writeAppSettings(store, defaults, patch);
         services.onSettingsChanged?.(next);
         return next;
       },
@@ -283,6 +314,17 @@ export function createMainHandlers<P>(
           (listener) => services.appCommands?.subscribe(listener) ?? (() => undefined),
           signal,
         ),
+      menu: ({ command }) => {
+        if ((command === 'reload' || command === 'toggleDevTools') && !services.development) {
+          throw new JoineryError({
+            code: 'VALIDATION_FAILED',
+            message: 'Reload and the developer tools are for development runs',
+          });
+        }
+        if (command === 'checkForUpdates') services.menuCommands?.checkForUpdates();
+        else if (command === 'releaseNotes') services.menuCommands?.releaseNotes();
+        else window.runMenu?.(command);
+      },
     },
 
     dialogs: {
@@ -316,6 +358,8 @@ export function createMainHandlers<P>(
       },
     },
 
+    erModels: erModelHandlers(store),
+    schedules: scheduleHandlers(services, files),
     metadata: metadataHandlers(store),
     snippets: snippetHandlers(store),
     ...jobHandlers(services, files),
@@ -325,6 +369,7 @@ export function createMainHandlers<P>(
     autosave: autosaveHandlers(store, services.previousRun ?? 'none'),
     transferDb: transferDbHandlers(services),
     backup: backupMainHandlers(services, files),
+    redisDump: redisDumpHandlers(services, files),
     updates: updateHandlers(services.updates, () => services.appInfo().version),
   };
 }

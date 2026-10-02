@@ -5,7 +5,7 @@ import type { MongoSession } from '@joinery/driver-mongodb';
 import { toEjson } from '@joinery/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
 
 /**
@@ -111,7 +111,7 @@ async function confirmDialog(label: string): Promise<Locator> {
 }
 
 test('creates a MongoDB connection from a URI and tests it', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(withoutTls(MONGO_URL!));
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
@@ -128,28 +128,52 @@ test('creates a MongoDB connection from a URI and tests it', async () => {
 
 test('browses databases, collections, views and indexes', async () => {
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await treeRow(db).click();
   await treeRow('Collections').click();
   await expect(treeRow('orders')).toContainText('150');
   await expect(treeRow('customers')).toBeVisible();
   await treeRow('Views').click();
   await expect(treeRow('big_orders')).toBeVisible();
-  await treeRow('orders').click();
+  // A click on a collection opens its documents; the chevron expands it.
+  await treeRow('orders').locator('[data-tree-chevron]').click();
   await treeRow('Indexes').first().click();
   await expect(treeRow('_id_')).toBeVisible();
 });
 
-test('opens a collection and pages its documents as the view scrolls', async () => {
-  await treeRow('orders').dblclick();
+test('lists a database’s collections in the Objects view; a click on one opens it', async () => {
+  await treeRow(db).click();
+  const objects = page.getByRole('grid', { name: 'Objects' });
+  const names = objects.getByRole('row').locator('[role="gridcell"]:first-child');
+  await expect(names).toContainText(['customers', 'orders']);
+  await expect(objects.getByRole('columnheader', { name: 'Documents' })).toBeVisible();
+  await expect(
+    objects.getByRole('row').filter({ has: page.getByText('orders', { exact: true }) }),
+  ).toContainText('150');
+  await expect(page.getByTestId('objects-status')).toContainText('collections');
+  // The click also toggled it in the tree (it was open, so it folded); the chevron reopens it.
+  await expect(page.getByRole('treeitem', { name: NAME }).getByText('Collections')).toHaveCount(0);
+  await treeRow(db).locator('[data-tree-chevron]').click();
+  await expect(treeRow('orders')).toBeVisible();
+});
+
+test('opens a collection and pages its documents as Navicat does', async () => {
+  // One click opens the documents.
+  await treeRow('orders').click();
   await expect(panel()).toBeVisible();
   const loaded = panel().getByTestId('mongo-loaded');
+  const pageBox = panel().getByLabel('Page', { exact: true });
   await expect(loaded).toHaveText('100 documents loaded');
   await expect(panel().getByTestId('mongo-total')).toContainText('150');
-  await panel()
-    .getByTestId('mongo-tree')
-    .evaluate((element) => element.scrollTo(0, element.scrollHeight));
-  await expect(loaded).toHaveText('150 documents loaded');
+  await expect(pageBox).toHaveValue('1');
+  await panel().getByRole('button', { name: 'Next page' }).click();
+  await expect(pageBox).toHaveValue('2');
+  await expect(loaded).toHaveText('50 documents loaded');
+  // Numbers count on from the first page.
+  await expect(panel().getByRole('button', { name: 'Document 101', exact: true })).toBeVisible();
+  await expect(panel().getByRole('button', { name: 'Next page' })).toBeDisabled();
+  await panel().getByRole('button', { name: 'First page' }).click();
+  await expect(loaded).toHaveText('100 documents loaded');
   await panel().getByRole('button', { name: 'Document 1', exact: true }).click();
   await expect(
     panel().getByTestId('mongo-tree').locator('[data-field="customer"]').first(),

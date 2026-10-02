@@ -1,6 +1,11 @@
 import type { Environment, SecretPolicy, TlsMode } from '@joinery/core';
 import type { RenameRule, RowAction } from '@joinery/sync';
-import { DB_TABLE_MODES, type DbTableMode, type FieldShape } from '@joinery/transfer';
+import {
+  DB_TABLE_MODES,
+  type DbTableMode,
+  type FieldShape,
+  type ParquetCompression,
+} from '@joinery/transfer';
 import { Command, CommanderError, Option } from 'commander';
 
 import packageJson from '../package.json' with { type: 'json' };
@@ -93,8 +98,8 @@ Targets:
   connection URI: postgres://user:pass@host:5432/db, mysql://user@host/db, mariadb://...
   URI passwords are used for that run only and never stored. Otherwise the password comes
   from the profile's saved secret, JOINERY_PASSWORD_<PROFILE> or JOINERY_PASSWORD, or a
-  hidden prompt. TLS defaults to verify-full unless the URI says otherwise (?sslmode=...)
-  or --tls is given.
+  hidden prompt. TLS is off unless the URI says otherwise (?sslmode=..., rediss://,
+  https://, mongodb+srv://) or --tls is given.
 
   An http:// or https:// URL is an Elasticsearch node: https://elastic@es.example.com:9200. It logs in with the URL's user and password, or
   with the API key in JOINERY_API_KEY; the scheme decides TLS (--tls sets the https mode).
@@ -590,7 +595,7 @@ Examples:
   // import -----------------------------------------------------------------------------------
   program
     .command('import')
-    .description('import a CSV, TSV, JSON, JSON Lines, Excel or XML file into a table')
+    .description('import a CSV, TSV, JSON, JSON Lines, Excel, XML or Parquet file into a table')
     .argument('<target>', 'profile name or id, or connection URI')
     .requiredOption('--table <name>', 'table to import into (schema.table on PostgreSQL)')
     .requiredOption('--file <path>', 'file to read, gzip allowed ("-" for stdin)')
@@ -602,6 +607,7 @@ Examples:
         'jsonl',
         'xlsx',
         'xml',
+        'parquet',
       ]),
     )
     .option(
@@ -664,7 +670,8 @@ Examples:
 The format, encoding, CSV delimiter, quote and header, the Excel header row and the XML
 row path are detected from the file unless given. Excel cells keep their types (numbers,
 booleans, dates as ISO text); XML rows are the elements at --row-path, with their attributes
-and child elements as columns. Columns are matched to the table's by name (case, spaces, _
+and child elements as columns. Parquet columns keep the file's types (exact decimals, dates,
+timestamps; lists, maps and structs as JSON). Columns are matched to the table's by name (case, spaces, _
 and - do not count);
 unmatched table columns get their defaults. Rows load in batches of parameterised INSERT
 (or UPDATE, upsert, DELETE) statements in one transaction by default: with --on-error stop
@@ -681,6 +688,7 @@ Examples:
   joinery import dev --table staging.raw --file data.tsv --create --on-error skip
   joinery import dev --table sales --file q3.xlsx --sheet "July" --header-row 3
   joinery import dev --table orders --file orders.xml --row-path /export/table/row
+  joinery import dev --table events --file events.parquet --create
   cat rows.csv | joinery import "mysql://app@db/shop" --table orders --file - --map "Order No=id"`,
     )
     .action((target: string, options: ImportCliOptions) => {
@@ -691,7 +699,7 @@ Examples:
   program
     .command('export')
     .description(
-      'export tables or a query result to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL, HTML or Markdown',
+      'export tables or a query result to CSV, TSV, JSON, JSON Lines, Excel, XML, Parquet, SQL, HTML or Markdown',
     )
     .argument('<target>', 'profile name or id, or connection URI')
     .option(
@@ -709,6 +717,7 @@ Examples:
           'jsonl',
           'xlsx',
           'xml',
+          'parquet',
           'sql',
           'sql-ddl',
           'html',
@@ -722,7 +731,10 @@ Examples:
     )
     .option('--gzip', 'compress the output with gzip')
     .option('--zip', 'a file per table inside one ZIP archive (--out is the .zip file)')
-    .option('--one-file', 'several tables into one file (all formats but csv, tsv and jsonl)')
+    .option(
+      '--one-file',
+      'several tables into one file (all formats but csv, tsv, jsonl and parquet)',
+    )
     .option('--no-header', 'CSV, TSV and Excel: no header row')
     .option('--delimiter <char>', 'CSV delimiter (default ,)', delimiter)
     .option('--null <text>', 'CSV and TSV: text written for NULL (default: an empty field)')
@@ -739,6 +751,14 @@ Examples:
         'xlsx: decimals as exact text, or as numbers where a double holds them exactly',
       ).choices(['text', 'number']),
     )
+    .addOption(
+      new Option('--codec <codec>', 'parquet: page compression (default snappy)').choices([
+        'snappy',
+        'zstd',
+        'gzip',
+        'none',
+      ]),
+    )
     .option('--bom', 'start with a UTF-8 byte order mark (for Excel)')
     .option('--database <name>', 'database to connect to')
     .addOption(
@@ -752,7 +772,8 @@ Rows stream from a server-side cursor to the file page by page, so memory stays 
 keeps bigints and decimals exact and embeds JSON columns; SQL writes multi-row INSERTs (with
 the CREATE TABLE, indexes and foreign keys for sql-ddl). Excel writes typed cells (dates as
 Excel dates; bigints and decimals as text unless --decimals number); XML writes <export>,
-<table name="…"> and a <row> per row; HTML a self-contained page; Markdown pipe tables.
+<table name="…"> and a <row> per row; Parquet typed columns (exact decimals, dates, timestamps,
+UUIDs) in row groups; HTML a self-contained page; Markdown pipe tables.
 Several tables go to <out>/<table> files, into one ZIP archive with --zip, or with --one-file
 into one file (a SQL file with foreign keys last, a JSON object keyed by table name, a
 worksheet or section per table). A failed or cancelled export removes the partial file.
@@ -763,6 +784,7 @@ Examples:
   joinery export prod --table orders --table items --format jsonl --out exports/
   joinery export prod --table orders --table items --format xlsx --one-file --out shop.xlsx
   joinery export prod --table orders --table items --format csv --zip --out shop.zip
+  joinery export prod --table events --format parquet --codec zstd --out events.parquet
   joinery export dev --query "select id, email from users where active" --format json --out - | jq .`,
     )
     .action((target: string, options: ExportCliOptions) => {
@@ -946,7 +968,7 @@ Examples:
       )
       .option('--read-only', 'lock the profile read-only: writes are refused')
       .option('--confirm-writes', 'ask before every write')
-      .addOption(tlsOption().default(undefined, 'what the URI says, else verify-full'))
+      .addOption(tlsOption().default(undefined, 'what the URI says, else disable'))
       .addOption(
         new Option('--engine <engine>', 'for mysql:// URIs of MariaDB servers').choices([
           'mysql',
@@ -1066,7 +1088,7 @@ function queryOptions(options: QueryCliOptions): Parameters<typeof queryCommand>
 interface ImportCliOptions extends TunnelCliOptions {
   table: string;
   file: string;
-  format?: 'csv' | 'tsv' | 'json' | 'jsonl' | 'xlsx' | 'xml';
+  format?: 'csv' | 'tsv' | 'json' | 'jsonl' | 'xlsx' | 'xml' | 'parquet';
   delimiter?: string;
   header: boolean;
   sheet?: string;
@@ -1134,6 +1156,7 @@ interface ExportCliOptions extends TunnelCliOptions {
   rowsPerInsert?: number;
   dropTable?: boolean;
   decimals?: 'text' | 'number';
+  codec?: ParquetCompression;
   bom?: boolean;
   database?: string;
   yes?: boolean;
@@ -1159,6 +1182,7 @@ export function exportOptions(options: ExportCliOptions): ExportDataOptions {
     ...(options.null !== undefined ? { nullMarker: options.null } : {}),
     ...(options.rowsPerInsert !== undefined ? { rowsPerInsert: options.rowsPerInsert } : {}),
     ...(options.decimals !== undefined ? { decimals: options.decimals } : {}),
+    ...(options.codec !== undefined ? { codec: options.codec } : {}),
     ...(options.database !== undefined ? { database: options.database } : {}),
     ...(options.tls !== undefined ? { tls: options.tls } : {}),
     ...tunnelFlags(options),

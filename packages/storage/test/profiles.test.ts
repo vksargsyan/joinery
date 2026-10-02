@@ -12,7 +12,7 @@ describe('profiles', () => {
     expect(saved.version).toBe(1);
     expect(saved.createdAt).toBe(clock.iso());
     expect(saved.updatedAt).toBe(clock.iso());
-    expect(saved.tls.mode).toBe('verify-full');
+    expect(saved.tls.mode).toBe('disable');
     expect(saved.presentation.folderId).toBeNull();
     expect(store.profiles.get(saved.id)).toEqual(saved);
     expect(store.profiles.list()).toEqual([saved]);

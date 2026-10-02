@@ -5,6 +5,7 @@ import { CsvParser, type CsvField } from './csv';
 import { concatBytes, openInput, type ByteSource } from './io';
 import { fitsType, inferColumns, type InferredColumn } from './infer';
 import { JsonLinesParser, JsonStreamParser, parseJsonElement } from './json';
+import { isParquet, openParquet, parquetColumns } from './parquet';
 import {
   CsvRowBuilder,
   JsonRowBuilder,
@@ -82,6 +83,18 @@ export interface SourcePreview {
   readonly sheets?: readonly string[];
   /** XML: paths that could hold the rows, best first; `read.xml.rowPath` is the one previewed. */
   readonly rowPaths?: readonly XmlPathCandidate[];
+  /** Parquet: what the footer says about the whole file. */
+  readonly parquet?: ParquetSummary;
+}
+
+/** A Parquet file at a glance. */
+export interface ParquetSummary {
+  readonly rows: number;
+  readonly rowGroups: number;
+  /** The writer, as the file names it (`parquet-cpp-arrow version 17.0.0`). */
+  readonly createdBy?: string;
+  /** Page codecs used (`SNAPPY`, `ZSTD`...). */
+  readonly compressions: readonly string[];
 }
 
 const EXTENSIONS: Readonly<Record<string, FileFormat>> = {
@@ -95,6 +108,9 @@ const EXTENSIONS: Readonly<Record<string, FileFormat>> = {
   xlsx: 'xlsx',
   xlsm: 'xlsx',
   xml: 'xml',
+  parquet: 'parquet',
+  parq: 'parquet',
+  pq: 'parquet',
   sql: 'sql',
 };
 
@@ -386,6 +402,39 @@ async function previewWorkbook(
   }
 }
 
+/** Previews a Parquet file: its first rows, typed by its schema, and the footer's summary. */
+async function previewParquet(
+  source: ByteSource,
+  options: PreviewOptions,
+  sampleRows: number,
+  decompress: 'auto' | 'gzip' | 'none',
+): Promise<SourcePreview> {
+  const file = await openParquet(source, decompress);
+  try {
+    if (options.signal?.aborted === true) throw cancelledError('Preview cancelled');
+    const rows = await file.read(0, Math.min(sampleRows, file.rows));
+    const names = file.columns.map((c) => c.name);
+    return {
+      format: 'parquet',
+      compression: 'none',
+      encoding: 'utf-8',
+      bom: false,
+      complete: file.rows <= sampleRows,
+      read: { format: 'parquet', decompress },
+      columns: parquetColumns(file, inferColumns(names, rows)),
+      rows,
+      parquet: {
+        rows: file.rows,
+        rowGroups: file.metadata.row_groups.length,
+        ...(file.createdBy !== undefined ? { createdBy: file.createdBy } : {}),
+        compressions: file.compressions,
+      },
+    };
+  } finally {
+    await file.close();
+  }
+}
+
 /**
  * Previews a source: reads up to `sampleBytes` (a workbook: its first rows), detects what the
  * options leave open and returns the columns with inferred types and the first `sampleRows`
@@ -402,6 +451,7 @@ export async function previewSource(
     options.format ??
     (options.fileName !== undefined ? formatFromFileName(options.fileName) : undefined);
   if (named === 'xlsx') return previewWorkbook(source, options, sampleRows, decompress);
+  if (named === 'parquet') return previewParquet(source, options, sampleRows, decompress);
   const input = await openInput(source, decompress);
   const chunks: Uint8Array[] = [];
   let length = 0;
@@ -423,15 +473,17 @@ export async function previewSource(
     throw error;
   }
   const head = concatBytes(chunks, length);
+  const parquet = isParquet(head);
   if (
     named === undefined &&
     options.signal?.aborted !== true &&
-    (isZip(head) || isCompoundFile(head))
+    (parquet || isZip(head) || isCompoundFile(head))
   ) {
-    // A workbook without a telling name (stdin, no extension): read it whole.
+    // A workbook or Parquet file without a telling name (stdin, no extension): read it whole.
+    const preview = parquet ? previewParquet : previewWorkbook;
     if (input.compression === 'none' && source.randomAccess !== undefined) {
       if (!complete) await iterator.return?.();
-      return previewWorkbook(source, options, sampleRows, decompress);
+      return preview(source, options, sampleRows, decompress);
     }
     const rest: ByteSource = {
       async *[Symbol.asyncIterator]() {
@@ -448,7 +500,7 @@ export async function previewSource(
         }
       },
     };
-    return previewWorkbook(rest, options, sampleRows, 'none');
+    return preview(rest, options, sampleRows, 'none');
   }
   if (!complete) await iterator.return?.();
   if (options.signal?.aborted === true) throw cancelledError('Preview cancelled');

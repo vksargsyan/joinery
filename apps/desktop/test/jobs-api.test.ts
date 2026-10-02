@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
@@ -323,6 +323,73 @@ describe('jobs', () => {
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }
+  });
+
+  it('reads a text file only once it was picked in the open dialog', async () => {
+    const folder = mkdtempSync(join(tmpdir(), 'joinery-read-'));
+    try {
+      const model = join(folder, 'shop.model.json');
+      writeFileSync(model, '{"format":"joinery.er-model"}');
+      const { main } = setup({ open: model });
+      await expect(main.dialogs.readFile({ path: model })).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+      });
+      await main.dialogs.openFile({ title: 'Open an ER model' });
+      expect(await main.dialogs.readFile({ path: model })).toEqual({
+        text: '{"format":"joinery.er-model"}',
+      });
+      // A path picked to write is not one to read.
+      await expect(
+        main.dialogs.readFile({ path: join(folder, 'other.json') }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps ER model drafts per connection, database and schema', async () => {
+    const { main, store } = setup();
+    const { saved } = await saveProfile(main);
+    const key = { profileId: saved.id, database: 'shop', schema: 'public' };
+    expect(await main.erModels.getDraft(key)).toBeNull();
+    const document = {
+      format: 'joinery.er-model' as const,
+      version: 1 as const,
+      engine: 'postgres' as const,
+      database: 'shop',
+      schema: 'public',
+      savedAt: '2026-09-30T10:00:00.000Z',
+      model: {
+        schemas: [{ name: 'public', tables: [] }],
+        tableOrigins: {},
+        columnOrigins: {},
+      },
+      layout: {
+        positions: [{ table: 'orders', x: 1, y: 2 }],
+        hidden: [],
+        display: { columns: 'all' as const, types: true },
+        includeViews: false,
+      },
+    };
+    const summary = await main.erModels.putDraft({ ...key, document, changes: 3 });
+    expect(summary).toEqual({ ...key, changes: 3, savedAt: expect.any(String) });
+    expect(await main.erModels.listDrafts({ profileId: saved.id })).toEqual([summary]);
+    expect(await main.erModels.getDraft(key)).toMatchObject({
+      ...key,
+      changes: 3,
+      document: { format: 'joinery.er-model', layout: { positions: [{ table: 'orders' }] } },
+    });
+
+    // A stored model this build cannot read is no draft, and stays where it is.
+    store.erModelDrafts.put({ ...key, schema: 'sales', document: { format: 'other' }, changes: 1 });
+    expect(await main.erModels.getDraft({ ...key, schema: 'sales' })).toBeNull();
+    expect(store.erModelDrafts.get({ ...key, schema: 'sales' })).toBeDefined();
+
+    expect(await main.erModels.deleteDraft(key)).toEqual({ deleted: true });
+    expect(await main.erModels.deleteDraft(key)).toEqual({ deleted: false });
+    await expect(
+      main.erModels.putDraft({ ...key, profileId: 'nobody', document, changes: 1 }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
   it('writes one file per table only into a folder picked in the dialog', async () => {

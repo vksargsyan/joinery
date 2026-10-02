@@ -7,18 +7,23 @@ import {
   EXPORT_FORMAT_LABELS,
   EXPORT_STEPS,
   ExportWizard,
+  buildExportJob,
   combinable,
   exportSettingsOf,
+  gzipAllowed,
   textFormat,
   exportStepProblem,
+  suggestedName,
   writesOneFile,
   type ExportSource,
   type ExportStep,
   type ExportWizardApi,
   type ExportWizardState,
+  type ParquetCompression,
 } from '../../state/export-wizard';
 import { loadChildren, pathKey, useExplorer } from '../../state/explorer';
 import { startJob } from '../../state/jobs';
+import { editSchedule, exportDraft } from '../../state/schedules';
 import { SelectField, TextField } from '../designer/fields';
 import { Button, Modal } from '../ui';
 import { SavedSettings, StepBar } from './shared';
@@ -33,11 +38,21 @@ const FORMAT_NOTES: Partial<Readonly<Record<TransferExportFormat, string>>> = {
   jsonl: 'One JSON object per line.',
   xlsx: 'Typed cells: numbers, booleans, and dates as Excel dates. Several tables go on one worksheet each.',
   xml: 'An <export> of <table> elements with one <row> per row; NULL is xsi:nil.',
+  parquet:
+    'Columnar and typed, for DuckDB, Spark, pandas and warehouses: integers, exact decimals, dates, timestamps and UUIDs keep their types. One table per file.',
   html: 'A self-contained page with one table per result, readable in any browser.',
   markdown: 'Pipe tables, as GitHub and most wikis render them.',
 };
 
 type Compression = 'none' | 'gzip' | 'zip';
+
+/** Parquet page codecs, as the codec picker names them. */
+const PARQUET_CODECS: Readonly<Record<ParquetCompression, string>> = {
+  snappy: 'Snappy (fast, read everywhere)',
+  zstd: 'ZSTD (smaller files)',
+  gzip: 'GZIP (for older readers)',
+  none: 'None',
+};
 
 const STEP_LABELS: Readonly<Record<ExportStep, string>> = {
   source: 'Tables',
@@ -86,6 +101,17 @@ export function ExportWizardDialog(props: {
   const run = async (): Promise<void> => {
     if (await wizard.run()) props.onClose();
   };
+  // A scheduled query cannot be asked for its parameters: it runs as written, without them.
+  const hasParams = source.kind === 'query' && (source.params?.length ?? 0) > 0;
+  const schedule = (): void => {
+    const job = buildExportJob({ ...state, path: state.path ?? suggestedName(state) });
+    const name =
+      source.kind === 'query'
+        ? `Export ${source.profileName} query`
+        : `Export ${state.selected.length === 1 ? state.selected[0] : `${state.selected.length} tables`}`;
+    editSchedule(exportDraft(job, { profileName: source.profileName }, name));
+    props.onClose();
+  };
   const title =
     source.kind === 'query' ? 'Export query results' : `Export tables of ${source.schema}`;
   return (
@@ -110,13 +136,26 @@ export function ExportWizardDialog(props: {
             <Button onClick={() => wizard.back()}>Back</Button>
           )}
           {state.step === 'destination' ? (
-            <Button
-              variant="primary"
-              onClick={() => void run()}
-              disabled={problem !== undefined || state.busy !== undefined}
-            >
-              Export
-            </Button>
+            <>
+              <Button
+                onClick={schedule}
+                disabled={hasParams || state.busy !== undefined}
+                title={
+                  hasParams
+                    ? 'A query with parameters cannot run on a schedule: no one is there to fill them in'
+                    : 'Export on a schedule instead, a new file each run'
+                }
+              >
+                Schedule…
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => void run()}
+                disabled={problem !== undefined || state.busy !== undefined}
+              >
+                Export
+              </Button>
+            </>
           ) : (
             <Button
               variant="primary"
@@ -235,7 +274,8 @@ function FormatStep({ wizard, state }: StepProps) {
                 checked={state.layout === 'combined'}
                 onChange={() => wizard.setOptions({ layout: 'combined' })}
               />
-              One combined file{combinable(state.format) ? '' : ' (not for CSV, TSV or JSON Lines)'}
+              One combined file
+              {combinable(state.format) ? '' : ' (not for CSV, TSV, JSON Lines or Parquet)'}
             </label>
           </fieldset>
         )}
@@ -258,6 +298,27 @@ function FormatStep({ wizard, state }: StepProps) {
               onChange={(event) => wizard.setOptions({ decimalsAsNumbers: event.target.checked })}
             />
             Decimals as Excel numbers when exact (up to 15 digits); otherwise decimals are text
+          </label>
+        </div>
+      )}
+      {state.format === 'parquet' && (
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-1.5">
+            Codec
+            <SelectField
+              aria-label="Parquet codec"
+              className="w-64"
+              value={state.compression}
+              onChange={(event) =>
+                wizard.setOptions({ compression: event.target.value as ParquetCompression })
+              }
+            >
+              {(Object.keys(PARQUET_CODECS) as ParquetCompression[]).map((codec) => (
+                <option key={codec} value={codec}>
+                  {PARQUET_CODECS[codec]}
+                </option>
+              ))}
+            </SelectField>
           </label>
         </div>
       )}
@@ -354,7 +415,7 @@ function FormatStep({ wizard, state }: StepProps) {
             }}
           >
             <option value="none">None</option>
-            {state.format !== 'xlsx' && <option value="gzip">gzip</option>}
+            {gzipAllowed(state.format) && <option value="gzip">gzip</option>}
             <option value="zip">
               {several ? 'ZIP archive, one file per table' : 'ZIP archive'}
             </option>

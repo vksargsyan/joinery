@@ -1,7 +1,7 @@
 import type { Session } from '@joinery/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { launchApp, type LaunchedApp } from './app';
+import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connect, query, scratchDatabase } from './db';
 
 /**
@@ -139,20 +139,19 @@ async function setFilter(column: string, operator: string, value: string): Promi
 }
 
 test('connects and opens a table from the explorer', async () => {
-  await page.getByRole('button', { name: 'New connection' }).click();
+  await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
   await dialog.getByLabel('Paste a URI to fill the form').fill(database!.url);
   await dialog.getByRole('button', { name: 'Fill from URI' }).click();
   // Main parses the URI asynchronously; typing before it answers races the fill.
   await expect(dialog.getByText('Filled from the URI')).toBeVisible();
   await dialog.getByLabel('Name').fill(NAME);
-  await dialog.getByLabel('TLS').selectOption('disable');
   await dialog.getByLabel('Password storage').selectOption('session');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 
   const profile = page.getByRole('treeitem', { name: NAME });
-  await profile.locator('[data-tree-row]').first().click();
+  await profile.locator('[data-tree-row]').first().dblclick();
   await treeRow(database!.name).click();
   await treeRow('public').click();
   await treeRow('Tables').click();
@@ -197,6 +196,25 @@ test('filters with the builder and with a raw WHERE condition', async () => {
   await bar.getByRole('button', { name: 'Clear' }).click();
   await expect(count).toHaveText('30 rows loaded');
   await bar.getByRole('radio', { name: 'Builder' }).click();
+});
+
+test('opens the cell menu at the pointer, with the column, copy formats and row actions', async () => {
+  const { x, y } = await gridPoint(1, 2);
+  await page.mouse.click(x, y, { button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Row actions' });
+  await expect(menu).toBeVisible();
+  // At the pointer: the dock panel must not shift it.
+  const box = (await menu.boundingBox())!;
+  expect(Math.abs(box.x - x)).toBeLessThan(12);
+  expect(Math.abs(box.y - y)).toBeLessThan(12);
+  await expect(menu).toContainText('name');
+  await expect(menu.getByRole('menuitem', { name: 'Set NULL' })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: /^Delete row/ })).toBeVisible();
+  await menu.getByRole('menuitem', { name: 'Copy as' }).hover();
+  await expect(page.getByRole('menuitem', { name: 'INSERT statements' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
 });
 
 test('stages an edit, an insert and a delete, and applies them in one transaction', async () => {
@@ -350,24 +368,45 @@ test('creates a table in the designer, renames and adds a column, and browses it
   await expect(data.getByTestId('table-row-count')).toHaveText('0 rows loaded');
 });
 
-test('estimates the total, counts exactly and loads pages as the grid scrolls', async () => {
+test('estimates the total, counts exactly and pages as Navicat does', async () => {
   await openTable('events');
   const view = panel('table-data-panel');
   const count = view.getByTestId('table-row-count');
   const total = view.getByTestId('table-total');
-  await expect(count).toHaveText('500 rows loaded');
+  const pageBox = view.getByLabel('Page', { exact: true });
+  const button = (name: string) => view.getByRole('button', { name });
+  await expect(count).toHaveText('1,000 rows loaded');
   await expect(total).toHaveText('· ≈ 1,200 in total');
   await expect(view.getByText('keyset paging')).toBeVisible();
-  await view.getByRole('button', { name: 'Count exactly' }).click();
-  await expect(total).toHaveText('· 1,200 in total');
+  await expect(pageBox).toHaveValue('1');
+  await expect(button('Previous page')).toBeDisabled();
 
-  const box = await view.getByTestId('data-grid-canvas').boundingBox();
-  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-  await page.mouse.wheel(0, 500 * 26);
+  await button('Next page').click();
+  await expect(pageBox).toHaveValue('2');
+  await expect(count).toHaveText('200 rows loaded');
+  await expect(cell(1, 0)).toHaveText('event 1001');
+  await expect(button('Next page')).toBeDisabled();
+  await button('First page').click();
+  await expect(pageBox).toHaveValue('1');
+  await expect(cell(1, 0)).toHaveText('event 1');
+
+  // The last page needs the total: it is counted first.
+  await button('Last page').click();
+  await expect(total).toHaveText('· 1,200 in total');
+  await expect(view.getByTestId('table-pages')).toHaveText('of 2');
+  await expect(pageBox).toHaveValue('2');
+
+  // Fewer rows per page, then a page by its number.
+  await button('Page size').click();
+  await page.getByRole('menuitemradio', { name: '500' }).click();
+  await expect(pageBox).toHaveValue('1');
+  await expect(count).toHaveText('500 rows loaded');
+  await expect(view.getByTestId('table-pages')).toHaveText('of 3');
+  await pageBox.fill('3');
+  await pageBox.press('Enter');
+  await expect(count).toHaveText('200 rows loaded');
+  await expect(cell(1, 0)).toHaveText('event 1001');
+  await button('Page size').click();
+  await page.getByRole('menuitemradio', { name: '1,000' }).click();
   await expect(count).toHaveText('1,000 rows loaded');
-  await page.mouse.wheel(0, 500 * 26);
-  await expect(count).toHaveText('1,200 rows loaded');
-  await expect(view.getByText('more on scroll')).toHaveCount(0);
-  await page.mouse.wheel(0, 500 * 26);
-  await expect(cell(1, 1199)).toHaveText('event 1200');
 });

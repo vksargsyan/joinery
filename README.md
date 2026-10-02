@@ -15,9 +15,18 @@ administration. Data moves between engines with transfers, backups and restores.
 
 What works today:
 
-- **Connections**: profiles with host/port, socket or URI endpoints; the four TLS modes (default
-  verify-full); passwords saved in the OS keychain, remembered for the session, or asked every
-  time; URI and pgpass import; encrypted profile export; stepwise Test Connection.
+- **Connections**: a new connection starts with its engine, then a tabbed form (General,
+  Advanced, TLS, SSH, Proxy); profiles with host/port, socket or URI endpoints; the four TLS
+  modes (off by default; a URI's sslmode, rediss://, https:// or mongodb+srv:// turns it on);
+  passwords saved in the OS keychain, remembered for the session, or asked every time; URI and
+  pgpass import; encrypted profile export; stepwise Test Connection.
+- **Command palette**: ⌘P (Ctrl+P) goes to a table, view or collection by a few of its
+  letters; ⌘⇧P (Ctrl+Shift+P) runs any command; key bindings as VS Code's, with chords, and a
+  Keyboard Shortcuts editor (⌘K ⌘S) to change them.
+- **Explorer**: a side bar with search and a filter by engine, environment and state; a click on
+  a database, schema or folder lists its objects in the Objects tab with rows, sizes, engine,
+  dates and comments (documents, sizes and indexes for MongoDB); a click on a table or
+  collection opens its data.
 - **SSH tunnels and proxies**: SSH with password, private key (OpenSSH, PEM, PuTTY converted on
   import) or ssh-agent, jump hosts and keep-alives, one SSH session shared by a connection's
   tabs; SOCKS5 and HTTP proxies; MongoDB replica sets, Redis Sentinel and Cluster reached node by
@@ -40,7 +49,9 @@ What works today:
   Mermaid. **Edit model** turns the diagram into a designer: add and rename tables, columns,
   keys and relationships (drag from a column to another table), with undo and redo; Review &
   apply shows the exact CREATE/ALTER script (renames stay renames, data loss is flagged) and
-  runs it with the usual write-safety checks, or opens it in a SQL tab.
+  runs it with the usual write-safety checks, or opens it in a SQL tab. Unapplied changes are
+  kept and come back when the diagram reopens, even after a restart; models save as
+  `.model.json` files that open on another database or schema to review and apply there.
 - **Autocomplete**: keywords, schemas, tables, columns with alias resolution, join conditions
   from foreign keys, functions with signature help, and snippets, computed in a Web Worker from
   a per-connection metadata cache that is ready at connect and refreshes after DDL.
@@ -65,13 +76,15 @@ What works today:
   through a foreign key), MongoDB to SQL (flattened fields, child tables or JSON columns for
   arrays) and Redis to Redis (DUMP/RESTORE with TTLs, Cluster-aware).
 - **Import and export**: wizards for CSV, TSV, JSON, JSON Lines (gzip too), Excel (.xlsx, streamed,
-  with a worksheet picker and header row) and XML (rows at a detected or chosen path) into an
-  existing or a new table, with format, delimiter, header and encoding detection, a live
-  preview, auto-matched columns, inferred types for new tables, and append, update, upsert,
-  delete and replace modes; exports of tables or query results to CSV, TSV, JSON, JSON Lines,
-  Excel (typed cells, real dates, a worksheet per table), XML, SQL INSERTs, SQL with DDL, HTML
-  or Markdown, one file per table or combined, gzip-compressed or zipped; Run SQL File with stop
-  or continue and an error log. Saved wizard settings.
+  with a worksheet picker and header row), XML (rows at a detected or chosen path) and Parquet
+  (typed columns, every common codec, nested columns as JSON) into an existing or a new table,
+  with format, delimiter, header and encoding detection, a live preview, auto-matched columns,
+  inferred types for new tables, and append, update, upsert, delete and replace modes; exports
+  of tables or query results to CSV, TSV, JSON, JSON Lines, Excel (typed cells, real dates, a
+  worksheet per table), XML, Parquet (exact decimals, dates, timestamps and UUIDs; Snappy, ZSTD
+  or GZIP), SQL INSERTs, SQL with DDL, HTML or Markdown, one file per table or combined,
+  gzip-compressed or zipped; Run SQL File with stop or continue and an error log. Saved wizard
+  settings.
 - **Job runner**: imports, exports and SQL files run in their own utility process, several at
   once, with progress, cancel (which rolls back), failed rows by row, line and column, a job
   history and a desktop notification when a long job ends.
@@ -99,12 +112,19 @@ What works today:
   RedisJSON, HyperLogLog, bitmaps and geo; TTL, rename and copy; bulk delete with a dry run; a CLI
   with autocomplete and inline docs; Pub/Sub, an INFO dashboard, slow log, clients, latency,
   MONITOR, big keys, ACL users, a configuration editor (per node in Cluster mode) and the
-  Sentinel/Cluster topology.
+  Sentinel/Cluster topology. Dump analysis reads an RDB file offline (Redis 2 to 8.6, Valkey 7
+  to 9, module types included): keys by type, encoding, expiry, database and pattern, and the
+  largest keys, whatever the file's size. Search indexes (RediSearch, the Redis Query Engine;
+  valkey-search): list, query with sort, paging, scores and FT.EXPLAIN, read the schema and the
+  FT.CREATE that rebuilds it, create an index with fields suggested from sample keys, drop one.
 - **Elasticsearch**: node URLs or an Elastic Cloud ID; basic auth, API key or
   bearer token; TLS modes; one node through an SSH tunnel or proxy; an explorer with index
   health, data streams and aliases; a Kibana-style console with autocomplete from the open API
   specification; a document grid paged past 10,000 hits with editing, conflict detection and
-  bulk actions; SQL with Translate to DSL, and ES|QL, with aggregations as a tree or a table;
+  bulk actions; a query builder from the mapping (bool sections, nested groups, each field's top
+  values, date ranges with their format and time zone, sort and aggregations, with typed Query
+  DSL read back) whose aggregations show beside the documents;
+  SQL with Translate to DSL, and ES|QL, with aggregations as a tree or a table;
   index operations, create index, a mapping editor that plans a reindex when a change cannot
   apply in place, and reindex with live progress; cluster health, nodes, shard allocation with
   its explanation, disk watermarks and tasks; aliases with atomic swaps, index and component
@@ -119,14 +139,17 @@ What works today:
   on PostgreSQL; VACUUM, ANALYZE, REINDEX, CLUSTER, OPTIMIZE, CHECK, REPAIR, compact and
   validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
   setParameter. Every change shows its exact statement first.
+- **Schedules**: backups, SQL files, exports and saved comparisons run on a schedule while
+  Joinery is open (every N minutes or hours, times on chosen weekdays, or days of the month),
+  set up with Schedule… where each is run once. Each run writes a new file named from a template
+  and can keep only the newest N; comparisons keep a report when they find differences. Missed
+  runs are caught up once or skipped; notifications go out when a run fails or finds
+  differences; closing Joinery with schedules on asks first.
 - **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
-Not built yet: the scheduler, Parquet, saved ER models (models live while their diagram is
-open), cloud sync and the AI assistant; the embedded mongosh shell for MongoDB; RediSearch and
-offline RDB analysis; a query builder for Elasticsearch. The product specification lists the
-full scope.
+Not built yet: cloud sync. The product specification lists the full scope.
 
 ## Repository layout
 
@@ -148,11 +171,11 @@ pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-pac
 | `packages/drivers/mongodb`       | `@joinery/driver-mongodb`       | MongoDB adapter (mongodb) with document, index, GridFS and change stream services                 |
 | `packages/mongo-tools`           | `@joinery/mongo-tools`          | mongosh-style query parsing, Extended JSON, find() text, schema analysis                          |
 | `packages/drivers/redis`         | `@joinery/driver-redis`         | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools               |
-| `packages/redis-tools`           | `@joinery/redis-tools`          | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs                   |
+| `packages/redis-tools`           | `@joinery/redis-tools`          | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs, RDB reader       |
 | `packages/drivers/elasticsearch` | `@joinery/driver-elasticsearch` | Elasticsearch adapter on its own HTTP client: documents, SQL, administration                      |
 | `packages/search-tools`          | `@joinery/search-tools`         | Console parser, lossless JSON, request classifier, SQL and admin reply readers, autocomplete      |
 | `packages/tunnel`                | `@joinery/tunnel`               | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks                   |
-| `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML import, export also to HTML/Markdown, ZIP, mapping               |
+| `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML/Parquet import, export also to HTML/Markdown, ZIP, mapping       |
 | `packages/backup`                | `@joinery/backup`               | Backup and restore for every engine, the .jbak archive, pg_dump/mysqldump                         |
 
 Packages under `packages/` never import Electron, so the CLI and the tests use them directly.
@@ -193,6 +216,7 @@ node apps/cli/dist/joinery.mjs import dev --table public.people --file people.cs
 node apps/cli/dist/joinery.mjs export dev --table orders --table items --format sql-ddl --one-file --out shop.sql.gz --gzip
 node apps/cli/dist/joinery.mjs import dev --table sales --file q3.xlsx --sheet July --create --key id
 node apps/cli/dist/joinery.mjs export dev --table orders --table items --format xlsx --one-file --out shop.xlsx
+node apps/cli/dist/joinery.mjs export dev --table events --format parquet --codec zstd --out events.parquet
 node apps/cli/dist/joinery.mjs run-file dev migrate.sql --continue
 JOINERY_BACKUP_PASSPHRASE=… node apps/cli/dist/joinery.mjs backup prod --out shop.jbak --encrypt
 node apps/cli/dist/joinery.mjs restore dev shop.jbak --select public.orders --database shop_copy --create-database
