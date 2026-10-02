@@ -75,13 +75,22 @@ test('es-console', async () => {
       '}',
     ].join('\n'),
   );
+  await consolePanel.getByRole('button', { name: 'Auto-indent' }).click();
+  await editor.click();
   await page.keyboard.press('ControlOrMeta+Home');
   await page.keyboard.press('ControlOrMeta+Enter');
   await expect(consolePanel.getByTestId('search-response-status')).toHaveText('200 OK');
+  // The next request, typed as far as its endpoint: the completion lists what follows.
+  await editor.click();
   await page.keyboard.press('ControlOrMeta+End');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await page.keyboard.insertText('GET /products/_s');
+  await page.keyboard.press('Home');
+  await page.keyboard.type('GET /products/_se');
+  await page.waitForTimeout(1500);
+  await page.screenshot({
+    path: '/tmp/claude-0/-home-user-joinery/958c0980-fb91-511c-827a-391763c85772/scratchpad/dbg1.png',
+  });
   await page.keyboard.press('ControlOrMeta+Space');
   const suggestions = page.locator('.monaco-editor .suggest-widget').filter({ visible: true });
   await expect(suggestions).toContainText('_search');
