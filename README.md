@@ -152,6 +152,17 @@ What works today:
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
+### Moving from version 0.1.0
+
+Version 0.1.0 shipped under the previous name. On its first launch, Querybara copies that
+version's data into its own folder: saved connections and folders, history, saved queries,
+snippets, settings, schedules, ER model drafts, known SSH hosts and converted SSH keys. It does
+this once, only when Querybara has no data yet, and leaves the old folder as it was.
+
+Saved passwords come along sealed. On Windows they keep working. On macOS and Linux the old
+app's keychain entry holds their key, so Querybara asks for each one once. Backups made by 0.1.0
+(`.jbak`) do not restore in Querybara.
+
 ## Repository layout
 
 pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-packages.md)).

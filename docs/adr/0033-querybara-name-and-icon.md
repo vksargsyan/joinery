@@ -13,8 +13,9 @@ cylinder, drawn on cream.
 
 ## Decision
 
-**The name** changes everywhere at once, with no compatibility layer. Version 0.1.0 had been out
-for a day and had a handful of downloads.
+**The name** changes everywhere at once. Version 0.1.0 had been out for a day and had a handful
+of downloads, so file formats keep no compatibility with it; only a one-time migration of its
+data folder carries saved connections over (below).
 
 - **Product and packages:** Querybara, the `querybara` command, `@querybara/*` packages,
   `QUERYBARA_*` environment variables, `QuerybaraError`.
@@ -42,6 +43,16 @@ first. This replaces 0032's committed catalog.
 ## Consequences
 
 - Installs of 0.1.0 do not update themselves to Querybara. The bundle identifier, the Windows app
-  ID and the user-data directory all change, so people reinstall. Saved connections and keychain
-  entries stay with the old app.
-- A backup archive made by 0.1.0 does not restore in Querybara. Restore it with 0.1.0.
+  ID and the user-data directory all change, so people reinstall.
+- On its first launch, Querybara copies a 0.1.0 install's data from the sibling user-data folder:
+  the store (renamed `querybara.db`), `known_hosts`, the converted SSH keys and Chromium's
+  `Local State`. It runs only when Querybara has no store yet, never changes the old folder, and
+  skips itself when `QUERYBARA_USER_DATA_DIR` is set. Values stored under the previous name are
+  translated: the ER model draft format, a scheduled backup's format, method and file name, the
+  default application name, and paths to converted SSH keys. A failure is logged and the app
+  starts empty. The previous name appears only in that module (`previous-install.ts`).
+- Saved passwords stay sealed as they were. On Windows the copied `Local State` holds the key, so
+  they still open. On macOS and Linux the key is the old app's keychain or secret service entry;
+  Querybara cannot read them and asks for each one once.
+- Files 0.1.0 wrote outside its data folder do not open in Querybara: backup archives, saved ER
+  models and profile export files. Open them with 0.1.0.
