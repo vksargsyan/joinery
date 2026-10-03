@@ -1,4 +1,4 @@
-import type { CellValue, ColumnKind, ColumnMeta } from '@joinery/core';
+import type { CellValue, ColumnKind, ColumnMeta } from '@querybara/core';
 
 import {
   ZipReader,
@@ -142,7 +142,7 @@ export interface RawSheet {
 
 /**
  * A workbook assembled from raw parts, the way Excel lays one out (shared strings, styles,
- * relationships), for reader tests that must not depend on Joinery's own writer.
+ * relationships), for reader tests that must not depend on Querybara's own writer.
  */
 export async function rawWorkbook(options: {
   sheets: readonly RawSheet[];

@@ -1,4 +1,4 @@
-# 0012. Excel, XML and ZIP written in `@joinery/transfer` on node:zlib, with no library
+# 0012. Excel, XML and ZIP written in `@querybara/transfer` on node:zlib, with no library
 
 - Status: Accepted
 - Date: 2026-09-29
@@ -6,7 +6,7 @@
 ## Context
 
 Spec §12 lists Excel (.xlsx, streamed) and XML imports, and Excel, XML, HTML and Markdown
-exports with optional zip output. Everything in `@joinery/transfer` streams with backpressure
+exports with optional zip output. Everything in `@querybara/transfer` streams with backpressure
 ([ADR 0006](0006-job-runner-process.md)): memory must stay flat whatever the file size, and a
 200,000-row workbook must import with well under 200 MB of RSS growth.
 
@@ -27,7 +27,7 @@ XML escaping. The candidates:
 
 ## Decision
 
-**Write the three pieces in `@joinery/transfer`, on node:zlib alone.**
+**Write the three pieces in `@querybara/transfer`, on node:zlib alone.**
 
 - `zip.ts`: `ZipReader` reads the central directory (ZIP64 included) from a `RandomAccessReader`
   and streams one entry at a time through raw inflate, checking size and CRC-32; `ZipWriter`

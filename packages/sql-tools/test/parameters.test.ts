@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { bindParameters, findParameters, parameterNames } from '../src';
@@ -7,14 +7,14 @@ function names(text: string, dialect: 'mysql' | 'mariadb' | 'postgres'): string[
   return findParameters(text, dialect).map((p) => `${p.style}:${p.name}`);
 }
 
-function validationError(fn: () => unknown): JoineryError {
+function validationError(fn: () => unknown): QuerybaraError {
   try {
     fn();
   } catch (error) {
-    if (error instanceof JoineryError) return error;
+    if (error instanceof QuerybaraError) return error;
     throw error;
   }
-  throw new Error('expected a JoineryError');
+  throw new Error('expected a QuerybaraError');
 }
 
 describe('findParameters', () => {

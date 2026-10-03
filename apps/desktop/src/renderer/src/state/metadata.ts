@@ -1,4 +1,4 @@
-import { isSqlEngine, type SchemaSnapshot, type SqlDialect, type TableDef } from '@joinery/core';
+import { isSqlEngine, type SchemaSnapshot, type SqlDialect, type TableDef } from '@querybara/core';
 import { create } from 'zustand';
 
 import { languageClient } from '../lib/language';
@@ -129,7 +129,7 @@ function closeMetadata(profileId: string): void {
 }
 
 /**
- * A snapshot of `scope` read from the server since the last change Joinery knows of, for the
+ * A snapshot of `scope` read from the server since the last change Querybara knows of, for the
  * table views and the designer.
  */
 export function loadSnapshot(profileId: string, scope: SnapshotScope): Promise<SchemaSnapshot> {
@@ -140,7 +140,7 @@ export function loadSnapshot(profileId: string, scope: SnapshotScope): Promise<S
 }
 
 /**
- * The structure changed through Joinery (a designer save or drop): every snapshot of the
+ * The structure changed through Querybara (a designer save or drop): every snapshot of the
  * connection is read again, and open views reload once it has been.
  */
 export function invalidateMetadata(profileId: string): void {

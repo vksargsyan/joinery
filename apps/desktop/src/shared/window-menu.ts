@@ -1,4 +1,4 @@
-import type { WindowMenuCommand } from '@joinery/ipc';
+import type { WindowMenuCommand } from '@querybara/ipc';
 
 /**
  * The window's own menu bar on Windows and Linux. The native menu bar hides with the native

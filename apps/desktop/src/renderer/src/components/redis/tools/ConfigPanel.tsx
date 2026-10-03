@@ -1,17 +1,17 @@
-import type { ErrorData } from '@joinery/core';
+import type { ErrorData } from '@querybara/core';
 import type {
   ConfigApplyResult,
   ConfigNodeOutcome,
   ConfigSnapshot,
   ConfigTarget,
-} from '@joinery/driver-redis';
+} from '@querybara/driver-redis';
 import {
   CONFIG_SECRET_MASK,
   buildConfigRows,
   configSetCommands,
   friendlyConfigValue,
   type ConfigRow,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { errorInfo, errorMessage } from '../../../lib/errors';

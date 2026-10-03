@@ -11,13 +11,13 @@ import {
   type ExplainResult,
   type IntrospectScope,
   type PlanNode,
-} from '@joinery/core';
+} from '@querybara/core';
 import { z } from 'zod';
 
 import { queryParamsSchema } from './results';
 
 /**
- * Zod schemas for the driver-facing types in @joinery/core (driver.ts, capabilities.ts), each
+ * Zod schemas for the driver-facing types in @querybara/core (driver.ts, capabilities.ts), each
  * annotated with the core type so a drift between the two fails to compile.
  */
 

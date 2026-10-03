@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import { quoteIdent } from '../dialect';
 import { locate, StatementModel, type RelationRef } from './analysis';

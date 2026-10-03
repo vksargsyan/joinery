@@ -1,4 +1,4 @@
-import type { ConnectionCheckResult } from '@joinery/core';
+import type { ConnectionCheckResult } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { redisProfileFromUrl } from '../../src';
@@ -59,7 +59,7 @@ describe.skipIf(!REDIS_TLS_URL || !REDIS_TLS_CA)('TLS', () => {
   });
 
   it('fails the TLS step when the server does not speak TLS on the port', async () => {
-    const plain = process.env['JOINERY_TEST_REDIS_URL']!;
+    const plain = process.env['QUERYBARA_TEST_REDIS_URL']!;
     // The server waits for a line that never comes, so this ends with the connect timeout.
     const result = await steps(
       redisProfileFromUrl(plain, { tls: { mode: 'require' }, options: { connectTimeoutMs: 1000 } }),

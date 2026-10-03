@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { SchemaSnapshot, Session } from '@joinery/core';
-import { quoteString } from '@joinery/sql-tools';
+import type { SchemaSnapshot, Session } from '@querybara/core';
+import { quoteString } from '@querybara/sql-tools';
 import { expect } from 'vitest';
 
 import { compareSchemas, generateScript, setAllSelected } from '../../src';

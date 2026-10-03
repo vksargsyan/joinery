@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { openDatabase } from '@joinery/storage';
+import { openDatabase } from '@querybara/storage';
 import { expect, test, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -14,14 +14,14 @@ import { launchApp, openNewConnection, type LaunchedApp } from './app';
  * is relaunched on the same user data directory each time.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Autosave';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
-const userData = mkdtempSync(join(tmpdir(), 'joinery-e2e-autosave-'));
+const userData = mkdtempSync(join(tmpdir(), 'querybara-e2e-autosave-'));
 let launched: LaunchedApp | undefined;
 let page: Page;
 
@@ -32,7 +32,7 @@ async function start(): Promise<void> {
 
 /** What the store holds, read beside the running app (WAL allows it). */
 function savedTexts(): string[] {
-  const db = openDatabase(join(userData, 'joinery.db'));
+  const db = openDatabase(join(userData, 'querybara.db'));
   try {
     return db
       .all('SELECT text FROM editor_autosave ORDER BY position')

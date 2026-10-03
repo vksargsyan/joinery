@@ -5,15 +5,15 @@ import { join } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
 
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   newId,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort, type Client } from '@joinery/ipc';
-import { fromEjson, toEjson, type BsonDocument } from '@joinery/mongo-tools';
-import { parseConnectionUri } from '@joinery/storage';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort, type Client } from '@querybara/ipc';
+import { fromEjson, toEjson, type BsonDocument } from '@querybara/mongo-tools';
+import { parseConnectionUri } from '@querybara/storage';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -25,8 +25,8 @@ import { ConnectionHost } from '../../src/connection-host/host';
  * RPC client on a port. One database per run, dropped afterwards.
  */
 
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const DB = `joinery_host_${randomBytes(4).toString('hex')}`;
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const DB = `querybara_host_${randomBytes(4).toString('hex')}`;
 const ns = { db: DB, collection: 'orders' };
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
@@ -238,7 +238,7 @@ describe.skipIf(!MONGO_URL)('mongo services through the connection host', () => 
 
   it('moves GridFS files by path and reads a preview', async () => {
     const { client, sessionId, host } = main;
-    const dir = mkdtempSync(join(tmpdir(), 'joinery-gridfs-it-'));
+    const dir = mkdtempSync(join(tmpdir(), 'querybara-gridfs-it-'));
     dirs.push(dir);
     const source = join(dir, 'report.bin');
     const bytes = Buffer.alloc(600_000);
@@ -301,7 +301,7 @@ describe.skipIf(!MONGO_URL)('mongo services through the connection host', () => 
       () => undefined,
       (error: unknown) => error,
     );
-    const detail = failure instanceof JoineryError ? (failure.detail ?? '') : '';
+    const detail = failure instanceof QuerybaraError ? (failure.detail ?? '') : '';
     expect(detail).toContain('name');
     expect(detail).toContain('email');
   });

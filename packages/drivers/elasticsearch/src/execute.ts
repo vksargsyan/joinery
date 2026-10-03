@@ -1,17 +1,17 @@
 import {
-  JoineryError,
+  QuerybaraError,
   toColumnChunk,
   type ColumnMeta,
   type ExecOptions,
   type ResultChunk,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   issuesOf,
   parseConsole,
   sourceOffset,
   type SearchRequest,
   type SearchResponse,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import type { SearchContext } from './context';
 import { mapResponseError } from './errors';
@@ -80,7 +80,7 @@ export async function* executeConsole(
     opts.params !== undefined &&
     (Array.isArray(opts.params) ? opts.params.length > 0 : Object.keys(opts.params).length > 0)
   ) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'Console requests take no parameters; write the values into the request',
     });
@@ -88,7 +88,7 @@ export async function* executeConsole(
   const parse = parseConsole(text);
   if (parse.requests.length === 0) {
     const issue = parse.issues[0];
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: issue?.message ?? 'No request to run: write one such as GET /_search',
       ...(issue ? { position: issue.start } : {}),
@@ -97,7 +97,7 @@ export async function* executeConsole(
   const invalid = parse.requests.find((r) => r.invalid);
   if (invalid) {
     const issue = issuesOf(parse, invalid)[0];
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `${invalid.method} ${invalid.path}: ${issue?.message ?? 'the request is not valid'}`,
       ...(issue ? { position: issue.start } : {}),
@@ -126,7 +126,7 @@ export async function* executeConsole(
         error.position !== undefined && request.body !== undefined
           ? sourceOffset(request.bodyMap, error.position)
           : undefined;
-      throw new JoineryError(
+      throw new QuerybaraError(
         {
           ...error.toJSON(),
           message: `${request.method} ${request.path}: ${error.message}`,

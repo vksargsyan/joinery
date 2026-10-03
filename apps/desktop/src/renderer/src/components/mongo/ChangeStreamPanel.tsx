@@ -1,4 +1,4 @@
-import type { WatchScope } from '@joinery/mongo-tools';
+import type { WatchScope } from '@querybara/mongo-tools';
 
 import { formatCount } from '../../lib/format';
 import {

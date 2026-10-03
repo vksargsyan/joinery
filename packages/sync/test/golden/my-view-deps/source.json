@@ -64,7 +64,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "DEFINER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         },
@@ -76,7 +76,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "DEFINER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         },
@@ -88,7 +88,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "DEFINER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         }

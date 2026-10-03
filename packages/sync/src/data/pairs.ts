@@ -1,4 +1,4 @@
-import type { SchemaDef, SchemaSnapshot, TableDef } from '@joinery/core';
+import type { SchemaDef, SchemaSnapshot, TableDef } from '@querybara/core';
 
 import type { TableRef } from './sql';
 

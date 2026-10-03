@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { MongoSession } from '@joinery/driver-mongodb';
-import { toEjson } from '@joinery/mongo-tools';
+import type { MongoSession } from '@querybara/driver-mongodb';
+import { toEjson } from '@querybara/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -15,15 +15,15 @@ import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
  * admin"): the aggregation editor with per-stage previews and a disabled stage, the index manager
  * (TTL and partial indexes), schema analysis applied as a validator that the document editor then
  * hits, capped and time series collections, a change stream fed from the console, the GridFS
- * browser and the users editor. With JOINERY_E2E_SHOTS set, screenshots of each panel are saved
+ * browser and the users editor. With QUERYBARA_E2E_SHOTS set, screenshots of each panel are saved
  * there as mongo2-*.png.
  */
 
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Mongo tools';
 
-test.skip(!MONGO_URL, 'Set JOINERY_TEST_MONGODB_URL to run the MongoDB end-to-end tests');
+test.skip(!MONGO_URL, 'Set QUERYBARA_TEST_MONGODB_URL to run the MongoDB end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -40,7 +40,7 @@ test.beforeAll(async () => {
   direct = await connectMongo(MONGO_URL!);
   database = scratchMongoDatabase(direct);
   db = database.name;
-  files = mkdtempSync(join(tmpdir(), 'joinery-e2e-mongo-'));
+  files = mkdtempSync(join(tmpdir(), 'querybara-e2e-mongo-'));
   const orders = Array.from({ length: 60 }, (_, i) => ({
     _id: i + 1,
     status: i % 2 === 0 ? 'open' : 'shipped',

@@ -1,17 +1,17 @@
 import {
-  JoineryError,
+  QuerybaraError,
   newId,
   rowAt,
   toErrorData,
   type CellValue,
   type QueryParams,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /** Small helpers every backup and restore uses: statements, cancellation, progress pacing. */
 
-export function cancelled(): JoineryError {
-  return new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+export function cancelled(): QuerybaraError {
+  return new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
 }
 
 export function throwIfAborted(signal: AbortSignal | undefined): void {
@@ -19,7 +19,9 @@ export function throwIfAborted(signal: AbortSignal | undefined): void {
 }
 
 export function isCancel(error: unknown, signal: AbortSignal | undefined): boolean {
-  return signal?.aborted === true || (error instanceof JoineryError && error.code === 'CANCELLED');
+  return (
+    signal?.aborted === true || (error instanceof QuerybaraError && error.code === 'CANCELLED')
+  );
 }
 
 /** Runs one statement to completion; returns the rows it affected, when the server said. */

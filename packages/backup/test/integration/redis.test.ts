@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 
-import type { RedisSession } from '@joinery/driver-redis';
-import { fileSink } from '@joinery/transfer';
+import type { RedisSession } from '@querybara/driver-redis';
+import { fileSink } from '@querybara/transfer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ArchiveReader, backupRedis, planRedisRestore, restoreRedisArchive } from '../../src';
@@ -15,8 +15,8 @@ import { connectRedis, tempDir } from './helpers';
  * replaced (after confirmation).
  */
 
-const URL = process.env['JOINERY_TEST_REDIS_URL'];
-const CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
+const URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
 const FAST = { log2N: 10, r: 8, p: 1 };
 
 const bytes = (text: string): Uint8Array => Buffer.from(text, 'utf8');
@@ -96,12 +96,12 @@ describe.skipIf(!URL)('Redis backup and restore', () => {
   });
 
   it('round-trips keys with their TTLs into another database', async () => {
-    const path = join(dir.path, 'keys.jbak');
+    const path = join(dir.path, 'keys.qbak');
     const before = await snapshot(source, keys);
     const summary = await backupRedis({
       session: source,
       output: fileSink(path),
-      format: 'jbak',
+      format: 'qbak',
       pattern: `${prefix}*`,
       encryption: { passphrase: 'redis secret', cost: FAST },
     });
@@ -159,11 +159,11 @@ describe.skipIf(!URL || !CLUSTER)('Redis Cluster backup and restore', () => {
   });
 
   it('backs up every primary and restores keys to the nodes owning their slots', async () => {
-    const path = join(dir.path, 'cluster.jbak');
+    const path = join(dir.path, 'cluster.qbak');
     const summary = await backupRedis({
       session: cluster,
       output: fileSink(path),
-      format: 'jbak',
+      format: 'qbak',
       pattern: `${prefix}*`,
     });
     expect(summary.rows).toBe(keys.length);

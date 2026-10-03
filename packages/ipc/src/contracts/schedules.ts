@@ -10,7 +10,7 @@ import {
 
 /**
  * The `schedules.*` namespace of the main contract: scheduled backups, SQL files, exports and
- * comparisons, which main runs while Joinery is open, and their run history.
+ * comparisons, which main runs while Querybara is open, and their run history.
  */
 export const schedulesMainContractShape = {
   list: { input: z.void(), output: z.array(scheduleInfoSchema) },

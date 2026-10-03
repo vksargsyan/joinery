@@ -1,4 +1,4 @@
-import type { HistoryPage, StoredProfile } from '@joinery/ipc';
+import type { HistoryPage, StoredProfile } from '@querybara/ipc';
 import { QueryClient, useQuery } from '@tanstack/react-query';
 
 import { mainApi } from '../lib/main-client';

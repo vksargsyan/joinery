@@ -1,5 +1,5 @@
-import { JoineryError, newId } from '@joinery/core';
-import { parseJsonTree, type JsonNode, type SearchCapabilities } from '@joinery/search-tools';
+import { QuerybaraError, newId } from '@querybara/core';
+import { parseJsonTree, type JsonNode, type SearchCapabilities } from '@querybara/search-tools';
 
 import type { SearchClientPlan } from './config';
 import { mapResponseError, mapTransportError, type SearchErrorContext } from './errors';
@@ -49,13 +49,13 @@ export class SearchContext {
 
   assertOpen(): void {
     if (this.closed) {
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
     }
   }
 
   /**
    * Sends a request with the call's signal, timeout and execution id; transport failures are
-   * mapped to JoineryErrors. The response is returned whatever its status.
+   * mapped to QuerybaraErrors. The response is returned whatever its status.
    */
   async send(request: ServiceRequest, opts: SearchOpOptions = {}): Promise<HttpResponse> {
     this.assertOpen();
@@ -66,7 +66,7 @@ export class SearchContext {
     opts.signal?.addEventListener('abort', onAbort, { once: true });
     const execution: Execution = {
       controller,
-      opaqueId: `joinery-${executionId ?? newId()}`,
+      opaqueId: `querybara-${executionId ?? newId()}`,
       cancelled: false,
     };
     if (executionId !== undefined) this.executions.set(executionId, execution);
@@ -110,7 +110,7 @@ export class SearchContext {
     try {
       return { node: parseJsonTree(response.body), text: response.body };
     } catch {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'INTERNAL',
         message: `${this.plan.where} answered ${request.method} ${request.path} with a body that is not JSON`,
       });
@@ -190,7 +190,7 @@ export function queryString(
 /** A path segment for a name (index, id, alias...), percent-encoded. */
 export function segment(name: string): string {
   if (name === '') {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'A name in the path is empty' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'A name in the path is empty' });
   }
   return encodeURIComponent(name);
 }
@@ -198,7 +198,7 @@ export function segment(name: string): string {
 /** Comma-separated index names for a path. */
 export function indexList(names: readonly string[]): string {
   if (names.length === 0) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Name at least one index' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Name at least one index' });
   }
   return names.map(segment).join(',');
 }

@@ -35,7 +35,7 @@ interface CommandsState {
   readonly status: { readonly kind: 'error' | 'info'; readonly text: string } | undefined;
 }
 
-const RECENT_KEY = 'joinery.recentCommands';
+const RECENT_KEY = 'querybara.recentCommands';
 const RECENT_LIMIT = 8;
 
 function readRecent(): string[] {

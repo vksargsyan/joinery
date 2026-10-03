@@ -1,5 +1,5 @@
-import type { GeoMember, HashEntry, ZSetEntry } from '@joinery/driver-redis';
-import { bytesKey, displayBytes, parseDisplayBytes } from '@joinery/redis-tools';
+import type { GeoMember, HashEntry, ZSetEntry } from '@querybara/driver-redis';
+import { bytesKey, displayBytes, parseDisplayBytes } from '@querybara/redis-tools';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { errorMessage } from '../../../lib/errors';

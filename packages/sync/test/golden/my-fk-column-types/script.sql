@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb fk_column_types_dev
 -- Target: mariadb fk_column_types_prod
 -- Operations: 6

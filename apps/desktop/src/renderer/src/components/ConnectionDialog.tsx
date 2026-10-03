@@ -6,8 +6,8 @@ import {
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type ConnectionProfile,
-} from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+} from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tabs } from 'radix-ui';
 import { useEffect, useRef, useState, type ReactNode } from 'react';

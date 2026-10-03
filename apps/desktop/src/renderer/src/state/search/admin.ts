@@ -10,7 +10,7 @@ import {
   type SearchResourceInfo,
   type SearchResourceKind,
   type SearchSimulatedDocument,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorMessage } from '../../lib/errors';
 import { loadChildren } from '../explorer';

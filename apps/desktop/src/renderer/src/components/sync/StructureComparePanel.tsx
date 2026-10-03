@@ -1,8 +1,8 @@
-import type { RenameRuleInfo, SyncOperationInfo } from '@joinery/ipc';
+import type { RenameRuleInfo, SyncOperationInfo } from '@querybara/ipc';
 import { useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 
-import { RENAME_OBJECT_KINDS } from '@joinery/ipc';
+import { RENAME_OBJECT_KINDS } from '@querybara/ipc';
 
 import { pairWarnings, sideTitle } from '../../state/sync/sides';
 import { appProfileLookup } from '../../state/sync/panels';

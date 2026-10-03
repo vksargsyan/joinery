@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mysql crm_dev
 -- Target: mysql crm_prod
 -- Operations: 4

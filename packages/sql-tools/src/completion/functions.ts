@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * Built-in functions offered by completion and signature help: the everyday string, numeric,

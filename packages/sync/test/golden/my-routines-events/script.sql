@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb routines_events_dev
 -- Target: mariadb routines_events_prod
 -- Operations: 8 (1 destructive)

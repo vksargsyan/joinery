@@ -1,5 +1,5 @@
-import { JoineryError, fromErrorData, newId } from '@joinery/core';
-import type { HostKeyDecision, HostKeyVerifier } from '@joinery/tunnel';
+import { QuerybaraError, fromErrorData, newId } from '@querybara/core';
+import type { HostKeyDecision, HostKeyVerifier } from '@querybara/tunnel';
 
 import type { HostToMain, MainToHost } from '../shared/host-protocol';
 
@@ -7,7 +7,7 @@ type DecisionMessage = Extract<MainToHost, { type: 'host-key-decision' }>;
 
 interface Pending {
   resolve(decision: HostKeyDecision): void;
-  reject(error: JoineryError): void;
+  reject(error: QuerybaraError): void;
 }
 
 /**
@@ -40,7 +40,7 @@ export class HostKeyBridge {
       } catch (error) {
         this.#pending.delete(requestId);
         reject(
-          new JoineryError(
+          new QuerybaraError(
             { code: 'SSH_FAILED', message: 'The host key could not be checked' },
             { cause: error },
           ),

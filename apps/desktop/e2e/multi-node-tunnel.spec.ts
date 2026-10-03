@@ -11,9 +11,9 @@ import { withoutTls } from './mongo-db';
  * discovers the replica set or the cluster through the tunnel and the tree shows what it found.
  */
 
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
 const SSH_USER = 'tunnel';
 const SSH_PASSWORD = 'e2e-Bastion-nodes';
 
@@ -69,7 +69,7 @@ async function testConnection(dialog: Locator): Promise<void> {
 }
 
 test('connects to a MongoDB replica set through SSH', async () => {
-  test.skip(!MONGO_URL, 'Set JOINERY_TEST_MONGODB_URL');
+  test.skip(!MONGO_URL, 'Set QUERYBARA_TEST_MONGODB_URL');
   const name = 'E2E replica set via SSH';
   await openNewConnection(page);
   const dialog = page.getByRole('dialog', { name: 'New connection' });
@@ -95,7 +95,7 @@ test('connects to a MongoDB replica set through SSH', async () => {
 });
 
 test('connects to a Redis Cluster through SSH', async () => {
-  test.skip(!REDIS_CLUSTER || !REDIS_URL, 'Set JOINERY_TEST_REDIS_CLUSTER and _URL');
+  test.skip(!REDIS_CLUSTER || !REDIS_URL, 'Set QUERYBARA_TEST_REDIS_CLUSTER and _URL');
   const name = 'E2E cluster via SSH';
   const seeds = REDIS_CLUSTER!.split(',').map((seed) => seed.trim());
   const [host, port] = seeds[0]!.split(':') as [string, string];

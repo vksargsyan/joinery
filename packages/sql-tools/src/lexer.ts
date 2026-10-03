@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * A dialect-aware SQL lexer shared by the splitter, parameter finder, safety analysis, formatter

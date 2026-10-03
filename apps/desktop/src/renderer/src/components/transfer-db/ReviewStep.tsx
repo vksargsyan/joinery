@@ -1,4 +1,4 @@
-import { ENGINES } from '@joinery/core';
+import { ENGINES } from '@querybara/core';
 
 import type { TransferDbState } from '../../state/transfer-db/wizard';
 

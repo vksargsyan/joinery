@@ -1,4 +1,4 @@
-import type { DataRowAction, DataRowDiff, DataTableResult } from '@joinery/ipc';
+import type { DataRowAction, DataRowDiff, DataTableResult } from '@querybara/ipc';
 import { useState } from 'react';
 import { useStore } from 'zustand';
 

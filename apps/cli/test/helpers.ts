@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { JoineryError } from '@joinery/core';
+import type { QuerybaraError } from '@querybara/core';
 import {
   BASE_CAPABILITIES,
   cancelledError,
@@ -20,7 +20,7 @@ import {
   type ResultChunk,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import type {
   CliContext,
@@ -116,7 +116,7 @@ export class FakeSignals {
 export type FakeResult =
   | { readonly columns: readonly ColumnMeta[]; readonly rows: readonly (readonly CellValue[])[] }
   | { readonly command: string; readonly rowsAffected: number | null }
-  | { readonly error: JoineryError }
+  | { readonly error: QuerybaraError }
   /** Runs until cancelled. */
   | { readonly hang: true };
 
@@ -212,7 +212,7 @@ export class FakeAdapter implements DriverAdapter {
   constructor(
     readonly engine: EngineId,
     private readonly session: FakeSession,
-    private readonly failConnect?: (resolved: ResolvedProfile) => JoineryError | undefined,
+    private readonly failConnect?: (resolved: ResolvedProfile) => QuerybaraError | undefined,
   ) {}
 
   capabilities(): Capabilities {
@@ -312,6 +312,6 @@ export async function run(argv: readonly string[], options: RunOptions = {}): Pr
 
 /** A temporary directory, removed by the returned cleanup. */
 export function tempDir(): { dir: string; cleanup: () => void } {
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-cli-test-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-cli-test-'));
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }

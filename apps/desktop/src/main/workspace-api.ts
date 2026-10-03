@@ -1,5 +1,5 @@
-import type { HandlersOf, mainContract } from '@joinery/ipc';
-import type { PreviousRun, Store } from '@joinery/storage';
+import type { HandlersOf, mainContract } from '@querybara/ipc';
+import type { PreviousRun, Store } from '@querybara/storage';
 
 /**
  * The main contract's workspace handlers: saved table views (spec §7) and editor autosave for

@@ -1,4 +1,4 @@
-import { formatShell, fromEjson } from '@joinery/mongo-tools';
+import { formatShell, fromEjson } from '@querybara/mongo-tools';
 
 import { formatCount } from '../../lib/format';
 import {

@@ -63,7 +63,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
     }
     if (next === model.getValue()) return;
     editor.pushUndoStop();
-    editor.executeEdits('joinery.search.indent', [
+    editor.executeEdits('querybara.search.indent', [
       { range: model.getFullModelRange(), text: next },
     ]);
     editor.pushUndoStop();
@@ -75,7 +75,7 @@ export function ConsolePanel({ console }: { readonly console: SearchConsole }) {
     if (!editor || !model) return;
     const end = model.getPositionAt(model.getValueLength());
     const prefix = model.getValueLength() === 0 || model.getValue().endsWith('\n\n') ? '' : '\n\n';
-    editor.executeEdits('joinery.search.history', [
+    editor.executeEdits('querybara.search.history', [
       {
         range: {
           startLineNumber: end.lineNumber,

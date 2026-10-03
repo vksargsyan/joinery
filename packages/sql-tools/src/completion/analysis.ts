@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import { isTrivia, Scanner, tokenize, type Token, type TokenKind } from '../lexer';
 import { splitStatements, statementAt } from '../splitter';

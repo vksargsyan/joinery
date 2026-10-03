@@ -1,5 +1,5 @@
-import { newId, rowAt, type ResultChunk } from '@joinery/core';
-import { parseJsonTree, stringAt } from '@joinery/search-tools';
+import { newId, rowAt, type ResultChunk } from '@querybara/core';
+import { parseJsonTree, stringAt } from '@querybara/search-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { SearchSession } from '../../src';

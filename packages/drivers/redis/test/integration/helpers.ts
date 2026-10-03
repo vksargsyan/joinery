@@ -5,19 +5,19 @@ import {
   type ConnectionProfileInput,
   type ResolvedProfile,
   type ResultChunk,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { createRedisAdapter, redisProfileFromUrl, type RedisSession } from '../../src';
 
-export const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
+export const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
 /** "user:password" of an ACL user limited to ~app:* without @dangerous. */
-export const REDIS_ACL_USER = process.env['JOINERY_TEST_REDIS_ACL_USER'];
+export const REDIS_ACL_USER = process.env['QUERYBARA_TEST_REDIS_ACL_USER'];
 /** "host:port/masterName". */
-export const REDIS_SENTINEL = process.env['JOINERY_TEST_REDIS_SENTINEL'];
+export const REDIS_SENTINEL = process.env['QUERYBARA_TEST_REDIS_SENTINEL'];
 /** Comma-separated "host:port" seeds. */
-export const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
-export const REDIS_TLS_URL = process.env['JOINERY_TEST_REDIS_TLS_URL'];
-export const REDIS_TLS_CA = process.env['JOINERY_TEST_REDIS_TLS_CA'];
+export const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
+export const REDIS_TLS_URL = process.env['QUERYBARA_TEST_REDIS_TLS_URL'];
+export const REDIS_TLS_CA = process.env['QUERYBARA_TEST_REDIS_TLS_CA'];
 
 export const adapter = createRedisAdapter();
 
@@ -35,7 +35,7 @@ export function testPassword(): string | undefined {
 export function standaloneProfile(
   overrides: Partial<ConnectionProfileInput> = {},
 ): ResolvedProfile {
-  if (!REDIS_URL) throw new Error('JOINERY_TEST_REDIS_URL is not set');
+  if (!REDIS_URL) throw new Error('QUERYBARA_TEST_REDIS_URL is not set');
   return redisProfileFromUrl(REDIS_URL, overrides);
 }
 
@@ -95,9 +95,9 @@ export async function connect(resolved: ResolvedProfile): Promise<RedisSession> 
   return adapter.connect(resolved);
 }
 
-/** A random key prefix for one test: `joinery:it:<random>:`. */
+/** A random key prefix for one test: `querybara:it:<random>:`. */
 export function newPrefix(): string {
-  return `joinery:it:${randomBytes(6).toString('hex')}:`;
+  return `querybara:it:${randomBytes(6).toString('hex')}:`;
 }
 
 /** Deletes every key under the prefix (every primary in Cluster mode); never FLUSHDB. */

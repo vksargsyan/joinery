@@ -1,11 +1,11 @@
-import { SQL_ENGINE_IDS, type CellValue, type SqlDialect } from '@joinery/core';
+import { SQL_ENGINE_IDS, type CellValue, type SqlDialect } from '@querybara/core';
 import { z } from 'zod';
 
 import { cellValueSchema } from './results';
 
 /**
  * Zod schemas for the table data grid's Apply (spec §7): the change plan the renderer builds
- * with `planChanges` from @joinery/table-data, and what `applyChanges` reports back. The types
+ * with `planChanges` from @querybara/table-data, and what `applyChanges` reports back. The types
  * are declared here rather than imported, so this package stays independent of the engine; they
  * mirror `ChangePlan` and `ApplyResult` exactly, and the desktop app passes one for the other,
  * which fails to compile if the two drift.

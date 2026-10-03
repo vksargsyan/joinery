@@ -1,4 +1,4 @@
-import { JoineryError, cancelledError, toErrorData } from '@joinery/core';
+import { QuerybaraError, cancelledError, toErrorData } from '@querybara/core';
 
 import {
   check,
@@ -132,7 +132,7 @@ class ServerCore {
     if (this.send(message)) return true;
     this.sendError(
       message.id,
-      new JoineryError({ code: 'INTERNAL', message: `The result of ${path} cannot be sent` }),
+      new QuerybaraError({ code: 'INTERNAL', message: `The result of ${path} cannot be sent` }),
     );
     return false;
   }
@@ -159,7 +159,7 @@ class ServerCore {
         this.abort(id);
         this.sendError(
           id,
-          new JoineryError({ code: 'VALIDATION_FAILED', message: 'Malformed RPC message' }),
+          new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Malformed RPC message' }),
         );
       }
       return;
@@ -188,13 +188,13 @@ class ServerCore {
     if (entry === undefined || handler === undefined) {
       return this.sendError(
         id,
-        new JoineryError({ code: 'NOT_FOUND', message: `Unknown method "${message.m}"` }),
+        new QuerybaraError({ code: 'NOT_FOUND', message: `Unknown method "${message.m}"` }),
       );
     }
     if (entry.kind !== message.k) {
       return this.sendError(
         id,
-        new JoineryError({
+        new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `${entry.path} is a ${entry.kind} method`,
         }),
@@ -214,7 +214,7 @@ class ServerCore {
       progress: (value) => {
         if (!this.isLive(id, call)) return;
         if (entry.progress === undefined) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'INTERNAL',
             message: `${entry.path} declares no progress events`,
           });
@@ -271,7 +271,7 @@ class ServerCore {
     try {
       const iterable = handler(input, context);
       if (!isAsyncIterable(iterable)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'INTERNAL',
           message: `The handler for ${entry.path} did not return an async iterable`,
         });
@@ -315,7 +315,7 @@ class ServerCore {
   }
 
   /** Aborts every call; with an error, also tells their callers. */
-  stop(error: JoineryError | undefined): void {
+  stop(error: QuerybaraError | undefined): void {
     if (this.stopped) return;
     this.stopped = true;
     for (const id of [...this.active.keys()]) {
@@ -326,7 +326,7 @@ class ServerCore {
 
   dispose(): void {
     this.stop(
-      new JoineryError({ code: 'CONNECTION_FAILED', message: 'The RPC server was disposed' }),
+      new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The RPC server was disposed' }),
     );
     for (const unsubscribe of this.unsubscribe) unsubscribe();
   }
@@ -341,7 +341,7 @@ class ServerCore {
  * schema. A bad message is answered with VALIDATION_FAILED and an unknown method with NOT_FOUND;
  * neither reaches a handler or disturbs other calls. Handler results, items and progress events
  * are validated before they are sent, and thrown errors cross as ErrorData, so the caller gets a
- * JoineryError with the original code.
+ * QuerybaraError with the original code.
  */
 export function serve<C extends ContractShape>(
   port: PortLike,

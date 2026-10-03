@@ -1,6 +1,6 @@
-import type { CellValue, ColumnKind, SqlDialect } from '@joinery/core';
-import { JoineryError } from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+import type { CellValue, ColumnKind, SqlDialect } from '@querybara/core';
+import { QuerybaraError } from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 /**
  * SQL for the data sync algorithm (spec §13): key-range predicates, per-range checksums
@@ -142,7 +142,7 @@ export function checksumQuery(
   if (dialect === 'postgres') {
     const row = columns.map((c) => encodeColumn(c, dialect)).join(' || ');
     return {
-      text: `SELECT count(*) AS row_count, md5(coalesce(string_agg(h, '' ORDER BY h COLLATE "C"), '')) AS checksum FROM (SELECT md5(${row}) AS h FROM ${from}${where}) AS joinery_rows`,
+      text: `SELECT count(*) AS row_count, md5(coalesce(string_agg(h, '' ORDER BY h COLLATE "C"), '')) AS checksum FROM (SELECT md5(${row}) AS h FROM ${from}${where}) AS querybara_rows`,
       params: params.values,
     };
   }
@@ -150,7 +150,7 @@ export function checksumQuery(
   const half = (start: number): string =>
     `LPAD(HEX(BIT_XOR(CAST(CONV(SUBSTRING(h, ${start}, 16), 16, 10) AS UNSIGNED))), 16, '0')`;
   return {
-    text: `SELECT COUNT(*) AS row_count, CONCAT(${half(1)}, ${half(17)}) AS checksum FROM (SELECT SHA2(${row}, 256) AS h FROM ${from}${where}) AS joinery_rows`,
+    text: `SELECT COUNT(*) AS row_count, CONCAT(${half(1)}, ${half(17)}) AS checksum FROM (SELECT SHA2(${row}, 256) AS h FROM ${from}${where}) AS querybara_rows`,
     params: params.values,
   };
 }
@@ -236,7 +236,7 @@ export function sqlLiteral(value: CellValue, dialect: SqlDialect, kind?: ColumnK
   if (typeof value === 'number') {
     if (Number.isFinite(value)) return String(value);
     if (!pg) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `MySQL cannot store the value ${String(value)}`,
       });
@@ -245,7 +245,7 @@ export function sqlLiteral(value: CellValue, dialect: SqlDialect, kind?: ColumnK
   }
   if (value instanceof Uint8Array) return pg ? `'\\x${hex(value)}'::bytea` : `X'${hex(value)}'`;
   if (typeof value === 'string') return quoteString(value, dialect);
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: 'A large value was only previewed; fetch it in full before scripting',
   });

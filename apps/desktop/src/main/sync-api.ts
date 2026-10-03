@@ -1,18 +1,18 @@
 import {
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   requiresWriteConfirmation,
   type ConnectionProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   comparisonDefinitionSchema,
   type ComparisonDefinition,
   type HandlersOf,
   type SavedComparison,
   type mainContract,
-} from '@joinery/ipc';
-import type { JsonValue, SavedComparisonRecord, Store, StoredProfile } from '@joinery/storage';
+} from '@querybara/ipc';
+import type { JsonValue, SavedComparisonRecord, Store, StoredProfile } from '@querybara/storage';
 
 import type { FileGrants } from './jobs-api';
 import { resolveProfile } from './secrets';
@@ -27,8 +27,8 @@ import type { SyncService } from './sync';
 
 type SyncHandlers = HandlersOf<typeof mainContract>['sync'];
 
-function unavailable(): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message: 'Comparisons cannot run here' });
+function unavailable(): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Comparisons cannot run here' });
 }
 
 const family = (profile: ConnectionProfile): string =>
@@ -37,13 +37,13 @@ const family = (profile: ConnectionProfile): string =>
 /** The write rules for applying to a target (spec §4). */
 export function checkSyncApply(profile: ConnectionProfile, confirmed: boolean | undefined): void {
   if (profile.presentation.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: `"${profile.name}" is read-only, so nothing can be applied to it`,
     });
   }
   if (requiresWriteConfirmation(profile) && confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `Applying to ${profile.presentation.environment === 'production' ? 'a production connection' : `"${profile.name}"`} needs confirmation`,
     });
@@ -81,10 +81,13 @@ export function syncHandlers(
   const sqlProfile = (profileId: string, role: 'source' | 'target'): StoredProfile => {
     const profile = store.profiles.get(profileId);
     if (!profile) {
-      throw new JoineryError({ code: 'NOT_FOUND', message: `The ${role} connection was deleted` });
+      throw new QuerybaraError({
+        code: 'NOT_FOUND',
+        message: `The ${role} connection was deleted`,
+      });
     }
     if (!isSqlEngine(profile.engine)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `${ENGINES[profile.engine].displayName} connections cannot be compared here`,
         hint: 'Structure and data compare work with MySQL, MariaDB and PostgreSQL.',
@@ -101,7 +104,7 @@ export function syncHandlers(
         const from = sqlProfile(source.profileId, 'source');
         const to = sqlProfile(target.profileId, 'target');
         if (family(from) !== family(to)) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'NOT_SUPPORTED',
             message: `Cannot compare the structure of ${ENGINES[from.engine].displayName} with ${ENGINES[to.engine].displayName}`,
             hint: 'Pair PostgreSQL with PostgreSQL, and MySQL or MariaDB with MySQL or MariaDB.',
@@ -174,7 +177,7 @@ export function syncHandlers(
         const json = JSON.parse(JSON.stringify(definition)) as Record<string, JsonValue>;
         const existing = id !== undefined ? store.comparisons.get(id) : undefined;
         if (existing && existing.kind !== kind) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: `"${existing.name}" is a ${existing.kind} comparison`,
           });

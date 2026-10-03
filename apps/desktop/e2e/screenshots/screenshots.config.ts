@@ -15,6 +15,6 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  outputDir: join(tmpdir(), 'joinery-shots-results'),
+  outputDir: join(tmpdir(), 'querybara-shots-results'),
   reporter: [['list']],
 });

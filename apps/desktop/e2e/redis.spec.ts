@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { RedisSession } from '@joinery/driver-redis';
+import type { RedisSession } from '@querybara/driver-redis';
 
 import { chooseEngine, launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectRedis, deletePrefix, e2ePrefix, redisCommand, redisText } from './redis';
@@ -11,16 +11,16 @@ import { connectRedis, deletePrefix, e2ePrefix, redisCommand, redisText } from '
  * namespace tree, edit a hash and a sorted set, set a TTL, rename and copy a key, bulk delete
  * by pattern with the dry-run count, the CLI with autocomplete, a Pub/Sub round trip, the INFO
  * dashboard and slow log, and the Cluster topology. Keys live under a prefix unique to the run,
- * deleted afterwards. Screenshots go to JOINERY_E2E_SHOTS when it is set.
+ * deleted afterwards. Screenshots go to QUERYBARA_E2E_SHOTS when it is set.
  */
 
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Redis';
 const CLUSTER_NAME = 'E2E Redis Cluster';
 
-test.skip(!REDIS_URL, 'Set JOINERY_TEST_REDIS_URL to run the Redis end-to-end tests');
+test.skip(!REDIS_URL, 'Set QUERYBARA_TEST_REDIS_URL to run the Redis end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -88,7 +88,7 @@ test('connects and browses the namespace tree', async () => {
   await profile.locator('[data-tree-row]').first().dblclick();
   await expect(profile.getByText('Connected', { exact: true })).toBeAttached();
   await treeRow(profile, 'db0').click();
-  await treeRow(profile, 'joinery').click();
+  await treeRow(profile, 'querybara').click();
   await treeRow(profile, 'e2e').click();
   await treeRow(profile, segment).click();
   await expect(treeRow(profile, 'user')).toBeVisible();
@@ -378,7 +378,7 @@ test('analyses an RDB dump file offline', async () => {
 });
 
 test('shows the Cluster topology with the slot map', async () => {
-  test.skip(!REDIS_CLUSTER, 'Set JOINERY_TEST_REDIS_CLUSTER for the Cluster topology');
+  test.skip(!REDIS_CLUSTER, 'Set QUERYBARA_TEST_REDIS_CLUSTER for the Cluster topology');
   const [seed] = REDIS_CLUSTER!.split(',');
   const [host, port] = seed!.trim().split(':') as [string, string];
   await openNewConnection(page);

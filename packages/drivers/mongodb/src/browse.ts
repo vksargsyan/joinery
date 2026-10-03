@@ -1,4 +1,4 @@
-import { JoineryError, type BrowseNode, type BrowseNodeKind } from '@joinery/core';
+import { QuerybaraError, type BrowseNode, type BrowseNodeKind } from '@querybara/core';
 import type { Document } from 'mongodb';
 
 import { indexKind, numberOf, statsOf } from './admin';
@@ -50,8 +50,8 @@ function node(
   };
 }
 
-function notFound(path: readonly string[]): JoineryError {
-  return new JoineryError({
+function notFound(path: readonly string[]): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_FOUND',
     message: `Nothing to browse at ${path.join(' / ')}`,
   });

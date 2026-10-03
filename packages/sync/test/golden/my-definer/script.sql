@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mysql ops_dev
 -- Target: mysql ops_prod
 -- Operations: 2

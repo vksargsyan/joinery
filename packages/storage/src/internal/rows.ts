@@ -1,11 +1,14 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { SqlRow, SqlValue } from '../sqlite';
 
 /** Typed column readers: SQLite rows are untyped, so every read checks what it got. */
 
-function wrongType(column: string): JoineryError {
-  return new JoineryError({ code: 'INTERNAL', message: `Unexpected value in column "${column}"` });
+function wrongType(column: string): QuerybaraError {
+  return new QuerybaraError({
+    code: 'INTERNAL',
+    message: `Unexpected value in column "${column}"`,
+  });
 }
 
 function column(row: SqlRow, name: string): SqlValue {

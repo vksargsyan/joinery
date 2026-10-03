@@ -291,7 +291,7 @@ export function thirdPartyNotices(options: {
   const require = createRequire(join(options.root, 'package.json'));
   return {
     collect: (target) => ({
-      name: `joinery:third-party:${target}`,
+      name: `querybara:third-party:${target}`,
       apply: 'build',
       generateBundle(_output, bundle) {
         for (const id of shippedModules(bundle)) {
@@ -301,7 +301,7 @@ export function thirdPartyNotices(options: {
       },
     }),
     emit: () => ({
-      name: 'joinery:third-party:emit',
+      name: 'querybara:third-party:emit',
       apply: 'build',
       // After the renderer's own collector, which is listed first.
       enforce: 'post',

@@ -1,9 +1,9 @@
 /// <reference types="vite/client" />
 
-import type { JoineryBridge } from '../../shared/bridge';
+import type { QuerybaraBridge } from '../../shared/bridge';
 
 declare global {
   interface Window {
-    readonly joinery: JoineryBridge;
+    readonly querybara: QuerybaraBridge;
   }
 }

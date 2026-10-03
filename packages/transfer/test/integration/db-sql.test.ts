@@ -1,4 +1,4 @@
-import type { CellValue, Session } from '@joinery/core';
+import type { CellValue, Session } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {

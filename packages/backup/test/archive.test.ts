@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import { fileSink, memorySink } from '@joinery/transfer';
+import { QuerybaraError } from '@querybara/core';
+import { fileSink, memorySink } from '@querybara/transfer';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -20,7 +20,7 @@ const FAST = { log2N: 10, r: 8, p: 1 };
 
 const MANIFEST: ManifestContent = {
   createdAt: '2026-09-29T12:00:00.000Z',
-  producer: 'Joinery test',
+  producer: 'Querybara test',
   engine: 'postgres',
   serverVersion: '16.4',
   database: 'shop',
@@ -55,9 +55,9 @@ async function expectError(
     () => undefined,
     (e: unknown) => e,
   );
-  expect(error).toBeInstanceOf(JoineryError);
-  expect((error as JoineryError).code).toBe(code);
-  expect((error as JoineryError).message).toMatch(message);
+  expect(error).toBeInstanceOf(QuerybaraError);
+  expect((error as QuerybaraError).code).toBe(code);
+  expect((error as QuerybaraError).message).toMatch(message);
 }
 
 const big = randomBytes(300_000);
@@ -115,9 +115,9 @@ describe('archive round trip', () => {
   });
 
   it('streams to a file and reads it back from disk', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'jbak-'));
+    const dir = mkdtempSync(join(tmpdir(), 'qbak-'));
     try {
-      const path = join(dir, 'x.jbak');
+      const path = join(dir, 'x.qbak');
       const writer = await ArchiveWriter.create({ sink: fileSink(path) });
       const entry = writer.entry('data/rows.sql', 'application/sql');
       for (let i = 0; i < 1000; i++) await entry.write(`INSERT INTO t VALUES (${i});\n`);
@@ -184,7 +184,7 @@ describe('integrity', () => {
     const truncated = Uint8Array.from(bytes);
     truncated[lastWord]! &= 0x7f;
     const cut = await ArchiveReader.open(memoryArchiveSource(truncated), { passphrase });
-    await expect(readAll(cut, 'a.bin')).rejects.toThrow(JoineryError);
+    await expect(readAll(cut, 'a.bin')).rejects.toThrow(QuerybaraError);
   });
 
   it('detects corruption of a plain archive through frame checksums', async () => {
@@ -207,14 +207,14 @@ describe('integrity', () => {
     await expectError(
       ArchiveReader.open(memoryArchiveSource(Buffer.from('-- just SQL\nSELECT 1;\n'.repeat(10)))),
       'VALIDATION_FAILED',
-      /not a Joinery backup/,
+      /not a Querybara backup/,
     );
   });
 
   it('refuses a manifest whose entries do not tile the file', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'jbak-'));
+    const dir = mkdtempSync(join(tmpdir(), 'qbak-'));
     try {
-      const path = join(dir, 'x.jbak');
+      const path = join(dir, 'x.qbak');
       writeFileSync(path, await build([['a.sql', text]]));
       const reader = await ArchiveReader.open(path);
       expect(reader.manifest.engine).toBe('postgres');

@@ -1,4 +1,4 @@
-import { JoineryError, type Session } from '@joinery/core';
+import { QuerybaraError, type Session } from '@querybara/core';
 import type {
   CollectionInfo,
   DocumentPage,
@@ -8,7 +8,7 @@ import type {
   Namespace,
   SchemaAnalysis,
   WriteSummary,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 /**
  * What a transfer uses of the MongoDB and Redis sessions' engine services (ADR 0007). The
@@ -71,8 +71,8 @@ export interface RedisTransferSession extends Session {
   dbSize(): Promise<number>;
 }
 
-function engineError(session: Session, wanted: string): JoineryError {
-  return new JoineryError({
+function engineError(session: Session, wanted: string): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Expected a ${wanted} session, got ${session.engine}`,
   });

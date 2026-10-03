@@ -2,12 +2,12 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * Builds a resolved Elasticsearch profile from a node URL such as
  * `http://elastic:secret@127.0.0.1:9200`, with the password moved into the secrets map the way
- * the connection host does it. For tests and tooling (JOINERY_TEST_ELASTICSEARCH_URL...).
+ * the connection host does it. For tests and tooling (QUERYBARA_TEST_ELASTICSEARCH_URL...).
  * `https://` turns TLS on (`?tls=<mode>` picks the mode, verify-full by default).
  */
 export function searchProfileFromUrl(

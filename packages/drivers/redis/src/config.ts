@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs';
 
-import { JoineryError, type HostPort, type ResolvedProfile } from '@joinery/core';
+import { QuerybaraError, type HostPort, type ResolvedProfile } from '@querybara/core';
 import {
   buildTlsSettings,
   describeTarget,
   type FileReader,
   type NetworkTarget,
   type TlsSettings,
-} from '@joinery/driver-sql-base';
-import { needsTransport, nodeRouteOf, tunnelReach, type NodeRoute } from '@joinery/tunnel';
+} from '@querybara/driver-sql-base';
+import { needsTransport, nodeRouteOf, tunnelReach, type NodeRoute } from '@querybara/tunnel';
 import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
 
 import type { RedisTopology } from './types';
@@ -27,9 +27,9 @@ export interface ParsedRedisUri {
 
 const DEFAULT_PORT = 6379;
 
-function invalidUri(reason: string): JoineryError {
+function invalidUri(reason: string): QuerybaraError {
   // The URI itself is never echoed: a pasted one may still hold a password.
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `The Redis URI is not valid: ${reason}`,
     hint: 'Use redis://[user@]host[:port][/db] (rediss:// for TLS) or unix:///path/to/redis.sock',
@@ -46,7 +46,7 @@ function decode(part: string): string {
 
 function parseDatabase(text: string, what: string): number {
   if (!/^\d+$/.test(text.trim())) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The ${what} "${text}" is not a logical database number`,
       hint: 'Use a number from 0 to the server’s "databases" setting minus one (0-15 by default)',
@@ -140,7 +140,7 @@ export interface RedisConnectionPlan {
 /** CLIENT SETNAME refuses spaces, newlines and other special characters. */
 export function connectionNameFor(applicationName: string): string {
   const name = applicationName.replace(/[^\x21-\x7e]+/g, '-').replace(/^-+|-+$/g, '');
-  return name || 'Joinery';
+  return name || 'Querybara';
 }
 
 function tcp(host: string, port: number, tlsHost = host): NetworkTarget {
@@ -163,7 +163,7 @@ function hostPorts(list: readonly HostPort[]): string {
  * - Sentinels get the same credentials and TLS settings as the master.
  * - `rediss://` turns TLS on; a profile TLS mode of `disable` then becomes `verify-full`.
  * - With several hosts and verify-full, each node's certificate is checked against the host
- *   Joinery connects to (or the TLS server name override, when set).
+ *   Querybara connects to (or the TLS server name override, when set).
  */
 export function buildRedisConnectionPlan(
   resolved: ResolvedProfile,
@@ -171,7 +171,7 @@ export function buildRedisConnectionPlan(
 ): RedisConnectionPlan {
   const { profile } = resolved;
   if (profile.engine !== 'redis') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The Redis adapter cannot open a ${profile.engine} profile`,
     });
@@ -187,7 +187,7 @@ export function buildRedisConnectionPlan(
     if (reach.kind === 'nodes' && !nodeRoute) missingRoute = true;
   }
   if (missingRoute) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: profile.ssh
         ? 'This profile uses an SSH tunnel, but no tunnel is open for it'
@@ -245,7 +245,7 @@ export function buildRedisConnectionPlan(
       where = `cluster seeds ${hostPorts(endpoint.seeds)}`;
       break;
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `Redis does not accept a "${endpoint.kind}" endpoint`,
         hint: 'Use a host and port, a Unix socket, a Sentinel list, cluster seeds or a redis:// URI',
@@ -253,7 +253,7 @@ export function buildRedisConnectionPlan(
   }
 
   if (override && target.kind === 'socket') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'A Unix socket endpoint cannot be reached through an SSH tunnel or a proxy',
       hint: 'Use the host and TCP port of Redis as seen from the SSH server, or remove the tunnel',
@@ -273,7 +273,7 @@ export function buildRedisConnectionPlan(
       if (auth.password) {
         password = resolved.secrets[auth.password.id];
         if (password === undefined) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'AUTH_FAILED',
             message: 'The password for this connection was not provided',
             hint: 'Enter the password, or save it in the profile',
@@ -283,7 +283,7 @@ export function buildRedisConnectionPlan(
       break;
     case 'clientCertificate':
       if (profile.tls.mode === 'disable' && !uri?.tls) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'Client certificate authentication needs TLS with a certificate and key file',
           hint: 'Turn TLS on and set the client certificate and key paths',
@@ -293,7 +293,7 @@ export function buildRedisConnectionPlan(
       password = undefined;
       break;
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `"${auth.method}" authentication does not apply to Redis`,
         hint: 'Use password authentication (with an ACL user name if the server has ACL users)',

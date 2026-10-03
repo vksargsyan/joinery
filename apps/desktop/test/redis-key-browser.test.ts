@@ -1,6 +1,6 @@
-import type { KeyInfo } from '@joinery/driver-redis';
-import type { RedisScanPage } from '@joinery/ipc';
-import { bytesKey, displayBytes, parseDisplayBytes, utf8Bytes } from '@joinery/redis-tools';
+import type { KeyInfo } from '@querybara/driver-redis';
+import type { RedisScanPage } from '@querybara/ipc';
+import { bytesKey, displayBytes, parseDisplayBytes, utf8Bytes } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

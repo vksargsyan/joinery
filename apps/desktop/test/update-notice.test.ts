@@ -1,5 +1,5 @@
-import type { UpdateState, UpdateStatus } from '@joinery/ipc';
-import { updateStatusSchema } from '@joinery/ipc';
+import type { UpdateState, UpdateStatus } from '@querybara/ipc';
+import { updateStatusSchema } from '@querybara/ipc';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -22,7 +22,7 @@ function status(state: UpdateState, requestId = 0): UpdateStatus {
     autoCheck: true,
     managed: { disabled: false, channel: false },
     state,
-    releaseNotesUrl: 'https://github.com/vksargsyan/joinery/releases/tag/v1.1.0',
+    releaseNotesUrl: 'https://github.com/vksargsyan/querybara/releases/tag/v1.1.0',
     requestId,
   });
 }
@@ -63,11 +63,11 @@ describe('noticeFor', () => {
     });
     expect(
       noticeFor(status({ state: 'downloading', version: '1.1.0', percent: 41.6 }, 1), 0, undefined),
-    ).toEqual({ kind: 'busy', text: 'Downloading Joinery 1.1.0… 42 %' });
+    ).toEqual({ kind: 'busy', text: 'Downloading Querybara 1.1.0… 42 %' });
     expect(noticeFor(status({ state: 'up-to-date' }, 1), 0, undefined)).toEqual({
       kind: 'answer',
       tone: 'info',
-      text: 'Joinery 1.0.0 is up to date.',
+      text: 'Querybara 1.0.0 is up to date.',
     });
     expect(noticeFor(status({ state: 'error', message: 'offline' }, 1), 0, undefined)).toEqual({
       kind: 'answer',
@@ -98,12 +98,14 @@ describe('status text', () => {
   });
 
   it('describes the idle states by the automatic-check setting', () => {
-    expect(statusText(status({ state: 'idle' }))).toBe('Joinery checks for updates automatically.');
+    expect(statusText(status({ state: 'idle' }))).toBe(
+      'Querybara checks for updates automatically.',
+    );
     expect(statusText({ ...status({ state: 'idle' }), autoCheck: false })).toBe(
       'Automatic checks are off.',
     );
     expect(statusText(status({ state: 'ready', version: '2.0.0', installsOnQuit: true }))).toBe(
-      'Joinery 2.0.0 is ready. Restart to install it.',
+      'Querybara 2.0.0 is ready. Restart to install it.',
     );
   });
 });

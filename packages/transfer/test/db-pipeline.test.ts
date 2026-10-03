@@ -1,4 +1,4 @@
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { resolveDbTransferOptions, type OpenedSession, type TransferPlan } from '../src';

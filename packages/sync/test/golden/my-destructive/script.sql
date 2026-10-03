@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mysql telemetry_dev
 -- Target: mysql telemetry_prod
 -- Operations: 7 (7 destructive)

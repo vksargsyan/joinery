@@ -1,4 +1,4 @@
-import type { InfoSections } from '@joinery/redis-tools';
+import type { InfoSections } from '@querybara/redis-tools';
 import { useRef, useState } from 'react';
 
 import { errorMessage } from '../../../lib/errors';

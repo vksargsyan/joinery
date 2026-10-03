@@ -1,5 +1,5 @@
-import type { CellValue, ColumnKind, Session } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { CellValue, ColumnKind, Session } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 import { describe, expect, it } from 'vitest';
 
 import { compareTableData, generateDataSyncScript, sqlLiteral } from '../../src';
@@ -485,7 +485,7 @@ async function dataRoundTrip(server: TestServer, fixture: Fixture): Promise<void
 const servers = configuredServers();
 
 describe('data sync round trip', () => {
-  if (servers.length === 0) it.skip('no JOINERY_TEST_*_URL is set', () => undefined);
+  if (servers.length === 0) it.skip('no QUERYBARA_TEST_*_URL is set', () => undefined);
   for (const server of servers) {
     describe(server.engine, () => {
       it('single-column key, every value kind', () => dataRoundTrip(server, itemsFixture()));

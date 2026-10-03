@@ -1,4 +1,4 @@
-import type { TypeDef } from '@joinery/core';
+import type { TypeDef } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { contextFor, resolveCompareOptions } from '../src';

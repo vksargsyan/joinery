@@ -10,7 +10,7 @@ import {
   type QueryModel,
   type QueryTable,
   type SelectItem,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 
 import { entryOf, proposeJoins, type BuilderCatalog, type CatalogEntry } from './catalog';
 

@@ -1,4 +1,4 @@
-import { JoineryError, newId } from '@joinery/core';
+import { QuerybaraError, newId } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -103,7 +103,7 @@ export class SavedQueryRepository {
     return this.#db.transaction(() => {
       const id = query.id ?? newId();
       if (this.get(id)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Saved query ${id} already exists`,
         });

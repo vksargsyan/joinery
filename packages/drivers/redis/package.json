@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/driver-redis",
+  "name": "@querybara/driver-redis",
   "version": "0.0.0",
   "private": true,
   "description": "Redis and Valkey driver adapter (ioredis): standalone, Sentinel, Cluster, TLS, ACL; key services and server tools.",
@@ -13,10 +13,10 @@
     "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
-    "@joinery/redis-tools": "workspace:*",
-    "@joinery/tunnel": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
+    "@querybara/redis-tools": "workspace:*",
+    "@querybara/tunnel": "workspace:*",
     "ioredis": "^6.0.0"
   },
   "devDependencies": {

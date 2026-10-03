@@ -3,10 +3,10 @@ import { isIP } from 'node:net';
 import {
   ENDPOINT_KINDS,
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   type ResolvedProfile,
   type SqlEngineId,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /** Where the driver opens its socket, after tunnels and URIs are resolved. */
 export type NetworkTarget =
@@ -52,9 +52,9 @@ const URI_SCHEMES: Readonly<Record<SqlEngineId, readonly string[]>> = {
   mariadb: ['mariadb', 'mysql'],
 };
 
-function invalidUri(reason: string): JoineryError {
+function invalidUri(reason: string): QuerybaraError {
   // The URI itself is never echoed: a pasted one may still hold a password.
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `The connection URI is not valid: ${reason}`,
     hint: 'Use the form scheme://user@host:port/database',
@@ -111,14 +111,14 @@ export function parseConnectionUri(uri: string, engine: SqlEngineId): ParsedConn
 export function assertSupportedNetwork(resolved: ResolvedProfile): void {
   const { profile } = resolved;
   if (profile.ssh && !resolved.endpointOverride) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'This profile uses an SSH tunnel, but no tunnel is open for it',
       hint: 'SSH tunnels are opened by the connection host; connect through it rather than calling the driver directly',
     });
   }
   if (profile.proxy && !resolved.endpointOverride) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `This profile uses ${profile.proxy.kind === 'http' ? 'an HTTP' : 'a SOCKS5'} proxy for ${ENGINES[profile.engine].displayName}, but no proxy route is open for it`,
       hint: 'Proxies are opened by the connection host; connect through it rather than calling the driver directly',
@@ -135,7 +135,7 @@ export function resolveEndpoint(resolved: ResolvedProfile): ResolvedEndpoint {
   const { profile } = resolved;
   const engine = profile.engine;
   if (engine !== 'postgres' && engine !== 'mysql' && engine !== 'mariadb') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `${ENGINES[engine].displayName} is not a SQL engine`,
     });
@@ -143,7 +143,7 @@ export function resolveEndpoint(resolved: ResolvedProfile): ResolvedEndpoint {
   assertSupportedNetwork(resolved);
   const endpoint = profile.endpoint;
   if (!ENDPOINT_KINDS[engine].includes(endpoint.kind)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `${ENGINES[engine].displayName} does not accept a "${endpoint.kind}" endpoint`,
     });
@@ -184,7 +184,7 @@ export function resolveEndpoint(resolved: ResolvedProfile): ResolvedEndpoint {
       break;
     }
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `${ENGINES[engine].displayName} does not accept a "${endpoint.kind}" endpoint`,
       });

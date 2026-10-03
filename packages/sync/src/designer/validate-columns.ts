@@ -1,5 +1,5 @@
-import { atLeast } from '@joinery/core';
-import type { ColumnDef } from '@joinery/core';
+import { atLeast } from '@querybara/core';
+import type { ColumnDef } from '@querybara/core';
 
 import { canonicalCharset, canonicalCollation } from '../normalize';
 import { isFullyParenthesized } from '../sql-text';

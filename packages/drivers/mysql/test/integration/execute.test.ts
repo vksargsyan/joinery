@@ -1,4 +1,4 @@
-import type { ResultChunk, Session } from '@joinery/core';
+import type { ResultChunk, Session } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { SUITES, TARGETS, collect, execId, iterate, rows, target, withDatabase } from './helpers';
@@ -415,10 +415,10 @@ describe.skipIf(TARGETS.length === 0).each(SUITES)('%s execute', (engine, url) =
 
   it('runs init SQL and applies the time zone on connect', async () => {
     const configured = await t.connect({
-      options: { timeZone: '+05:30', initSql: ["SET @joinery_init = 'yes'"] },
+      options: { timeZone: '+05:30', initSql: ["SET @querybara_init = 'yes'"] },
     });
     try {
-      expect(await rows(configured, 'SELECT @@session.time_zone, @joinery_init')).toEqual([
+      expect(await rows(configured, 'SELECT @@session.time_zone, @querybara_init')).toEqual([
         ['+05:30', 'yes'],
       ]);
     } finally {

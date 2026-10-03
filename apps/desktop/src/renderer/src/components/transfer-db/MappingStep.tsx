@@ -1,4 +1,4 @@
-import type { DbTableModeInfo, PlannedColumnInfo, PlannedTableInfo } from '@joinery/ipc';
+import type { DbTableModeInfo, PlannedColumnInfo, PlannedTableInfo } from '@querybara/ipc';
 
 import { MONGO_FIELD_TYPES, type TransferDbWizard } from '../../state/transfer-db/wizard';
 import { SelectField, TextField } from '../designer/fields';

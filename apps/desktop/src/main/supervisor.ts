@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   fromErrorData,
   newId,
   type ConnectionProfile,
   type ErrorData,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { ConnectionEvent, ConnectionState, ServerInfo } from '@joinery/ipc';
+} from '@querybara/core';
+import type { ConnectionEvent, ConnectionState, ServerInfo } from '@querybara/ipc';
 
 import { hostToMainSchema, type HostRequest, type HostToMain } from '../shared/host-protocol';
 import type { HostProcess, HostProcessFactory } from './host-process';
@@ -51,7 +51,7 @@ export interface OpenedConnection {
 
 interface Waiter {
   resolve(value: OpenedConnection): void;
-  reject(error: JoineryError): void;
+  reject(error: QuerybaraError): void;
 }
 
 /** A HostRequest waiting for the host's `response`. */
@@ -59,7 +59,7 @@ interface PendingRequest {
   readonly connectionId: string;
   readonly process: unknown;
   resolve(value: unknown): void;
-  reject(error: JoineryError): void;
+  reject(error: QuerybaraError): void;
   progress?(progress: { readonly bytes: number; readonly total?: number | undefined }): void;
 }
 
@@ -151,7 +151,7 @@ export class ConnectionSupervisor<P> {
     const connection: Connection<P> = {
       connectionId: newId(),
       profileId,
-      label: `Joinery connection: ${resolved.profile.name}`,
+      label: `Querybara connection: ${resolved.profile.name}`,
       resolved,
       state: 'connecting',
       process: undefined,
@@ -174,7 +174,7 @@ export class ConnectionSupervisor<P> {
   attach(connectionId: string, port: P): void {
     const connection = this.#connections.get(connectionId);
     if (!connection || connection.state !== 'ready' || !connection.process) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'CONNECTION_FAILED',
         message: 'The connection is not ready',
         hint: 'Reconnect and try again.',
@@ -205,7 +205,7 @@ export class ConnectionSupervisor<P> {
     const process = connection?.process;
     if (!connection || connection.state !== 'ready' || !process) {
       return Promise.reject(
-        new JoineryError({
+        new QuerybaraError({
           code: 'CONNECTION_FAILED',
           message: 'The connection is not ready',
           hint: 'Reconnect and try again.',
@@ -254,7 +254,7 @@ export class ConnectionSupervisor<P> {
   #failRequests(process: unknown, message: string): void {
     for (const pending of [...this.#requests.values()]) {
       if (pending.process !== process) continue;
-      pending.reject(new JoineryError({ code: 'CONNECTION_FAILED', message }));
+      pending.reject(new QuerybaraError({ code: 'CONNECTION_FAILED', message }));
     }
   }
 
@@ -269,7 +269,7 @@ export class ConnectionSupervisor<P> {
     connection.state = 'closed';
     this.#rejectWaiters(
       connection,
-      new JoineryError({ code: 'CANCELLED', message: 'The connection was closed' }),
+      new QuerybaraError({ code: 'CANCELLED', message: 'The connection was closed' }),
     );
     this.#publish(connection);
     if (process) {
@@ -343,7 +343,7 @@ export class ConnectionSupervisor<P> {
       if (connection.process !== process) return;
       this.#startFailed(
         connection,
-        new JoineryError({
+        new QuerybaraError({
           code: 'TIMEOUT',
           message: 'The connection host did not connect in time',
         }),
@@ -411,7 +411,7 @@ export class ConnectionSupervisor<P> {
     this.#failRequests(process, 'The connection host stopped before the transfer finished');
     if (connection.process !== process) return;
     connection.process = undefined;
-    const reason = new JoineryError({
+    const reason = new QuerybaraError({
       code: 'CONNECTION_FAILED',
       message:
         code === null
@@ -426,7 +426,7 @@ export class ConnectionSupervisor<P> {
   }
 
   /** A start (first or restart) failed: the first start reports to its callers, restarts retry. */
-  #startFailed(connection: Connection<P>, error: JoineryError): void {
+  #startFailed(connection: Connection<P>, error: QuerybaraError): void {
     if (connection.readyTimer) clearTimeout(connection.readyTimer);
     connection.readyTimer = undefined;
     const process = connection.process;
@@ -449,7 +449,7 @@ export class ConnectionSupervisor<P> {
     this.#scheduleRestart(connection, error);
   }
 
-  #scheduleRestart(connection: Connection<P>, reason: JoineryError): void {
+  #scheduleRestart(connection: Connection<P>, reason: QuerybaraError): void {
     const stable =
       connection.readySince !== undefined &&
       this.#now() - connection.readySince >= this.#stableAfterMs;
@@ -474,7 +474,7 @@ export class ConnectionSupervisor<P> {
     }, delay);
   }
 
-  #rejectWaiters(connection: Connection<P>, error: JoineryError): void {
+  #rejectWaiters(connection: Connection<P>, error: QuerybaraError): void {
     for (const waiter of connection.waiters.splice(0)) waiter.reject(error);
   }
 
@@ -508,13 +508,13 @@ export class ConnectionSupervisor<P> {
 }
 
 /** The message and its fix hint, for an event the user reads without the error object. */
-function withHint(error: JoineryError): string {
+function withHint(error: QuerybaraError): string {
   return error.hint ? `${error.message.replace(/\.$/, '')}. ${error.hint}` : error.message;
 }
 
-function asError(error: unknown, message: string): JoineryError {
-  if (error instanceof JoineryError) return error;
+function asError(error: unknown, message: string): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   const data: ErrorData = { code: 'INTERNAL', message };
   if (error instanceof Error) data.detail = error.message;
-  return new JoineryError(data);
+  return new QuerybaraError(data);
 }

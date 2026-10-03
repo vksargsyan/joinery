@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -11,14 +11,14 @@ import { connect, query, scratchDatabase } from './db';
  * pin, reorder (by the Columns list and by dragging a header) in the table data grid; a view
  * with the layout, sort and filter saved as the table's default, applied when the table opens
  * again, reset and deleted; and the same column controls on a query result. Screenshots go to
- * JOINERY_E2E_SHOTS when it is set.
+ * QUERYBARA_E2E_SHOTS when it is set.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Views';
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 

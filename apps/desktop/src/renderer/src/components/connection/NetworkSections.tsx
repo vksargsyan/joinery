@@ -1,4 +1,4 @@
-import type { PrivateKeyInfo } from '@joinery/ipc';
+import type { PrivateKeyInfo } from '@querybara/ipc';
 import { useWatch } from 'react-hook-form';
 
 import { mainApi } from '../../lib/main-client';
@@ -49,8 +49,8 @@ export function SshSection(props: {
           {props.note !== undefined && <p className="text-xs text-muted">{props.note}</p>}
           {hops.length > 1 && (
             <p className="text-xs text-muted">
-              Joinery connects to the jump hosts in order, then to the SSH server, which forwards to
-              the database. The database host and port are as the SSH server sees them.
+              Querybara connects to the jump hosts in order, then to the SSH server, which forwards
+              to the database. The database host and port are as the SSH server sees them.
             </p>
           )}
           {hops.map((hop, index) => (

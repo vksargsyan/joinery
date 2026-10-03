@@ -6,7 +6,7 @@ import type { SchemaObjectKind, SchemaSnapshot } from './schema';
 
 /**
  * The driver adapter contract (spec §3). Every engine sits behind it; the connection host, the
- * job runner, joinery-cli and the tests all drive engines through it and nothing else.
+ * job runner, querybara-cli and the tests all drive engines through it and nothing else.
  */
 
 /**
@@ -127,7 +127,7 @@ export interface Session {
   capabilities(): Capabilities;
 
   /**
-   * Runs exactly one statement (callers split scripts with @joinery/sql-tools) and streams
+   * Runs exactly one statement (callers split scripts with @querybara/sql-tools) and streams
    * its results. See ResultChunk for the event order and cursor semantics.
    */
   execute(text: string, opts: ExecOptions): AsyncIterable<ResultChunk>;

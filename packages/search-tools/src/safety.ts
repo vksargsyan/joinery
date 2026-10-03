@@ -6,7 +6,7 @@ import type { HttpMethod } from './console/parser';
  * can change data or cluster state, and whether it is destructive (it deletes or closes data,
  * or rewrites documents in bulk). Blocking operations (a write or read block on an index, set
  * directly or through its settings) count as destructive too: they always ask. The connection
- * host enforces the rules with this, the console and joinery-cli ask with it first. Unknown
+ * host enforces the rules with this, the console and querybara-cli ask with it first. Unknown
  * requests that are not GET or HEAD count as writes.
  */
 

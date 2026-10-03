@@ -1,4 +1,4 @@
-import type { ActionResult, MaintenanceOperation } from '@joinery/core';
+import type { ActionResult, MaintenanceOperation } from '@querybara/core';
 import { useEffect, useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

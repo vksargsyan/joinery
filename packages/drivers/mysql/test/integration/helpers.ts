@@ -1,5 +1,5 @@
-import type { ExecOptions, ResolvedProfile, ResultChunk, Session } from '@joinery/core';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
+import type { ExecOptions, ResolvedProfile, ResultChunk, Session } from '@querybara/core';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
 
 import { createMysqlAdapter } from '../../src';
 
@@ -8,8 +8,8 @@ type Overrides = Parameters<typeof resolvedProfileFromUrl>[1];
 /** Servers to test against: each runs only when its URL is set. */
 export const TARGETS = (
   [
-    ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
-    ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
+    ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
+    ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
   ] as const
 ).filter(
   (entry): entry is readonly ['mysql' | 'mariadb', string] =>

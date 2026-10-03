@@ -7,10 +7,10 @@ import {
   type ConnectionProfileInput,
   type EngineId,
   type ResolvedProfile,
-} from '@joinery/core';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import { connectionHostContract, createClient, fromNodePort, type Client } from '@joinery/ipc';
-import { parseConnectionUri } from '@joinery/storage';
+} from '@querybara/core';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import { connectionHostContract, createClient, fromNodePort, type Client } from '@querybara/ipc';
+import { parseConnectionUri } from '@querybara/storage';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -25,13 +25,13 @@ import { ConnectionHost } from '../../src/connection-host/host';
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
 const SQL_TARGETS = (
   [
     ['postgres', PG_URL],
-    ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
-    ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
+    ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
+    ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
   ] as const
 ).filter((entry): entry is readonly ['postgres' | 'mysql' | 'mariadb', string] => !!entry[1]);
 

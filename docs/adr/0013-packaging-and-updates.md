@@ -33,7 +33,7 @@ deb and rpm for x64 and arm64. **No Flatpak**: electron-builder's `flatpak` targ
 single-file bundle that no update channel reaches (electron-updater cannot replace it and there
 is no repository), defaults to the end-of-life 20.08 runtime, and needs flatpak-builder with
 about a gigabyte of runtime, SDK and Electron base app on the runner for each build. The route
-that serves Flatpak users is a Flathub listing (`dev.joinery.desktop`, on
+that serves Flatpak users is a Flathub listing (`com.querybara.desktop`, on
 `org.electronjs.Electron2.BaseApp`) that repackages the released x64 and arm64 builds and gets
 updates from Flathub; it needs a Flathub submission, outside this repository.
 
@@ -58,9 +58,9 @@ updates itself, since electron-updater would skip its Authenticode check; MSI, z
 installs are updated by redeploying.
 
 **The policy switch** (`update-policy.ts`) merges every machine-wide source an administrator
-controls: `HKLM\SOFTWARE\Policies\Joinery` (Group Policy, Intune), macOS managed preferences for
-`dev.joinery.desktop` (MDM profiles), `/Library/Application Support/Joinery/policy.json`,
-`/etc/joinery/policy.json`, and `JOINERY_DISABLE_UPDATES`. Any source can turn updates off, the
+controls: `HKLM\SOFTWARE\Policies\Querybara` (Group Policy, Intune), macOS managed preferences for
+`com.querybara.desktop` (MDM profiles), `/Library/Application Support/Querybara/policy.json`,
+`/etc/querybara/policy.json`, and `QUERYBARA_DISABLE_UPDATES`. Any source can turn updates off, the
 first names the channel, and a file that exists but does not parse turns updates off. Windows
 has no policy file, because standard users can create folders under `%ProgramData%`.
 

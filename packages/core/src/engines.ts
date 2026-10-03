@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Every engine Joinery 1.0 talks to (spec §2). */
+/** Every engine Querybara 1.0 talks to (spec §2). */
 export const ENGINE_IDS = [
   'mysql',
   'mariadb',

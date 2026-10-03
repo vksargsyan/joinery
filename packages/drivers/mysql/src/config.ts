@@ -1,6 +1,6 @@
 import { connect as netConnect, isIP, type Socket } from 'node:net';
 
-import { JoineryError, type ResolvedProfile } from '@joinery/core';
+import { QuerybaraError, type ResolvedProfile } from '@querybara/core';
 import {
   buildTlsSettings,
   describeTarget,
@@ -8,8 +8,8 @@ import {
   resolveEndpoint,
   type FileReader,
   type TlsSettings,
-} from '@joinery/driver-sql-base';
-import { quoteString } from '@joinery/sql-tools';
+} from '@querybara/driver-sql-base';
+import { quoteString } from '@querybara/sql-tools';
 import type { ConnectionOptions, SslOptions } from 'mysql2';
 
 import { mysqlTypeCast } from './types';
@@ -143,8 +143,8 @@ export function queryTimeoutStatement(mariadb: boolean, timeoutMs: number): stri
 }
 
 /** mysql2 rejects unknown charsets while building the connection; say which option is wrong. */
-export function invalidCharset(charset: string, cause: unknown): JoineryError {
-  return new JoineryError(
+export function invalidCharset(charset: string, cause: unknown): QuerybaraError {
+  return new QuerybaraError(
     {
       code: 'VALIDATION_FAILED',
       message: `Unknown character set "${charset}"`,

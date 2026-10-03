@@ -1,4 +1,4 @@
-import { JoineryError, type ResultChunk, type Session } from '@joinery/core';
+import { QuerybaraError, type ResultChunk, type Session } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { PG_URL, collect, connect, execId, iterate, rows } from './helpers';
@@ -351,18 +351,18 @@ describe.skipIf(!PG_URL)('PostgreSQL execute', () => {
 
   it('maps SQL errors with SQLSTATE and a 0-based position', async () => {
     const error = await collect(session, 'SELECT * FORM items').catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
     expect(error).toMatchObject({ code: 'SQL_ERROR', sqlState: '42601', position: 9 });
 
     // Positions count characters, not UTF-16 units: the emoji is two units.
     const text = "SELECT '😀', nope FROM (SELECT 1) s";
-    const unicode = (await collect(session, text).catch((e: unknown) => e)) as JoineryError;
+    const unicode = (await collect(session, text).catch((e: unknown) => e)) as QuerybaraError;
     expect(unicode.code).toBe('SQL_ERROR');
     expect(text.slice(unicode.position)).toMatch(/^nope/);
 
     const missing = (await collect(session, 'SELECT * FROM no_such_table').catch(
       (e: unknown) => e,
-    )) as JoineryError;
+    )) as QuerybaraError;
     expect(missing).toMatchObject({ code: 'SQL_ERROR', sqlState: '42P01', position: 14 });
   });
 

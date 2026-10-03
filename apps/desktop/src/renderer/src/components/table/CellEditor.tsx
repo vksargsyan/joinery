@@ -7,7 +7,7 @@ import {
   parseCellInput,
   type ColumnInfo,
   type EditValue,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 import {
   useEffect,
   useLayoutEffect,

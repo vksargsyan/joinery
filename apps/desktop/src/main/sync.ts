@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
-  JoineryError,
+  QuerybaraError,
   type ConnectionProfile,
   type ResolvedProfile,
   type SchemaSnapshot,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   dataScriptPreviewSchema,
   structureScriptSchema,
@@ -22,7 +22,7 @@ import {
   type StructureResult,
   type StructureScript,
   type SyncSide,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { z } from 'zod';
 
 import {
@@ -88,8 +88,8 @@ function sideLabel(profile: ConnectionProfile, side: JobSide): string {
   return side.database !== undefined ? `${profile.name} (${side.database})` : profile.name;
 }
 
-function gone(): JoineryError {
-  return new JoineryError({
+function gone(): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_FOUND',
     message: 'That comparison is no longer available',
     hint: 'Compare again.',
@@ -323,7 +323,7 @@ export class SyncService {
   }): Promise<DataRowPage> {
     const entry = this.#data(input.jobId);
     const table = entry.tables.find((t) => t.index === input.table);
-    if (!table) throw new JoineryError({ code: 'NOT_FOUND', message: 'No such table' });
+    if (!table) throw new QuerybaraError({ code: 'NOT_FOUND', message: 'No such table' });
     const total = table.stored[input.action];
     const pageCount = Math.ceil(total / entry.pageSize);
     if (input.page >= pageCount) return { rows: [], page: input.page, pageCount, total };
@@ -430,7 +430,7 @@ export class SyncService {
   #spoolFolder(): string {
     if (this.#spoolRoot === undefined) {
       mkdirSync(this.#root, { recursive: true });
-      this.#spoolRoot = mkdtempSync(join(this.#root, 'joinery-sync-'));
+      this.#spoolRoot = mkdtempSync(join(this.#root, 'querybara-sync-'));
     }
     return this.#spoolRoot;
   }

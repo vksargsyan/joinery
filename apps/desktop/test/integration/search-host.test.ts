@@ -6,9 +6,9 @@ import {
   newId,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort, type Client } from '@joinery/ipc';
-import { parseConnectionUri } from '@joinery/storage';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort, type Client } from '@querybara/ipc';
+import { parseConnectionUri } from '@querybara/storage';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -20,7 +20,7 @@ import { ConnectionHost } from '../../src/connection-host/host';
  * RPC client on a port. Indices are named for the run and deleted afterwards.
  */
 
-const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
+const ES_URL = process.env['QUERYBARA_TEST_ELASTICSEARCH_URL'];
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 
@@ -76,7 +76,7 @@ afterAll(async () => {
 
 describe.skipIf(ES_URL === undefined)('through the connection host', () => {
   const server = { url: ES_URL ?? '' };
-  const index = `joinery-host-${randomBytes(4).toString('hex')}`;
+  const index = `querybara-host-${randomBytes(4).toString('hex')}`;
 
   it('creates an index, writes and pages documents, and cleans up under the write rules', async () => {
     const { client, sessionId } = await start(server.url);

@@ -1,4 +1,4 @@
-import type { ConnectionCheckResult } from '@joinery/core';
+import type { ConnectionCheckResult } from '@querybara/core';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RedisSession } from '../../src';

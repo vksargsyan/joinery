@@ -1,10 +1,10 @@
-import { JoineryError, tableDefSchema } from '@joinery/core';
+import { QuerybaraError, tableDefSchema } from '@querybara/core';
 import type {
   ImportJob,
   NewTablePlanInput,
   TransferPreview,
   TransferPreviewInput,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -199,7 +199,7 @@ describe('import wizard', () => {
   it('shows a preview error and stays put', async () => {
     const { api } = fakeApi({
       preview: async () => {
-        throw new JoineryError({ code: 'NOT_FOUND', message: '/data/x.csv does not exist' });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: '/data/x.csv does not exist' });
       },
     });
     const wizard = new ImportWizard(TARGET, api);
@@ -356,7 +356,7 @@ describe('import wizard', () => {
 
     wizard.setNewColumn('ID', { dataType: 'int; DROP TABLE x' });
     expect(stepProblem(wizard.state)).toBe(
-      '"int; DROP TABLE x" is not a column type Joinery can use',
+      '"int; DROP TABLE x" is not a column type Querybara can use',
     );
     wizard.setNewColumn('ID', { dataType: '' });
     await vi.waitFor(() => expect(stepProblem(wizard.state)).toBeUndefined());

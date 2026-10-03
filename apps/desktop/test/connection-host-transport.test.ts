@@ -2,21 +2,21 @@ import { createServer, connect as netConnect, type AddressInfo, type Socket } fr
 import { MessageChannel } from 'node:worker_threads';
 
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   connectionProfileSchema,
   type DriverAdapter,
   type ResolvedProfile,
   type ResultChunk,
   type Session,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
 import {
   MemoryKnownHosts,
   TransportManager,
   connectThroughTransport,
   knownHostsVerifier,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../src/connection-host/host';
@@ -46,13 +46,13 @@ class SocketSession implements Session {
 
   // eslint-disable-next-line require-yield
   async *execute(): AsyncGenerator<ResultChunk> {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'not in this test' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'not in this test' });
   }
 
   async cancel(): Promise<void> {}
 
   introspect(): never {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'not in this test' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'not in this test' });
   }
 
   async browse(): Promise<never[]> {
@@ -157,7 +157,7 @@ async function startHost() {
   const manager = new TransportManager({
     hostKeyVerifier: knownHostsVerifier(new MemoryKnownHosts(), 'accept-new'),
   });
-  const lost: JoineryError[] = [];
+  const lost: QuerybaraError[] = [];
   const host = new ConnectionHost(adapter, tunnelledProfile(), {
     open: (profile) => connectThroughTransport(adapter, profile, manager),
     onTransportLost: (error) => lost.push(error),

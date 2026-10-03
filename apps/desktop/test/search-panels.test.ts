@@ -1,10 +1,10 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   reindexPlan,
   searchCapabilities,
   type SearchPage,
   type SearchTaskStatus,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type * as MainClient from '../src/renderer/src/lib/main-client';
@@ -194,7 +194,7 @@ describe('the document grid', () => {
     host.search.documents.index = async (input: object) => {
       calls.record('index', input);
       if (conflicts-- > 0) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'CONFLICT',
           message: 'The document 1 in orders changed since it was read',
           detail: '{"_seq_no": 7, "_primary_term": 1, "_version": 3, "_source": {"n": 42}}',
@@ -299,7 +299,7 @@ describe('the document editor', () => {
       editDocumentState({ index: 'a', id: '1', source: '{"n":1}', seqNo: 1, primaryTerm: 1 }),
       {
         index: async () => {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'CONFLICT',
             message: 'changed',
             detail: '{"_seq_no": 5, "_primary_term": 1, "_source": {"n": 5}}',
@@ -324,7 +324,7 @@ describe('the document editor', () => {
       {
         index: async (request) => {
           expect(request).toMatchObject({ create: true, id: 'x', version: undefined });
-          throw new JoineryError({ code: 'CONFLICT', message: 'exists' });
+          throw new QuerybaraError({ code: 'CONFLICT', message: 'exists' });
         },
       },
     );

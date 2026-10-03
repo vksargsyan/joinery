@@ -1,6 +1,6 @@
 import { crc32 } from 'node:zlib';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import {
   KEY_CHECK_LENGTH,
@@ -11,16 +11,16 @@ import {
 } from './crypto';
 
 /**
- * The byte layout of a Joinery archive, version 1 (docs/backup-archive-format.md):
+ * The byte layout of a Querybara archive, version 1 (docs/backup-archive-format.md):
  *
- *   header   magic "JBAK\r\n\x1a\n" | u16 version | u16 flags | u32 n | n bytes JSON
+ *   header   magic "QBAK\r\n\x1a\n" | u16 version | u16 flags | u32 n | n bytes JSON
  *            | 32-byte HMAC of all of that (encrypted archives only)
  *   entries  back to back; each is a 16-byte entry header ("JENT" | u32 index | 8-byte nonce
  *            prefix) and frames: u32 word (bit 31 = last frame, bits 0-30 = payload length),
  *            the payload, then a CRC-32 (plain) or the payload is ciphertext plus a 16-byte
  *            GCM tag (encrypted)
  *   manifest the last entry, index 0xFFFFFFFF, JSON
- *   trailer  "JBAKEND\0" | u64 manifest offset | u64 manifest length | u32 0 | u32 CRC-32
+ *   trailer  "QBAKEND\0" | u64 manifest offset | u64 manifest length | u32 0 | u32 CRC-32
  *
  * Integers are big-endian. The magic's CR LF and Ctrl-Z catch text-mode copies, as PNG's do.
  */
@@ -99,18 +99,18 @@ export function isArchive(head: Uint8Array): boolean {
 /** The length of the fixed part plus JSON, read from the first 16 bytes. */
 export function headerJsonLength(fixed: Uint8Array): number {
   if (fixed.length < HEADER_FIXED_LENGTH || !isArchive(fixed)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
-      message: 'This file is not a Joinery backup archive',
+      message: 'This file is not a Querybara backup archive',
     });
   }
   const view = Buffer.from(fixed.buffer, fixed.byteOffset, fixed.byteLength);
   const version = view.readUInt16BE(8);
   if (version !== FORMAT_VERSION) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
-      message: `This backup uses archive format version ${version}, which this version of Joinery cannot read`,
-      hint: 'Update Joinery and try again.',
+      message: `This backup uses archive format version ${version}, which this version of Querybara cannot read`,
+      hint: 'Update Querybara and try again.',
     });
   }
   const length = view.readUInt32BE(12);
@@ -147,9 +147,9 @@ export function parseHeader(bytes: Uint8Array): ArchiveHeader {
       salt?.length !== SALT_LENGTH ||
       !isValidScryptCost(cost)
     ) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
-        message: 'This backup is encrypted with settings this version of Joinery cannot read',
+        message: 'This backup is encrypted with settings this version of Querybara cannot read',
       });
     }
     kdf = { name: 'scrypt', ...cost, salt };

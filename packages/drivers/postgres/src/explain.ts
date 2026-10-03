@@ -1,5 +1,5 @@
-import { JoineryError, type PlanNode } from '@joinery/core';
-import { isRecord, planNode, scalarDetail, toNumber } from '@joinery/driver-sql-base';
+import { QuerybaraError, type PlanNode } from '@querybara/core';
+import { isRecord, planNode, scalarDetail, toNumber } from '@querybara/driver-sql-base';
 
 /**
  * Normalises PostgreSQL `EXPLAIN (FORMAT JSON)` output into PlanNode trees.
@@ -92,7 +92,7 @@ function convert(node: Readonly<Record<string, unknown>>, id: string): PlanNode 
 export function normalisePgPlan(explain: unknown): PlanNode {
   const top = Array.isArray(explain) ? explain[0] : explain;
   if (!isRecord(top) || !isRecord(top['Plan'])) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'INTERNAL',
       message: 'Unexpected EXPLAIN output: no plan found',
     });

@@ -4,7 +4,7 @@ import { BrokenPipeError } from '../errors';
 /**
  * Writes text to a stream with backpressure: when the stream's buffer is full, `write` waits
  * for 'drain', so result rows never pile up in memory faster than the consumer reads them. A
- * closed pipe (EPIPE, e.g. `joinery query ... | head`) turns into BrokenPipeError.
+ * closed pipe (EPIPE, e.g. `querybara query ... | head`) turns into BrokenPipeError.
  */
 export class Sink {
   readonly #stream: OutputStream;

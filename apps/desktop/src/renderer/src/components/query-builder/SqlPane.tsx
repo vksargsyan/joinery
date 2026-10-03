@@ -41,7 +41,7 @@ export function SqlPane(props: {
     const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
-      theme: props.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
+      theme: props.theme === 'dark' ? 'querybara-dark' : 'querybara-light',
       automaticLayout: true,
       fontSize: props.fontSize,
       minimap: { enabled: false },
@@ -62,7 +62,7 @@ export function SqlPane(props: {
       clearTimeout(timer);
       applying = true;
       editor.pushUndoStop();
-      editor.executeEdits('joinery.builder', [
+      editor.executeEdits('querybara.builder', [
         { range: model.getFullModelRange(), text: state.sql },
       ]);
       editor.pushUndoStop();
@@ -79,7 +79,7 @@ export function SqlPane(props: {
     };
     props.flushRef.current = flush;
     editor.addAction({
-      id: 'joinery.builder.run',
+      id: 'querybara.builder.run',
       label: 'Run Query',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => run.current(),
@@ -99,7 +99,7 @@ export function SqlPane(props: {
   }, [builder]);
 
   useEffect(() => {
-    monaco.editor.setTheme(props.theme === 'dark' ? 'joinery-dark' : 'joinery-light');
+    monaco.editor.setTheme(props.theme === 'dark' ? 'querybara-dark' : 'querybara-light');
   }, [props.theme]);
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export function SqlPane(props: {
       );
     }
     if (marker) mark(marker.start, marker.end, marker.message, monaco.MarkerSeverity.Error);
-    monaco.editor.setModelMarkers(model, 'joinery-builder', markers);
+    monaco.editor.setModelMarkers(model, 'querybara-builder', markers);
   }, [sync, marker, sql]);
 
   return <div ref={container} className="h-full w-full" data-testid="builder-sql" />;

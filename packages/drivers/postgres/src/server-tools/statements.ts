@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   MASKED_SECRET,
   type AccountOptions,
   type AccountRef,
@@ -8,8 +8,8 @@ import {
   type MaintenanceTargetRef,
   type PolicyCommand,
   type ServerAction,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString, tokenize } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString, tokenize } from '@querybara/sql-tools';
 
 import { statement, type ToolStatement } from './runner';
 
@@ -21,8 +21,8 @@ import { statement, type ToolStatement } from './runner';
 const q = (name: string): string => quoteIdent(name, 'postgres');
 const lit = (value: string): string => quoteString(value, 'postgres');
 
-function invalid(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+function invalid(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 /** Role, schema and object names: 1 to 63 bytes (PostgreSQL would silently truncate longer). */
@@ -132,7 +132,7 @@ export function maintenanceStatements(
       );
     }
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `${operation.toUpperCase()} is not a PostgreSQL maintenance command`,
       });
@@ -198,7 +198,7 @@ export function settingStatements(
         statement('SELECT pg_catalog.pg_reload_conf()'),
       ];
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `PostgreSQL has no "${action.scope}" setting scope`,
         hint: 'Use this session, the database or ALTER SYSTEM',

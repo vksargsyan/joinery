@@ -1,4 +1,4 @@
-import { tableDefSchema, type TableDef } from '@joinery/core';
+import { tableDefSchema, type TableDef } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -154,7 +154,7 @@ describe('importRows', () => {
     expect(summary).toMatchObject({ status: 'completed', rowsWritten: 1998, rowsSkipped: 2 });
     expect(summary.errors.map((e) => e.row)).toEqual([7, 1200]);
     expect(session.committed).toHaveLength(1998);
-    expect(session.statements).toContain('ROLLBACK TO SAVEPOINT joinery_row');
+    expect(session.statements).toContain('ROLLBACK TO SAVEPOINT querybara_row');
   });
 
   it('skips bad rows on MySQL without savepoints (statement-level rollback)', async () => {

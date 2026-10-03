@@ -1,9 +1,9 @@
 import { MessageChannel } from 'node:worker_threads';
 
-import { connectionProfileSchema, type ResolvedProfile } from '@joinery/core';
-import { createRedisAdapter, redisProfileFromUrl } from '@joinery/driver-redis';
-import { connectionHostContract, createClient, fromNodePort, type Client } from '@joinery/ipc';
-import { buildConfigRows } from '@joinery/redis-tools';
+import { connectionProfileSchema, type ResolvedProfile } from '@querybara/core';
+import { createRedisAdapter, redisProfileFromUrl } from '@querybara/driver-redis';
+import { connectionHostContract, createClient, fromNodePort, type Client } from '@querybara/ipc';
+import { buildConfigRows } from '@querybara/redis-tools';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../../src/connection-host/host';
@@ -14,8 +14,8 @@ import { ConnectionHost } from '../../src/connection-host/host';
  * refuses) with the original value restored, and every Cluster primary read at once.
  */
 
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 

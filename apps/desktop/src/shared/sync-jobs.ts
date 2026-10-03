@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 import {
   dataActionsSchema,
   dataCompareOptionsSchema,
@@ -13,8 +13,8 @@ import {
   structureScriptSchema,
   syncSideInfoSchema,
   syncSideSchema,
-} from '@joinery/ipc';
-import type { SchemaDiff } from '@joinery/sync';
+} from '@querybara/ipc';
+import type { SchemaDiff } from '@querybara/sync';
 import { z } from 'zod';
 
 /**

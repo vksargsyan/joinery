@@ -44,11 +44,11 @@ import {
   type TopQuery,
   type TopQueryOptions,
   type ValueUnit,
-} from '@joinery/core';
+} from '@querybara/core';
 import { z } from 'zod';
 
 /**
- * Zod schemas for the server tools (spec §15), typed from @joinery/core's engine-neutral
+ * Zod schemas for the server tools (spec §15), typed from @querybara/core's engine-neutral
  * shapes so a drift between the drivers' results and what crosses the port fails to compile.
  */
 

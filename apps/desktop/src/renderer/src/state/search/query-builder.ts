@@ -24,7 +24,7 @@ import {
   type DslTexts,
   type Occur,
   type TopValue,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

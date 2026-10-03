@@ -4,11 +4,11 @@ import {
   parseShell,
   type BsonValue,
   type CommandSafety,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 /**
  * What a command document typed in the MongoDB console does, for the write rules (spec §4, §6):
- * mongo-tools' classifier (shared with joinery-cli) on the parsed text. Text that is not a
+ * mongo-tools' classifier (shared with querybara-cli) on the parsed text. Text that is not a
  * command document counts as a read; the server says what is wrong with it.
  */
 

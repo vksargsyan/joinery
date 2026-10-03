@@ -1,4 +1,4 @@
-import type { CellValue, ColumnMeta, LargeValueHandle } from '@joinery/core';
+import type { CellValue, ColumnMeta, LargeValueHandle } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { bytesToHex, cellJson, cellText, uniqueKeys } from '../src/output/cells';

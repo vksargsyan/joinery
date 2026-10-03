@@ -1,8 +1,8 @@
-import { JoineryError, type ErrorData } from '@joinery/core';
+import { QuerybaraError, type ErrorData } from '@querybara/core';
 
 /** The serialisable details of anything thrown, for messages and banners. */
 export function errorInfo(error: unknown): ErrorData {
-  if (error instanceof JoineryError) return error.toJSON();
+  if (error instanceof QuerybaraError) return error.toJSON();
   if (error instanceof Error) return { code: 'INTERNAL', message: error.message };
   return { code: 'INTERNAL', message: String(error) };
 }

@@ -11,7 +11,7 @@ import {
   type SecretPolicy,
   type SecretRef,
   type TlsMode,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   exportProfiles,
   importProfiles,
@@ -19,7 +19,7 @@ import {
   type ExportedFolder,
   type Store,
   type StoredProfile,
-} from '@joinery/storage';
+} from '@querybara/storage';
 
 import { CliError, EXIT, type ExitCode } from '../errors';
 import { TableWriter } from '../output/formats';
@@ -28,7 +28,7 @@ import { confirmOperation } from '../safety';
 import { describeEndpoint, findProfile, isConnectionUri, passwordEnvName } from '../target';
 
 /**
- * `joinery profiles ...`: the local store's connection profiles, shared with the desktop app.
+ * `querybara profiles ...`: the local store's connection profiles, shared with the desktop app.
  * Nothing here prints a secret value: `show` reports whether each secret is saved and readable,
  * and exports carry secrets only inside the passphrase-encrypted file.
  */
@@ -127,7 +127,7 @@ export async function showProfile(
     lines.push([secret.label, describeSecret(secret)]);
   }
   if (profile.auth.method === 'password') {
-    lines.push(['Password env', `${passwordEnvName(profile.name)} or JOINERY_PASSWORD`]);
+    lines.push(['Password env', `${passwordEnvName(profile.name)} or QUERYBARA_PASSWORD`]);
   }
   lines.push(['Created', profile.createdAt], ['Updated', profile.updatedAt]);
   const width = Math.max(...lines.map(([label]) => label.length)) + 2;
@@ -176,7 +176,7 @@ function describeSecret(secret: SecretInfo): string {
       return secret.status === 'available'
         ? 'saved (readable here)'
         : secret.status === 'unreadable'
-          ? "saved, but not readable here (sealed by the desktop app's keychain, or JOINERY_PASSPHRASE is not set or differs)"
+          ? "saved, but not readable here (sealed by the desktop app's keychain, or QUERYBARA_PASSPHRASE is not set or differs)"
           : 'not saved';
   }
 }
@@ -249,7 +249,7 @@ export interface AddProfileOptions {
 
 /**
  * Saves a profile from a URI. The URI's password is saved only under the `save` policy, sealed
- * with JOINERY_PASSPHRASE; without a passphrase the profile asks for it instead. A URI without
+ * with QUERYBARA_PASSPHRASE; without a passphrase the profile asks for it instead. A URI without
  * a password gets no password reference unless --password-policy asks for one.
  */
 export async function addProfile(
@@ -289,23 +289,23 @@ export async function addProfile(
     policy = canSave ? 'save' : 'ask';
     if (!canSave) {
       runtime.reporter.warn(
-        'The password in the URI was not saved: set JOINERY_PASSPHRASE to save passwords sealed with it. The profile asks for the password instead.',
+        'The password in the URI was not saved: set QUERYBARA_PASSPHRASE to save passwords sealed with it. The profile asks for the password instead.',
       );
     }
   }
   if (policy === 'save' && !canSave) {
-    throw new CliError('Cannot save the password without JOINERY_PASSPHRASE', {
+    throw new CliError('Cannot save the password without QUERYBARA_PASSPHRASE', {
       code: 'NOT_SUPPORTED',
-      hint: 'Set JOINERY_PASSPHRASE to seal saved passwords, or pass --password-policy ask',
+      hint: 'Set QUERYBARA_PASSPHRASE to seal saved passwords, or pass --password-policy ask',
     });
   }
   let password: string | undefined;
   if (policy === 'save') {
-    password = parsed.password ?? runtime.ctx.env['JOINERY_PASSWORD'];
+    password = parsed.password ?? runtime.ctx.env['QUERYBARA_PASSWORD'];
     if (password === undefined) {
       if (!runtime.ctx.prompter.interactive) {
         throw new CliError('No password to save', {
-          hint: 'Put it in the URI, set JOINERY_PASSWORD, or run in a terminal to be asked',
+          hint: 'Put it in the URI, set QUERYBARA_PASSWORD, or run in a terminal to be asked',
         });
       }
       password = await runtime.ctx.prompter.secret(`Password for ${name}: `);
@@ -354,8 +354,8 @@ export async function addProfile(
   if (ref !== undefined) {
     runtime.reporter.info(
       ref.policy === 'save'
-        ? 'The password is saved, sealed with JOINERY_PASSPHRASE.'
-        : `The password is not stored; joinery-cli reads ${passwordEnvName(saved.name)} or JOINERY_PASSWORD, or asks.`,
+        ? 'The password is saved, sealed with QUERYBARA_PASSPHRASE.'
+        : `The password is not stored; querybara-cli reads ${passwordEnvName(saved.name)} or QUERYBARA_PASSWORD, or asks.`,
     );
   }
   return EXIT.ok;
@@ -403,7 +403,7 @@ export async function removeProfile(
 // ---------------------------------------------------------------------------------------------
 // export / import
 
-const EXPORT_PASSPHRASE_ENV = 'JOINERY_EXPORT_PASSPHRASE';
+const EXPORT_PASSPHRASE_ENV = 'QUERYBARA_EXPORT_PASSPHRASE';
 
 async function exportPassphrase(runtime: Runtime, confirm: boolean): Promise<string> {
   const fromEnv = runtime.ctx.env[EXPORT_PASSPHRASE_ENV];
@@ -462,7 +462,7 @@ export async function exportCommand(
     }
     if (unavailable > 0) {
       runtime.reporter.warn(
-        `${plural(unavailable, 'saved secret')} could not be read here and ${unavailable === 1 ? 'is' : 'are'} not in the file (sealed by the desktop app's keychain, or JOINERY_PASSPHRASE is not set or differs)`,
+        `${plural(unavailable, 'saved secret')} could not be read here and ${unavailable === 1 ? 'is' : 'are'} not in the file (sealed by the desktop app's keychain, or QUERYBARA_PASSPHRASE is not set or differs)`,
       );
     }
   }
@@ -543,7 +543,7 @@ export async function importCommand(
   }
   if (unsavedSecrets > 0) {
     runtime.reporter.warn(
-      `${plural(unsavedSecrets, 'secret')} in the file ${unsavedSecrets === 1 ? 'was' : 'were'} not saved: set JOINERY_PASSPHRASE to save secrets`,
+      `${plural(unsavedSecrets, 'secret')} in the file ${unsavedSecrets === 1 ? 'was' : 'were'} not saved: set QUERYBARA_PASSPHRASE to save secrets`,
     );
   }
   return EXIT.ok;

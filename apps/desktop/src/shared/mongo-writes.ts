@@ -1,4 +1,4 @@
-import { JoineryError, requiresWriteConfirmation, type ConnectionProfile } from '@joinery/core';
+import { QuerybaraError, requiresWriteConfirmation, type ConnectionProfile } from '@querybara/core';
 
 /**
  * The MongoDB write rules (spec §4), shared by the connection host's `mongo.*` handlers and
@@ -25,13 +25,13 @@ export function checkMongoWrite(
 ): void {
   if (request.dryRun === true) return;
   if (profile.presentation.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: `"${profile.name}" is read-only: ${lowerFirst(what)} was refused`,
     });
   }
   if ((destructive || requiresWriteConfirmation(profile)) && request.confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `${what} needs confirmation${
         destructive

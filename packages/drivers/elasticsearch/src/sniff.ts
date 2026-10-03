@@ -1,5 +1,5 @@
-import type { ResolvedProfile } from '@joinery/core';
-import { member, parseJsonTree, stringAt } from '@joinery/search-tools';
+import type { ResolvedProfile } from '@querybara/core';
+import { member, parseJsonTree, stringAt } from '@querybara/search-tools';
 
 import { buildNodeTarget, type SearchNodeTarget } from './config';
 import type { SearchHttpClient } from './http';

@@ -1,4 +1,4 @@
-import type { RpcStream } from '@joinery/ipc';
+import type { RpcStream } from '@querybara/ipc';
 import {
   formatShell,
   formatShellInline,
@@ -9,7 +9,7 @@ import {
   type BsonValue,
   type ChangeEvent,
   type WatchScope,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

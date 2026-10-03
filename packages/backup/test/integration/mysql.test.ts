@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
-import { fileSink } from '@joinery/transfer';
+import type { Session } from '@querybara/core';
+import { fileSink } from '@querybara/transfer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -29,7 +29,7 @@ import {
  * AUTO_INCREMENT keys), generated columns, foreign keys in a cycle, views, routines with their
  * own sql_mode, a trigger that would change rows if it fired during the load, an event, and on
  * MariaDB a sequence. Backed up in each format, restored into a database with another name,
- * compared with @joinery/sync: zero differences.
+ * compared with @querybara/sync: zero differences.
  */
 
 const FAST = { log2N: 10, r: 8, p: 1 };
@@ -68,7 +68,7 @@ for (const engine of ['mysql', 'mariadb'] as const satisfies readonly SqlServerE
     }
 
     it('round-trips an encrypted archive into a database with another name', async () => {
-      const path = await backup('jbak', 'full.jbak', {
+      const path = await backup('qbak', 'full.qbak', {
         encryption: { passphrase: 'pässwörd', cost: FAST },
       });
       const archive = await ArchiveReader.open(path, { passphrase: 'pässwörd' });
@@ -96,7 +96,7 @@ for (const engine of ['mysql', 'mariadb'] as const satisfies readonly SqlServerE
     }
 
     it('restores selected tables and replaces existing ones after confirmation', async () => {
-      const path = await backup('jbak', 'selective.jbak');
+      const path = await backup('qbak', 'selective.qbak');
       const archive = await ArchiveReader.open(path);
       const target = await dbs.connect(await dbs.create('selected'));
       const select = ['table:kinds:create', 'table:orders:create'];

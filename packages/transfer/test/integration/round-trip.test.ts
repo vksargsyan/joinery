@@ -2,8 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { Session } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -67,7 +67,7 @@ describe.skipIf(SERVERS.length === 0)('round trips', () => {
       let dir: string;
 
       beforeAll(async () => {
-        dir = await mkdtemp(join(tmpdir(), 'joinery-transfer-'));
+        dir = await mkdtemp(join(tmpdir(), 'querybara-transfer-'));
         dbs = new ScratchDatabases(server);
         session = await dbs.create('round_trip');
         const { create, insert } = typesTable(server.engine, 'src');

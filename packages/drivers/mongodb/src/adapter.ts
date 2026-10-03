@@ -4,7 +4,7 @@ import type {
   DriverAdapter,
   ResolvedProfile,
   Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { checkMongoConnection, type MongoCheckDeps } from './check';
 import { MongoDbSession, mongoCapabilities } from './session';
@@ -40,7 +40,7 @@ export function createMongoAdapter(): DriverAdapter {
 
 /**
  * Test Connection with injectable network primitives, including `runSshStep` for profiles with
- * an SSH tunnel or proxy (pass @joinery/tunnel's `runSshStep` bound to a TransportManager).
+ * an SSH tunnel or proxy (pass @querybara/tunnel's `runSshStep` bound to a TransportManager).
  */
 export function checkConnection(
   resolved: ResolvedProfile,

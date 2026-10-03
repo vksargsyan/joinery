@@ -1,4 +1,4 @@
-import type { CellValue, ColumnMeta, NoticeSeverity, ResultChunk } from '@joinery/core';
+import type { CellValue, ColumnMeta, NoticeSeverity, ResultChunk } from '@querybara/core';
 
 import { formatDuration, formatRows } from '../lib/format';
 

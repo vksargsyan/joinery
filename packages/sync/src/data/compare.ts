@@ -1,5 +1,5 @@
-import type { CellValue, ColumnKind, ColumnMeta, Session, SqlDialect } from '@joinery/core';
-import { cancelledError, JoineryError, newId, rowAt } from '@joinery/core';
+import type { CellValue, ColumnKind, ColumnMeta, Session, SqlDialect } from '@querybara/core';
+import { cancelledError, QuerybaraError, newId, rowAt } from '@querybara/core';
 
 import type { CanonicalOptions } from './canonical';
 import { compareKeys, compareKind } from './canonical';
@@ -69,7 +69,7 @@ export type DataCompareEvent =
 function dialectOf(session: Session): SqlDialect {
   const engine = session.engine;
   if (engine === 'postgres' || engine === 'mysql' || engine === 'mariadb') return engine;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Data compare does not support ${engine}`,
   });
@@ -154,7 +154,7 @@ async function boundary(
  * source key space in ranges, compares per-range checksums computed on each server, bisects
  * mismatched ranges until they are small, and streams those rows from both sides in key order
  * through `mergeSortedRows`. Yields a start event, progress, one event per differing row, and
- * a final summary. Runs anywhere a `Session` does: the job runner, joinery-cli and tests.
+ * a final summary. Runs anywhere a `Session` does: the job runner, querybara-cli and tests.
  *
  * Limitation: both servers must order the key the same way within the range predicates. For
  * integer, UUID, date and binary keys that always holds; string keys need the same collation on
@@ -172,7 +172,7 @@ export async function* compareTableData(
   const sourceDialect = dialectOf(sourceSession);
   const targetDialect = dialectOf(targetSession);
   if (pair.keyColumns.length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'Data compare needs a primary or unique key',
       hint: 'Pick the key columns, or add a primary key to both tables.',
@@ -189,7 +189,7 @@ export async function* compareTableData(
     (k, i) => columnIndex(sourceNames, k) === -1 || keyOnTarget[i] === undefined,
   );
   if (missing.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Key column ${missing.join(', ')} is missing on one side`,
     });

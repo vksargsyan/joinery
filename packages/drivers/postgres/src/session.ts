@@ -1,6 +1,6 @@
 import {
   DEFAULT_PAGE_SIZE,
-  JoineryError,
+  QuerybaraError,
   cancelledError,
   capabilitiesFor,
   toColumnChunk,
@@ -18,14 +18,14 @@ import {
   type ResultChunk,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   SessionGate,
   positionalParams,
   str,
   type GateLease,
   type Row,
-} from '@joinery/driver-sql-base';
+} from '@querybara/driver-sql-base';
 import { Client, type FieldDef, type QueryResult } from 'pg';
 import Cursor from 'pg-cursor';
 
@@ -75,7 +75,7 @@ const SEVERITIES: Readonly<Record<string, NoticeSeverity>> = {
 /** Per-execution bookkeeping, shared by `execute`, `cancel` and preemption. */
 class PgExecution {
   cancelRequested = false;
-  closeReason: JoineryError | undefined;
+  closeReason: QuerybaraError | undefined;
   finished = false;
   cancelSent: Promise<void> = Promise.resolve();
   readonly notices: ResultChunk[] = [];
@@ -150,7 +150,7 @@ export class PostgresSession implements Session {
   readonly engine = 'postgres' as const;
   private readonly gate = new SessionGate();
   private active: PgExecution | null = null;
-  private broken: JoineryError | null = null;
+  private broken: QuerybaraError | null = null;
   private closed = false;
   private readonly types = new Map<number, TypeInfo>();
   private readonly relations = new Map<number, RelationInfo>();
@@ -233,7 +233,7 @@ export class PostgresSession implements Session {
 
   private assertUsable(): void {
     if (this.closed)
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
     if (this.broken) throw this.broken;
   }
 
@@ -268,7 +268,7 @@ export class PostgresSession implements Session {
       await cursor.close().catch(() => undefined);
     };
     lease.setPreemptHandler(async () => {
-      exec.closeReason ??= new JoineryError({
+      exec.closeReason ??= new QuerybaraError({
         code: 'CANCELLED',
         message: 'The result was closed because another statement ran on this session',
       });
@@ -320,7 +320,7 @@ export class PostgresSession implements Session {
         } catch (error) {
           cursorState = 'dead';
           if (copyRefused) {
-            throw new JoineryError({
+            throw new QuerybaraError({
               code: 'NOT_SUPPORTED',
               message: 'COPY FROM STDIN cannot run in the SQL editor',
               hint: 'Use the import tools, or COPY FROM a server-side file',
@@ -520,7 +520,7 @@ export class PostgresSession implements Session {
 
   async introspect(scope: IntrospectScope = {}): Promise<SchemaSnapshot> {
     if (scope.database !== undefined && scope.database !== this.database) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `This session is connected to "${this.database}"; PostgreSQL needs a new connection to introspect "${scope.database}"`,
       });
@@ -541,15 +541,15 @@ export class PostgresSession implements Session {
   private async inReadOnlySnapshot<T>(work: () => Promise<T>): Promise<T> {
     const nested = this.inTransaction;
     await this.query(
-      nested ? 'SAVEPOINT joinery_introspect' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
+      nested ? 'SAVEPOINT querybara_introspect' : 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
     );
     try {
       await this.query(`SELECT pg_catalog.set_config('search_path', '', true)`);
       return await work();
     } finally {
       if (nested) {
-        await this.query('ROLLBACK TO SAVEPOINT joinery_introspect').catch(() => undefined);
-        await this.query('RELEASE SAVEPOINT joinery_introspect').catch(() => undefined);
+        await this.query('ROLLBACK TO SAVEPOINT querybara_introspect').catch(() => undefined);
+        await this.query('RELEASE SAVEPOINT querybara_introspect').catch(() => undefined);
       } else {
         await this.query('ROLLBACK').catch(() => undefined);
       }
@@ -591,7 +591,7 @@ export class PostgresSession implements Session {
         } catch (error) {
           const mapped = mapPgError(error, { where: this.plan.where, statement: prefix + text });
           if (mapped.position === undefined) throw mapped;
-          throw new JoineryError({
+          throw new QuerybaraError({
             ...mapped.toJSON(),
             position: Math.max(0, mapped.position - prefix.length),
           });
@@ -607,13 +607,13 @@ export class PostgresSession implements Session {
       if (!opts.analyze) return run();
       // EXPLAIN ANALYZE executes the statement: keep its effects out of the database.
       const nested = this.inTransaction;
-      await this.query(nested ? 'SAVEPOINT joinery_explain' : 'BEGIN');
+      await this.query(nested ? 'SAVEPOINT querybara_explain' : 'BEGIN');
       try {
         return await run();
       } finally {
         if (nested) {
-          await this.query('ROLLBACK TO SAVEPOINT joinery_explain').catch(() => undefined);
-          await this.query('RELEASE SAVEPOINT joinery_explain').catch(() => undefined);
+          await this.query('ROLLBACK TO SAVEPOINT querybara_explain').catch(() => undefined);
+          await this.query('RELEASE SAVEPOINT querybara_explain').catch(() => undefined);
         } else {
           await this.query('ROLLBACK').catch(() => undefined);
         }

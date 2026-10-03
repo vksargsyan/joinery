@@ -1,4 +1,4 @@
-import type { RdbReport, RdbReportKey } from '@joinery/ipc';
+import type { RdbReport, RdbReportKey } from '@querybara/ipc';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';
@@ -122,7 +122,7 @@ function Welcome() {
         </span>
         <h2 className="mt-4 text-base font-semibold text-fg">See what fills a Redis server</h2>
         <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-muted">
-          Pick an RDB file and Joinery reads it offline: keys by type, encoding, expiry, database
+          Pick an RDB file and Querybara reads it offline: keys by type, encoding, expiry, database
           and pattern, and the largest ones. Files of any size stream through; nothing connects to a
           server.
         </p>

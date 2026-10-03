@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { open, type FileHandle } from 'node:fs/promises';
 import { crc32 } from 'node:zlib';
 
-import { JoineryError } from '@joinery/core';
-import { gunzip } from '@joinery/transfer';
+import { QuerybaraError } from '@querybara/core';
+import { gunzip } from '@querybara/transfer';
 
 import {
   TAG_LENGTH,
@@ -30,7 +30,7 @@ import {
 import { manifestSchema, type EntryRecord, type Manifest } from './manifest';
 
 /**
- * Reads a Joinery archive with random access: the header and the trailer locate the manifest,
+ * Reads a Querybara archive with random access: the header and the trailer locate the manifest,
  * and the manifest locates every entry, so a selective restore reads only the entries it needs.
  * Every frame is checked before its bytes are used (GCM tag or CRC-32), a cut-off entry is
  * caught by the missing last-frame flag, and each entry's size and SHA-256 are compared with the
@@ -51,7 +51,7 @@ export async function fileArchiveSource(path: string): Promise<ArchiveSource> {
     handle = await open(path, 'r');
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: code === 'ENOENT' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
       message: code === 'ENOENT' ? `${path} does not exist` : `${path} cannot be read (${code})`,
     });
@@ -101,9 +101,9 @@ async function readHeader(source: ArchiveSource): Promise<ArchiveHeader> {
   if (source.size < HEADER_FIXED_LENGTH + TRAILER_LENGTH) {
     const head = await source.read(0, Math.min(source.size, 8));
     if (!isArchive(head)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
-        message: 'This file is not a Joinery backup archive',
+        message: 'This file is not a Querybara backup archive',
       });
     }
     throw damaged('the file is too short');
@@ -154,14 +154,14 @@ export class ArchiveReader {
       let keys: ArchiveKeys | undefined;
       if (header.kdf) {
         if (options.passphrase === undefined || options.passphrase === '') {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'AUTH_FAILED',
             message: 'This backup is encrypted: enter its passphrase to open it',
           });
         }
         keys = await deriveKeys(options.passphrase, header.kdf.salt, header.kdf);
         if (!headerMacMatches(keys, header.bytes, header.mac!)) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'AUTH_FAILED',
             message: 'The passphrase is wrong, or the backup header was modified',
           });
@@ -221,7 +221,7 @@ export class ArchiveReader {
   async *read(name: string | EntryRecord): AsyncGenerator<Uint8Array> {
     const record = typeof name === 'string' ? this.#byName.get(name) : name;
     if (!record) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: `The backup has no file ${String(name)}`,
       });
@@ -239,7 +239,7 @@ export class ArchiveReader {
       yield chunk;
     }
     if (size !== record.size || hash.digest('hex') !== record.sha256) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `The backup is damaged: ${what} does not match its checksum`,
       });

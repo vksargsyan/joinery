@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   type DriverAdapter,
   type ExecOptions,
   type ResolvedProfile,
   type ResultChunk,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   BulkDeleteOptions,
   BulkDeleteResult,
@@ -22,7 +22,7 @@ import type {
   RedisTopologyView,
   ScanPageOptions,
   ScanPageResult,
-} from '@joinery/driver-redis';
+} from '@querybara/driver-redis';
 import {
   bulk,
   bytesKey,
@@ -35,7 +35,7 @@ import {
   type ConfigChange,
   type RedisBytes,
   type RedisReply,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 import { CATALOG } from './redis-fixtures';
 
@@ -100,7 +100,7 @@ export class FakeRedisSession {
   async cancel(): Promise<void> {}
 
   async introspect(): Promise<never> {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
   }
 
   async browse(): Promise<never[]> {
@@ -162,7 +162,7 @@ export class FakeRedisSession {
     const words = args.map((a) => utf8Text(toBytes(a)));
     this.#record('command', words, options);
     const name = words[0]!.toUpperCase();
-    if (this.closed) throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'closed' });
+    if (this.closed) throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'closed' });
     switch (name) {
       case 'SET':
         this.store.set(bytesKey(toBytes(args[1]!)), {
@@ -183,7 +183,7 @@ export class FakeRedisSession {
         return new Promise((_resolve, reject) => {
           this.#blocked.push(() =>
             reject(
-              new JoineryError({ code: 'CONNECTION_FAILED', message: 'Connection is closed' }),
+              new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Connection is closed' }),
             ),
           );
         });

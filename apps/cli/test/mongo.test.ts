@@ -1,11 +1,11 @@
-import { toEjson } from '@joinery/mongo-tools';
+import { toEjson } from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import { commandSafety, parseCommands, relaxedText } from '../src/mongo';
 
-/** joinery query on MongoDB targets: command documents, their write rules and the output. */
+/** querybara query on MongoDB targets: command documents, their write rules and the output. */
 
-describe('MongoDB commands in joinery query', () => {
+describe('MongoDB commands in querybara query', () => {
   it('reads one command document or an array of them', () => {
     expect(parseCommands('{ find: "orders", filter: { total: { $gt: 100 } } }')).toHaveLength(1);
     expect(

@@ -2,7 +2,7 @@ import { isBsonDocument, type BsonDocument, type BsonValue } from './bson';
 
 /**
  * What a MongoDB command document does, for the write rules (spec §4, §6) that the desktop
- * console and joinery-cli apply before running typed commands: a read-only profile refuses
+ * console and querybara-cli apply before running typed commands: a read-only profile refuses
  * commands that write, destructive ones (drops, multi-document deletes and updates, killOp,
  * shutdown...) ask on every profile, and production profiles ask before every write. Unknown
  * commands count as reads, as the server decides what they may do.

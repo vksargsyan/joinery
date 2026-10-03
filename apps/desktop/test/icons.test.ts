@@ -29,7 +29,7 @@ import {
  * sizes, from build/icon.svg; and the committed icons in build/ are what it produces.
  */
 
-const out = mkdtempSync(join(tmpdir(), 'joinery-icons-'));
+const out = mkdtempSync(join(tmpdir(), 'querybara-icons-'));
 
 afterAll(() => {
   rmSync(out, { recursive: true, force: true });
@@ -205,7 +205,7 @@ describe('the committed icons', () => {
         worst = Math.max(worst, Math.abs(fresh[i]! - committed[i]!));
       expect(
         worst,
-        `build/${icon.file} is stale: run pnpm --filter @joinery/desktop icons`,
+        `build/${icon.file} is stale: run pnpm --filter @querybara/desktop icons`,
       ).toBeLessThanOrEqual(2);
     }
   });

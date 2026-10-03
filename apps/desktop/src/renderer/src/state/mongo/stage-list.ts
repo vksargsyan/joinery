@@ -1,4 +1,4 @@
-import { JoineryError, newId } from '@joinery/core';
+import { QuerybaraError, newId } from '@querybara/core';
 import {
   AGGREGATION_STAGES,
   formatShell,
@@ -12,7 +12,7 @@ import {
   toEjson,
   type BsonDocument,
   type BsonValue,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 import { issueOf, type TextIssue } from './query-bar';
 
@@ -54,13 +54,13 @@ export function newStage(operator: string, body?: string): PipelineStage {
 /** Parses a stage body; throws a located error. */
 export function parseStageBody(stage: Pick<PipelineStage, 'operator' | 'body'>): BsonValue {
   if (!OPERATOR.test(stage.operator)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${stage.operator}" is not a stage operator`,
     });
   }
   if (stage.body.trim() === '') {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The stage is empty' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The stage is empty' });
   }
   return parseShell(stage.body);
 }
@@ -95,7 +95,7 @@ function placementWarning(
   if (stage.operator === '$match' && isBsonDocument(value) && '$text' in value && position !== 0) {
     return 'A $match with $text must be the first stage';
   }
-  if (!info) return `${stage.operator} is not in Joinery's stage list; the server checks it`;
+  if (!info) return `${stage.operator} is not in Querybara's stage list; the server checks it`;
   return undefined;
 }
 
@@ -219,7 +219,7 @@ export function pipelineDocuments(
       out.push(stageDocument(stage));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `Stage ${i + 1} (${stage.operator}): ${message}`,
       });
@@ -361,7 +361,7 @@ function commentBlocks(text: string): CommentBlock[] {
   return blocks;
 }
 
-const DISABLED_KEY = '$__joineryDisabledStage';
+const DISABLED_KEY = '$__querybaraDisabledStage';
 
 export type ParsedPipelineText =
   | { readonly ok: true; readonly stages: PipelineStage[] }
@@ -421,7 +421,7 @@ export function parsePipelineText(
         operator = stageOperator(stageDoc);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Stage ${i + 1}: ${message}`,
         });

@@ -1,10 +1,10 @@
 import {
-  JoineryError,
+  QuerybaraError,
   secretRefsOf,
   type ConnectionProfile,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { Store } from '@joinery/storage';
+} from '@querybara/core';
+import type { Store } from '@querybara/storage';
 
 /**
  * Builds the ResolvedProfile main sends to a connection host: stored and session secrets from
@@ -33,7 +33,7 @@ export function resolveProfile(
   if (options.requireAll === true) {
     const missing = stored.missing.filter((ref) => !values.has(ref.id));
     if (missing.length > 0) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'AUTH_FAILED',
         message:
           missing.length === 1

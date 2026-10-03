@@ -1,11 +1,11 @@
-import { JoineryError, type PlanNode } from '@joinery/core';
+import { QuerybaraError, type PlanNode } from '@querybara/core';
 import {
   isRecord,
   planNode,
   scalarDetail,
   toNumber,
   type PlanDetail,
-} from '@joinery/driver-sql-base';
+} from '@querybara/driver-sql-base';
 
 /**
  * Normalises MySQL and MariaDB plans into PlanNode trees. Four inputs:
@@ -284,7 +284,7 @@ function iteratorNode(node: Readonly<Record<string, unknown>>, id: string): Plan
 export function parseExplainJson(text: string): unknown {
   let at = 0;
   const fail = (): never => {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'INTERNAL',
       message: `Unexpected EXPLAIN output: invalid JSON at offset ${at}`,
     });
@@ -363,7 +363,7 @@ export function parseExplainJson(text: string): unknown {
 /** Converts the parsed JSON of a MySQL or MariaDB JSON plan into a PlanNode tree. */
 export function normaliseMysqlJsonPlan(explain: unknown): PlanNode {
   if (!isRecord(explain)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'INTERNAL',
       message: 'Unexpected EXPLAIN output: not a JSON object',
     });
@@ -381,7 +381,7 @@ export function normaliseMysqlJsonPlan(explain: unknown): PlanNode {
   }
   const block = explain['query_block'];
   if (!isRecord(block)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'INTERNAL',
       message: 'Unexpected EXPLAIN output: no query_block',
     });
@@ -461,7 +461,7 @@ export function normaliseMysqlTreePlan(text: string): PlanNode {
     stack.push(draft);
   }
   if (roots.length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'INTERNAL',
       message: 'Unexpected EXPLAIN output: no plan lines',
     });

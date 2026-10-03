@@ -1,5 +1,5 @@
-import { isSqlEngine, type CellValue } from '@joinery/core';
-import { bindParameters, safetyPolicyFor } from '@joinery/sql-tools';
+import { isSqlEngine, type CellValue } from '@querybara/core';
+import { bindParameters, safetyPolicyFor } from '@querybara/sql-tools';
 
 import { errorInfo } from '../../lib/errors';
 import { useConnections } from '../connections';

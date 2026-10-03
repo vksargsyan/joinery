@@ -1,6 +1,6 @@
-import type { SqlDialect, SqlEngineId, TableDef } from '@joinery/core';
-import type { SqlDiagnostic } from '@joinery/sql-tools';
-import type { ValidationIssue } from '@joinery/sync';
+import type { SqlDialect, SqlEngineId, TableDef } from '@querybara/core';
+import type { SqlDiagnostic } from '@querybara/sql-tools';
+import type { ValidationIssue } from '@querybara/sync';
 
 import LanguageWorker from '../workers/language.worker?worker';
 import { LanguageClient, type WorkerLike } from './language-client';

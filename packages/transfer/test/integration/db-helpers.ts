@@ -1,10 +1,10 @@
 import { randomBytes } from 'node:crypto';
 
-import type { ResolvedProfile, Session } from '@joinery/core';
-import { mongodbAdapter, parseHostList, splitMongoUri } from '@joinery/driver-mongodb';
-import { createRedisAdapter, redisProfileFromUrl } from '@joinery/driver-redis';
-import { connectionProfileSchema } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { ResolvedProfile, Session } from '@querybara/core';
+import { mongodbAdapter, parseHostList, splitMongoUri } from '@querybara/driver-mongodb';
+import { createRedisAdapter, redisProfileFromUrl } from '@querybara/driver-redis';
+import { connectionProfileSchema } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 
 import type { OpenedSession, SessionOpener } from '../../src';
 import { configuredServers, query, type ServerEngine, type TestServer } from './helpers';
@@ -12,13 +12,13 @@ import { configuredServers, query, type ServerEngine, type TestServer } from './
 /**
  * Plumbing for the database-to-database suites: scratch databases on every configured SQL
  * server (always dropped), session openers for the transfer, and MongoDB and Redis sessions
- * from the JOINERY_TEST_* URLs.
+ * from the QUERYBARA_TEST_* URLs.
  */
 
 export const SQL_SERVERS = configuredServers();
-export const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-export const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-export const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
+export const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+export const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+export const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
 
 export function server(engine: ServerEngine): TestServer | undefined {
   return SQL_SERVERS.find((s) => s.engine === engine);

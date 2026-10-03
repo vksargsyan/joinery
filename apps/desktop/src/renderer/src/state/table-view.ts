@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   type CellValue,
@@ -7,9 +7,9 @@ import {
   type SchemaSnapshot,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
-import type { GridView } from '@joinery/ipc';
-import { safetyPolicyFor } from '@joinery/sql-tools';
+} from '@querybara/core';
+import type { GridView } from '@querybara/ipc';
+import { safetyPolicyFor } from '@querybara/sql-tools';
 import {
   allColumnsIdentity,
   buildBrowseQuery,
@@ -41,7 +41,7 @@ import {
   type RowKey,
   type SortTerm,
   type TableRef,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -188,7 +188,7 @@ function toCount(value: CellValue | undefined): number | undefined {
   return undefined;
 }
 
-const PAGE_SIZE_KEY = 'joinery.table.pageSize';
+const PAGE_SIZE_KEY = 'querybara.table.pageSize';
 
 /** The page size last chosen, kept in this browser profile (a convenience, not a setting). */
 function readPageSize(): number {
@@ -309,9 +309,9 @@ export class TableView {
     try {
       const profile = await profileById(this.target.profileId);
       if (!profile)
-        throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
       if (!isSqlEngine(profile.engine)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_SUPPORTED',
           message: 'Table data needs a SQL connection',
         });
@@ -337,7 +337,7 @@ export class TableView {
     });
     const table = findTable(snapshot, schema, name);
     if (!table) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: `Table ${schema}.${name} was not found; it may have been dropped or renamed`,
       });
@@ -802,7 +802,7 @@ export class TableView {
   #existing(ref: RowRef): ExistingRow | RowKey {
     if (ref.kind === 'insert') return ref.key;
     if (ref.key === null) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'READ_ONLY',
         message: 'This table has no primary or unique key, so its rows cannot be edited',
       });

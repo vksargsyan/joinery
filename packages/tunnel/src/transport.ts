@@ -1,7 +1,7 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import type { Duplex } from 'node:stream';
 
-import { JoineryError, toErrorData, type HostPort, type ResolvedProfile } from '@joinery/core';
+import { QuerybaraError, toErrorData, type HostPort, type ResolvedProfile } from '@querybara/core';
 
 import type { HostKeyVerifier } from './host-keys';
 import type { KeyFileReader } from './ssh';
@@ -32,7 +32,7 @@ export interface Transport {
    * Reports failures the driver cannot explain: the SSH session dropped (the transport reconnects
    * on the next connection), or a forward was refused. Returns an unsubscribe function.
    */
-  onError(listener: (error: JoineryError) => void): () => void;
+  onError(listener: (error: QuerybaraError) => void): () => void;
   /** Closes the listener and every forwarded channel, and releases the shared SSH sessions. */
   close(): Promise<void>;
   /** Present when the profile reaches several servers: a route to each of them. */
@@ -109,9 +109,9 @@ export interface Route {
   release(): Promise<void>;
 }
 
-/** Converts anything thrown into a JoineryError, keeping JoineryErrors as they are. */
-export function asJoineryError(error: unknown): JoineryError {
-  return error instanceof JoineryError ? error : new JoineryError(toErrorData(error));
+/** Converts anything thrown into a QuerybaraError, keeping QuerybaraErrors as they are. */
+export function asQuerybaraError(error: unknown): QuerybaraError {
+  return error instanceof QuerybaraError ? error : new QuerybaraError(toErrorData(error));
 }
 
 /** A ResolvedProfile opened through a transport whose profile reaches several servers. */
@@ -181,7 +181,7 @@ export async function listenOnLoopback(server: Server): Promise<number> {
   const address = server.address();
   if (address === null || typeof address === 'string') {
     server.close();
-    throw new JoineryError({ code: 'INTERNAL', message: 'The tunnel listener has no port' });
+    throw new QuerybaraError({ code: 'INTERNAL', message: 'The tunnel listener has no port' });
   }
   return address.port;
 }
@@ -193,7 +193,7 @@ export async function listenOnLoopback(server: Server): Promise<number> {
 export class LocalForwarder implements Transport {
   private readonly sockets = new Set<Socket>();
   private readonly streams = new Set<Duplex>();
-  private readonly listeners = new Set<(error: JoineryError) => void>();
+  private readonly listeners = new Set<(error: QuerybaraError) => void>();
   private closing: Promise<void> | undefined;
 
   private constructor(
@@ -234,13 +234,13 @@ export class LocalForwarder implements Transport {
     stream.destroy();
   }
 
-  onError(listener: (error: JoineryError) => void): () => void {
+  onError(listener: (error: QuerybaraError) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   /** Reports a failure to the onError listeners. */
-  emitError(error: JoineryError): void {
+  emitError(error: QuerybaraError): void {
     for (const listener of [...this.listeners]) listener(error);
   }
 
@@ -278,12 +278,12 @@ export class LocalForwarder implements Transport {
       },
       (error: unknown) => {
         socket.destroy();
-        if (!this.closing) this.emitError(asJoineryError(error));
+        if (!this.closing) this.emitError(asQuerybaraError(error));
       },
     );
   }
 }
 
-function notAssigned(): JoineryError {
-  return new JoineryError({ code: 'INTERNAL', message: 'The forward has no target yet' });
+function notAssigned(): QuerybaraError {
+  return new QuerybaraError({ code: 'INTERNAL', message: 'The forward has no target yet' });
 }

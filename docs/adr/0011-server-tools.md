@@ -19,7 +19,7 @@ triple the renderer, and a preview built in the page could drift from what the h
 
 ## Decision
 
-**An engine-neutral vocabulary in `@joinery/core`** (`server-tools.ts`): `ServerTools` and the
+**An engine-neutral vocabulary in `@querybara/core`** (`server-tools.ts`): `ServerTools` and the
 shapes it returns. What only one engine has travels as labelled data, not as types: monitor
 tiles are gauges, counters (the page derives per-second rates) or counter pairs (the page
 derives the ratio over each interval: cache hit ratio, average latency), sections are small
@@ -39,7 +39,7 @@ privilege errors get hints naming the privilege or role.
 **Actions are data; statements are built only in the host.** A `ServerAction` (kill, maintenance,
 setting, grant...) goes to `serverTools.preview`, which returns the exact statements with
 passwords masked; the page shows them in the confirmation; `serverTools.run` rebuilds the same
-statements from the same action and runs them. Names are quoted with `@joinery/sql-tools`,
+statements from the same action and runs them. Names are quoted with `@querybara/sql-tools`,
 values are literals, and anything the server can name itself (a function's signature) is
 resolved on the server rather than taken from the page. Policy expressions, the only SQL the
 user types, are checked to be one expression that cannot escape its parentheses.

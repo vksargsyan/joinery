@@ -1,15 +1,15 @@
 import { existsSync } from 'node:fs';
 
-import type { ConnectionCheckResult, ResolvedProfile } from '@joinery/core';
+import type { ConnectionCheckResult, ResolvedProfile } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { checkConnection, createPostgresAdapter } from '../../src';
 import { PG_URL, rows, testProfile, type connect } from './helpers';
 
 /** CA of the test server's certificate (issued for DNS:localhost only), when TLS is set up. */
-const TLS_CA = process.env['JOINERY_TEST_POSTGRES_TLS_CA'];
+const TLS_CA = process.env['QUERYBARA_TEST_POSTGRES_TLS_CA'];
 /** Directory of the server's Unix socket, when the test server exposes one. */
-const SOCKET_DIR = process.env['JOINERY_TEST_POSTGRES_SOCKET_DIR'];
+const SOCKET_DIR = process.env['QUERYBARA_TEST_POSTGRES_SOCKET_DIR'];
 
 async function checkSteps(resolved: ResolvedProfile): Promise<ConnectionCheckResult[]> {
   const results: ConnectionCheckResult[] = [];

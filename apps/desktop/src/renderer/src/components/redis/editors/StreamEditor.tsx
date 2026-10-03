@@ -1,5 +1,5 @@
-import type { PendingEntry, StreamEntry, StreamGroup } from '@joinery/driver-redis';
-import { bytesKey, displayBytes, parseDisplayBytes, utf8Bytes } from '@joinery/redis-tools';
+import type { PendingEntry, StreamEntry, StreamGroup } from '@querybara/driver-redis';
+import { bytesKey, displayBytes, parseDisplayBytes, utf8Bytes } from '@querybara/redis-tools';
 import { useCallback, useEffect, useState } from 'react';
 
 import { errorMessage } from '../../../lib/errors';

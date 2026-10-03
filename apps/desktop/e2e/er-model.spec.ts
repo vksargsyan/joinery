@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -14,14 +14,14 @@ import { connect, query, scratchDatabase } from './db';
  * added from the side panel and one by dragging from a column to another table; a live column
  * renamed; undo and redo; the review showing the script (a rename, not a drop and create) and
  * the apply running it, checked on the server; then a table dropped, which the review only
- * applies once the data loss is acknowledged. Screenshots go to JOINERY_E2E_SHOTS.
+ * applies once the data loss is acknowledged. Screenshots go to QUERYBARA_E2E_SHOTS.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E ER model';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -40,7 +40,7 @@ test.beforeAll(async () => {
   ]) {
     await query(direct, sql);
   }
-  files = mkdtempSync(join(tmpdir(), 'joinery-er-model-'));
+  files = mkdtempSync(join(tmpdir(), 'querybara-er-model-'));
   launched = await launchApp();
   page = launched.page;
 });
@@ -253,7 +253,7 @@ test('saves the model to a file and applies it to another schema', async () => {
   await page.getByRole('menuitem', { name: /Save as model file/ }).click();
   await expect(view.getByTestId('er-notice')).toContainText(`Saved the model to ${file}`);
   const saved = JSON.parse(readFileSync(file, 'utf8')) as { format: string; base?: unknown };
-  expect(saved.format).toBe('joinery.er-model');
+  expect(saved.format).toBe('querybara.er-model');
   expect(saved.base).toBeUndefined();
 
   // A new, empty schema: the model opens there as what it should become.

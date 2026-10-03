@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb generated_readd_dev
 -- Target: mariadb generated_readd_prod
 -- Operations: 8 (2 destructive)

@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 import type {
   DataCompareInput,
   DataResult,
@@ -8,8 +8,8 @@ import type {
   StructureApplyInput,
   StructureCompareInput,
   StructureResult,
-} from '@joinery/ipc';
-import { compareSchemas, summarizeDiff, type SchemaDiff } from '@joinery/sync';
+} from '@querybara/ipc';
+import { compareSchemas, summarizeDiff, type SchemaDiff } from '@querybara/sync';
 import { describe, expect, it } from 'vitest';
 
 import { defaultSelection, structureScript } from '../src/job-runner/sync-structure';

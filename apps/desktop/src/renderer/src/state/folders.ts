@@ -1,4 +1,4 @@
-import type { Folder, StoredProfile } from '@joinery/ipc';
+import type { Folder, StoredProfile } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { mainApi } from '../lib/main-client';

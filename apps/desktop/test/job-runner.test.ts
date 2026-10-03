@@ -3,19 +3,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   tableDefSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   rdbReportSchema,
   type ExportJob,
   type ImportJob,
   type RunSqlFileJob,
   type TransferPreview,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import {
   EXPORT_FORMATS,
   FILE_FORMATS,
@@ -23,13 +23,13 @@ import {
   PARQUET_COMPRESSIONS,
   ZipReader,
   openFileReader,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 import {
   INFERRED_COLUMN_TYPES,
   PARQUET_COMPRESSIONS as IPC_PARQUET_COMPRESSIONS,
   TRANSFER_EXPORT_FORMATS,
   TRANSFER_FILE_FORMATS,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { JobRunner } from '../src/job-runner/runner';
@@ -49,7 +49,7 @@ const SECRET = 'hunter2-runner';
 let dir = '';
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'joinery-runner-'));
+  dir = mkdtempSync(join(tmpdir(), 'querybara-runner-'));
 });
 
 afterEach(() => {
@@ -240,7 +240,7 @@ describe('JobRunner imports', () => {
   it('ends the job with the connection error when it cannot connect', async () => {
     const { runner, done } = setup({
       connect: () =>
-        Promise.reject(new JoineryError({ code: 'AUTH_FAILED', message: 'password refused' })),
+        Promise.reject(new QuerybaraError({ code: 'AUTH_FAILED', message: 'password refused' })),
     });
     runner.handle({
       type: 'start',
@@ -809,16 +809,16 @@ describe('JobRunner RDB analysis', () => {
 });
 
 describe('protocol mirrors', () => {
-  it('lists the same inferred column types as @joinery/transfer', () => {
+  it('lists the same inferred column types as @querybara/transfer', () => {
     expect([...INFERRED_COLUMN_TYPES]).toEqual([...INFERRED_TYPES]);
   });
 
-  it('lists the same file and export formats as @joinery/transfer', () => {
+  it('lists the same file and export formats as @querybara/transfer', () => {
     expect([...TRANSFER_FILE_FORMATS]).toEqual([...FILE_FORMATS]);
     expect([...TRANSFER_EXPORT_FORMATS]).toEqual([...EXPORT_FORMATS]);
   });
 
-  it('lists the same Parquet codecs as @joinery/transfer', () => {
+  it('lists the same Parquet codecs as @querybara/transfer', () => {
     expect([...IPC_PARQUET_COMPRESSIONS]).toEqual([...PARQUET_COMPRESSIONS]);
   });
 });

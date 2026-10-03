@@ -330,7 +330,7 @@ describe('readRdb on files it cannot read', () => {
     expect((error as RdbError).offset).toBeLessThanOrEqual(5000);
 
     await expect(readAll(rdb(11, [40, ...str('k')]))).rejects.toThrow(
-      'Value type 40 is not one Joinery reads (RDB version 11)',
+      'Value type 40 is not one Querybara reads (RDB version 11)',
     );
     await expect(readAll(rdb(11, [6, ...str('k')]))).rejects.toThrow(
       'Module values from Redis 4.0 release candidates cannot be read',

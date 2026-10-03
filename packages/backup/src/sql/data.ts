@@ -6,9 +6,9 @@ import {
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified } from '@joinery/sql-tools';
-import { sqlLiteral } from '@joinery/sync';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified } from '@querybara/sql-tools';
+import { sqlLiteral } from '@querybara/sync';
 
 import { cancelled } from '../util';
 

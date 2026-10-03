@@ -1,9 +1,9 @@
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   secretRefsOf,
   type ConnectionProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import { z } from 'zod';
 
 import { parseOrThrow } from '../internal/errors';
@@ -23,7 +23,7 @@ import {
  */
 
 const EXPORT_MAGIC = 'JNRX';
-const PAYLOAD_FORMAT = 'joinery.profiles';
+const PAYLOAD_FORMAT = 'querybara.profiles';
 const PAYLOAD_VERSION = 1;
 
 export const exportedFolderSchema = z.object({
@@ -121,7 +121,7 @@ export function exportProfiles(
 
 /**
  * Decrypts and validates an export file. A wrong passphrase or a modified file fails with
- * AUTH_FAILED; a file from a newer Joinery with NOT_SUPPORTED.
+ * AUTH_FAILED; a file from a newer Querybara with NOT_SUPPORTED.
  */
 export function importProfiles(data: Uint8Array, passphrase: string): ImportedProfiles {
   const plaintext = decryptEnvelope(
@@ -134,7 +134,7 @@ export function importProfiles(data: Uint8Array, passphrase: string): ImportedPr
   try {
     document = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(plaintext));
   } catch {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The export file is damaged' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The export file is damaged' });
   }
   if (
     typeof document === 'object' &&
@@ -143,10 +143,10 @@ export function importProfiles(data: Uint8Array, passphrase: string): ImportedPr
     typeof document.version === 'number' &&
     document.version > PAYLOAD_VERSION
   ) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
-      message: `The export file was written by a newer Joinery (format ${document.version})`,
-      hint: 'Update Joinery to import it.',
+      message: `The export file was written by a newer Querybara (format ${document.version})`,
+      hint: 'Update Querybara to import it.',
     });
   }
   const payload = parseOrThrow(payloadSchema, document, 'export file');

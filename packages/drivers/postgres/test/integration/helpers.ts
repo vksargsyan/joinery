@@ -1,14 +1,14 @@
-import type { ExecOptions, ResolvedProfile, ResultChunk, Session } from '@joinery/core';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
+import type { ExecOptions, ResolvedProfile, ResultChunk, Session } from '@querybara/core';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
 
 import { createPostgresAdapter } from '../../src';
 
-export const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+export const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 
 export function testProfile(
   overrides: Parameters<typeof resolvedProfileFromUrl>[1] = {},
 ): ResolvedProfile {
-  if (!PG_URL) throw new Error('JOINERY_TEST_POSTGRES_URL is not set');
+  if (!PG_URL) throw new Error('QUERYBARA_TEST_POSTGRES_URL is not set');
   return resolvedProfileFromUrl(PG_URL, overrides);
 }
 

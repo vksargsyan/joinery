@@ -1,4 +1,4 @@
-import { tableDefSchema, type SqlDialect, type TableDef } from '@joinery/core';
+import { tableDefSchema, type SqlDialect, type TableDef } from '@querybara/core';
 
 import { describeColumns, type ColumnInfo } from '../src';
 

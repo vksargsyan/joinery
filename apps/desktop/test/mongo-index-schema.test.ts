@@ -4,7 +4,7 @@ import {
   formatShellInline,
   toEjson,
   type IndexInfo,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as MainClient from '../src/renderer/src/lib/main-client';

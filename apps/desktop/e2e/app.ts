@@ -24,22 +24,22 @@ export interface LaunchedApp {
 export async function launchApp(
   options: { readonly userData?: string; readonly args?: readonly string[] } = {},
 ): Promise<LaunchedApp> {
-  const userData = options.userData ?? mkdtempSync(join(tmpdir(), 'joinery-e2e-'));
-  // JOINERY_E2E_APP_DIR runs another build of the app (one built with --outDir next to a
+  const userData = options.userData ?? mkdtempSync(join(tmpdir(), 'querybara-e2e-'));
+  // QUERYBARA_E2E_APP_DIR runs another build of the app (one built with --outDir next to a
   // package.json), e.g. while `pnpm dev` holds out/.
   const args = [
-    process.env['JOINERY_E2E_APP_DIR'] ?? resolve(import.meta.dirname, '..'),
+    process.env['QUERYBARA_E2E_APP_DIR'] ?? resolve(import.meta.dirname, '..'),
     ...(options.args ?? []),
   ];
   // Chromium refuses to start its sandbox as root (e.g. in a CI or dev container). Only then,
   // and only from this launcher, is --no-sandbox passed; the app itself always runs sandboxed.
-  if (process.getuid?.() === 0 || process.env['JOINERY_E2E_NO_SANDBOX'] === '1') {
+  if (process.getuid?.() === 0 || process.env['QUERYBARA_E2E_NO_SANDBOX'] === '1') {
     args.push('--no-sandbox');
   }
   const { ELECTRON_RENDERER_URL: _devServer, ...env } = process.env;
   const app = await electron.launch({
     args,
-    env: { ...env, JOINERY_USER_DATA_DIR: userData },
+    env: { ...env, QUERYBARA_USER_DATA_DIR: userData },
   });
   const page = await app.firstWindow();
   return {

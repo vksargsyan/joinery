@@ -1,6 +1,6 @@
 import {
   DEFAULT_PAGE_SIZE,
-  JoineryError,
+  QuerybaraError,
   cancelledError,
   capabilitiesFor,
   toColumnChunk,
@@ -19,7 +19,7 @@ import {
   type ResultChunk,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   SessionGate,
   errorProp,
@@ -27,8 +27,8 @@ import {
   str,
   type GateLease,
   type Row,
-} from '@joinery/driver-sql-base';
-import { quoteIdent } from '@joinery/sql-tools';
+} from '@querybara/driver-sql-base';
+import { quoteIdent } from '@querybara/sql-tools';
 import { createConnection, type Connection, type ResultSetHeader } from 'mysql2';
 
 import { browseMysql } from './browse';
@@ -141,7 +141,7 @@ class MysqlExecution {
   /** Count EOF warnings for this statement (off during internal queries like SHOW WARNINGS). */
   capturing = false;
   warnings = 0;
-  closeReason: JoineryError | undefined;
+  closeReason: QuerybaraError | undefined;
   finished = false;
   killSent: Promise<void> = Promise.resolve();
   stream: ResultStream | undefined;
@@ -197,7 +197,7 @@ class MysqlExecution {
 export class MysqlSession implements Session {
   private readonly gate = new SessionGate();
   private active: MysqlExecution | null = null;
-  private broken: JoineryError | null = null;
+  private broken: QuerybaraError | null = null;
   private closed = false;
   private serverStatus = 0;
   private readonly statements: PreparedStatements;
@@ -217,7 +217,7 @@ export class MysqlSession implements Session {
       this.active?.stream?.fail(this.broken);
     });
     connection.on('end', () => {
-      this.broken ??= new JoineryError({
+      this.broken ??= new QuerybaraError({
         code: 'CONNECTION_FAILED',
         message: 'The connection to the server was closed',
       });
@@ -298,7 +298,7 @@ export class MysqlSession implements Session {
 
   private assertUsable(): void {
     if (this.closed)
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
     if (this.broken) throw this.broken;
   }
 
@@ -344,7 +344,7 @@ export class MysqlSession implements Session {
     const exec = new MysqlExecution(opts.executionId, lease);
     const kill = (): Promise<void> => this.killQuery();
     lease.setPreemptHandler(async () => {
-      exec.closeReason ??= new JoineryError({
+      exec.closeReason ??= new QuerybaraError({
         code: 'CANCELLED',
         message: 'The result was closed because another statement ran on this session',
       });
@@ -501,7 +501,7 @@ export class MysqlSession implements Session {
   async introspect(scope: IntrospectScope = {}): Promise<SchemaSnapshot> {
     const database = scope.database ?? this.database;
     if (!database) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'No database selected to introspect',
         hint: 'Pass a database, or set a default database in the profile',
@@ -582,7 +582,7 @@ export class MysqlSession implements Session {
               reject(
                 mapped.position === undefined
                   ? mapped
-                  : new JoineryError({
+                  : new QuerybaraError({
                       ...mapped.toJSON(),
                       position: Math.max(0, mapped.position - head.length),
                     }),
@@ -625,7 +625,7 @@ export class MysqlSession implements Session {
         if (!analyze) return await estimated(false);
         // ANALYZE executes the statement: keep its effects out of the database.
         const nested = this.inTransaction;
-        await this.query(nested ? 'SAVEPOINT joinery_explain' : 'START TRANSACTION');
+        await this.query(nested ? 'SAVEPOINT querybara_explain' : 'START TRANSACTION');
         try {
           const output = await run(prefix);
           if (mariadb) return fromJson(output, true);
@@ -643,7 +643,7 @@ export class MysqlSession implements Session {
           const detail = { ...result.plan.detail, analyze_unavailable: true };
           return { ...result, plan: { ...result.plan, detail } };
         } finally {
-          await this.query(nested ? 'ROLLBACK TO SAVEPOINT joinery_explain' : 'ROLLBACK').catch(
+          await this.query(nested ? 'ROLLBACK TO SAVEPOINT querybara_explain' : 'ROLLBACK').catch(
             () => undefined,
           );
         }

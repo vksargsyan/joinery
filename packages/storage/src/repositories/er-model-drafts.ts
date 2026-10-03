@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -82,7 +82,7 @@ export class ErModelDraftRepository {
     const draft = parseOrThrow(inputSchema, input, 'ER model draft');
     const text = JSON.stringify(draft.document);
     if (text.length > MAX_ER_DRAFT_TEXT) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The ER model is too large to keep as a draft',
         hint: 'Save it to a file instead.',

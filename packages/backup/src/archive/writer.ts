@@ -1,8 +1,8 @@
 import { createHash, type Hash } from 'node:crypto';
 import { crc32 } from 'node:zlib';
 
-import { JoineryError } from '@joinery/core';
-import { gzipSink, type Sink } from '@joinery/transfer';
+import { QuerybaraError } from '@querybara/core';
+import { gzipSink, type Sink } from '@querybara/transfer';
 
 import {
   DEFAULT_SCRYPT_COST,
@@ -34,7 +34,7 @@ import {
 } from './manifest';
 
 /**
- * Writes a Joinery archive in one pass: the header, then one entry at a time as its content
+ * Writes a Querybara archive in one pass: the header, then one entry at a time as its content
  * streams in (gzip-compressed and, with a passphrase, encrypted in 64 KiB frames), then the
  * manifest and the trailer. Memory stays flat whatever the size of an entry; offsets come from
  * counting what was written, so the sink only has to accept bytes in order.
@@ -279,7 +279,7 @@ export class ArchiveWriter {
   }
 }
 
-/** A JoineryError for an archive write that cannot go on. */
-export function archiveError(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+/** A QuerybaraError for an archive write that cannot go on. */
+export function archiveError(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }

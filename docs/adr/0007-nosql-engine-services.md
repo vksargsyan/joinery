@@ -5,7 +5,7 @@
 
 ## Context
 
-The Session contract in `@joinery/core` (spec §3) was shaped by the SQL engines: one statement
+The Session contract in `@querybara/core` (spec §3) was shaped by the SQL engines: one statement
 in, column-oriented result chunks out. MongoDB and Redis need that for their consoles, but most
 of their modules are not statements at all (spec §9, §10): a find with a projection, an
 optimistic document replace, an aggregation stage preview, a SCAN page across cluster nodes, a
@@ -19,12 +19,12 @@ the official `mongodb` driver or `ioredis`.
 ## Decision
 
 **Each engine's session extends Session with its own services.** `MongoSession` and
-`RedisSession` (exported by `@joinery/driver-mongodb` and `@joinery/driver-redis`, recognised
-with `isMongoSession` / `isRedisSession`) keep `execute` for the consoles and joinery-cli and add
+`RedisSession` (exported by `@querybara/driver-mongodb` and `@querybara/driver-redis`, recognised
+with `isMongoSession` / `isRedisSession`) keep `execute` for the consoles and querybara-cli and add
 typed methods for everything else. Core stays engine-neutral; nothing SQL-specific grew into it.
 
-**A pure tools package per engine.** `@joinery/mongo-tools` and `@joinery/redis-tools`, like
-`@joinery/sql-tools`, hold what both sides need and the renderer can bundle: the mongosh-literal
+**A pure tools package per engine.** `@querybara/mongo-tools` and `@querybara/redis-tools`, like
+`@querybara/sql-tools`, hold what both sides need and the renderer can bundle: the mongosh-literal
 parser and formatter, find() text, schema analysis and the wire types; the redis-cli tokenizer,
 reply formats, command docs and autocomplete, parsers and value codecs. The drivers import them;
 the renderer imports only them.
@@ -61,8 +61,8 @@ check with the SSH step supplied by the tunnel manager (`withSshStepCheck`).
 
 ## Consequences
 
-- Each engine's module grows without touching the SQL path, and joinery-cli uses the same
-  drivers through `execute` (`joinery test` and `joinery query` for both engines).
+- Each engine's module grows without touching the SQL path, and querybara-cli uses the same
+  drivers through `execute` (`querybara test` and `querybara query` for both engines).
 - Two contracts to keep in step with two drivers; the type-level link between wire types and
   zod schemas is what keeps them honest.
 - Extended JSON strings cost a parse on each side, which is small next to the network and keeps

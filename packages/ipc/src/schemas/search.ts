@@ -28,7 +28,7 @@ import {
   type SearchRequest,
   type SearchResponse,
   type SearchWriteResult,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -38,7 +38,7 @@ import { idSchema } from './common';
  * the renderer to the connection host. Documents, queries, mappings, settings and responses
  * are JSON text (ADR 0010), so nothing here holds a parsed document.
  *
- * Each result schema is annotated with its @joinery/search-tools wire type as both input and
+ * Each result schema is annotated with its @querybara/search-tools wire type as both input and
  * output, so a drift between the driver's shapes and these schemas fails to compile.
  */
 

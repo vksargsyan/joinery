@@ -1,10 +1,10 @@
-import type { SchemaDef, SchemaSnapshot, SqlEngineId, TableDef } from '@joinery/core';
+import type { SchemaDef, SchemaSnapshot, SqlEngineId, TableDef } from '@querybara/core';
 import {
   ER_MODEL_FORMAT,
   erModelDocumentSchema,
   type ErModelDocument,
   type ErModelDocumentInput,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 
 import { editedSchema, type EditContext, type ModelState } from './edit';
 import { tableId, type DisplayOptions } from './model';
@@ -128,16 +128,16 @@ export function parseModelFile(text: string): ParsedFile {
   try {
     json = JSON.parse(text);
   } catch {
-    return { ok: false, message: 'The file is not a Joinery ER model (it is not JSON)' };
+    return { ok: false, message: 'The file is not a Querybara ER model (it is not JSON)' };
   }
   const header = json as { format?: unknown; version?: unknown } | null;
   if (typeof header !== 'object' || header === null || header.format !== ER_MODEL_FORMAT) {
-    return { ok: false, message: 'The file is not a Joinery ER model' };
+    return { ok: false, message: 'The file is not a Querybara ER model' };
   }
   if (typeof header.version === 'number' && header.version > 1) {
     return {
       ok: false,
-      message: 'The model was saved by a newer Joinery; update Joinery to open it',
+      message: 'The model was saved by a newer Querybara; update Querybara to open it',
     };
   }
   const parsed = erModelDocumentSchema.safeParse(json);

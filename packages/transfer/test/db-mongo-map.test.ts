@@ -9,7 +9,7 @@ import {
   UUID,
   analyzeSchema,
   type BsonDocument,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

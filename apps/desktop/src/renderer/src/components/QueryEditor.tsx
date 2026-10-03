@@ -1,5 +1,5 @@
-import type { SqlDialect } from '@joinery/core';
-import { formatSql } from '@joinery/sql-tools';
+import type { SqlDialect } from '@querybara/core';
+import { formatSql } from '@querybara/sql-tools';
 import { useEffect, useRef } from 'react';
 
 import { syntaxDiagnostics } from '../lib/language';
@@ -49,7 +49,7 @@ function formatEditor(editor: monaco.editor.IStandaloneCodeEditor, dialect: SqlD
   const formatted = formatSql(model.getValue(), dialect);
   if (formatted === model.getValue()) return;
   editor.pushUndoStop();
-  editor.executeEdits('joinery.format', [{ range: model.getFullModelRange(), text: formatted }]);
+  editor.executeEdits('querybara.format', [{ range: model.getFullModelRange(), text: formatted }]);
   editor.pushUndoStop();
 }
 
@@ -78,7 +78,7 @@ export function QueryEditor(props: {
     const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
-      theme: props.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
+      theme: props.theme === 'dark' ? 'querybara-dark' : 'querybara-light',
       automaticLayout: true,
       fontSize: props.fontSize,
       minimap: { enabled: props.minimap },
@@ -112,44 +112,44 @@ export function QueryEditor(props: {
       selection,
       setText: (text) => {
         editor.pushUndoStop();
-        editor.executeEdits('joinery.set', [{ range: model.getFullModelRange(), text }]);
+        editor.executeEdits('querybara.set', [{ range: model.getFullModelRange(), text }]);
         editor.pushUndoStop();
       },
       focus: () => editor.focus(),
       format: () => formatEditor(editor, dialect),
     };
     editor.addAction({
-      id: 'joinery.run',
+      id: 'querybara.run',
       label: 'Run Selection or Statement at Cursor',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => void runQuery(tabId, selection() ? 'selection' : 'statement'),
     });
     editor.addAction({
-      id: 'joinery.runAll',
+      id: 'querybara.runAll',
       label: 'Run All',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter],
       run: () => void runQuery(tabId, 'all'),
     });
     editor.addAction({
-      id: 'joinery.explain',
+      id: 'querybara.explain',
       label: 'Explain Selection or Statement at Cursor',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyE],
       run: () => void explainQuery(tabId, { analyze: false }),
     });
     editor.addAction({
-      id: 'joinery.explainAnalyze',
+      id: 'querybara.explainAnalyze',
       label: 'Explain Analyze Selection or Statement at Cursor',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyE],
       run: () => void explainQuery(tabId, { analyze: true }),
     });
     editor.addAction({
-      id: 'joinery.queryBuilder',
+      id: 'querybara.queryBuilder',
       label: 'Open in Query Builder',
       contextMenuGroupId: 'navigation',
       run: () => void openQueryBuilderFromTab(tabId),
     });
     editor.addAction({
-      id: 'joinery.format',
+      id: 'querybara.format',
       label: 'Format SQL',
       keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
       run: () => formatEditor(editor, dialect),
@@ -165,7 +165,7 @@ export function QueryEditor(props: {
         if (request !== latest || model.isDisposed() || model.getVersionId() !== version) return;
         monaco.editor.setModelMarkers(
           model,
-          'joinery-syntax',
+          'querybara-syntax',
           diagnostics.map((diagnostic) => {
             const start = model.getPositionAt(diagnostic.start);
             const end = model.getPositionAt(diagnostic.end);
@@ -221,7 +221,7 @@ export function QueryEditor(props: {
   }, [profileId]);
 
   useEffect(() => {
-    monaco.editor.setTheme(props.theme === 'dark' ? 'joinery-dark' : 'joinery-light');
+    monaco.editor.setTheme(props.theme === 'dark' ? 'querybara-dark' : 'querybara-light');
   }, [props.theme]);
 
   useEffect(() => {
@@ -237,7 +237,7 @@ export function QueryEditor(props: {
     const model = editor?.getModel();
     if (!editor || !model) return;
     if (!marker) {
-      monaco.editor.setModelMarkers(model, 'joinery', []);
+      monaco.editor.setModelMarkers(model, 'querybara', []);
       return;
     }
     const clamp = (offset: number): number => Math.max(0, Math.min(offset, model.getValueLength()));
@@ -257,7 +257,7 @@ export function QueryEditor(props: {
       endLineNumber = end.lineNumber;
       endColumn = end.column;
     }
-    monaco.editor.setModelMarkers(model, 'joinery', [
+    monaco.editor.setModelMarkers(model, 'querybara', [
       {
         startLineNumber: start.lineNumber,
         startColumn,

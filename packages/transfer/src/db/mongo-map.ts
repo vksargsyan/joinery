@@ -1,4 +1,4 @@
-import { atLeast, type CellValue, type SqlDialect } from '@joinery/core';
+import { atLeast, type CellValue, type SqlDialect } from '@querybara/core';
 import {
   Binary,
   Decimal128,
@@ -14,8 +14,8 @@ import {
   type BsonValue,
   type SchemaAnalysis,
   type SchemaField,
-} from '@joinery/mongo-tools';
-import { parseType } from '@joinery/sync';
+} from '@querybara/mongo-tools';
+import { parseType } from '@querybara/sync';
 
 import { ConversionError, targetKind } from '../mapping';
 import { jsonText, type SourceCell } from '../types';
@@ -29,7 +29,7 @@ import { hexText } from './values';
  * JSON columns as documents), optionally with child rows embedded as arrays of sub-documents.
  * MongoDB → SQL: nested fields flatten to columns (`address.city` → `address_city`), arrays
  * become child tables with a parent key or JSON columns, as chosen per field, with types
- * inferred from a sample (`@joinery/mongo-tools` schema analysis).
+ * inferred from a sample (`@querybara/mongo-tools` schema analysis).
  */
 
 // ---------------------------------------------------------------------------------------------

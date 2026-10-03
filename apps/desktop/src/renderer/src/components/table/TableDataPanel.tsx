@@ -1,5 +1,5 @@
 import type { DataEditorRef, GridSelection } from '@glideapps/glide-data-grid';
-import { allColumnsIdentity, type ChangePlan } from '@joinery/table-data';
+import { allColumnsIdentity, type ChangePlan } from '@querybara/table-data';
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import { formatCount, formatRows } from '../../lib/format';

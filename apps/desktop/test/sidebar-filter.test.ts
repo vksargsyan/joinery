@@ -1,5 +1,5 @@
-import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
-import { storedProfileSchema, type Folder, type StoredProfile } from '@joinery/ipc';
+import { connectionProfileSchema, type ConnectionProfileInput } from '@querybara/core';
+import { storedProfileSchema, type Folder, type StoredProfile } from '@querybara/ipc';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {

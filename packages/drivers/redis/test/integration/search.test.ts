@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { commandLine, definitionOf, searchCreateArgs } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { commandLine, definitionOf, searchCreateArgs } from '@querybara/redis-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { RedisSession } from '../../src';
@@ -22,7 +22,7 @@ describe.skipIf(!REDIS_URL)('RediSearch', () => {
   beforeAll(async () => {
     session = await connect(standaloneProfile());
     const listed = await session.searchIndexes().catch((e: unknown) => e);
-    supported = !(listed instanceof JoineryError);
+    supported = !(listed instanceof QuerybaraError);
     if (!supported) return;
     for (const [id, title, author, year, tags] of [
       ['1', 'Dune', 'Frank Herbert', '1965', 'scifi,classic'],

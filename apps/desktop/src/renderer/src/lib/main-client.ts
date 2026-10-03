@@ -6,7 +6,7 @@ import {
   type Client,
   type ConnectionHostContract,
   type MainContract,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 
 import { requestMainPort } from './ports';
 

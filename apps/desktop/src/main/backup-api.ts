@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
 
-import { JoineryError, requiresWriteConfirmation, type ConnectionProfile } from '@joinery/core';
+import { QuerybaraError, requiresWriteConfirmation, type ConnectionProfile } from '@querybara/core';
 import {
   backupInspectionSchema,
   nativeToolSchema,
@@ -10,8 +10,8 @@ import {
   type JobInfo,
   type RestoreJob,
   type mainContract,
-} from '@joinery/ipc';
-import type { Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import type { Store } from '@querybara/storage';
 import { z } from 'zod';
 
 import type { JobDescription, JobManager } from './jobs';
@@ -32,7 +32,7 @@ type BackupMainHandlers = HandlersOf<typeof mainContract>['backup'];
 const FORMAT_LABELS: Readonly<Record<BackupJob['format'], string>> = {
   sql: 'SQL',
   'sql-gz': 'SQL (gzip)',
-  jbak: 'Joinery archive',
+  qbak: 'Querybara archive',
   custom: 'pg_dump custom format',
 };
 
@@ -60,13 +60,13 @@ export function checkBackupJobSafety(
 ): void {
   if (spec.kind !== 'restore') return;
   if (profile.presentation.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: `"${profile.name}" is read-only, so nothing can be restored into it`,
     });
   }
   if (requiresWriteConfirmation(profile) && spec.confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `Restoring into ${profile.presentation.environment === 'production' ? 'a production connection' : `"${profile.name}"`} needs confirmation`,
     });
@@ -96,8 +96,8 @@ export function backupNotification(job: JobInfo): { title: string; body: string 
   return { title, body: `${job.title}: ${detail}` };
 }
 
-function unavailable(): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
+function unavailable(): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
 }
 
 /** The `backup.*` namespace for one window. */
@@ -120,7 +120,7 @@ export function backupMainHandlers(
       grants.checkRead(job.path);
       const profile = services.store.profiles.get(job.profileId);
       if (!profile) {
-        throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
       }
       const resolved = resolveProfile(services.store, profile, secrets ?? {}, {
         requireAll: true,

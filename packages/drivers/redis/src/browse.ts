@@ -1,4 +1,4 @@
-import { JoineryError, type BrowseNode } from '@joinery/core';
+import { QuerybaraError, type BrowseNode } from '@querybara/core';
 import {
   concatBytes,
   displayBytes,
@@ -9,7 +9,7 @@ import {
   parseKeyspace,
   parseInfo,
   utf8Bytes,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import type { Redis } from 'ioredis';
 
 import { addressOf, type Arg } from './client';
@@ -103,7 +103,7 @@ function scopeOf(ctx: RedisContext, root: string): Scope {
   if (ctx.conn.isCluster) return { node: ctx.nodeFor(root) };
   const db = parseDb(root);
   if (db === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: `"${root}" is not a database of this server`,
     });

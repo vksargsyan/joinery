@@ -8,7 +8,7 @@ import {
   type TableCell,
   type TableRow,
   type TableView,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

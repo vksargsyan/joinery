@@ -2,7 +2,7 @@ import {
   connectionProfileSchema,
   type ConnectionCheckResult,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { runConnectionCheck } from '../src/main/checker';

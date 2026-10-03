@@ -5,7 +5,7 @@ import { z } from 'zod';
  * (scripts/third-party.ts) and the About box reads (spec §20: licences audited before release).
  */
 
-/** Served by the app protocol at `app://joinery/third-party.json`. */
+/** Served by the app protocol at `app://querybara/third-party.json`. */
 export const THIRD_PARTY_REPORT = 'third-party.json';
 /** The same packages as plain text with their licence and notice texts. */
 export const THIRD_PARTY_NOTICES = 'THIRD_PARTY_NOTICES.txt';

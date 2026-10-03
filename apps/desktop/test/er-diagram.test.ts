@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema } from '@joinery/core';
+import { schemaSnapshotSchema } from '@querybara/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { column, shop } from './er-fixtures';

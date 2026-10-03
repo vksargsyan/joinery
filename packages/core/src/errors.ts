@@ -38,7 +38,7 @@ export const errorDataSchema = z.object({
 });
 export type ErrorData = z.infer<typeof errorDataSchema>;
 
-export class JoineryError extends Error {
+export class QuerybaraError extends Error {
   readonly code: ErrorCode;
   readonly detail: string | undefined;
   readonly hint: string | undefined;
@@ -48,7 +48,7 @@ export class JoineryError extends Error {
 
   constructor(data: ErrorData, options?: { cause?: unknown }) {
     super(data.message, options);
-    this.name = 'JoineryError';
+    this.name = 'QuerybaraError';
     this.code = data.code;
     this.detail = data.detail;
     this.hint = data.hint;
@@ -57,8 +57,8 @@ export class JoineryError extends Error {
     this.position = data.position;
   }
 
-  static is(value: unknown): value is JoineryError {
-    return value instanceof JoineryError;
+  static is(value: unknown): value is QuerybaraError {
+    return value instanceof QuerybaraError;
   }
 
   toJSON(): ErrorData {
@@ -74,7 +74,7 @@ export class JoineryError extends Error {
 
 /** Serialisable data for any thrown value; unknown errors become INTERNAL. */
 export function toErrorData(error: unknown): ErrorData {
-  if (error instanceof JoineryError) return error.toJSON();
+  if (error instanceof QuerybaraError) return error.toJSON();
   if (error instanceof Error) {
     if (error.name === 'AbortError') return { code: 'CANCELLED', message: 'Cancelled' };
     return { code: 'INTERNAL', message: error.message };
@@ -82,11 +82,11 @@ export function toErrorData(error: unknown): ErrorData {
   return { code: 'INTERNAL', message: String(error) };
 }
 
-/** Rebuilds a JoineryError on the receiving side of a process boundary. */
-export function fromErrorData(data: ErrorData): JoineryError {
-  return new JoineryError(data);
+/** Rebuilds a QuerybaraError on the receiving side of a process boundary. */
+export function fromErrorData(data: ErrorData): QuerybaraError {
+  return new QuerybaraError(data);
 }
 
-export function cancelledError(message = 'Cancelled'): JoineryError {
-  return new JoineryError({ code: 'CANCELLED', message });
+export function cancelledError(message = 'Cancelled'): QuerybaraError {
+  return new QuerybaraError({ code: 'CANCELLED', message });
 }

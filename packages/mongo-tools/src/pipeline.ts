@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { isBsonDocument, Int32, type BsonDocument } from './bson';
 import { collectionReference } from './find-text';
@@ -187,7 +187,7 @@ export function stageInfo(name: string): StageInfo | undefined {
 export function stageOperator(stage: BsonDocument): string {
   const keys = Object.keys(stage);
   if (keys.length !== 1 || !keys[0]!.startsWith('$')) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `A pipeline stage must have exactly one $-operator; found ${keys.length === 0 ? 'none' : keys.map((k) => `"${k}"`).join(', ')}`,
     });
@@ -235,7 +235,7 @@ export function buildStagePreview(
   options: StagePreviewOptions = {},
 ): StagePreviewPlan {
   if (!Number.isInteger(stageIndex) || stageIndex < 0 || stageIndex >= pipeline.length) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The pipeline has no stage ${stageIndex + 1}`,
     });
@@ -250,7 +250,7 @@ export function buildStagePreview(
     const name = stageOperator(stage);
     const info = stageInfo(name);
     if (info?.previewable === false) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `A ${name} stage cannot be previewed`,
         hint: 'Open the change stream viewer to watch changes live',

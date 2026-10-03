@@ -1,5 +1,5 @@
-import type { IndexDef, RoutineDef, SequenceDef, TypeDef, ViewDef } from '@joinery/core';
-import { quoteIdent, quoteString } from '@joinery/sql-tools';
+import type { IndexDef, RoutineDef, SequenceDef, TypeDef, ViewDef } from '@querybara/core';
+import { quoteIdent, quoteString } from '@querybara/sql-tools';
 
 import type { SyncWarning } from '../model';
 import {
@@ -457,7 +457,7 @@ function recreateType(
 ) {
   const keyword = target.kind === 'domain' ? 'DOMAIN' : 'TYPE';
   const name = qualified(ctx, schema.name, target.name);
-  const oldName = `${target.name}__joinery_old`;
+  const oldName = `${target.name}__querybara_old`;
   const statements = [
     `ALTER ${keyword} ${name} RENAME TO ${quoteIdent(oldName, 'postgres')}`,
     ...create,

@@ -1,5 +1,5 @@
-import { ENGINES, isSqlEngine, type EngineId } from '@joinery/core';
-import type { JobInfo, SyncSide } from '@joinery/ipc';
+import { ENGINES, isSqlEngine, type EngineId } from '@querybara/core';
+import type { JobInfo, SyncSide } from '@querybara/ipc';
 
 /**
  * The two sides of a comparison as the setup form edits them (spec §13), and the checks that

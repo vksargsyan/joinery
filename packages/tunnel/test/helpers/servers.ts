@@ -443,7 +443,7 @@ export interface TestAgent {
 /** An in-process ssh-agent (ssh2's AgentProtocol in server mode) holding one key. */
 export async function startAgent(privateKey: string): Promise<TestAgent> {
   const key = parse(privateKey);
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-agent-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-agent-'));
   const socketPath = join(dir, 'agent.sock');
   const server = createNetServer((socket) => {
     socket.on('error', () => undefined);

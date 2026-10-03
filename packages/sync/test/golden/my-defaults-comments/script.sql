@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb defaults_comments_dev
 -- Target: mariadb defaults_comments_prod
 -- Operations: 18

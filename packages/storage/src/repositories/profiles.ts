@@ -6,7 +6,7 @@ import {
   type ConnectionProfileInput,
   type EngineId,
   type Environment,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import type { RepositoryContext } from '../internal/context';
 import { corruptRow, notFound, parseOrThrow } from '../internal/errors';

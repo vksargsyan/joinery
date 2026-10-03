@@ -7,7 +7,7 @@ import { versionConflict } from './errors';
 export interface WriteOptions {
   /**
    * Optimistic concurrency: fail unless the stored version equals this (0 means "must not exist
-   * yet"). Guards against the desktop app and joinery-cli overwriting each other's edits.
+   * yet"). Guards against the desktop app and querybara-cli overwriting each other's edits.
    */
   readonly expectedVersion?: number;
 }

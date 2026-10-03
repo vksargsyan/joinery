@@ -1,10 +1,10 @@
 import {
-  JoineryError,
+  QuerybaraError,
   type ActionPreview,
   type ActionResult,
   type EngineId,
   type ServerAction,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { decideServerAction } from '../../../../shared/server-tools-safety';
 import { profileById } from '../data';
@@ -44,11 +44,11 @@ export async function runServerAction(options: {
 }): Promise<ActionResult | undefined> {
   const profile = await profileById(options.profileId);
   if (!profile) {
-    throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
   }
   const decision = decideServerAction(profile, options.action);
   if (decision.action === 'refuse') {
-    throw new JoineryError({ code: 'READ_ONLY', message: decision.reason });
+    throw new QuerybaraError({ code: 'READ_ONLY', message: decision.reason });
   }
   const preview = await options.lane.run((host, sessionId) =>
     host.serverTools.preview({ sessionId, action: options.action }),

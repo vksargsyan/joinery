@@ -7,8 +7,8 @@
 
 With the Kiln design system (ADR 0025), the app is to follow VS Code's UI signature:
 
-- The window had the native title bar (traffic lights and "Joinery") above a second row of the
-  app's own, which also said "Joinery" and held text buttons (New query, History, Compare,
+- The window had the native title bar (traffic lights and "Querybara") above a second row of the
+  app's own, which also said "Querybara" and held text buttons (New query, History, Compare,
   Schedules, Jobs, Light theme, About).
 - The app's name belongs in the application menu, as a packaged build shows it. Under
   `pnpm dev`, macOS names that menu "Electron" (the dev run starts Electron's own bundle).
@@ -43,7 +43,7 @@ With the Kiln design system (ADR 0025), the app is to follow VS Code's UI signat
   native menu.
 - **The app's name:** a development run renames Electron's bundle before starting
   (`scripts/dev-app-name.ts`, macOS only). It sets `CFBundleName` and `CFBundleDisplayName` to
-  the product name, so the menu, the Dock and the app switcher say "Joinery" as a packaged build
+  the product name, so the menu, the Dock and the app switcher say "Querybara" as a packaged build
   does. The dev bundle is ad-hoc signed without a sealed Info.plist, so the change needs no new
   signature.
 
@@ -68,5 +68,5 @@ tooltip; the icon is hidden from assistive technology, next to the connection's 
 - The window's actions take less room and read as a toolbar, not a menu bar.
 - Screenshots of the page (Playwright) do not show the native traffic lights or window controls.
   Their placement is checked by eye.
-- The end-to-end launcher can run another build (`JOINERY_E2E_APP_DIR`), so the suites run
+- The end-to-end launcher can run another build (`QUERYBARA_E2E_APP_DIR`), so the suites run
   while `pnpm dev` holds `out/`.

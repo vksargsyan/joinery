@@ -1,4 +1,4 @@
-import { JoineryError, tableDefSchema, type CellValue } from '@joinery/core';
+import { QuerybaraError, tableDefSchema, type CellValue } from '@querybara/core';
 import {
   allColumnsIdentity,
   and,
@@ -6,7 +6,7 @@ import {
   describeColumns,
   rowIdentity,
   type BrowseQuery,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 import { describe, expect, it } from 'vitest';
 
 import { PagingController, type PagingOptions } from '../src/renderer/src/state/table/paging';
@@ -209,7 +209,7 @@ describe('table paging', () => {
 
   it('keeps a failed fetch as the error and rejects options that make no query', async () => {
     const failing = new PagingController(
-      () => Promise.reject(new JoineryError({ code: 'SQL_ERROR', message: 'boom' })),
+      () => Promise.reject(new QuerybaraError({ code: 'SQL_ERROR', message: 'boom' })),
       () => undefined,
     );
     await failing.reset(options());

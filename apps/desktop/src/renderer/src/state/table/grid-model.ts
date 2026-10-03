@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 import {
   formatCell,
   isDefault,
@@ -8,7 +8,7 @@ import {
   type EditValue,
   type RowKey,
   type RowStatus,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 
 /**
  * What the table grid shows (spec §7): the loaded rows followed by the rows staged for insert,

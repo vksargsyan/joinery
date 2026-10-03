@@ -1,6 +1,6 @@
 import {
   BASE_CAPABILITIES,
-  JoineryError,
+  QuerybaraError,
   toColumnChunk,
   type BrowseNode,
   type Capabilities,
@@ -9,7 +9,7 @@ import {
   type ResultChunk,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 export interface FakeResult {
   readonly columns?: readonly string[];
@@ -46,7 +46,7 @@ export class FakeSession implements Session {
     const params = (opts.params ?? []) as readonly CellValue[];
     this.log.push(text);
     this.params.push(params);
-    if (opts.signal?.aborted) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+    if (opts.signal?.aborted) throw new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
     const result = this.handler(text, params);
     if (result instanceof Error) throw result;
     if (result.columns) {

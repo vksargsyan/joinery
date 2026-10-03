@@ -1,4 +1,4 @@
-import { SQL_ENGINE_IDS, engineIdSchema } from '@joinery/core';
+import { SQL_ENGINE_IDS, engineIdSchema } from '@querybara/core';
 import type {
   CompareOptions,
   DiffSummary,
@@ -11,7 +11,7 @@ import type {
   SyncOperation,
   SyncWarning,
   WarningCode,
-} from '@joinery/sync';
+} from '@querybara/sync';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -20,7 +20,7 @@ import { idSchema } from './common';
  * Schemas for structure sync and data sync in the desktop app (spec §13) as they cross between
  * the renderer and main. Comparisons, scripts and applies run as jobs in the job runner; the
  * renderer starts them by naming two connections, reads their results here, and never sees a
- * driver or a schema snapshot. The structure diff mirrors `@joinery/sync`'s model (checked
+ * driver or a schema snapshot. The structure diff mirrors `@querybara/sync`'s model (checked
  * with `satisfies`); the renderer ticks operations with that package's selection helpers.
  *
  * Data compare rows cross as display text (`null` is SQL NULL), paged from files the job runner

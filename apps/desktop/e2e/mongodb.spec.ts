@@ -1,8 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { MongoSession } from '@joinery/driver-mongodb';
-import { toEjson } from '@joinery/mongo-tools';
+import type { MongoSession } from '@querybara/driver-mongodb';
+import { toEjson } from '@querybara/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -13,14 +13,14 @@ import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
  * object tree, the collection view (query bar and find() text, tree, table with drill-down and
  * JSON), the document editor with a conflicting change made elsewhere, insert, clone and delete,
  * a bulk update counted before it runs, explain before and after an index, and the command
- * console. With JOINERY_E2E_SHOTS set, screenshots of the collection view are saved there.
+ * console. With QUERYBARA_E2E_SHOTS set, screenshots of the collection view are saved there.
  */
 
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Mongo';
 
-test.skip(!MONGO_URL, 'Set JOINERY_TEST_MONGODB_URL to run the MongoDB end-to-end tests');
+test.skip(!MONGO_URL, 'Set QUERYBARA_TEST_MONGODB_URL to run the MongoDB end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 

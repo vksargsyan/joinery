@@ -3,7 +3,7 @@ import {
   engineIdSchema,
   secretPolicySchema,
   secretRefsOf,
-} from '@joinery/core';
+} from '@querybara/core';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -56,7 +56,7 @@ export function uriCarriesSecret(uri: string): boolean {
 
 /**
  * The user info is what precedes the last `@` of the authority, which ends at the first `/`,
- * `?` or `#` (as @joinery/storage's URI parser reads it); a `:` in it starts a password, even an
+ * `?` or `#` (as @querybara/storage's URI parser reads it); a `:` in it starts a password, even an
  * empty one.
  */
 function authorityHasPassword(uri: string): boolean {
@@ -112,8 +112,8 @@ export const safeProfileSchema = connectionProfileSchema.superRefine((profile, c
 const timestampSchema = z.iso.datetime({ offset: true });
 
 /**
- * Optimistic concurrency, as @joinery/storage implements it: a write fails unless the stored row
- * version equals this (0: the row must not exist yet), so the app and joinery-cli never silently
+ * Optimistic concurrency, as @querybara/storage implements it: a write fails unless the stored row
+ * version equals this (0: the row must not exist yet), so the app and querybara-cli never silently
  * overwrite each other's edits.
  */
 export const expectedVersionSchema = z.number().int().nonnegative();
@@ -244,7 +244,7 @@ export const appSettingsSchema = z.object({
     hostPoolCap: z.number().int().min(1).max(64),
   }),
   schedules: z.object({
-    /** Ask before Joinery closes while schedules are on: they run only while it is open. */
+    /** Ask before Querybara closes while schedules are on: they run only while it is open. */
     confirmClose: z.boolean(),
   }),
   /**
@@ -384,7 +384,7 @@ export const hostKeyInfoSchema = z.object({
 
 /**
  * A question about an SSH server's host key (spec §4), asked while a connection host opens a
- * tunnel. `unknown`: Joinery has not seen this server's key. `changed`: the key differs from the
+ * tunnel. `unknown`: Querybara has not seen this server's key. `changed`: the key differs from the
  * remembered one (`known`), which may be a man-in-the-middle attack.
  */
 export const hostKeyPromptSchema = z.object({

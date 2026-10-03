@@ -1,5 +1,5 @@
-import { upcomingRuns } from '@joinery/core';
-import type { ScheduleInfo, ScheduleRunInfo } from '@joinery/ipc';
+import { upcomingRuns } from '@querybara/core';
+import type { ScheduleInfo, ScheduleRunInfo } from '@querybara/ipc';
 import { useEffect, useState } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';
@@ -45,7 +45,7 @@ export function SchedulesPanel() {
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-semibold text-fg">Schedules</h1>
           <p className="text-xs text-muted">
-            Backups, SQL files, exports and comparisons that run by themselves while Joinery is
+            Backups, SQL files, exports and comparisons that run by themselves while Querybara is
             open.
           </p>
         </div>
@@ -131,7 +131,7 @@ function Empty() {
   );
 }
 
-/** The setting behind the question Joinery asks when it closes with schedules on. */
+/** The setting behind the question Querybara asks when it closes with schedules on. */
 function AskBeforeClosing() {
   const settings = useSettings();
   const [error, setError] = useState<string>();
@@ -141,12 +141,12 @@ function AskBeforeClosing() {
       className="flex items-center gap-2 text-xs text-muted"
       title={
         error ??
-        'Schedules run only while Joinery is open, so closing it with schedules on asks first'
+        'Schedules run only while Querybara is open, so closing it with schedules on asks first'
       }
     >
       <Switch
         on={on}
-        label="Ask before closing Joinery"
+        label="Ask before closing Querybara"
         onChange={(next) => {
           setError(undefined);
           setConfirmClose(next).catch((e: unknown) => setError(errorMessage(e)));
@@ -351,7 +351,7 @@ function Details({ schedule }: { readonly schedule: ScheduleInfo }) {
         )}
         <dt className="text-muted">Missed runs</dt>
         <dd className="text-fg">
-          {schedule.missed === 'run-once' ? 'Caught up once when Joinery is back' : 'Skipped'}
+          {schedule.missed === 'run-once' ? 'Caught up once when Querybara is back' : 'Skipped'}
         </dd>
         {output && (
           <>

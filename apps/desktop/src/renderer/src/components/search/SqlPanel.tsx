@@ -1,4 +1,4 @@
-import { cellDisplay } from '@joinery/search-tools';
+import { cellDisplay } from '@querybara/search-tools';
 import { useMemo, useState, type UIEvent } from 'react';
 
 import { formatCount, formatDuration } from '../../lib/format';
@@ -19,7 +19,7 @@ import { NoticeBar } from './parts';
  * a tree and a flattened table, or opens in the console.
  */
 
-const ESQL_LANGUAGE = 'joinery-esql';
+const ESQL_LANGUAGE = 'querybara-esql';
 let esqlRegistered = false;
 
 /** A Monarch tokenizer for ES|QL: pipes, commands, functions, strings and numbers. */

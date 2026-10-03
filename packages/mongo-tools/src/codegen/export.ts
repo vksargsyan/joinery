@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { CodeExportOptions, CodeLanguage, ExportTarget } from './common';
 import { csharpProgram } from './csharp';
@@ -103,13 +103,13 @@ export function exportQueryCode(
   options: CodeExportOptions,
 ): string {
   if (options.database === '') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'Choose a database to export for',
     });
   }
   if (target.collection === '') {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The query has no collection' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The query has no collection' });
   }
   return PROGRAMS[language](target, options.database);
 }

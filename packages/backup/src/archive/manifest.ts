@@ -1,14 +1,14 @@
-import { engineIdSchema } from '@joinery/core';
+import { engineIdSchema } from '@querybara/core';
 import { z } from 'zod';
 
 /**
- * The manifest of a Joinery archive (docs/backup-archive-format.md): what was backed up, from
+ * The manifest of a Querybara archive (docs/backup-archive-format.md): what was backed up, from
  * which server, with which options, and where each object's files are in the archive, with a
  * SHA-256 of each file. It is the archive's last entry, so it is written once every object has
  * streamed through, and it is validated against this schema when an archive is opened.
  */
 
-export const ARCHIVE_FORMAT = 'joinery-backup';
+export const ARCHIVE_FORMAT = 'querybara-backup';
 export const ARCHIVE_FORMAT_VERSION = 1;
 
 export const ENTRY_CONTENT_TYPES = [
@@ -106,7 +106,7 @@ export const manifestSchema = z.object({
   format: z.literal(ARCHIVE_FORMAT),
   formatVersion: z.literal(ARCHIVE_FORMAT_VERSION),
   createdAt: z.iso.datetime({ offset: true }),
-  /** "Joinery" and the version that wrote the archive, when known. */
+  /** "Querybara" and the version that wrote the archive, when known. */
   producer: z.string().max(200),
   engine: engineIdSchema,
   serverVersion: z.string().max(500),

@@ -1,4 +1,4 @@
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import type {
   JsonText,
   SearchAliasInfo,
@@ -25,7 +25,7 @@ import type {
   SearchTable,
   SearchTaskStatus,
   SqlTranslation,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 export type { SqlTranslation };
 

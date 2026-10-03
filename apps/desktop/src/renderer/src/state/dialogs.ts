@@ -1,6 +1,6 @@
-import type { CellValue } from '@joinery/core';
-import type { SecretStatus } from '@joinery/ipc';
-import type { ConfirmationReason } from '@joinery/sql-tools';
+import type { CellValue } from '@querybara/core';
+import type { SecretStatus } from '@querybara/ipc';
+import type { ConfirmationReason } from '@querybara/sql-tools';
 import { create } from 'zustand';
 
 import type { ParameterPrompt } from './run-plan';

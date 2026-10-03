@@ -1,4 +1,4 @@
-# 0019. The scheduler: jobs run from main while Joinery is open
+# 0019. The scheduler: jobs run from main while Querybara is open
 
 - Status: Accepted; staying open in the tray superseded by [0021](0021-confirm-closing-with-schedules.md)
 - Date: 2026-09-30
@@ -8,7 +8,7 @@
 The spec's scheduler and automation run backups, SQL files, exports and saved comparisons on a
 schedule, with a history of runs and notifications when something needs attention. Two places
 could run them. The app could run them while it is open. Or the OS could run them, with launchd,
-Task Scheduler or cron starting `joinery-cli` when the app is closed.
+Task Scheduler or cron starting `querybara-cli` when the app is closed.
 
 The OS route runs when the app is closed. But it has to reach saved passwords outside the app's
 secure storage, it is set up differently on each OS, and it needs a second way to report
@@ -23,7 +23,7 @@ Everything, jobs included, was already running in main without the renderer.
 
 ## Decision
 
-**The scheduler lives in main, while Joinery is open.**
+**The scheduler lives in main, while Querybara is open.**
 
 - **The scheduler engine** (`main/scheduler.ts`):
   - It keeps each enabled schedule's `nextRunAt`.
@@ -36,7 +36,7 @@ Everything, jobs included, was already running in main without the renderer.
   - Every run is recorded, skipped ones included, and runs a crashed session left going are
     marked failed at start.
   - Timers and the clock are injected, so tests drive it.
-- **Rules are local time** (`@joinery/core` `schedule.ts`): every N minutes or hours, times on
+- **Rules are local time** (`@querybara/core` `schedule.ts`): every N minutes or hours, times on
   chosen weekdays, or days of the month (including the last). A time in a daylight-saving gap runs
   at the first minute after it; a repeated hour runs once. Rules describe themselves in words and
   preview their next runs.
@@ -44,7 +44,7 @@ Everything, jobs included, was already running in main without the renderer.
   - `schedules`, each on a connection or a saved comparison, and deleted with it. Edits are
     versioned; the scheduler's `nextRunAt` is not.
   - `schedule_runs`, the newest 200 kept per schedule.
-- **Tasks are the wizards' jobs** (`schedules.ts` in `@joinery/ipc`):
+- **Tasks are the wizards' jobs** (`schedules.ts` in `@querybara/ipc`):
   - A backup, a Run SQL File, or an export, minus the output path. Each run writes a new file named
     from a template with `{name}`, `{date}` and `{time}`. It never overwrites (`-2`, `-3`), and it
     can keep only the newest N. Pruning deletes only names the template can produce, in the
@@ -63,9 +63,9 @@ Everything, jobs included, was already running in main without the renderer.
     (the file grants of ADR 0006). Main trusts the stored paths from then on.
   - Scheduled jobs start `silent`, so the job manager does not notify on top of the scheduler.
 - **Notifications** are per schedule: when a run fails or finds differences (the default), after
-  every run, or never. A click opens Joinery.
+  every run, or never. A click opens Querybara.
 - **Staying open.** On Windows and Linux, closing the last window with schedules on keeps
-  Joinery in the tray, with Open, Pause schedules and Quit. Opening Joinery again opens its
+  Querybara in the tray, with Open, Pause schedules and Quit. Opening Querybara again opens its
   window. macOS apps keep running without windows already.
 - **The UI:**
   - The Schedules panel lists each schedule with its switch, next run and last result. The
@@ -78,9 +78,9 @@ Everything, jobs included, was already running in main without the renderer.
 
 ## Consequences
 
-- Schedules do not run while Joinery is closed. Missed runs are caught up once (or skipped) when
+- Schedules do not run while Querybara is closed. Missed runs are caught up once (or skipped) when
   it starts, and the editor and the panel say so. Running when closed would be a later
-  "system task" option for a schedule. It would install an OS entry that calls `joinery-cli`,
+  "system task" option for a schedule. It would install an OS entry that calls `querybara-cli`,
   which needs the same saved secrets.
 - Scheduled runs appear in the Jobs panel like any other job, and in the schedule's history.
 - A run needs its connection's password available without asking, meaning saved, or typed

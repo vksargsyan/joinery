@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { JoineryError, type ResolvedProfile } from '@joinery/core';
+import { QuerybaraError, type ResolvedProfile } from '@querybara/core';
 
 import type { NativeTool } from './tools';
 
@@ -37,10 +37,10 @@ export interface NativeEndpoint {
 export function nativeEndpoint(resolved: ResolvedProfile, database: string): NativeEndpoint {
   const { profile } = resolved;
   if (profile.tls.keyPassphrase !== undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'The native tools cannot use a client key protected by a passphrase',
-      hint: 'Use the Joinery backup format for this connection',
+      hint: 'Use the Querybara backup format for this connection',
     });
   }
   const auth = profile.auth;
@@ -86,7 +86,7 @@ export function nativeEndpoint(resolved: ResolvedProfile, database: string): Nat
     };
   }
   if (host === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'The native tools need a host and port or a socket for this connection',
     });
@@ -96,7 +96,7 @@ export function nativeEndpoint(resolved: ResolvedProfile, database: string): Nat
 
 /** A private folder for credential files, removed by `dispose`. */
 export async function privateFolder(): Promise<{ path: string; dispose(): Promise<void> }> {
-  const path = await mkdtemp(join(tmpdir(), 'joinery-native-'));
+  const path = await mkdtemp(join(tmpdir(), 'querybara-native-'));
   return { path, dispose: () => rm(path, { recursive: true, force: true }) };
 }
 
@@ -158,7 +158,7 @@ export async function pgEnvironment(
   if (endpoint.tls.ca !== undefined) env['PGSSLROOTCERT'] = endpoint.tls.ca;
   if (endpoint.tls.cert !== undefined) env['PGSSLCERT'] = endpoint.tls.cert;
   if (endpoint.tls.key !== undefined) env['PGSSLKEY'] = endpoint.tls.key;
-  env['PGAPPNAME'] = 'Joinery';
+  env['PGAPPNAME'] = 'Querybara';
   env['PGCONNECT_TIMEOUT'] = '30';
   return env;
 }
@@ -302,7 +302,7 @@ export function runTool(options: RunOptions): Promise<RunResult> {
     child.on('error', (error) => {
       options.signal?.removeEventListener('abort', onAbort);
       reject(
-        new JoineryError({
+        new QuerybaraError({
           code: 'NOT_FOUND',
           message: `${options.tool.name} could not start: ${error.message}`,
         }),
@@ -316,7 +316,7 @@ export function runTool(options: RunOptions): Promise<RunResult> {
       }
       void Promise.all([stdout, stdin]).then(() => {
         if (options.signal?.aborted) {
-          reject(new JoineryError({ code: 'CANCELLED', message: 'Cancelled' }));
+          reject(new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' }));
         } else if (failure !== undefined) {
           reject(failure);
         } else {

@@ -1,5 +1,5 @@
-import { JoineryError, cancelledError, type ErrorCode } from '@joinery/core';
-import { errorMessage, errorProp, mapNetworkError } from '@joinery/driver-sql-base';
+import { QuerybaraError, cancelledError, type ErrorCode } from '@querybara/core';
+import { errorMessage, errorProp, mapNetworkError } from '@querybara/driver-sql-base';
 
 /** Where an error happened, for the message: "host:port" or a description; never secrets. */
 export interface RedisErrorContext {
@@ -22,14 +22,14 @@ export function replyErrorCode(message: string): string | undefined {
   return /^([A-Z][A-Z_-]+)\b/.exec(message)?.[1];
 }
 
-function joinery(
+function querybara(
   code: ErrorCode,
   message: string,
   hint: string | undefined,
   cause: unknown,
   engineCode?: string,
-): JoineryError {
-  return new JoineryError(
+): QuerybaraError {
+  return new QuerybaraError(
     {
       code,
       message,
@@ -41,12 +41,12 @@ function joinery(
 }
 
 /** Maps an error reply by its prefix; hints name the fix. */
-function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): JoineryError {
+function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): QuerybaraError {
   const code = replyErrorCode(message);
   const command = ctx.command ? ctx.command.toLowerCase() : undefined;
   switch (code) {
     case 'WRONGPASS':
-      return joinery(
+      return querybara(
         'AUTH_FAILED',
         `${ctx.where} rejected the user name or password`,
         'Check the user name and password; an ACL user must also be enabled ("on")',
@@ -54,7 +54,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'NOAUTH':
-      return joinery(
+      return querybara(
         'AUTH_FAILED',
         `${ctx.where} requires authentication`,
         'Choose password authentication and enter the password (and the ACL user name if the server uses ACL users)',
@@ -62,7 +62,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'NOPERM':
-      return joinery(
+      return querybara(
         ctx.phase === 'connect' ? 'AUTH_FAILED' : 'SQL_ERROR',
         message,
         `The ACL user may not run ${command ? `"${command}"` : 'this command'} or access this key: grant it (e.g. ACL SETUSER <user> +${command ?? '<command>'} ~<pattern>) or connect as another user`,
@@ -70,7 +70,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'DENIED':
-      return joinery(
+      return querybara(
         'CONNECTION_FAILED',
         `${ctx.where} is running in protected mode and refuses remote clients`,
         'Set a password (requirepass or an ACL user) on the server, bind it to the right interface, or connect through an SSH tunnel to the server itself',
@@ -78,7 +78,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'CLUSTERDOWN':
-      return joinery(
+      return querybara(
         'CONNECTION_FAILED',
         `The cluster is down: ${message}`,
         'Some hash slots are not served or most primaries are unreachable; check CLUSTER INFO and the failing nodes',
@@ -86,7 +86,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'LOADING':
-      return joinery(
+      return querybara(
         'CONNECTION_FAILED',
         'The server is still loading its dataset into memory',
         'Retry in a moment',
@@ -94,7 +94,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'MASTERDOWN':
-      return joinery(
+      return querybara(
         'CONNECTION_FAILED',
         message,
         'The replica lost its link to the primary; connect to the primary or wait for the link',
@@ -102,7 +102,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'READONLY':
-      return joinery(
+      return querybara(
         'SQL_ERROR',
         message,
         'This node is a read-only replica: connect to the primary (or through Sentinel) to write',
@@ -111,15 +111,15 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
       );
     case 'MOVED':
     case 'ASK':
-      return joinery(
+      return querybara(
         'SQL_ERROR',
         message,
-        'The key lives on another cluster node: connect with a Cluster endpoint so Joinery follows redirections',
+        'The key lives on another cluster node: connect with a Cluster endpoint so Querybara follows redirections',
         cause,
         code,
       );
     case 'CROSSSLOT':
-      return joinery(
+      return querybara(
         'SQL_ERROR',
         message,
         'In a cluster all keys of one command must hash to the same slot; use a hash tag such as {user:42}',
@@ -127,7 +127,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
         code,
       );
     case 'BUSY':
-      return joinery(
+      return querybara(
         'SQL_ERROR',
         message,
         'A script or function is running; wait for it or stop it with SCRIPT KILL / FUNCTION KILL',
@@ -136,7 +136,7 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
       );
     default:
       if (/unknown command/i.test(message) && command) {
-        return joinery(
+        return querybara(
           'SQL_ERROR',
           message,
           'The command does not exist on this server (check the spelling, the server version and loaded modules), or it was renamed away',
@@ -144,24 +144,24 @@ function mapReply(message: string, ctx: RedisErrorContext, cause: unknown): Join
           code,
         );
       }
-      return joinery('SQL_ERROR', message, undefined, cause, code);
+      return querybara('SQL_ERROR', message, undefined, cause, code);
   }
 }
 
 /**
- * Maps anything ioredis throws or emits to a JoineryError with a fix hint: error replies by
+ * Maps anything ioredis throws or emits to a QuerybaraError with a fix hint: error replies by
  * prefix (WRONGPASS, NOAUTH, NOPERM, CLUSTERDOWN, protected mode...), Sentinel and Cluster
  * discovery failures, timeouts, closed connections, and network / TLS errors.
  */
-export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryError {
-  if (error instanceof JoineryError) return error;
+export function mapRedisError(error: unknown, ctx: RedisErrorContext): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   if (error instanceof Error && error.name === 'AbortError') return cancelledError();
   const message = errorMessage(error);
   if (isReplyError(error)) return mapReply(message, ctx, error);
 
   // Sentinel discovery.
   if (/No such master with that name/i.test(message)) {
-    return joinery(
+    return querybara(
       'CONNECTION_FAILED',
       `The Sentinels do not monitor a master named "${ctx.masterName ?? '?'}"`,
       'Check the master name in the profile; SENTINEL MASTERS on a Sentinel lists the names it monitors',
@@ -172,10 +172,10 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
     const last = /Last error: (.*)$/.exec(message)?.[1];
     const inner = last ? replyErrorCode(last) : undefined;
     if (inner && inner !== 'ERR') return mapReply(last!, ctx, error);
-    return joinery(
+    return querybara(
       'CONNECTION_FAILED',
       `No Sentinel could be reached or none knows the master (${ctx.where})`,
-      'Check the Sentinel hosts and ports, that the Sentinels are running, and the Sentinel password (Joinery uses the profile credentials for them too)',
+      'Check the Sentinel hosts and ports, that the Sentinels are running, and the Sentinel password (Querybara uses the profile credentials for them too)',
       error,
     );
   }
@@ -185,7 +185,7 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
     return mapReply(embedded[0], ctx, error);
   }
   if (/None of startup nodes is available|Failed to refresh slots cache/i.test(message)) {
-    return joinery(
+    return querybara(
       'CONNECTION_FAILED',
       `None of the cluster seed nodes answered (${ctx.where})`,
       'Check the seed hosts and ports and that the servers run in cluster mode (cluster-enabled yes)',
@@ -193,7 +193,7 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
     );
   }
   if (/Cluster state fail|CLUSTERDOWN/i.test(message)) {
-    return joinery(
+    return querybara(
       'CONNECTION_FAILED',
       'The cluster reports state "fail"',
       'Some hash slots are not served or most primaries are unreachable; check CLUSTER INFO on the nodes',
@@ -201,7 +201,7 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
     );
   }
   if (/Command timed out/i.test(message)) {
-    return joinery(
+    return querybara(
       'TIMEOUT',
       `The command did not finish within the query timeout on ${ctx.where}`,
       'Raise the query timeout in the profile options, or make the command cheaper (SCAN instead of KEYS)',
@@ -212,7 +212,7 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
     errorProp(error, 'name') === 'MaxRetriesPerRequestError' ||
     /Connection is closed/i.test(message)
   ) {
-    return joinery(
+    return querybara(
       'CONNECTION_FAILED',
       `The connection to ${ctx.where} was closed`,
       'The server closed the connection (CLIENT KILL, timeout, restart or network); run the command again to reconnect',
@@ -220,7 +220,7 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
     );
   }
   if (/wrong version number|packet length too long|unknown protocol/i.test(message)) {
-    return joinery(
+    return querybara(
       'TLS_FAILED',
       `TLS negotiation with ${ctx.where} failed: ${message}`,
       'The server does not speak TLS on this port: turn TLS off in the profile, or use the server’s TLS port',
@@ -229,7 +229,7 @@ export function mapRedisError(error: unknown, ctx: RedisErrorContext): JoineryEr
   }
   const network = mapNetworkError(error, ctx.where);
   if (network) return network;
-  return joinery(
+  return querybara(
     ctx.phase === 'connect' ? 'CONNECTION_FAILED' : 'INTERNAL',
     message,
     undefined,
@@ -252,10 +252,10 @@ export function pickConnectError(
   thrown: unknown,
   events: readonly unknown[],
   ctx: RedisErrorContext,
-): JoineryError {
+): QuerybaraError {
   const candidates = [...events, thrown].map((e) => mapRedisError(e, ctx));
-  const generic = (e: JoineryError): boolean => /was closed$/.test(e.message);
-  const rank = (e: JoineryError): number =>
+  const generic = (e: QuerybaraError): boolean => /was closed$/.test(e.message);
+  const rank = (e: QuerybaraError): number =>
     PRIORITY[e.code] ?? (generic(e) ? 9 : e.code === 'CONNECTION_FAILED' ? 2 : 5);
   return candidates.reduce((best, e) => (rank(e) < rank(best) ? e : best));
 }

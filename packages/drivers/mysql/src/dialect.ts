@@ -1,5 +1,5 @@
-import { lineStartOffset } from '@joinery/driver-sql-base';
-import { quoteString } from '@joinery/sql-tools';
+import { lineStartOffset } from '@querybara/driver-sql-base';
+import { quoteString } from '@querybara/sql-tools';
 
 /**
  * MySQL / MariaDB text helpers: a small lexer that knows strings, quoted identifiers and

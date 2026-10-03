@@ -1,8 +1,14 @@
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 
-import { JoineryError, newId, type Session, type SqlDialect, type TableDef } from '@joinery/core';
-import { analyzeStatement, decideSafety, quoteIdent, quoteQualified } from '@joinery/sql-tools';
+import {
+  QuerybaraError,
+  newId,
+  type Session,
+  type SqlDialect,
+  type TableDef,
+} from '@querybara/core';
+import { analyzeStatement, decideSafety, quoteIdent, quoteQualified } from '@querybara/sql-tools';
 import {
   autoMatch,
   combinableFormat,
@@ -37,7 +43,7 @@ import {
   type SpooledSource,
   type SqlStatementError,
   type TransferProgress,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 
 import { closeQuietly, type Connection } from '../connect';
 import type { InputStream, Prompter } from '../context';
@@ -47,8 +53,8 @@ import { confirmOperation, confirmStatement, excerpt, type ConfirmState } from '
 import type { TargetOverrides } from '../target';
 
 /**
- * `joinery import`, `joinery export` and `joinery run-file` (spec §12, §6 Run SQL File): the
- * desktop job runner's @joinery/transfer engine on the command line. Progress goes to stderr
+ * `querybara import`, `querybara export` and `querybara run-file` (spec §12, §6 Run SQL File): the
+ * desktop job runner's @querybara/transfer engine on the command line. Progress goes to stderr
  * (a terminal gets a live line), then the summary; exports to `-` write the data to stdout.
  * Exit codes: 0 done, 1 done but rows were skipped or statements failed, 2 failed, 130
  * interrupted (Ctrl+C cancels and rolls the import back). The write rules are `query`'s:
@@ -209,7 +215,7 @@ export function describeRowError(error: RowError): string {
 
 const refuse = (): Promise<never> =>
   Promise.reject(
-    new JoineryError({
+    new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: 'Cannot prompt while reading the rows from stdin',
     }),
@@ -276,7 +282,7 @@ async function replayable(
 // import
 
 /**
- * `joinery import <target> --table <name> --file <path>`: reads CSV, TSV, JSON, JSON Lines
+ * `querybara import <target> --table <name> --file <path>`: reads CSV, TSV, JSON, JSON Lines
  * (gzip too), Excel or XML, detecting what the flags leave open, matches the file's columns to
  * the table's (or creates the table from the file with --create) and loads it in batches. A
  * workbook on stdin is spooled to a temporary file first: a ZIP is read from its end.
@@ -366,7 +372,7 @@ export async function importDataCommand(
     });
     reporter.clearProgress();
     if (preview.read === null) {
-      throw new CliError(`${name} is a SQL script`, { hint: `Run it with: joinery run-file` });
+      throw new CliError(`${name} is a SQL script`, { hint: `Run it with: querybara run-file` });
     }
     const read = preview.read;
     const columns = preview.columns.map((c) => c.name);
@@ -515,10 +521,10 @@ function stdoutSink(runtime: Runtime): Sink {
   };
 }
 
-export { exportFileName } from '@joinery/transfer';
+export { exportFileName } from '@querybara/transfer';
 
 /**
- * `joinery export <target> (--table <name>... | --query <sql>) --format <f> --out <path|->`:
+ * `querybara export <target> (--table <name>... | --query <sql>) --format <f> --out <path|->`:
  * tables or a query result to CSV, TSV, JSON, JSON Lines, Excel, XML, SQL INSERTs, SQL with
  * DDL, HTML or Markdown. Several tables go one file per table into the --out folder, into one
  * file with --one-file, or into one ZIP archive with --zip.
@@ -682,7 +688,7 @@ export async function exportDataCommand(
 // run-file
 
 /**
- * `joinery run-file <target> <file.sql>`: streams a SQL file (gzip too) through the statement
+ * `querybara run-file <target> <file.sql>`: streams a SQL file (gzip too) through the statement
  * splitter and runs it statement by statement, discarding result rows, with progress and an
  * error log. Stops at the first failing statement unless --continue.
  */

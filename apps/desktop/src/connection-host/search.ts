@@ -1,19 +1,19 @@
 import {
-  JoineryError,
+  QuerybaraError,
   type ConnectionProfile,
   type ExecOptions,
   type ResultChunk,
   type Session,
-} from '@joinery/core';
-import type { SearchSession, isSearchSession } from '@joinery/driver-elasticsearch';
-import type { HandlersOf, searchHostContractShape } from '@joinery/ipc';
+} from '@querybara/core';
+import type { SearchSession, isSearchSession } from '@querybara/driver-elasticsearch';
+import type { HandlersOf, searchHostContractShape } from '@querybara/ipc';
 import {
   classifyRequest,
   issuesOf,
   parseConsole,
   resourcePath,
   type SearchResourceKind,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import {
   checkSearchWrite,
@@ -51,13 +51,13 @@ let isSearch: Promise<typeof isSearchSession> | undefined;
  */
 export async function asSearchSession(session: Session): Promise<SearchSession> {
   if (session.engine !== 'elasticsearch') throw notSearch();
-  isSearch ??= import('@joinery/driver-elasticsearch').then((driver) => driver.isSearchSession);
+  isSearch ??= import('@querybara/driver-elasticsearch').then((driver) => driver.isSearchSession);
   if (!(await isSearch)(session)) throw notSearch();
   return session;
 }
 
-function notSearch(): JoineryError {
-  return new JoineryError({
+function notSearch(): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: 'Elasticsearch services need an Elasticsearch connection',
   });
@@ -96,7 +96,7 @@ export async function* executeSearchGuarded(
   for (const request of parse.requests) {
     if (request.invalid) {
       const issue = issuesOf(parse, request)[0];
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: issue?.message ?? 'The request is not valid',
         ...(issue ? { position: issue.start } : {}),
@@ -111,13 +111,13 @@ export async function* executeSearchGuarded(
       policy,
     );
     if (decision.action === 'refuse') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'READ_ONLY',
         message: `${decision.safety.label}: ${decision.reason}`,
       });
     }
     if (decision.action === 'confirm') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'CONFIRMATION_REQUIRED',
         message: `${decision.safety.label} needs confirmation`,
         hint: 'Run it from the console, which asks first',

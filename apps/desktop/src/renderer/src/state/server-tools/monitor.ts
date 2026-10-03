@@ -4,7 +4,7 @@ import type {
   MonitorTile,
   ServerNotice,
   ValueUnit,
-} from '@joinery/core';
+} from '@querybara/core';
 import { create } from 'zustand';
 
 import { DEFAULT_POLL_MS, MAX_SAMPLES } from '../redis/dashboard';

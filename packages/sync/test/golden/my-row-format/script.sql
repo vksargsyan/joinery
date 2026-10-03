@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb row_format_dev
 -- Target: mariadb row_format_prod
 -- Operations: 2

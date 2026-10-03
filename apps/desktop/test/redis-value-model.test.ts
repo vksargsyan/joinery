@@ -1,4 +1,4 @@
-import { encodeMessagePack, utf8Bytes, utf8Text } from '@joinery/redis-tools';
+import { encodeMessagePack, utf8Bytes, utf8Text } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import { formatCommandLine } from '../src/shared/redis-safety';

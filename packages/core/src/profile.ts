@@ -5,7 +5,7 @@ import { ENGINES, engineIdSchema, type EngineId } from './engines';
 /**
  * Connection profiles (spec §4). A profile holds everything needed to reach one server.
  * Secrets never live in the profile: it holds `SecretRef`s, and the sealed values are stored
- * separately by @joinery/storage and resolved only inside the connection host.
+ * separately by @querybara/storage and resolved only inside the connection host.
  */
 
 export const environmentSchema = z.enum(['dev', 'test', 'staging', 'production']);
@@ -145,7 +145,7 @@ export const connectionOptionsSchema = z.object({
   initSql: z.array(z.string()).default([]),
   /** For Redis, the logical database number as text ("0" to "15" on a default server). */
   defaultDatabase: z.string().optional(),
-  applicationName: z.string().default('Joinery'),
+  applicationName: z.string().default('Querybara'),
   /** MongoDB: the database that holds the user's credentials (the driver's default: admin). */
   authSource: z.string().min(1).optional(),
   /** MongoDB: talk to the one host given instead of discovering the replica set from it. */

@@ -1,4 +1,4 @@
-import type { ConnectionCheckResult } from '@joinery/core';
+import type { ConnectionCheckResult } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { RedisSession } from '../../src';
@@ -45,7 +45,7 @@ describe.skipIf(!REDIS_SENTINEL || !REDIS_URL)('Sentinel', () => {
     const masterName = REDIS_SENTINEL!.split('/')[1];
     expect(view.topology).toBe('sentinel');
     expect(view.sentinel!.masterName).toBe(masterName);
-    const [, port] = new URL(process.env['JOINERY_TEST_REDIS_URL']!).host.split(':');
+    const [, port] = new URL(process.env['QUERYBARA_TEST_REDIS_URL']!).host.split(':');
     expect(view.sentinel!.master).toMatchObject({ name: masterName, port: Number(port) });
     expect(view.sentinel!.master!.quorum).toBeGreaterThanOrEqual(1);
     expect(view.sentinel!.master!.flags).toContain('master');

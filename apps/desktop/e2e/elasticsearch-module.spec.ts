@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { SearchSession } from '@joinery/driver-elasticsearch';
-import { parseJsonTree, stringAt } from '@joinery/search-tools';
+import type { SearchSession } from '@querybara/driver-elasticsearch';
+import { parseJsonTree, stringAt } from '@querybara/search-tools';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectSearch, e2eIndex } from './search';
@@ -18,11 +18,14 @@ import { connectSearch, e2eIndex } from './search';
  * the run and deleted afterwards.
  */
 
-const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const ES_URL = process.env['QUERYBARA_TEST_ELASTICSEARCH_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Search Module';
 
-test.skip(!ES_URL, 'Set JOINERY_TEST_ELASTICSEARCH_URL to run the Elasticsearch end-to-end tests');
+test.skip(
+  !ES_URL,
+  'Set QUERYBARA_TEST_ELASTICSEARCH_URL to run the Elasticsearch end-to-end tests',
+);
 
 test.describe.configure({ mode: 'serial' });
 

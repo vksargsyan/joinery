@@ -1,4 +1,4 @@
-import { JoineryError, type BrowseNode } from '@joinery/core';
+import { QuerybaraError, type BrowseNode } from '@querybara/core';
 
 import type { SearchContext } from './context';
 import { listAliases, listDataStreams, listIndices } from './indices';
@@ -85,6 +85,6 @@ export async function browseSearch(
       }));
     }
     default:
-      throw new JoineryError({ code: 'NOT_FOUND', message: `No folder "${path[0]}"` });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: `No folder "${path[0]}"` });
   }
 }

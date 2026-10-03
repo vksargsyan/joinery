@@ -1,4 +1,4 @@
-import type { Privilege, RoleRef } from '@joinery/mongo-tools';
+import type { Privilege, RoleRef } from '@querybara/mongo-tools';
 
 import {
   COMMON_ACTIONS,

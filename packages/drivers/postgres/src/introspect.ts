@@ -16,13 +16,13 @@ import {
   type TriggerDef,
   type TypeDef,
   type ViewDef,
-} from '@joinery/core';
-import { bool, byName, json, num, opt, str, type Row } from '@joinery/driver-sql-base';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { bool, byName, json, num, opt, str, type Row } from '@querybara/driver-sql-base';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 /**
  * PostgreSQL introspection into a SchemaSnapshot, following the producer conventions in
- * @joinery/core schema.ts. The caller runs it in one snapshot with an empty search_path, so
+ * @querybara/core schema.ts. The caller runs it in one snapshot with an empty search_path, so
  * everything PostgreSQL prints (defaults, view bodies, trigger and index definitions, type
  * names) is schema-qualified and does not depend on the session.
  *

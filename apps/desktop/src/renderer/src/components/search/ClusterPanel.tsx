@@ -1,4 +1,4 @@
-import { watermarkPercent } from '@joinery/search-tools';
+import { watermarkPercent } from '@querybara/search-tools';
 
 import { formatCount, formatDuration } from '../../lib/format';
 import {

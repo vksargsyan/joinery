@@ -1,4 +1,4 @@
-import { newId, type MissedRunPolicy, type ScheduleRule } from '@joinery/core';
+import { newId, type MissedRunPolicy, type ScheduleRule } from '@querybara/core';
 import type {
   BackupJob,
   ExportJob,
@@ -9,7 +9,7 @@ import type {
   ScheduleRunInfo,
   ScheduleSaveInput,
   ScheduleTask,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { currentDock } from '../components/dock';
@@ -236,14 +236,14 @@ export function draftOf(schedule: ScheduleInfo): ScheduleDraft {
 }
 
 const BACKUP_FORMATS: Readonly<Record<string, string>> = {
-  jbak: 'a Joinery archive',
+  qbak: 'a Querybara archive',
   sql: 'a SQL script',
   'sql-gz': 'a gzipped SQL script',
   custom: 'a pg_dump archive',
 };
 
 const EXTENSIONS: Readonly<Record<string, string>> = {
-  jbak: '.jbak',
+  qbak: '.qbak',
   sql: '.sql',
   'sql-gz': '.sql.gz',
   custom: '.dump',
@@ -370,7 +370,7 @@ export function comparisonDraft(comparison: SavedComparison, folder = ''): Sched
   };
 }
 
-/** Whether closing Joinery asks first while schedules are on (they run only while it is open). */
+/** Whether closing Querybara asks first while schedules are on (they run only while it is open). */
 export async function setConfirmClose(on: boolean): Promise<void> {
   await mainApi().settings.set({ schedules: { confirmClose: on } });
   await queryClient.invalidateQueries({ queryKey: keys.settings });

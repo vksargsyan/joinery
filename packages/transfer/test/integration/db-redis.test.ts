@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import type { RedisSession } from '@joinery/driver-redis';
+import type { RedisSession } from '@querybara/driver-redis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { planDbTransfer, runDbTransfer, type DbTransferSpec } from '../../src';

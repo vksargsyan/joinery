@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot, type SqlEngineId } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot, type SqlEngineId } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { dataSyncOrder, pairDataTables } from '../src';

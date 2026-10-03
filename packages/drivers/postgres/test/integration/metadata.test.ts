@@ -3,7 +3,7 @@ import {
   type SchemaSnapshot,
   type Session,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { PG_URL, collect, connect, rows } from './helpers';

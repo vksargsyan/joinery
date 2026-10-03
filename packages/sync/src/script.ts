@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import type { SchemaDiff, SyncOperation, SyncWarning } from './model';
 import { missingDependencies } from './selection';
@@ -136,7 +136,7 @@ export function generateScript(diff: SchemaDiff, options: ScriptOptions = {}): G
     const count = diff.operations.filter(included).length;
     const destructive = diff.operations.filter((op) => included(op) && op.destructive).length;
     text.push(
-      commentLine('Joinery structure sync'),
+      commentLine('Querybara structure sync'),
       commentLine(`Source: ${diff.sourceEngine} ${diff.sourceDatabase}`),
       commentLine(`Target: ${diff.targetEngine} ${diff.targetDatabase}`),
       commentLine(`Operations: ${count}${destructive > 0 ? ` (${destructive} destructive)` : ''}`),

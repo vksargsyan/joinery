@@ -1,5 +1,5 @@
-import { isSqlEngine, type BrowseNode, type EngineId } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import { isSqlEngine, type BrowseNode, type EngineId } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { DropdownMenu } from 'radix-ui';
 import {
   useEffect,

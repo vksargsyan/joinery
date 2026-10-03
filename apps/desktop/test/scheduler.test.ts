@@ -1,5 +1,5 @@
-import type { ScheduleRule } from '@joinery/core';
-import { openStore, type ScheduleRecord, type SecretSealer, type Store } from '@joinery/storage';
+import type { ScheduleRule } from '@querybara/core';
+import { openStore, type ScheduleRecord, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CHECK_EVERY_MS, Scheduler, type TaskOutcome } from '../src/main/scheduler';
@@ -161,7 +161,7 @@ describe('the scheduler', () => {
     expect(h.store.schedules.runs(skip.id)[0]).toMatchObject({
       trigger: 'catch-up',
       status: 'skipped',
-      message: 'Missed 5 runs while Joinery was closed or the computer asleep',
+      message: 'Missed 5 runs while Querybara was closed or the computer asleep',
     });
     // Both plan from now, not from the missed time.
     for (const id of [once.id, skip.id]) {
@@ -223,7 +223,7 @@ describe('the scheduler', () => {
     h.scheduler.start();
     expect(h.store.schedules.getRun(stuck.id)).toMatchObject({
       status: 'failed',
-      message: 'Joinery closed while the run was going',
+      message: 'Querybara closed while the run was going',
     });
     // Paused: the due run waits.
     await flush();

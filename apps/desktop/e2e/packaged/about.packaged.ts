@@ -7,22 +7,22 @@ import { EXECUTABLE, launchPackaged, type PackagedApp } from './launch';
 
 /**
  * The About box of the packaged app (spec §20): the version, the updater's status and the
- * licence report the build wrote into the archive. JOINERY_EXPECT_UPDATE_STATUS names text the
- * status must contain: a test build says so, and JOINERY_DISABLE_UPDATES=1 makes it the
- * administrator's policy. With JOINERY_E2E_UPDATE_CHECK=1 (release builds whose updates are on)
+ * licence report the build wrote into the archive. QUERYBARA_EXPECT_UPDATE_STATUS names text the
+ * status must contain: a test build says so, and QUERYBARA_DISABLE_UPDATES=1 makes it the
+ * administrator's policy. With QUERYBARA_E2E_UPDATE_CHECK=1 (release builds whose updates are on)
  * it also checks for updates against GitHub, which loads electron-updater from the archive and
  * must end in an answer from the release feed.
  */
 
-const EXPECTED_STATUS = process.env['JOINERY_EXPECT_UPDATE_STATUS'];
-const UPDATE_CHECK = process.env['JOINERY_E2E_UPDATE_CHECK'] === '1';
+const EXPECTED_STATUS = process.env['QUERYBARA_EXPECT_UPDATE_STATUS'];
+const UPDATE_CHECK = process.env['QUERYBARA_E2E_UPDATE_CHECK'] === '1';
 const VERSION = (
   JSON.parse(readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8')) as {
     version: string;
   }
 ).version;
 
-test.skip(!EXECUTABLE, 'Set JOINERY_PACKAGED_APP to the packaged executable');
+test.skip(!EXECUTABLE, 'Set QUERYBARA_PACKAGED_APP to the packaged executable');
 
 let app: PackagedApp | undefined;
 
@@ -36,14 +36,14 @@ test('shows the version, the update status and the third-party licences', async 
 
   // About lives in the application menu: on Windows and Linux the window's own menu bar; on
   // macOS the native one, which a test driving the page cannot reach, so the #about link.
-  const dialog = page.getByRole('dialog', { name: 'About Joinery' });
+  const dialog = page.getByRole('dialog', { name: 'About Querybara' });
   if (process.platform === 'darwin') {
     await page.evaluate(() => {
       location.hash = 'about';
     });
   } else {
     await page.getByRole('menubar', { name: 'Application menu' }).getByText('Help').click();
-    await page.getByRole('menuitem', { name: 'About Joinery' }).click();
+    await page.getByRole('menuitem', { name: 'About Querybara' }).click();
   }
   await expect(dialog.getByTestId('about-version')).toHaveText(`Version ${VERSION}`);
   const status = dialog.getByTestId('update-status');

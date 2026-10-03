@@ -1,19 +1,19 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   type SchemaSnapshot,
   type SqlEngineId,
   type TableDef,
-} from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
-import { safetyPolicyFor } from '@joinery/sql-tools';
+} from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
+import { safetyPolicyFor } from '@querybara/sql-tools';
 import {
   designDropTable,
   designTable,
   type DesignContext,
   type TableDesign,
   type ValidationIssue,
-} from '@joinery/sync';
+} from '@querybara/sync';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -204,9 +204,9 @@ export class TableDesigner {
     try {
       const profile = await profileById(this.target.profileId);
       if (!profile)
-        throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
       if (!isSqlEngine(profile.engine)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_SUPPORTED',
           message: 'The table designer needs a SQL connection',
         });
@@ -235,7 +235,7 @@ export class TableDesigner {
     if (name !== null) {
       live = findTable(snapshot, this.target.schema, name) ?? null;
       if (!live) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_FOUND',
           message: `Table ${this.target.schema}.${name} was not found; it may have been dropped or renamed`,
         });
@@ -397,7 +397,7 @@ export async function designTableDrop(target: DesignerTarget & { readonly name: 
 }> {
   const profile = await profileById(target.profileId);
   if (!profile || !isSqlEngine(profile.engine)) {
-    throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
   }
   const engine = profile.engine;
   const snapshot = await loadSnapshot(target.profileId, {
@@ -406,7 +406,7 @@ export async function designTableDrop(target: DesignerTarget & { readonly name: 
   });
   const live = findTable(snapshot, target.schema, target.name);
   if (!live) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: `Table ${target.schema}.${target.name} was not found`,
     });

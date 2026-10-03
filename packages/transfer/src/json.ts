@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { jsonText, type SourceCell } from './types';
 
@@ -28,8 +28,8 @@ export interface JsonElements {
   readonly errors: { readonly line: number; readonly message: string }[];
 }
 
-function syntaxError(message: string, line: number): JoineryError {
-  return new JoineryError({
+function syntaxError(message: string, line: number): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `Invalid JSON on line ${line}: ${message}`,
   });

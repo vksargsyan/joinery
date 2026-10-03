@@ -1,5 +1,5 @@
-import { COLUMN_KINDS, SQL_ENGINE_IDS } from '@joinery/core';
-import { dataRowDiffSchema, dataTableResultSchema, type DataRowAction } from '@joinery/ipc';
+import { COLUMN_KINDS, SQL_ENGINE_IDS } from '@querybara/core';
+import { dataRowDiffSchema, dataTableResultSchema, type DataRowAction } from '@querybara/ipc';
 import { z } from 'zod';
 
 /**

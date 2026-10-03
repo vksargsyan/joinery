@@ -2,12 +2,12 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { hostLabel } from './errors';
 
 /**
- * SSH host key verification. Joinery never accepts an unknown host key silently: every SSH
+ * SSH host key verification. Querybara never accepts an unknown host key silently: every SSH
  * connection asks a HostKeyVerifier, which trusts a key it knows, rejects a changed key loudly,
  * and decides about a new key by policy (reject, accept-new, or ask the user).
  */
@@ -24,7 +24,7 @@ export type HostKeyDecision = 'trust' | 'reject';
 /**
  * Decides whether to trust the host key an SSH server presented. `host` and `port` are the hop as
  * the profile names it (for a jump host's next hop, the name the previous hop resolves). It may
- * prompt the user: the connect timeout is paused while it runs. Throwing a JoineryError rejects
+ * prompt the user: the connect timeout is paused while it runs. Throwing a QuerybaraError rejects
  * the key with that error.
  */
 export type HostKeyVerifier = (
@@ -89,7 +89,7 @@ const LINE = /^\[(.+)\]:(\d+)\s+(\S+)\s+(SHA256:[A-Za-z0-9+/]+)\s*$/;
 /**
  * A known-hosts file of fingerprints, one `[host]:port algorithm SHA256:…` line per key; `#`
  * comments and blank lines are kept. The file is re-read on every lookup, so several processes
- * (the app and joinery-cli) can share it, and written atomically with owner-only permissions.
+ * (the app and querybara-cli) can share it, and written atomically with owner-only permissions.
  */
 export class FileKnownHosts implements KnownHostsStore {
   private writing: Promise<void> = Promise.resolve();
@@ -129,11 +129,11 @@ export class FileKnownHosts implements KnownHostsStore {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         return { lines: [], keys: [] };
       }
-      throw new JoineryError(
+      throw new QuerybaraError(
         {
           code: 'SSH_FAILED',
           message: `Cannot read the known hosts file ${this.path}`,
-          hint: 'Check that the file exists and that Joinery can read it',
+          hint: 'Check that the file exists and that Querybara can read it',
         },
         { cause: error },
       );
@@ -166,11 +166,11 @@ export class FileKnownHosts implements KnownHostsStore {
         await rename(temp, this.path);
       } catch (error) {
         await rm(temp, { force: true });
-        throw new JoineryError(
+        throw new QuerybaraError(
           {
             code: 'SSH_FAILED',
             message: `Cannot write the known hosts file ${this.path}`,
-            hint: 'Check that Joinery can write to that folder',
+            hint: 'Check that Querybara can write to that folder',
           },
           { cause: error },
         );
@@ -190,21 +190,21 @@ export type UnknownHostKeyPolicy = 'reject' | 'accept-new' | HostKeyVerifier;
 
 /**
  * The loud error for a host key that differs from the remembered one: it may be a
- * man-in-the-middle attack, so Joinery refuses to connect (engineCode HOST_KEY_CHANGED).
+ * man-in-the-middle attack, so Querybara refuses to connect (engineCode HOST_KEY_CHANGED).
  */
 export function hostKeyChangedError(
   host: string,
   port: number,
   presented: HostKeyInfo,
   known: readonly HostKeyInfo[],
-): JoineryError {
+): QuerybaraError {
   const expected = known.map((k) => `${k.algorithm} ${k.fingerprintSha256}`).join(', ');
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'SSH_FAILED',
     message:
       `WARNING: the host key of the SSH server ${hostLabel(host, port)} has CHANGED ` +
       `(expected ${expected}, got ${presented.algorithm} ${presented.fingerprintSha256}). ` +
-      'Someone could be intercepting this connection (a man-in-the-middle attack), or the server was reinstalled. Joinery did not connect.',
+      'Someone could be intercepting this connection (a man-in-the-middle attack), or the server was reinstalled. Querybara did not connect.',
     hint: "Ask the server's administrator whether its host key changed. Only if it did, forget the old key for this host and connect again to trust the new one",
     engineCode: 'HOST_KEY_CHANGED',
   });

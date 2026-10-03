@@ -1,12 +1,12 @@
-import { ENGINES, JoineryError, type ConnectionProfile, type HostPort } from '@joinery/core';
+import { ENGINES, QuerybaraError, type ConnectionProfile, type HostPort } from '@querybara/core';
 
 /** True when the profile needs a transport: an SSH tunnel, a proxy, or both. */
 export function needsTransport(profile: ConnectionProfile): boolean {
   return profile.ssh !== undefined || profile.proxy !== undefined;
 }
 
-function notTunnellable(message: string, hint: string): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message, hint });
+function notTunnellable(message: string, hint: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message, hint });
 }
 
 /**
@@ -22,7 +22,7 @@ export function searchUrlTarget(url: string, tlsByDefault: boolean): HostPort {
   try {
     parsed = new URL(withScheme);
   } catch {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'A node URL is not valid',
       hint: 'Use the form https://host:9200',
@@ -47,7 +47,7 @@ export function cloudIdUrl(cloudId: string): string {
   }
   const [domain, esId] = decoded.split('$');
   if (!domain || !esId) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The Cloud ID is not valid',
       hint: "Copy the Cloud ID from the deployment's page in Elastic Cloud (name:base64 text)",
@@ -77,7 +77,7 @@ export type TunnelReach =
       readonly srvRecord?: string;
     };
 
-const UNIX_SOCKET = (hint: string): JoineryError =>
+const UNIX_SOCKET = (hint: string): QuerybaraError =>
   notTunnellable('A Unix socket endpoint cannot be reached through an SSH tunnel or a proxy', hint);
 
 /**
@@ -115,7 +115,7 @@ export function tunnelReach(profile: ConnectionProfile): TunnelReach {
       if (endpoint.urls.length !== 1) {
         throw notTunnellable(
           'Only a single node URL can be reached through an SSH tunnel or a proxy',
-          'Keep one URL in the list (Joinery does not discover other nodes through a tunnel)',
+          'Keep one URL in the list (Querybara does not discover other nodes through a tunnel)',
         );
       }
       return {
@@ -187,8 +187,8 @@ function singleHostUri(uri: string, defaultPort: number): HostPort {
   return { host: host || 'localhost', port };
 }
 
-function invalidMongoUri(): JoineryError {
-  return new JoineryError({
+function invalidMongoUri(): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: 'The MongoDB connection string is not valid',
     hint: 'Use the form mongodb://host:port,host:port/database?options or mongodb+srv://cluster.example.net',

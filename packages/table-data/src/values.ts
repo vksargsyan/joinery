@@ -1,4 +1,4 @@
-import type { CellValue, LargeValueHandle } from '@joinery/core';
+import type { CellValue, LargeValueHandle } from '@querybara/core';
 
 /**
  * The value a staged edit or insert writes: a cell value, or DEFAULT (spec §7: NULL, empty

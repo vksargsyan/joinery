@@ -4,13 +4,13 @@ import { connect as netConnect, isIP } from 'node:net';
 import {
   CONNECTION_CHECK_STEPS,
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { describeTarget, resolveEndpoint, type NetworkTarget } from './endpoint';
 import { errorMessage, mapNetworkError } from './errors';
@@ -35,7 +35,7 @@ export interface CheckConnectionDeps {
   now(): number;
   /**
    * Runs the `ssh` step for a profile with an SSH tunnel or a proxy: opens it and proves it
-   * reaches the endpoint (@joinery/tunnel's `runSshStep`). When it passes, TLS, auth, ping and
+   * reaches the endpoint (@querybara/tunnel's `runSshStep`). When it passes, TLS, auth, ping and
    * version run through the transport, which is closed when the check ends. Without it, such a
    * profile fails the `ssh` step, since nothing here can open a tunnel.
    */
@@ -72,11 +72,14 @@ const defaultDeps: CheckConnectionDeps = {
   now: () => performance.now(),
 };
 
-function asJoineryError(error: unknown, where: string): JoineryError {
-  if (error instanceof JoineryError) return error;
+function asQuerybaraError(error: unknown, where: string): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   return (
     mapNetworkError(error, where) ??
-    new JoineryError({ code: 'CONNECTION_FAILED', message: errorMessage(error) }, { cause: error })
+    new QuerybaraError(
+      { code: 'CONNECTION_FAILED', message: errorMessage(error) },
+      { cause: error },
+    )
   );
 }
 
@@ -91,7 +94,11 @@ class StepLog {
     return result;
   }
 
-  failure(step: ConnectionCheckStep, started: number, error: JoineryError): ConnectionCheckResult {
+  failure(
+    step: ConnectionCheckStep,
+    started: number,
+    error: QuerybaraError,
+  ): ConnectionCheckResult {
     return this.report({
       step,
       status: 'failed',
@@ -131,7 +138,7 @@ export async function* checkConnection(
   const d: CheckConnectionDeps = { ...defaultDeps, ...deps };
   const log = new StepLog(d.now);
   const report = (result: ConnectionCheckResult) => log.report(result);
-  const failure = (step: ConnectionCheckStep, started: number, error: JoineryError) =>
+  const failure = (step: ConnectionCheckStep, started: number, error: QuerybaraError) =>
     log.failure(step, started, error);
   const skipRest = (reason: string) => log.skipRest(reason);
   const { profile } = resolved;
@@ -166,7 +173,7 @@ export async function* checkConnection(
   try {
     target = resolveEndpoint(resolved).target;
   } catch (error) {
-    yield failure('dns', started, asJoineryError(error, profile.name));
+    yield failure('dns', started, asQuerybaraError(error, profile.name));
     yield* skipRest(afterFailure);
     return;
   }
@@ -193,7 +200,7 @@ export async function* checkConnection(
         message: `${target.host} resolves to ${address}`,
       });
     } catch (error) {
-      yield failure('dns', started, asJoineryError(error, where));
+      yield failure('dns', started, asQuerybaraError(error, where));
       yield* skipRest(afterFailure);
       return;
     }
@@ -210,7 +217,7 @@ export async function* checkConnection(
       message: `Connected to ${where}`,
     });
   } catch (error) {
-    yield failure('tcp', started, asJoineryError(error, where));
+    yield failure('tcp', started, asQuerybaraError(error, where));
     yield* skipRest(afterFailure);
     return;
   }
@@ -249,7 +256,7 @@ async function* driverSteps(
   try {
     session = await adapter.connect(resolved);
   } catch (error) {
-    const mapped = asJoineryError(error, where);
+    const mapped = asQuerybaraError(error, where);
     if (tlsOff) {
       yield log.report({
         step: 'tls',
@@ -293,7 +300,7 @@ async function* driverSteps(
       await session.ping();
       yield log.report({ step: 'ping', status: 'ok', durationMs: Math.round(d.now() - started) });
     } catch (error) {
-      yield log.failure('ping', started, asJoineryError(error, where));
+      yield log.failure('ping', started, asQuerybaraError(error, where));
       yield* log.skipRest(afterFailure);
       return;
     }
@@ -350,7 +357,7 @@ async function* checkThroughTransport(
         message: `The ${what} ${first.host} resolves to ${address}`,
       });
     } catch (error) {
-      yield log.failure('dns', started, asJoineryError(error, firstWhere));
+      yield log.failure('dns', started, asQuerybaraError(error, firstWhere));
       yield* log.skipRest(afterFailure);
       return;
     }
@@ -365,7 +372,7 @@ async function* checkThroughTransport(
       message: `Connected to the ${what} ${firstWhere}`,
     });
   } catch (error) {
-    yield log.failure('tcp', started, asJoineryError(error, firstWhere));
+    yield log.failure('tcp', started, asQuerybaraError(error, firstWhere));
     yield* log.skipRest(afterFailure);
     return;
   }
@@ -376,7 +383,7 @@ async function* checkThroughTransport(
   try {
     outcome = await runSshStep(resolved);
   } catch (error) {
-    yield log.failure('ssh', started, asJoineryError(error, firstWhere));
+    yield log.failure('ssh', started, asQuerybaraError(error, firstWhere));
     yield* log.skipRest(afterFailure);
     return;
   }
@@ -398,7 +405,7 @@ async function* checkThroughTransport(
     try {
       target = resolveEndpoint(through).target;
     } catch (error) {
-      yield log.failure('tls', started, asJoineryError(error, profile.name));
+      yield log.failure('tls', started, asQuerybaraError(error, profile.name));
       yield* log.skipRest(afterFailure);
       return;
     }

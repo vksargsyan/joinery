@@ -1,4 +1,4 @@
-import type { TableDesign, ValidationIssue } from '@joinery/sync';
+import type { TableDesign, ValidationIssue } from '@querybara/sync';
 import { Tabs } from 'radix-ui';
 import { useMemo, useState } from 'react';
 

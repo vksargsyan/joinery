@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { displayBytes } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { displayBytes } from '@querybara/redis-tools';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { BulkDeleteProgress, RedisSession } from '../../src';
@@ -242,6 +242,6 @@ describe.skipIf(!REDIS_URL)('keys (standalone)', () => {
 
   it('refuses an unknown database path', async () => {
     const error = await session.browse(['nope']).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
   });
 });

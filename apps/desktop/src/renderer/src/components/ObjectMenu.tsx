@@ -1,5 +1,5 @@
-import type { BrowseNode, SqlDialect } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import type { BrowseNode, SqlDialect } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { DropdownMenu } from 'radix-ui';
 import { create } from 'zustand';
 

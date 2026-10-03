@@ -1,5 +1,5 @@
-import { connectionProfileSchema, type BrowseNode } from '@joinery/core';
-import { safeProfileSchema } from '@joinery/ipc';
+import { connectionProfileSchema, type BrowseNode } from '@querybara/core';
+import { safeProfileSchema } from '@querybara/ipc';
 import { describe, expect, it } from 'vitest';
 
 import {

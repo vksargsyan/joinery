@@ -10,9 +10,9 @@ import {
   type ResolvedProfile,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import type { BackupInspection, JobSpec, RestorePlan } from '@joinery/ipc';
+} from '@querybara/core';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import type { BackupInspection, JobSpec, RestorePlan } from '@querybara/ipc';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -27,9 +27,9 @@ import type { RunnerToMain } from '../../src/shared/job-protocol';
  */
 
 const ENGINES = [
-  ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-  ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
-  ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
+  ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+  ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
+  ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
 ] as const;
 
 const PASSPHRASE = 'runner integration passphrase';
@@ -37,7 +37,7 @@ const PASSPHRASE = 'runner integration passphrase';
 let work = '';
 
 beforeAll(() => {
-  work = mkdtempSync(join(tmpdir(), 'joinery-backup-it-'));
+  work = mkdtempSync(join(tmpdir(), 'querybara-backup-it-'));
 });
 
 afterAll(() => {
@@ -55,8 +55,8 @@ async function rows(session: Session, sql: string): Promise<CellValue[][]> {
 }
 
 describe.each(ENGINES)('%s', (dialect: SqlDialect, url: string | undefined) => {
-  const source = `joinery_bk_${randomBytes(4).toString('hex')}`;
-  const copy = `joinery_bk_${randomBytes(4).toString('hex')}`;
+  const source = `querybara_bk_${randomBytes(4).toString('hex')}`;
+  const copy = `querybara_bk_${randomBytes(4).toString('hex')}`;
   const posted: RunnerToMain[] = [];
   let admin: Session | undefined;
   const profile = (database?: string): ResolvedProfile =>
@@ -130,12 +130,12 @@ describe.each(ENGINES)('%s', (dialect: SqlDialect, url: string | undefined) => {
   it.skipIf(!url)(
     'backs up to an encrypted archive and restores one table into a new database',
     async () => {
-      const path = join(work, `${source}.jbak`);
+      const path = join(work, `${source}.qbak`);
       const backup = await job({
         kind: 'backup',
         profileId: newId(),
         database: source,
-        format: 'jbak',
+        format: 'qbak',
         output: { path },
         encryption: { passphrase: PASSPHRASE },
       });

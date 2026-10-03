@@ -1,4 +1,4 @@
-import { toEjson } from '@joinery/mongo-tools';
+import { toEjson } from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import { commandSafety } from '../src/renderer/src/state/mongo/commands';

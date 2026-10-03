@@ -7,7 +7,7 @@ import {
   type RestoreOptions,
   type SearchResourceInfo,
   type SearchSnapshotInfo,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorMessage } from '../../lib/errors';
 import { formatCount } from '../../lib/format';

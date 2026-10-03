@@ -1,4 +1,4 @@
-import { array, bulk, errorReply, integer, NIL, status, utf8Bytes } from '@joinery/redis-tools';
+import { array, bulk, errorReply, integer, NIL, status, utf8Bytes } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

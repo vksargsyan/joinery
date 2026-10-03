@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { MessageChannel, type MessagePort } from 'node:worker_threads';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { afterEach } from 'vitest';
 
 import {
@@ -79,7 +79,7 @@ export function deferred<T = void>(): { promise: Promise<T>; resolve: (value: T)
  */
 export function unusedHandlers<S extends ContractShape>(shape: S): HandlersOf<S> {
   const refuse = (path: string): never => {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: `${path} is not used here` });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: `${path} is not used here` });
   };
   const build = (node: ContractShape, prefix: string): Record<string, unknown> =>
     Object.fromEntries(

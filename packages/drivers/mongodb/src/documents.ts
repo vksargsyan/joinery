@@ -1,4 +1,4 @@
-import { DEFAULT_PAGE_SIZE, JoineryError } from '@joinery/core';
+import { DEFAULT_PAGE_SIZE, QuerybaraError } from '@querybara/core';
 import {
   Int32,
   SchemaAnalyzer,
@@ -16,7 +16,7 @@ import {
   type SchemaAnalysis,
   type StagePreview,
   type WriteSummary,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import type {
   AbstractCursor,
   ClientSession,
@@ -244,13 +244,13 @@ export function replaceOne(
     const before = documentArg(original, 'original document');
     const after = documentArg(replacement, 'replacement document');
     if (!('_id' in before)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The edited document has no _id, so it cannot be replaced',
       });
     }
     if ('_id' in after && toEjson(after['_id']) !== toEjson(before['_id'])) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message:
           'The _id of a document cannot change; insert a copy and delete the original instead',
@@ -273,13 +273,13 @@ export function replaceOne(
         session: exec.session,
       });
     if (current === null) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: 'The document was deleted since it was read',
         hint: 'Refresh the results; insert it again if it is still needed',
       });
     }
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFLICT',
       message: 'The document changed since it was read; it was not replaced',
       detail: ejson(current),
@@ -292,7 +292,7 @@ function updateArg(text: string): BsonDocument | BsonDocument[] {
   const value = valueArg(text, 'update');
   if (Array.isArray(value)) {
     if (!value.every(isBsonDocument)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'An update pipeline must be an array of stage documents',
       });
@@ -300,7 +300,7 @@ function updateArg(text: string): BsonDocument | BsonDocument[] {
     return value as BsonDocument[];
   }
   if (!isBsonDocument(value) || !Object.keys(value).every((key) => key.startsWith('$'))) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The update must use update operators such as { $set: { ... } }, or be a pipeline',
       hint: 'To replace whole documents, edit them one at a time',

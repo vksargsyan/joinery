@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue } from '@joinery/core';
+import { QuerybaraError, type CellValue } from '@querybara/core';
 
 import { isInsertKey, type RowKey } from './identity';
 import { DEFAULT, isDefault, isLargeValue, sameValue, type EditValue } from './values';
@@ -52,7 +52,7 @@ export interface ChangeCounts {
 }
 
 function refuse(message: string): never {
-  throw new JoineryError({ code: 'VALIDATION_FAILED', message });
+  throw new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 function checkWritable(value: EditValue): void {

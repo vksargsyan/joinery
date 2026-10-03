@@ -1,8 +1,8 @@
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
-import { fileSink } from '@joinery/transfer';
+import type { Session } from '@querybara/core';
+import { fileSink } from '@querybara/transfer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -21,7 +21,7 @@ import { ScratchDatabases, run, sqlServer, tempDir, type SqlServerEngine } from 
  * The native tools (spec §14): pg_dump / pg_restore / psql and mysqldump / mysql, when this
  * machine has a version that can read the server. Each case backs up the tricky fixture with the
  * tool, restores it with the matching client into a fresh database, and compares with
- * @joinery/sync. Cases whose tool is missing are skipped.
+ * @querybara/sync. Cases whose tool is missing are skipped.
  */
 
 const tools: NativeTool[] = await detectNativeTools();
@@ -41,7 +41,7 @@ const CASES: readonly Case[] = [
 
 /**
  * mysqldump prints FLOAT columns with six significant digits, so a native MySQL backup loses
- * the rest (1.2345678 comes back as 1.23457); the Joinery format keeps them. The native cases
+ * the rest (1.2345678 comes back as 1.23457); the Querybara format keeps them. The native cases
  * compare every other value.
  */
 function nativeFixture(engine: SqlServerEngine): SqlFixture {

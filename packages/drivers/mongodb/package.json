@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/driver-mongodb",
+  "name": "@querybara/driver-mongodb",
   "version": "0.0.0",
   "private": true,
   "description": "MongoDB driver adapter (the official mongodb package) with document, index, collection, GridFS, change stream and user services.",
@@ -13,10 +13,10 @@
     "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
-    "@joinery/mongo-tools": "workspace:*",
-    "@joinery/tunnel": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
+    "@querybara/mongo-tools": "workspace:*",
+    "@querybara/tunnel": "workspace:*",
     "mongodb": "^7.7.0"
   },
   "devDependencies": {

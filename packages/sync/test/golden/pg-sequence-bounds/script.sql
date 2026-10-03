@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: postgres app_dev
 -- Target: postgres app_prod
 -- Operations: 10 (1 destructive)

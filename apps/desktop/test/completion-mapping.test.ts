@@ -1,11 +1,11 @@
-import { schemaSnapshotSchema } from '@joinery/core';
+import { schemaSnapshotSchema } from '@querybara/core';
 import {
   buildCatalog,
   complete,
   signatureHelp,
   type CompletionItem,
   type CompletionResult,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 import type { languages } from 'monaco-editor/editor';
 import { describe, expect, it } from 'vitest';
 

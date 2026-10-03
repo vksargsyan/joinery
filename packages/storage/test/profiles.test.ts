@@ -1,4 +1,4 @@
-import { newId, type SecretRef } from '@joinery/core';
+import { newId, type SecretRef } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { fakeClock, memoryStore, postgresProfile, thrown } from './helpers';

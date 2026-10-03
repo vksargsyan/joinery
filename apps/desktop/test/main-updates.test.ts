@@ -7,8 +7,8 @@ import {
   mainContract,
   serve,
   type AppSettings,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createMainHandlers, readAppSettings } from '../src/main/api';
@@ -63,7 +63,7 @@ function setup() {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'l', remote: 'r' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',

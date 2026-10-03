@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 import { useState } from 'react';
 
 import { useDialogs, type Prompt } from '../state/dialogs';
@@ -164,7 +164,7 @@ function Secrets({ prompt }: { readonly prompt: Extract<Prompt, { kind: 'secrets
               ref.unreadable
                 ? 'The saved password cannot be read on this system any more; enter it again.'
                 : ref.policy === 'session'
-                  ? 'Remembered until Joinery quits.'
+                  ? 'Remembered until Querybara quits.'
                   : undefined
             }
           >

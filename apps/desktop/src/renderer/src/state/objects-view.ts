@@ -1,4 +1,4 @@
-import { newId, type BrowseNode, type EngineId } from '@joinery/core';
+import { newId, type BrowseNode, type EngineId } from '@querybara/core';
 import { create } from 'zustand';
 
 import { currentDock } from '../components/dock';

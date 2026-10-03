@@ -23,7 +23,7 @@ const keyB: HostKeyInfo = {
 
 const dirs: string[] = [];
 function tempFile(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-known-hosts-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-known-hosts-'));
   dirs.push(dir);
   return join(dir, 'nested', 'known_hosts');
 }

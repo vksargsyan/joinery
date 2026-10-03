@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import type { CellValue, ColumnMeta } from '@joinery/core';
+import type { CellValue, ColumnMeta } from '@querybara/core';
 import { parquetMetadata, parquetSchema } from 'hyparquet';
 import { describe, expect, it } from 'vitest';
 

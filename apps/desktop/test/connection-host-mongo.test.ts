@@ -10,10 +10,10 @@ import {
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
-import { toEjson } from '@joinery/mongo-tools';
-import type { SshStepCheckAdapter } from '@joinery/tunnel';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
+import { toEjson } from '@querybara/mongo-tools';
+import type { SshStepCheckAdapter } from '@querybara/tunnel';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../src/connection-host/adapters';
@@ -221,7 +221,7 @@ describe('mongo handlers', () => {
 
 describe('GridFS files by path', () => {
   function tempDir(): string {
-    const dir = mkdtempSync(join(tmpdir(), 'joinery-gridfs-'));
+    const dir = mkdtempSync(join(tmpdir(), 'querybara-gridfs-'));
     dirs.push(dir);
     return dir;
   }

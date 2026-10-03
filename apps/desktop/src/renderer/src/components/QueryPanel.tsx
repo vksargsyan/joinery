@@ -1,5 +1,5 @@
-import { hasWeakTls, isSqlEngine, type SqlDialect } from '@joinery/core';
-import { analyzeStatement } from '@joinery/sql-tools';
+import { hasWeakTls, isSqlEngine, type SqlDialect } from '@querybara/core';
+import { analyzeStatement } from '@querybara/sql-tools';
 import { Tabs } from 'radix-ui';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
@@ -104,7 +104,7 @@ export function QueryPanel(props: { readonly tabId: string }) {
         >
           <span className="flex-1">
             {restored.afterCrash
-              ? 'Joinery closed unexpectedly. This tab was restored from its autosave'
+              ? 'Querybara closed unexpectedly. This tab was restored from its autosave'
               : 'This tab was restored from the last session'}{' '}
             (saved at {new Date(restored.savedAt).toLocaleTimeString()}). Results are not kept.
           </span>

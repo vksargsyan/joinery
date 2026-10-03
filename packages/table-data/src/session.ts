@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   cancelledError,
   newId,
   rowAt,
   type CellValue,
   type ColumnMeta,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import {
   buildCountQuery,
@@ -83,7 +83,7 @@ export async function countRows(
   const value = result.rows[0]?.[0];
   if (typeof value === 'number') return value;
   if (typeof value === 'bigint' || typeof value === 'string') return Number(value);
-  throw new JoineryError({ code: 'INTERNAL', message: 'The server returned no row count' });
+  throw new QuerybaraError({ code: 'INTERNAL', message: 'The server returned no row count' });
 }
 
 /**

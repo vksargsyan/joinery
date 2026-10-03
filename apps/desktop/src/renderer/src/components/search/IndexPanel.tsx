@@ -1,4 +1,4 @@
-import { indexNameProblem } from '@joinery/search-tools';
+import { indexNameProblem } from '@querybara/search-tools';
 import { useState } from 'react';
 
 import { formatCount, formatDuration } from '../../lib/format';

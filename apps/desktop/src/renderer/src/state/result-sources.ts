@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 
 /**
  * The statement behind each query result (its text and bound values), so "Export results…"

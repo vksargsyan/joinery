@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
 
-import type { ConnectionProfileInput } from '@joinery/core';
+import type { ConnectionProfileInput } from '@querybara/core';
 import {
   createClient,
   fromNodePort,
@@ -15,8 +15,8 @@ import {
   type MainContract,
   type PortLike,
   type TransferPreview,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createMainHandlers } from '../src/main/api';
@@ -127,7 +127,7 @@ function setup(dialogs: { open?: string; save?: string; folder?: string } = {}) 
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'l', remote: 'r' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',
@@ -299,7 +299,7 @@ describe('jobs', () => {
   });
 
   it('writes text or bytes only to a path picked in the save dialog', async () => {
-    const folder = mkdtempSync(join(tmpdir(), 'joinery-write-'));
+    const folder = mkdtempSync(join(tmpdir(), 'querybara-write-'));
     try {
       const svg = join(folder, 'shop-erd.svg');
       const { main } = setup({ save: svg });
@@ -326,17 +326,17 @@ describe('jobs', () => {
   });
 
   it('reads a text file only once it was picked in the open dialog', async () => {
-    const folder = mkdtempSync(join(tmpdir(), 'joinery-read-'));
+    const folder = mkdtempSync(join(tmpdir(), 'querybara-read-'));
     try {
       const model = join(folder, 'shop.model.json');
-      writeFileSync(model, '{"format":"joinery.er-model"}');
+      writeFileSync(model, '{"format":"querybara.er-model"}');
       const { main } = setup({ open: model });
       await expect(main.dialogs.readFile({ path: model })).rejects.toMatchObject({
         code: 'VALIDATION_FAILED',
       });
       await main.dialogs.openFile({ title: 'Open an ER model' });
       expect(await main.dialogs.readFile({ path: model })).toEqual({
-        text: '{"format":"joinery.er-model"}',
+        text: '{"format":"querybara.er-model"}',
       });
       // A path picked to write is not one to read.
       await expect(
@@ -353,7 +353,7 @@ describe('jobs', () => {
     const key = { profileId: saved.id, database: 'shop', schema: 'public' };
     expect(await main.erModels.getDraft(key)).toBeNull();
     const document = {
-      format: 'joinery.er-model' as const,
+      format: 'querybara.er-model' as const,
       version: 1 as const,
       engine: 'postgres' as const,
       database: 'shop',
@@ -377,7 +377,7 @@ describe('jobs', () => {
     expect(await main.erModels.getDraft(key)).toMatchObject({
       ...key,
       changes: 3,
-      document: { format: 'joinery.er-model', layout: { positions: [{ table: 'orders' }] } },
+      document: { format: 'querybara.er-model', layout: { positions: [{ table: 'orders' }] } },
     });
 
     // A stored model this build cannot read is no draft, and stays where it is.

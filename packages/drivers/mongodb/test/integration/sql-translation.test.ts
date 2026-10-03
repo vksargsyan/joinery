@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { EJSON, exportQueryCode, sqlToMql, toEjson, toFindQuery } from '@joinery/mongo-tools';
+import { EJSON, exportQueryCode, sqlToMql, toEjson, toFindQuery } from '@querybara/mongo-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { MongoSession } from '../../src';
@@ -233,7 +233,7 @@ describe.skipIf(!MONGO_URL)('SQL to MQL on MongoDB (replica set)', () => {
 
   it('exports a translated query as a Node.js program that runs', () => {
     const translation = sqlToMql('SELECT name FROM customers WHERE vip ORDER BY name');
-    const dir = mkdtempSync(join(tmpdir(), 'joinery-sql-export-'));
+    const dir = mkdtempSync(join(tmpdir(), 'querybara-sql-export-'));
     try {
       const file = join(dir, 'query.js');
       writeFileSync(file, exportQueryCode(translation, 'node', { database: db }));

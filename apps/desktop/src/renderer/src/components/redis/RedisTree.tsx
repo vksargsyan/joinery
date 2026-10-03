@@ -1,6 +1,6 @@
-import type { BrowseNode } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
-import { parseDisplayBytes, utf8Bytes } from '@joinery/redis-tools';
+import type { BrowseNode } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
+import { parseDisplayBytes, utf8Bytes } from '@querybara/redis-tools';
 import { useState } from 'react';
 
 import { formatCount } from '../../lib/format';

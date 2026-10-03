@@ -1,4 +1,4 @@
-import { ENGINES, isSqlEngine } from '@joinery/core';
+import { ENGINES, isSqlEngine } from '@querybara/core';
 import { useId } from 'react';
 
 import { useProfiles } from '../../state/data';

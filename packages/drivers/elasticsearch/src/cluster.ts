@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   booleanAt,
   numberAt,
@@ -10,7 +10,7 @@ import {
   type SearchClusterInfo,
   type SearchHealthStatus,
   type SearchNodeSummary,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { mapResponseError } from './errors';
 import type { SearchContext, ServerFacts } from './context';
@@ -46,7 +46,7 @@ export function parseRoot(body: string, headers: Readonly<Record<string, unknown
   try {
     root = parseJsonTree(body);
   } catch {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONNECTION_FAILED',
       message: 'The server did not answer GET / with JSON: it is not Elasticsearch',
       hint: 'Check the URL: it should point at the HTTP port of a node (usually 9200)',
@@ -54,7 +54,7 @@ export function parseRoot(body: string, headers: Readonly<Record<string, unknown
   }
   const number = stringAt(root, 'version', 'number');
   if (number === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONNECTION_FAILED',
       message: 'The server answered GET / without a version: it is not Elasticsearch',
       hint: 'Check the URL: it should point at the HTTP port of a node (usually 9200)',
@@ -183,7 +183,7 @@ async function readLicense(
         : {}),
     };
   } catch (error) {
-    if (error instanceof JoineryError && error.code === 'CANCELLED') throw error;
+    if (error instanceof QuerybaraError && error.code === 'CANCELLED') throw error;
     return undefined;
   }
 }

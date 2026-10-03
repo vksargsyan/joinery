@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { ConnectionEvent, ServerInfo } from '@joinery/ipc';
+import { QuerybaraError } from '@querybara/core';
+import type { ConnectionEvent, ServerInfo } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { errorMessage } from '../lib/errors';
@@ -82,12 +82,12 @@ async function open(profileId: string): Promise<LiveConnection> {
   try {
     const profile = await profileById(profileId);
     if (!profile)
-      throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
     const status = await mainApi().profiles.secretStatus({ profileId });
     let secrets: Record<string, string> | undefined;
     if (status.missing.length > 0) {
       const typed = await askSecrets(profile.name, status.missing);
-      if (typed === null) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+      if (typed === null) throw new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
       secrets = typed;
     }
     const { connectionId } = await mainApi().openConnection({
@@ -119,7 +119,7 @@ async function open(profileId: string): Promise<LiveConnection> {
     update(profileId, { ...ready, error: undefined });
     return useConnections.getState().byProfile[profileId] ?? ready;
   } catch (error) {
-    if (error instanceof JoineryError && error.code === 'CANCELLED') {
+    if (error instanceof QuerybaraError && error.code === 'CANCELLED') {
       if (previous) update(profileId, previous);
       else remove(profileId);
     } else {

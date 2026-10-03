@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb auto_increment_keys_dev
 -- Target: mariadb auto_increment_keys_prod
 -- Operations: 6

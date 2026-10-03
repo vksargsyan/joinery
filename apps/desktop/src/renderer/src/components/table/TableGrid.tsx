@@ -24,7 +24,7 @@ import {
   type ChangeSet,
   type ColumnInfo,
   type EditValue,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type Ref } from 'react';
 
 import { moveColumn, setWidth } from '../../state/grid-layout';
@@ -63,7 +63,7 @@ function stagedPalette(p: KilnPalette) {
 const PALETTE = { dark: stagedPalette(TENMOKU), light: stagedPalette(BISQUE) } as const;
 
 /** Typed edit values the overlay hands to `onCellEdited`, keyed by a token in the cell text. */
-const TOKEN = '\u0000joinery-edit:';
+const TOKEN = '\u0000querybara-edit:';
 const INVALID = `${TOKEN}invalid`;
 const pendingEdits = new Map<string, EditValue>();
 let nextToken = 1;

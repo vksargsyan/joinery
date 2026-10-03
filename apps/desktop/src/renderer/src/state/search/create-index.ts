@@ -5,7 +5,7 @@ import {
   mappingRoot,
   nodeText,
   parseJsonTree,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { decideSearchWrite, searchWritePolicy } from '../../../../shared/search-writes';
 import { errorMessage } from '../../lib/errors';

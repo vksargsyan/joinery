@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import { locate, StatementModel } from './analysis';
 import type { Catalog } from './catalog';

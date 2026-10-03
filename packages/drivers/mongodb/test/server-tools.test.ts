@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { Double, Int32, Long, fromEjson, toEjson, type BsonDocument } from '@joinery/mongo-tools';
+import { QuerybaraError } from '@querybara/core';
+import { Double, Int32, Long, fromEjson, toEjson, type BsonDocument } from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -50,7 +50,7 @@ describe('MongoDB server tool readers', () => {
       opid: 'shard01:77',
       active: true,
       client_s: '10.0.0.1:1',
-      command: { comment: 'joinery server tools' },
+      command: { comment: 'querybara server tools' },
     });
     expect(mongos).toMatchObject({ id: 'shard01:77', client: '10.0.0.1:1', own: true });
     const idle = mongoSession({ type: 'idleSession', active: false, desc: 'conn1' });
@@ -244,12 +244,12 @@ describe('MongoDB server tool commands', () => {
     expect(opidOf('42')).toEqual(new Int32(42));
     expect(opidOf('9007199254740993')).toBeInstanceOf(Long);
     expect(opidOf('shard-01:42')).toBe('shard-01:42');
-    expect(() => opidOf('1; db.dropDatabase()')).toThrow(JoineryError);
-    expect(() => opidOf('')).toThrow(JoineryError);
+    expect(() => opidOf('1; db.dropDatabase()')).toThrow(QuerybaraError);
+    expect(() => opidOf('')).toThrow(QuerybaraError);
   });
 
   it('names the role an unauthorised action needs', () => {
-    const denied = new JoineryError({
+    const denied = new QuerybaraError({
       code: 'SQL_ERROR',
       message: 'not authorized',
       engineCode: 'Unauthorized',
@@ -261,14 +261,14 @@ describe('MongoDB server tool commands', () => {
           operation: 'compact',
           targets: [],
           options: [],
-        }) as JoineryError
+        }) as QuerybaraError
       ).hint,
     ).toMatch(/compact action/);
     expect(
-      (enrichMongoError(denied, { kind: 'profiler', database: 'x', level: 1 }) as JoineryError)
+      (enrichMongoError(denied, { kind: 'profiler', database: 'x', level: 1 }) as QuerybaraError)
         .hint,
     ).toMatch(/enableProfiler/);
-    const other = new JoineryError({ code: 'SQL_ERROR', message: 'x', engineCode: 'BadValue' });
+    const other = new QuerybaraError({ code: 'SQL_ERROR', message: 'x', engineCode: 'BadValue' });
     expect(enrichMongoError(other, { kind: 'session', operation: 'cancel', id: '1' })).toBe(other);
   });
 });

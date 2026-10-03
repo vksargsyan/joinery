@@ -1,12 +1,12 @@
-import { newId } from '@joinery/core';
-import type { RpcStream } from '@joinery/ipc';
+import { newId } from '@querybara/core';
+import type { RpcStream } from '@querybara/ipc';
 import {
   aggregationsOf,
   formatJson,
   parseSearchError,
   type SearchTable,
   type SearchTableColumn,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorInfo, errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';

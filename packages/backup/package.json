@@ -1,8 +1,8 @@
 {
-  "name": "@joinery/backup",
+  "name": "@querybara/backup",
   "version": "0.0.0",
   "private": true,
-  "description": "Logical backup and restore: streaming SQL dumps, the Joinery archive (.jbak) with encryption and selective restore, MongoDB and Redis archives, and the native dump tools.",
+  "description": "Logical backup and restore: streaming SQL dumps, the Querybara archive (.qbak) with encryption and selective restore, MongoDB and Redis archives, and the native dump tools.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -13,20 +13,20 @@
     "test:integration": "vitest run test/integration --passWithNoTests --testTimeout=180000 --hookTimeout=180000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/mongo-tools": "workspace:*",
-    "@joinery/sql-tools": "workspace:*",
-    "@joinery/sync": "workspace:*",
-    "@joinery/transfer": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/mongo-tools": "workspace:*",
+    "@querybara/sql-tools": "workspace:*",
+    "@querybara/sync": "workspace:*",
+    "@querybara/transfer": "workspace:*",
     "bson": "^7.3.3",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@joinery/driver-mongodb": "workspace:*",
-    "@joinery/driver-mysql": "workspace:*",
-    "@joinery/driver-postgres": "workspace:*",
-    "@joinery/driver-redis": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
+    "@querybara/driver-mongodb": "workspace:*",
+    "@querybara/driver-mysql": "workspace:*",
+    "@querybara/driver-postgres": "workspace:*",
+    "@querybara/driver-redis": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

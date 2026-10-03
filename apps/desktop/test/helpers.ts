@@ -1,5 +1,5 @@
-import { capabilitiesFor, type ConnectionProfileInput } from '@joinery/core';
-import type { ServerInfo } from '@joinery/ipc';
+import { capabilitiesFor, type ConnectionProfileInput } from '@querybara/core';
+import type { ServerInfo } from '@querybara/ipc';
 
 import type { HostProcess, HostProcessFactory } from '../src/main/host-process';
 import type { MainToHost } from '../src/shared/host-protocol';

@@ -1,7 +1,7 @@
 import { open } from 'node:fs/promises';
 
-import { JoineryError, toErrorData, type ResolvedProfile, type Session } from '@joinery/core';
-import { fileSource, gunzip, gzipSink, isGzip, type Sink } from '@joinery/transfer';
+import { QuerybaraError, toErrorData, type ResolvedProfile, type Session } from '@querybara/core';
+import { fileSource, gunzip, gzipSink, isGzip, type Sink } from '@querybara/transfer';
 
 import { checkConfirmed } from '../common';
 import { scriptConflicts } from '../sql/restore';
@@ -35,7 +35,7 @@ import { chooseTool, detectNativeTools, serverFamily, type NativeTool } from './
  */
 
 /** Native formats: SQL scripts, or PostgreSQL's custom archive (pg_restore). */
-export type NativeFormat = Exclude<BackupFormat, 'jbak'> | 'custom';
+export type NativeFormat = Exclude<BackupFormat, 'qbak'> | 'custom';
 
 export interface NativeCommon {
   /** The profile with secrets, pointing at a tunnel's local end when there is one. */
@@ -77,19 +77,19 @@ function toolFor(
 ): { tool: NativeTool; warnings: string[] } {
   const choice = chooseTool(tools, task, options.engine, options.serverVersion);
   if (!choice.tool) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: choice.reason ?? 'No native tool fits this server',
-      hint: 'Use the Joinery backup format, which needs no external tools',
+      hint: 'Use the Querybara backup format, which needs no external tools',
     });
   }
   return { tool: choice.tool, warnings: choice.warnings };
 }
 
-function failure(tool: NativeTool, code: number | null, tail: readonly string[]): JoineryError {
+function failure(tool: NativeTool, code: number | null, tail: readonly string[]): QuerybaraError {
   const lines = tail.filter((line) => /error|fatal|denied|unknown|failed/i.test(line));
   const shown = (lines.length > 0 ? lines : tail).slice(-5).join('\n');
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'INTERNAL',
     message: `${tool.name} ended with exit code ${code ?? 'unknown'}${shown ? `: ${shown.split('\n')[0]}` : ''}`,
     ...(shown ? { detail: shown } : {}),
@@ -102,7 +102,7 @@ export async function nativeBackup(options: NativeBackupOptions): Promise<Backup
   const warnings: string[] = [];
   let bytes = 0;
   let status: TransferStatus = 'completed';
-  let error: JoineryError | undefined;
+  let error: QuerybaraError | undefined;
   const pg = serverFamily(options.engine, options.serverVersion).family === 'postgres';
   const structure = options.structure !== false;
   const data = options.data !== false;
@@ -130,13 +130,13 @@ export async function nativeBackup(options: NativeBackupOptions): Promise<Backup
   const folder = await privateFolder();
   try {
     if (options.format === 'custom' && !pg) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The custom format is PostgreSQL only',
       });
     }
     if (!structure && !data) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'Choose the structure, the data, or both',
       });
@@ -164,7 +164,7 @@ export async function nativeBackup(options: NativeBackupOptions): Promise<Backup
       if (options.deferrable === true) args.push('--serializable-deferrable');
       for (const schema of options.schemas ?? []) args.push(`--schema=${pgPattern(schema)}`);
       // With --schema, pg_dump leaves extensions out even when the schema's tables use their
-      // types; since 14 it can be told to keep them, as the Joinery format does.
+      // types; since 14 it can be told to keep them, as the Querybara format does.
       if ((options.schemas ?? []).length > 0 && tool.major >= 14) args.push('--extension=*');
       for (const table of options.tables ?? []) {
         args.push(
@@ -204,7 +204,7 @@ export async function nativeBackup(options: NativeBackupOptions): Promise<Backup
     await out.close();
   } catch (caught) {
     status = isCancel(caught, options.signal) ? 'cancelled' : 'failed';
-    error = caught instanceof JoineryError ? caught : new JoineryError(toErrorData(caught));
+    error = caught instanceof QuerybaraError ? caught : new QuerybaraError(toErrorData(caught));
     await out.abort(caught).catch(() => undefined);
   } finally {
     await folder.dispose();
@@ -256,7 +256,7 @@ export async function nativeRestore(options: NativeRestoreOptions): Promise<Rest
   let bytes = 0;
   let totalBytes = 0;
   let status: TransferStatus = 'completed';
-  let fatal: JoineryError | undefined;
+  let fatal: QuerybaraError | undefined;
   const pg = serverFamily(options.engine, options.serverVersion).family === 'postgres';
   const progress = (force = false): void => {
     if (!options.onProgress || !pacer.due(force)) return;
@@ -384,7 +384,7 @@ export async function nativeRestore(options: NativeRestoreOptions): Promise<Rest
     }
   } catch (caught) {
     status = isCancel(caught, options.signal) ? 'cancelled' : 'failed';
-    fatal = caught instanceof JoineryError ? caught : new JoineryError(toErrorData(caught));
+    fatal = caught instanceof QuerybaraError ? caught : new QuerybaraError(toErrorData(caught));
   } finally {
     await folder.dispose();
   }

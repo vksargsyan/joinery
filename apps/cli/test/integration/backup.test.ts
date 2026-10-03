@@ -8,14 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * `joinery backup` and `joinery restore` of the BUILT binary against the real servers: an
+ * `querybara backup` and `querybara restore` of the BUILT binary against the real servers: an
  * encrypted archive of a SQL database, listed and restored table by table into a database the
  * restore creates, a restore over it refused without --yes, a gzipped SQL script restored into
  * another new database, a MongoDB database copied into another, and Redis keys restored with
  * their TTLs. Every database and key is unique to the run and removed afterwards.
  */
 
-const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
+const BIN = fileURLToPath(new URL('../../dist/querybara.mjs', import.meta.url));
 const RUN_ID = randomBytes(4).toString('hex');
 const PASSPHRASE = 'cli integration passphrase';
 
@@ -26,15 +26,15 @@ interface Engine {
 
 const ENGINES: Engine[] = (
   [
-    ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-    ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
-    ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
+    ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+    ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
+    ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
   ] as const
 )
   .filter((entry): entry is readonly [Engine['name'], string] => Boolean(entry[1]))
   .map(([name, url]) => ({ name, url }));
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
 
 let workDir = '';
 
@@ -44,13 +44,13 @@ interface Result {
   readonly stderr: string;
 }
 
-function joinery(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
+function querybara(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [BIN, ...args], {
       env: {
         PATH: process.env['PATH'] ?? '',
         HOME: workDir,
-        JOINERY_STORE: join(workDir, 'joinery.db'),
+        QUERYBARA_STORE: join(workDir, 'querybara.db'),
         NO_COLOR: '1',
         ...env,
       },
@@ -72,14 +72,14 @@ function joinery(args: readonly string[], env: Record<string, string> = {}): Pro
   });
 }
 
-const withPassphrase = { JOINERY_BACKUP_PASSPHRASE: PASSPHRASE };
+const withPassphrase = { QUERYBARA_BACKUP_PASSPHRASE: PASSPHRASE };
 
 beforeAll(() => {
   if (ENGINES.length === 0 && !MONGO_URL && !REDIS_URL) return;
   if (!existsSync(BIN)) {
-    throw new Error(`${BIN} is missing: run "pnpm --filter @joinery/cli build" first`);
+    throw new Error(`${BIN} is missing: run "pnpm --filter @querybara/cli build" first`);
   }
-  workDir = mkdtempSync(join(tmpdir(), 'joinery-cli-backup-'));
+  workDir = mkdtempSync(join(tmpdir(), 'querybara-cli-backup-'));
 });
 
 afterAll(() => {
@@ -102,12 +102,12 @@ describe.each(ENGINES)('$name', (engine) => {
   }
 
   async function sql(text: string, database?: string): Promise<void> {
-    const result = await joinery(['query', urlFor(database), '--yes', '-q', '-e', text]);
+    const result = await querybara(['query', urlFor(database), '--yes', '-q', '-e', text]);
     if (result.code !== 0) throw new Error(`SQL failed (${result.code}): ${result.stderr}`);
   }
 
   async function rows(database: string, text: string): Promise<unknown[]> {
-    const result = await joinery(['query', urlFor(database), '--format', 'json', '-e', text]);
+    const result = await querybara(['query', urlFor(database), '--format', 'json', '-e', text]);
     if (result.code !== 0) throw new Error(`query failed: ${result.stderr}`);
     return JSON.parse(result.stdout) as unknown[];
   }
@@ -136,25 +136,28 @@ describe.each(ENGINES)('$name', (engine) => {
   });
 
   it('backs up to an encrypted archive and restores a table into a new database', async () => {
-    const backup = await joinery(
-      ['backup', urlFor(source), '--out', `${source}.jbak`, '--encrypt'],
+    const backup = await querybara(
+      ['backup', urlFor(source), '--out', `${source}.qbak`, '--encrypt'],
       withPassphrase,
     );
     expect(backup.code, backup.stderr).toBe(0);
-    expect(backup.stderr).toMatch(/Backed up \d+ objects and 5 rows to .*\.jbak \(.*encrypted\)/);
+    expect(backup.stderr).toMatch(/Backed up \d+ objects and 5 rows to .*\.qbak \(.*encrypted\)/);
 
-    const listed = await joinery(['restore', urlFor(), `${source}.jbak`, '--list'], withPassphrase);
+    const listed = await querybara(
+      ['restore', urlFor(), `${source}.qbak`, '--list'],
+      withPassphrase,
+    );
     expect(listed.code, listed.stderr).toBe(0);
     const customers = listed.stdout
       .split('\n')
       .find((line) => /\ttable\t/.test(line) && line.includes('customers'));
     expect(customers).toMatch(/\t3$/);
 
-    const restored = await joinery(
+    const restored = await querybara(
       [
         'restore',
         urlFor(source),
-        `${source}.jbak`,
+        `${source}.qbak`,
         '--database',
         copy,
         '--create-database',
@@ -172,16 +175,16 @@ describe.each(ENGINES)('$name', (engine) => {
     ]);
 
     // Over itself: listed, refused without --yes, done with it.
-    const refused = await joinery(
-      ['restore', urlFor(copy), `${source}.jbak`, '--select', 'customers'],
+    const refused = await querybara(
+      ['restore', urlFor(copy), `${source}.qbak`, '--select', 'customers'],
       withPassphrase,
     );
     expect(refused.code).toBe(2);
     expect(refused.stderr).toMatch(/drop and recreate table .*customers/);
     expect(refused.stderr).toContain('needs confirmation');
     await sql("UPDATE customers SET name = 'changed' WHERE id = 1", copy);
-    const replaced = await joinery(
-      ['restore', urlFor(copy), `${source}.jbak`, '--select', 'customers', '--yes'],
+    const replaced = await querybara(
+      ['restore', urlFor(copy), `${source}.qbak`, '--select', 'customers', '--yes'],
       withPassphrase,
     );
     expect(replaced.code, replaced.stderr).toBe(0);
@@ -190,9 +193,9 @@ describe.each(ENGINES)('$name', (engine) => {
   });
 
   it('restores a gzipped SQL script into a new database', async () => {
-    const backup = await joinery(['backup', urlFor(source), '--out', `${source}.sql.gz`]);
+    const backup = await querybara(['backup', urlFor(source), '--out', `${source}.sql.gz`]);
     expect(backup.code, backup.stderr).toBe(0);
-    const restored = await joinery([
+    const restored = await querybara([
       'restore',
       urlFor(source),
       `${source}.sql.gz`,
@@ -217,7 +220,7 @@ describe.skipIf(!MONGO_URL)('MongoDB', () => {
     return parsed.toString();
   };
   const run = (database: string, command: string, ...extra: string[]) =>
-    joinery(['query', url(), '--database', database, ...extra, '-e', command]);
+    querybara(['query', url(), '--database', database, ...extra, '-e', command]);
 
   afterAll(async () => {
     for (const name of [db, target]) await run(name, '{ dropDatabase: 1 }', '--yes', '-q');
@@ -230,9 +233,9 @@ describe.skipIf(!MONGO_URL)('MongoDB', () => {
         { createIndexes: "people", indexes: [{ key: { name: 1 }, name: "by_name", unique: true }] }]`,
     );
     expect(setup.code, setup.stderr).toBe(0);
-    const backup = await joinery(['backup', url(), '--database', db, '--out', 'mongo.jbak']);
+    const backup = await querybara(['backup', url(), '--database', db, '--out', 'mongo.qbak']);
     expect(backup.code, backup.stderr).toBe(0);
-    const restored = await joinery(['restore', url(), 'mongo.jbak', '--database', target]);
+    const restored = await querybara(['restore', url(), 'mongo.qbak', '--database', target]);
     expect(restored.code, restored.stderr).toBe(0);
     const found = await run(target, '{ find: "people", sort: { _id: 1 } }', '--format', 'jsonl');
     expect(found.stdout.trim().split('\n')).toHaveLength(2);
@@ -242,9 +245,9 @@ describe.skipIf(!MONGO_URL)('MongoDB', () => {
 });
 
 describe.skipIf(!REDIS_URL)('Redis', () => {
-  const prefix = `joinery:cli-backup:${RUN_ID}:`;
+  const prefix = `querybara:cli-backup:${RUN_ID}:`;
   const run = (command: string, ...extra: string[]) =>
-    joinery(['query', REDIS_URL!, ...extra, '-e', command]);
+    querybara(['query', REDIS_URL!, ...extra, '-e', command]);
 
   afterAll(async () => {
     await run(`DEL ${prefix}a ${prefix}b`, '--yes', '-q');
@@ -253,11 +256,11 @@ describe.skipIf(!REDIS_URL)('Redis', () => {
   it('restores keys with their TTLs, and overwrites only with --replace and --yes', async () => {
     const setup = await run(`SET ${prefix}a one EX 3600\nHSET ${prefix}b f v`);
     expect(setup.code, setup.stderr).toBe(0);
-    const backup = await joinery([
+    const backup = await querybara([
       'backup',
       REDIS_URL!,
       '--out',
-      'keys.jbak',
+      'keys.qbak',
       '--pattern',
       `${prefix}*`,
     ]);
@@ -265,19 +268,19 @@ describe.skipIf(!REDIS_URL)('Redis', () => {
     expect(backup.stderr).toContain('2 keys');
     await run(`DEL ${prefix}a ${prefix}b`, '--yes', '-q');
 
-    const restored = await joinery(['restore', REDIS_URL!, 'keys.jbak']);
+    const restored = await querybara(['restore', REDIS_URL!, 'keys.qbak']);
     expect(restored.code, restored.stderr).toBe(0);
     const ttl = await run(`TTL ${prefix}a`);
     expect(Number(ttl.stdout.replace(/\(integer\)\s*/, ''))).toBeGreaterThan(3500);
 
     await run(`SET ${prefix}a changed`, '--yes', '-q');
-    const kept = await joinery(['restore', REDIS_URL!, 'keys.jbak']);
+    const kept = await querybara(['restore', REDIS_URL!, 'keys.qbak']);
     expect(kept.code, kept.stderr).toBe(0);
     expect((await run(`GET ${prefix}a`)).stdout).toContain('changed');
-    const refused = await joinery(['restore', REDIS_URL!, 'keys.jbak', '--replace']);
+    const refused = await querybara(['restore', REDIS_URL!, 'keys.qbak', '--replace']);
     expect(refused.code).toBe(2);
     expect(refused.stderr).toContain('needs confirmation');
-    const replaced = await joinery(['restore', REDIS_URL!, 'keys.jbak', '--replace', '--yes']);
+    const replaced = await querybara(['restore', REDIS_URL!, 'keys.qbak', '--replace', '--yes']);
     expect(replaced.code, replaced.stderr).toBe(0);
     expect((await run(`GET ${prefix}a`)).stdout).toContain('one');
   });

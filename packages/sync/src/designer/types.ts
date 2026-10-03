@@ -1,4 +1,4 @@
-import type { SchemaSnapshot, SqlEngineId, TableDef } from '@joinery/core';
+import type { SchemaSnapshot, SqlEngineId, TableDef } from '@querybara/core';
 
 import type { SyncObjectKind, SyncOperation, SyncWarning } from '../model';
 import type { CompareOptions } from '../options';

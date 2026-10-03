@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb charsets_dev
 -- Target: mariadb charsets_prod
 -- Operations: 7 (2 destructive)

@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb fks_composite_dev
 -- Target: mariadb fks_composite_prod
 -- Operations: 12 (1 destructive)

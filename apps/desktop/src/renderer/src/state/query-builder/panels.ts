@@ -1,5 +1,5 @@
-import { isSqlEngine, newId, type SqlDialect } from '@joinery/core';
-import { splitStatements, statementAt } from '@joinery/sql-tools';
+import { isSqlEngine, newId, type SqlDialect } from '@querybara/core';
+import { splitStatements, statementAt } from '@querybara/sql-tools';
 import { create } from 'zustand';
 
 import { currentDock } from '../../components/dock';

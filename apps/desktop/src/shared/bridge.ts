@@ -5,12 +5,12 @@
  */
 
 /** IPC channel on which the page asks main for a fresh main-contract port. */
-export const HELLO_CHANNEL = 'joinery:hello';
+export const HELLO_CHANNEL = 'querybara:hello';
 /** IPC channel on which main sends MessagePorts to the preload, which forwards them. */
-export const PORT_CHANNEL = 'joinery:port';
+export const PORT_CHANNEL = 'querybara:port';
 
-/** `window.joinery`, exposed with contextBridge. */
-export interface JoineryBridge {
+/** `window.querybara`, exposed with contextBridge. */
+export interface QuerybaraBridge {
   readonly platform: string;
   readonly versions: {
     readonly electron: string;
@@ -29,10 +29,10 @@ export interface JoineryBridge {
  * only from its own window and origin, and only in this exact shape.
  */
 export type PortMessage =
-  | { readonly joinery: 'port'; readonly kind: 'main' }
-  | { readonly joinery: 'port'; readonly kind: 'connection'; readonly connectionId: string };
+  | { readonly querybara: 'port'; readonly kind: 'main' }
+  | { readonly querybara: 'port'; readonly kind: 'connection'; readonly connectionId: string };
 
-/** Payload main sends on PORT_CHANNEL; the preload adds the `joinery: 'port'` tag. */
+/** Payload main sends on PORT_CHANNEL; the preload adds the `querybara: 'port'` tag. */
 export type PortPayload =
   { readonly kind: 'main' } | { readonly kind: 'connection'; readonly connectionId: string };
 
@@ -55,14 +55,14 @@ export function isPortPayload(value: unknown): value is PortPayload {
 
 /** Checks a window message (page side). */
 export function isPortMessage(value: unknown): value is PortMessage {
-  if (!isRecord(value) || value['joinery'] !== 'port') return false;
-  const { joinery: _tag, ...payload } = value;
+  if (!isRecord(value) || value['querybara'] !== 'port') return false;
+  const { querybara: _tag, ...payload } = value;
   return isPortPayload(payload);
 }
 
 /** Wraps a payload from main into the message the page accepts. */
 export function toPortMessage(payload: PortPayload): PortMessage {
   return payload.kind === 'main'
-    ? { joinery: 'port', kind: 'main' }
-    : { joinery: 'port', kind: 'connection', connectionId: payload.connectionId };
+    ? { querybara: 'port', kind: 'main' }
+    : { querybara: 'port', kind: 'connection', connectionId: payload.connectionId };
 }

@@ -1,5 +1,5 @@
 /**
- * What Joinery knows about the common Redis and Valkey configuration parameters (spec §10, §15):
+ * What Querybara knows about the common Redis and Valkey configuration parameters (spec §10, §15):
  * a description, the value's type and unit, the allowed values, whether CONFIG SET can change it
  * while the server runs, and the default where it is the same on Redis 6.2 to 8.0 and Valkey.
  * The configuration editor uses it for grouping, validation and typed editors; parameters it
@@ -1139,12 +1139,12 @@ const BY_NAME: ReadonlyMap<string, ConfigParameterMeta> = new Map(
   ]),
 );
 
-/** Every parameter Joinery knows, by canonical name. */
+/** Every parameter Querybara knows, by canonical name. */
 export function configParameters(): readonly ConfigParameterMeta[] {
   return PARAMETERS;
 }
 
-/** What Joinery knows about a parameter (by its name or an alias); undefined for others. */
+/** What Querybara knows about a parameter (by its name or an alias); undefined for others. */
 export function configParameter(name: string): ConfigParameterMeta | undefined {
   return BY_NAME.get(name.toLowerCase());
 }

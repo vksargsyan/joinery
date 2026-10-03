@@ -1,4 +1,4 @@
-import { isSqlEngine } from '@joinery/core';
+import { isSqlEngine } from '@querybara/core';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { fuzzyMatch } from '../lib/fuzzy';

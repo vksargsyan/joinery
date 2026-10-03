@@ -1,6 +1,6 @@
-import { JoineryError, newId, toErrorData, type ErrorData } from '@joinery/core';
-import type { HostKeyAnswer, HostKeyPrompt, HostKeyPromptEvent } from '@joinery/ipc';
-import type { KnownHostsStore } from '@joinery/tunnel';
+import { QuerybaraError, newId, toErrorData, type ErrorData } from '@querybara/core';
+import type { HostKeyAnswer, HostKeyPrompt, HostKeyPromptEvent } from '@querybara/ipc';
+import type { KnownHostsStore } from '@querybara/tunnel';
 
 import type { HostToMain } from '../shared/host-protocol';
 import type { HostProcess } from './host-process';
@@ -106,7 +106,7 @@ export class HostKeyBroker implements HostKeyVerification {
         ...context,
       });
       if (answer !== 'forget-known') {
-        const { hostKeyChangedError } = await import('@joinery/tunnel');
+        const { hostKeyChangedError } = await import('@querybara/tunnel');
         return { decision: 'reject', error: hostKeyChangedError(host, port, key, known).toJSON() };
       }
       // The user removed the remembered key on purpose: the new one is now simply unknown.
@@ -179,11 +179,11 @@ export class HostKeyBroker implements HostKeyVerification {
   }
 }
 
-/** The known-hosts file at `path`, shared with joinery-cli; opened on first use. */
+/** The known-hosts file at `path`, shared with querybara-cli; opened on first use. */
 export function knownHostsFile(path: string): KnownHostsStore {
   let file: Promise<KnownHostsStore> | undefined;
   const open = (): Promise<KnownHostsStore> =>
-    (file ??= import('@joinery/tunnel').then(({ FileKnownHosts }) => new FileKnownHosts(path)));
+    (file ??= import('@querybara/tunnel').then(({ FileKnownHosts }) => new FileKnownHosts(path)));
   return {
     lookup: async (host, port) => (await open()).lookup(host, port),
     remember: async (key) => (await open()).remember(key),
@@ -239,7 +239,7 @@ export async function answerHostKeyRequest<P>(
     ? await verification.verify(request, context)
     : {
         decision: 'reject',
-        error: new JoineryError({
+        error: new QuerybaraError({
           code: 'SSH_FAILED',
           message: 'SSH host keys cannot be checked here',
         }).toJSON(),
@@ -272,7 +272,7 @@ const PERMANENT_ENGINE_CODES: ReadonlySet<string | number> = new Set([
   'FORWARD_PROHIBITED',
 ]);
 
-export function isPermanentFailure(error: JoineryError): boolean {
+export function isPermanentFailure(error: QuerybaraError): boolean {
   if (error.code === 'AUTH_FAILED') return true;
   return error.engineCode !== undefined && PERMANENT_ENGINE_CODES.has(error.engineCode);
 }

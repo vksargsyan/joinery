@@ -1,4 +1,4 @@
-import { isSqlEngine, type EngineId, type SchemaSnapshot } from '@joinery/core';
+import { isSqlEngine, type EngineId, type SchemaSnapshot } from '@querybara/core';
 import type {
   BackupFileFormat,
   BackupInspection,
@@ -11,7 +11,7 @@ import type {
   NativeToolInfo,
   RestoreConflictInfo,
   RestoreJob,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 
 /**
  * The backup and restore wizards' rules as plain functions (spec §14): which formats and
@@ -41,14 +41,14 @@ export interface BackupTarget {
 }
 
 export const FORMAT_LABELS: Readonly<Record<BackupFileFormat, string>> = {
-  jbak: 'Joinery archive (.jbak)',
+  qbak: 'Querybara archive (.qbak)',
   sql: 'SQL script (.sql)',
   'sql-gz': 'Compressed SQL script (.sql.gz)',
   custom: 'pg_dump custom format (.dump)',
 };
 
 const EXTENSIONS: Readonly<Record<BackupFileFormat, string>> = {
-  jbak: '.jbak',
+  qbak: '.qbak',
   sql: '.sql',
   'sql-gz': '.sql.gz',
   custom: '.dump',
@@ -57,8 +57,8 @@ const EXTENSIONS: Readonly<Record<BackupFileFormat, string>> = {
 /** The save dialog's filter of a format. */
 export function formatFilter(format: BackupFileFormat): { name: string; extensions: string[] } {
   switch (format) {
-    case 'jbak':
-      return { name: 'Joinery backups', extensions: ['jbak'] };
+    case 'qbak':
+      return { name: 'Querybara backups', extensions: ['qbak'] };
     case 'sql':
       return { name: 'SQL scripts', extensions: ['sql'] };
     case 'sql-gz':
@@ -97,7 +97,7 @@ export function nativeRestoreTool(
   format: BackupFileFormat,
   tools: readonly NativeToolInfo[],
 ): NativeToolInfo | undefined {
-  if (format === 'jbak') return undefined;
+  if (format === 'qbak') return undefined;
   if (engine === 'postgres') {
     const psql = tools.find((t) => t.name === 'psql');
     if (format !== 'custom') return psql;
@@ -115,8 +115,8 @@ export function nativeRestoreTool(
 
 /** The file formats a backup of `engine` can be written in with `method`. */
 export function formatsFor(engine: EngineId, method: BackupMethod): readonly BackupFileFormat[] {
-  if (!isSqlEngine(engine)) return ['jbak'];
-  if (method === 'joinery') return ['jbak', 'sql', 'sql-gz'];
+  if (!isSqlEngine(engine)) return ['qbak'];
+  if (method === 'querybara') return ['qbak', 'sql', 'sql-gz'];
   return engine === 'postgres' ? ['custom', 'sql', 'sql-gz'] : ['sql', 'sql-gz'];
 }
 
@@ -143,8 +143,8 @@ export interface BackupOptions {
 
 export function defaultBackupOptions(target: BackupTarget): BackupOptions {
   return {
-    method: 'joinery',
-    format: 'jbak',
+    method: 'querybara',
+    format: 'qbak',
     compress: true,
     encrypt: false,
     passphrase: '',
@@ -170,7 +170,7 @@ export function changeOptions(
   const next = { ...options, ...patch };
   const formats = formatsFor(engine, next.method);
   const format = formats.includes(next.format) ? next.format : formats[0]!;
-  const archive = format === 'jbak' && next.method === 'joinery';
+  const archive = format === 'qbak' && next.method === 'querybara';
   const path =
     next.path !== undefined && !next.path.endsWith(EXTENSIONS[format]) ? undefined : next.path;
   return {
@@ -186,7 +186,7 @@ function stamp(now: Date): string {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 }
 
-/** "shop-20260929-1405.jbak": the save dialog's suggestion, safe as a file name. */
+/** "shop-20260929-1405.qbak": the save dialog's suggestion, safe as a file name. */
 export function defaultFileName(
   target: BackupTarget,
   format: BackupFileFormat,
@@ -415,7 +415,7 @@ export function backupJobSpec(
   if (options.path === undefined) throw new Error('No output file');
   const sql = isSqlEngine(target.engine);
   const native = sql && options.method === 'native';
-  const archive = options.format === 'jbak' && !native;
+  const archive = options.format === 'qbak' && !native;
   return {
     kind: 'backup',
     profileId: target.profileId,
@@ -527,7 +527,7 @@ export function defaultRestoreChoices(
     data: true,
     createDatabase: false,
     database: target.database ?? (target.engine === 'redis' ? '0' : (inspection?.database ?? '')),
-    method: inspection?.format === 'custom' ? 'native' : 'joinery',
+    method: inspection?.format === 'custom' ? 'native' : 'querybara',
     onError: 'stop',
     replace: false,
     absoluteTtl: false,
@@ -542,7 +542,7 @@ export function restoreProblem(
 ): string | undefined {
   if (target.readOnly) return `"${target.profileName}" is read-only, so nothing can be restored.`;
   if (!inspection) return 'Choose a backup file.';
-  if (inspection.format === 'jbak' && !inspection.objects) return 'Enter the passphrase.';
+  if (inspection.format === 'qbak' && !inspection.objects) return 'Enter the passphrase.';
   const fit = engineFit(target.engine, inspection.engine);
   if (!fit.ok) return fit.note;
   if (choices.select !== undefined && choices.select.length === 0) {
@@ -572,7 +572,7 @@ export function restoreJobSpec(
     readonly confirmed?: boolean;
   } = {},
 ): RestoreJob {
-  const archive = inspection.format === 'jbak';
+  const archive = inspection.format === 'qbak';
   const database = choices.database.trim();
   const sql = isSqlEngine(target.engine);
   return {

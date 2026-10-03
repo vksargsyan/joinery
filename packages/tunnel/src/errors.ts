@@ -1,4 +1,4 @@
-import { JoineryError, type ErrorCode } from '@joinery/core';
+import { QuerybaraError, type ErrorCode } from '@querybara/core';
 
 /**
  * Error mapping for tunnels and proxies. Every message names hosts, ports, user names and key
@@ -24,8 +24,8 @@ export function tunnelError(
   hint: string,
   cause?: unknown,
   engineCode?: string,
-): JoineryError {
-  return new JoineryError(
+): QuerybaraError {
+  return new QuerybaraError(
     { code, message, hint, ...(engineCode !== undefined ? { engineCode } : {}) },
     cause === undefined ? undefined : { cause },
   );
@@ -54,7 +54,7 @@ function networkCode(error: unknown): string | undefined {
  * Maps a TCP-level failure reaching `where` (an SSH server or a proxy) to CONNECTION_FAILED with a
  * hint. `what` names the kind of server for the message, e.g. "SSH server" or "SOCKS5 proxy".
  */
-export function mapSocketError(error: unknown, what: string, where: string): JoineryError {
+export function mapSocketError(error: unknown, what: string, where: string): QuerybaraError {
   const code = networkCode(error);
   const fail = (message: string, hint: string) =>
     tunnelError('CONNECTION_FAILED', message, hint, error, code);
@@ -100,7 +100,7 @@ export function timeoutError(
   what: string,
   where: string,
   timeoutMs: number,
-): JoineryError {
+): QuerybaraError {
   return tunnelError(
     code,
     `The ${what} ${where} did not answer within ${Math.round(timeoutMs / 100) / 10} s`,

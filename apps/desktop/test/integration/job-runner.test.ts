@@ -10,9 +10,9 @@ import {
   type ResolvedProfile,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import type { JobSpec, NewTablePlan, TransferPreview } from '@joinery/ipc';
+} from '@querybara/core';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import type { JobSpec, NewTablePlan, TransferPreview } from '@querybara/ipc';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -27,15 +27,15 @@ import type { RunnerToMain } from '../../src/shared/job-protocol';
  */
 
 const ENGINES = [
-  ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-  ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
-  ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
+  ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+  ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
+  ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
 ] as const;
 
 let work = '';
 
 beforeAll(() => {
-  work = mkdtempSync(join(tmpdir(), 'joinery-runner-it-'));
+  work = mkdtempSync(join(tmpdir(), 'querybara-runner-it-'));
 });
 
 afterAll(() => {
@@ -53,8 +53,8 @@ async function rows(session: Session, sql: string): Promise<CellValue[][]> {
 }
 
 describe.each(ENGINES)('%s', (dialect: SqlDialect, url: string | undefined) => {
-  const source = `joinery_jr_${randomBytes(4).toString('hex')}`;
-  const target = `joinery_jr_${randomBytes(4).toString('hex')}`;
+  const source = `querybara_jr_${randomBytes(4).toString('hex')}`;
+  const target = `querybara_jr_${randomBytes(4).toString('hex')}`;
   const posted: RunnerToMain[] = [];
   let admin: Session | undefined;
   let check: Session | undefined;

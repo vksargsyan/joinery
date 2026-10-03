@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, tableDefSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, tableDefSchema, type SchemaSnapshot } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { InsertWriter, planSqlObjects, scriptPreamble, tableData } from '../src';

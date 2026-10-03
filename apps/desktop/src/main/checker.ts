@@ -1,9 +1,9 @@
 import {
-  JoineryError,
+  QuerybaraError,
   fromErrorData,
   type ConnectionCheckResult,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { hostToMainSchema } from '../shared/host-protocol';
 import type { HostProcessFactory } from './host-process';
@@ -28,9 +28,9 @@ export async function* runConnectionCheck<P>(
   options: ConnectionCheckOptions = {},
 ): AsyncGenerator<ConnectionCheckResult> {
   const queue: ConnectionCheckResult[] = [];
-  let finished: { error?: JoineryError } | undefined;
+  let finished: { error?: QuerybaraError } | undefined;
   let wake: (() => void) | undefined;
-  const settle = (outcome: { error?: JoineryError }): void => {
+  const settle = (outcome: { error?: QuerybaraError }): void => {
     finished ??= outcome;
     wake?.();
   };
@@ -42,14 +42,14 @@ export async function* runConnectionCheck<P>(
     timer = setTimeout(
       () =>
         settle({
-          error: new JoineryError({ code: 'TIMEOUT', message: 'The connection test timed out' }),
+          error: new QuerybaraError({ code: 'TIMEOUT', message: 'The connection test timed out' }),
         }),
       timeoutMs,
     );
   };
   let pendingHostKeys = 0;
 
-  const process = spawn(`Joinery connection test: ${resolved.profile.name}`);
+  const process = spawn(`Querybara connection test: ${resolved.profile.name}`);
   process.onMessage((raw) => {
     const parsed = hostToMainSchema.safeParse(raw);
     if (!parsed.success) return;
@@ -78,7 +78,7 @@ export async function* runConnectionCheck<P>(
   });
   process.onExit((code) =>
     settle({
-      error: new JoineryError({
+      error: new QuerybaraError({
         code: 'CONNECTION_FAILED',
         message: `The connection test stopped unexpectedly${code === null ? '' : ` (code ${code})`}`,
       }),
@@ -86,7 +86,7 @@ export async function* runConnectionCheck<P>(
   );
   armTimer();
   const onAbort = (): void =>
-    settle({ error: new JoineryError({ code: 'CANCELLED', message: 'Cancelled' }) });
+    settle({ error: new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' }) });
   options.signal?.addEventListener('abort', onAbort, { once: true });
 
   try {

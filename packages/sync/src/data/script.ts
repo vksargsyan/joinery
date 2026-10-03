@@ -1,6 +1,6 @@
-import type { CellValue, ColumnKind, SqlDialect } from '@joinery/core';
-import { JoineryError } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { CellValue, ColumnKind, SqlDialect } from '@querybara/core';
+import { QuerybaraError } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 
 import type { RowDiff } from './merge';
 import { columnIndex } from './merge';
@@ -87,7 +87,7 @@ export class DataSyncScriptBuilder {
     this.sourceKey = options.keyColumns.map((k) => columnIndex(sourceColumns, k));
     this.targetKey = options.keyColumns.map((k) => columnIndex(targetColumns, k));
     if (this.targetKey.includes(-1)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'A key column is missing from the target columns',
       });

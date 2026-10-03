@@ -7,11 +7,11 @@ import {
   type SchemaSnapshot,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import { analyzeStatement } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import { analyzeStatement } from '@querybara/sql-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { MetadataCache, type StructureChange } from '../../src/renderer/src/state/metadata-cache';
@@ -30,9 +30,9 @@ import {
  */
 
 const ENGINES = [
-  ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-  ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
-  ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
+  ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+  ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
+  ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
 ] as const;
 
 async function rows(session: Session, sql: string): Promise<CellValue[][]> {
@@ -57,8 +57,8 @@ function connect(dialect: SqlDialect, url: string, database?: string): Promise<S
 }
 
 describe.each(ENGINES)('%s', (dialect, url) => {
-  const main = `joinery_ac_${randomBytes(4).toString('hex')}`;
-  const other = `joinery_ac_${randomBytes(4).toString('hex')}`;
+  const main = `querybara_ac_${randomBytes(4).toString('hex')}`;
+  const other = `querybara_ac_${randomBytes(4).toString('hex')}`;
   let admin: Session | undefined;
   let session: Session | undefined;
 

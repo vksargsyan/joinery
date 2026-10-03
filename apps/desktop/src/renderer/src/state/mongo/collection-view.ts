@@ -1,5 +1,5 @@
-import { JoineryError, requiresWriteConfirmation } from '@joinery/core';
-import type { MongoExplainResult } from '@joinery/ipc';
+import { QuerybaraError, requiresWriteConfirmation } from '@querybara/core';
+import type { MongoExplainResult } from '@querybara/ipc';
 import {
   formatShellInline,
   fromEjson,
@@ -10,7 +10,7 @@ import {
   type ExplainVerbosity,
   type Namespace,
   type QueryModel,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -56,7 +56,7 @@ export interface CollectionTarget {
   readonly kind: 'collection' | 'view' | 'time-series';
 }
 
-const PAGE_SIZE_KEY = 'joinery.mongo.pageSize';
+const PAGE_SIZE_KEY = 'querybara.mongo.pageSize';
 
 /** The page size last chosen, kept in this browser profile (a convenience, not a setting). */
 function readPageSize(): number {
@@ -581,7 +581,7 @@ export class CollectionView {
             'Replace the document?',
             `${this.#nsRef()}.replaceOne({ _id: ${this.#idText(id)} }, ${formatShellInline(fromEjson(replacement))})`,
           );
-          if (!confirmed) throw new JoineryError({ code: 'CANCELLED', message: 'Not saved' });
+          if (!confirmed) throw new QuerybaraError({ code: 'CANCELLED', message: 'Not saved' });
           return this.#lane.run((host, sessionId) =>
             host.mongo.replaceOne({
               sessionId,
@@ -597,7 +597,7 @@ export class CollectionView {
             'Insert the document?',
             `${this.#nsRef()}.insertOne(${formatShellInline(fromEjson(document))})`,
           );
-          if (!confirmed) throw new JoineryError({ code: 'CANCELLED', message: 'Not saved' });
+          if (!confirmed) throw new QuerybaraError({ code: 'CANCELLED', message: 'Not saved' });
           return this.#lane.run((host, sessionId) =>
             host.mongo.insertOne({
               sessionId,

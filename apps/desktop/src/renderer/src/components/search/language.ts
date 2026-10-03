@@ -2,18 +2,18 @@ import {
   completeConsole,
   type CompletionKind,
   type ConsoleCompletionOptions,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { monaco } from '../../lib/monaco';
 
 /**
  * The console language in Monaco (spec §11): Kibana console highlighting (request lines, JSON
- * bodies, comments, triple-quoted strings) and autocomplete from @joinery/search-tools, which
+ * bodies, comments, triple-quoted strings) and autocomplete from @querybara/search-tools, which
  * knows the endpoints and body keys of the open Elasticsearch API specification. The response
  * pane uses the same language for its JSON.
  */
 
-export const CONSOLE_LANGUAGE = 'joinery-es-console';
+export const CONSOLE_LANGUAGE = 'querybara-es-console';
 
 /** Model URI → the completion options of the console that owns it (its index names). */
 const consoles = new Map<string, () => ConsoleCompletionOptions>();

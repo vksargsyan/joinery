@@ -1,4 +1,4 @@
-import { tableDefSchema, type CellValue, type SqlDialect } from '@joinery/core';
+import { tableDefSchema, type CellValue, type SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

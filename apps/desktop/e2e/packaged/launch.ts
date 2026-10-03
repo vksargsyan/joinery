@@ -5,8 +5,8 @@ import { join } from 'node:path';
 
 import { chromium, type Page } from '@playwright/test';
 
-/** The packaged executable under test, from JOINERY_PACKAGED_APP. */
-export const EXECUTABLE = process.env['JOINERY_PACKAGED_APP'];
+/** The packaged executable under test, from QUERYBARA_PACKAGED_APP. */
+export const EXECUTABLE = process.env['QUERYBARA_PACKAGED_APP'];
 
 export interface PackagedApp {
   readonly page: Page;
@@ -19,14 +19,14 @@ export interface PackagedApp {
  * started directly and driven through the renderer's DevTools port.
  */
 export async function launchPackaged(executable: string): Promise<PackagedApp> {
-  const userData = mkdtempSync(join(tmpdir(), 'joinery-packaged-'));
+  const userData = mkdtempSync(join(tmpdir(), 'querybara-packaged-'));
   const args = ['--remote-debugging-port=0'];
   // Chromium refuses to start its sandbox as root (a CI or dev container); see e2e/app.ts.
-  if (process.getuid?.() === 0 || process.env['JOINERY_E2E_NO_SANDBOX'] === '1') {
+  if (process.getuid?.() === 0 || process.env['QUERYBARA_E2E_NO_SANDBOX'] === '1') {
     args.push('--no-sandbox');
   }
   const child = spawn(executable, args, {
-    env: { ...process.env, JOINERY_USER_DATA_DIR: userData },
+    env: { ...process.env, QUERYBARA_USER_DATA_DIR: userData },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const exited = new Promise((resolve) => child.once('exit', resolve));

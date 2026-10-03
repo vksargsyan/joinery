@@ -1,4 +1,4 @@
-import type { ActionResult, ServerAction, TopQuery, TopQueryOrder } from '@joinery/core';
+import type { ActionResult, ServerAction, TopQuery, TopQueryOrder } from '@querybara/core';
 import { useEffect, useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

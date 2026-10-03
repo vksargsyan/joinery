@@ -1,5 +1,5 @@
-import { tlsModeSchema, type TlsMode } from '@joinery/core';
-import type { CompareOptions, RenameObjectKind, RenameRule, RowAction } from '@joinery/sync';
+import { tlsModeSchema, type TlsMode } from '@querybara/core';
+import type { CompareOptions, RenameObjectKind, RenameRule, RowAction } from '@querybara/sync';
 import { InvalidArgumentError } from 'commander';
 
 import type { ProxyFlag, SshHopFlag } from './tunnels';

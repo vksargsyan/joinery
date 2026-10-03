@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { SecretSealer } from '@joinery/storage';
+import { QuerybaraError } from '@querybara/core';
+import type { SecretSealer } from '@querybara/storage';
 
 /** The part of Electron's `safeStorage` the sealer uses, typed structurally for tests. */
 export interface SafeStorageLike {
@@ -39,7 +39,7 @@ export function createSafeStorageSealer(
     isAvailable,
     seal(plaintext) {
       if (!isAvailable()) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_SUPPORTED',
           message: 'No secure storage is available on this system',
           hint: 'Install and unlock a secret service (GNOME Keyring or KWallet), or choose "remember for this session".',
@@ -49,7 +49,10 @@ export function createSafeStorageSealer(
     },
     unseal(sealed) {
       if (!isAvailable()) {
-        throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'Secure storage is unavailable' });
+        throw new QuerybaraError({
+          code: 'NOT_SUPPORTED',
+          message: 'Secure storage is unavailable',
+        });
       }
       return safeStorage.decryptString(Buffer.from(sealed));
     },

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
-import type { CellValue, Session } from '@joinery/core';
-import type { MongoSession } from '@joinery/driver-mongodb';
+import type { CellValue, Session } from '@querybara/core';
+import type { MongoSession } from '@querybara/driver-mongodb';
 import {
   Binary,
   Decimal128,
@@ -13,7 +13,7 @@ import {
   UUID,
   toEjson,
   type BsonDocument,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { planDbTransfer, runDbTransfer, type DbTransferSpec } from '../../src';

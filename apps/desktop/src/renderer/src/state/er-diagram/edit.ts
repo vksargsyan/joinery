@@ -7,8 +7,8 @@ import type {
   SchemaSnapshot,
   SqlEngineId,
   TableDef,
-} from '@joinery/core';
-import { emptyTable, formatType, newColumn, parseType, type RenameRule } from '@joinery/sync';
+} from '@querybara/core';
+import { emptyTable, formatType, newColumn, parseType, type RenameRule } from '@querybara/sync';
 
 /**
  * Editing an ER model (spec §8, ER modelling: forward engineering): the edits a diagram makes

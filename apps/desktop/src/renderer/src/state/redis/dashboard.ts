@@ -7,7 +7,7 @@ import {
   type InfoSections,
   type KeyspaceEntry,
   type ReplicationInfo,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * The INFO dashboard (spec §10, §15): INFO polled at the user-set interval (5 s by default),

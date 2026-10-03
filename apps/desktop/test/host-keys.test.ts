@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   type ConnectionCheckResult,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { ConnectionEvent, HostKeyPromptEvent } from '@joinery/ipc';
-import { FileKnownHosts, MemoryKnownHosts, type KnownHostsStore } from '@joinery/tunnel';
+} from '@querybara/core';
+import type { ConnectionEvent, HostKeyPromptEvent } from '@querybara/ipc';
+import { FileKnownHosts, MemoryKnownHosts, type KnownHostsStore } from '@querybara/tunnel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HostKeyBridge } from '../src/connection-host/host-keys';
@@ -205,7 +205,7 @@ describe('HostKeyBroker: known-hosts decisions', () => {
   });
 
   it('remembers keys in a known_hosts file readable by the owner only', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'joinery-known-hosts-'));
+    const dir = mkdtempSync(join(tmpdir(), 'querybara-known-hosts-'));
     try {
       const path = join(dir, 'known_hosts');
       const { broker } = brokerWith(new FileKnownHosts(path), () => 'trust-remember');
@@ -214,7 +214,7 @@ describe('HostKeyBroker: known-hosts decisions', () => {
         `[bastion.example.com]:22 ssh-ed25519 ${NEW.fingerprintSha256}\n`,
       );
       if (process.platform !== 'win32') expect(statSync(path).mode & 0o777).toBe(0o600);
-      // A second broker (the next app start, or joinery-cli) trusts it without asking.
+      // A second broker (the next app start, or querybara-cli) trusts it without asking.
       const again = new HostKeyBroker({ store: new FileKnownHosts(path) });
       expect(await again.verify(request(), context)).toEqual({ decision: 'trust' });
     } finally {
@@ -223,7 +223,8 @@ describe('HostKeyBroker: known-hosts decisions', () => {
   });
 
   it('classifies the failures that restarting cannot fix', () => {
-    const fail = (data: ConstructorParameters<typeof JoineryError>[0]) => new JoineryError(data);
+    const fail = (data: ConstructorParameters<typeof QuerybaraError>[0]) =>
+      new QuerybaraError(data);
     expect(
       isPermanentFailure(
         fail({ code: 'SSH_FAILED', message: 'x', engineCode: 'HOST_KEY_CHANGED' }),

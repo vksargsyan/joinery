@@ -1,5 +1,5 @@
-import { isSqlEngine } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import { isSqlEngine } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 
 import { mainApi } from '../lib/main-client';
 import { registerCommands, showStatus } from '../state/commands';
@@ -363,7 +363,7 @@ export function registerAppCommands(actions: () => AppActions): () => void {
     {
       id: 'help.about',
       category: 'Help',
-      title: 'About Joinery',
+      title: 'About Querybara',
       icon: 'bookmark',
       run: () => openAbout(),
     },

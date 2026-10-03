@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   type ConnectionCheckResult,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -80,7 +80,7 @@ function echoAdapter(): DriverAdapter & { seen: ResolvedProfile[] } {
       if (!endpoint) throw new Error('no endpoint');
       const reply = await echo(endpoint, 'hello');
       if (reply !== 'hello') {
-        throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Connection terminated' });
+        throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Connection terminated' });
       }
       const session: Session = {
         engine: 'postgres',

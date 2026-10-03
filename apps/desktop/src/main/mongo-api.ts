@@ -1,9 +1,9 @@
 import { writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import type { HandlersOf, MongoSavedPipeline, mainContract } from '@joinery/ipc';
-import type { SavedQuery, Store } from '@joinery/storage';
+import { QuerybaraError } from '@querybara/core';
+import type { HandlersOf, MongoSavedPipeline, mainContract } from '@querybara/ipc';
+import type { SavedQuery, Store } from '@querybara/storage';
 import { z } from 'zod';
 
 import { checkMongoWrite } from '../shared/mongo-writes';
@@ -59,14 +59,14 @@ export function mongoMainHandlers<P>(
   const profileOf = (connectionId: string) => {
     const profile = supervisor.profileOf(connectionId);
     if (!profile) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'CONNECTION_FAILED',
         message: 'The connection is closed',
         hint: 'Reconnect and try again.',
       });
     }
     if (profile.engine !== 'mongodb') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: 'GridFS needs a MongoDB connection',
       });
@@ -117,7 +117,7 @@ export function mongoMainHandlers<P>(
       save: async ({ id, name, text, ...scope }) => {
         const existing = id === undefined ? undefined : store.savedQueries.get(id);
         if (existing && !pipelinesOf(scope).some((query) => query.id === existing.id)) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'NOT_FOUND',
             message: 'That saved pipeline belongs to another collection',
           });

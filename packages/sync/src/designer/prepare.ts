@@ -9,8 +9,8 @@ import type {
   SqlEngineId,
   TableDef,
   ViewDef,
-} from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 
 import { canonicalCharset } from '../normalize';
 import { objectName, pgIndexDefinitionBody } from '../render';

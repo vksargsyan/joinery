@@ -7,7 +7,7 @@
 #
 # Usage: set-mac-signing-secrets.sh [--check] <DeveloperID.p12> <AuthKey_XXXXXXXXXX.p8>
 #   --check   check the files only; store nothing
-# The repository is vksargsyan/joinery unless JOINERY_REPO names another.
+# The repository is vksargsyan/querybara unless QUERYBARA_REPO names another.
 set -euo pipefail
 
 check_only=false
@@ -17,7 +17,7 @@ if [ "${1:-}" = "--check" ]; then
 fi
 p12=${1:?Usage: set-mac-signing-secrets.sh [--check] <DeveloperID.p12> <AuthKey_XXXXXXXXXX.p8>}
 p8=${2:?Usage: set-mac-signing-secrets.sh [--check] <DeveloperID.p12> <AuthKey_XXXXXXXXXX.p8>}
-repo=${JOINERY_REPO:-vksargsyan/joinery}
+repo=${QUERYBARA_REPO:-vksargsyan/querybara}
 
 fail() {
   echo "✗ $*" >&2

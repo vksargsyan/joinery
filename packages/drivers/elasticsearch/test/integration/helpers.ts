@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import type { ConnectionProfileInput, ResolvedProfile } from '@joinery/core';
+import type { ConnectionProfileInput, ResolvedProfile } from '@querybara/core';
 
 import {
   createSearchAdapter,
@@ -11,23 +11,23 @@ import {
 
 /**
  * The real server the integration tests use: Elasticsearch with security on
- * (JOINERY_TEST_ELASTICSEARCH_URL, credentials in the URL). Every test names its indices with a
+ * (QUERYBARA_TEST_ELASTICSEARCH_URL, credentials in the URL). Every test names its indices with a
  * prefix unique to the run and deletes them by name afterwards (wildcard deletes are refused by
  * default).
  */
 
-export const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
+export const ES_URL = process.env['QUERYBARA_TEST_ELASTICSEARCH_URL'];
 
 export interface TestServer {
   readonly url: string;
 }
 
-/** The configured server, for describe.each: none without JOINERY_TEST_ELASTICSEARCH_URL. */
+/** The configured server, for describe.each: none without QUERYBARA_TEST_ELASTICSEARCH_URL. */
 export const SERVERS: readonly TestServer[] = ES_URL ? [{ url: ES_URL }] : [];
 
-/** `joinery-it-<random>-`, unique per run. */
+/** `querybara-it-<random>-`, unique per run. */
 export function testPrefix(): string {
-  return `joinery-it-${randomBytes(4).toString('hex')}-`;
+  return `querybara-it-${randomBytes(4).toString('hex')}-`;
 }
 
 export function profileFor(

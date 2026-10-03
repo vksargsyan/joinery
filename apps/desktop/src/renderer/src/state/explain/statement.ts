@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import type { PlannedStatement, RunPlan } from '../run-plan';
 
@@ -10,11 +10,11 @@ import type { PlannedStatement, RunPlan } from '../run-plan';
 /** What rolling back cannot undo, per engine, for the ANALYZE confirmation. */
 export const ANALYZE_WRITE_WARNING: Readonly<Record<SqlDialect, string>> = {
   postgres:
-    'EXPLAIN ANALYZE runs the statement to measure it. Joinery runs it inside a transaction (a savepoint when one is open) and rolls it back, so its changes are not kept. Triggers still fire, and sequences it advances stay advanced.',
+    'EXPLAIN ANALYZE runs the statement to measure it. Querybara runs it inside a transaction (a savepoint when one is open) and rolls it back, so its changes are not kept. Triggers still fire, and sequences it advances stay advanced.',
   mysql:
-    'EXPLAIN ANALYZE runs the statement to measure it. Joinery runs it inside a transaction (a savepoint when one is open) and rolls it back. Changes to non-transactional tables (MyISAM, MEMORY) cannot be rolled back and are kept.',
+    'EXPLAIN ANALYZE runs the statement to measure it. Querybara runs it inside a transaction (a savepoint when one is open) and rolls it back. Changes to non-transactional tables (MyISAM, MEMORY) cannot be rolled back and are kept.',
   mariadb:
-    'ANALYZE runs the statement to measure it. Joinery runs it inside a transaction (a savepoint when one is open) and rolls it back. Changes to non-transactional tables (MyISAM, Aria, MEMORY) cannot be rolled back and are kept.',
+    'ANALYZE runs the statement to measure it. Querybara runs it inside a transaction (a savepoint when one is open) and rolls it back. Changes to non-transactional tables (MyISAM, Aria, MEMORY) cannot be rolled back and are kept.',
 };
 
 export interface ExplainRequest {

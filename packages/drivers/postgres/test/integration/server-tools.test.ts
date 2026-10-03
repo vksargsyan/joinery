@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { MASKED_SECRET, type ServerAction, type Session } from '@joinery/core';
+import { MASKED_SECRET, type ServerAction, type Session } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createPostgresServerTools } from '../../src';
@@ -94,7 +94,7 @@ describe.skipIf(!PG_URL)('PostgreSQL server tools', () => {
   it('lists sessions, cancels a query and terminates a session it opened', async () => {
     const tools = createPostgresServerTools(session);
     const victim = await connect();
-    const app = `joinery-st-${suffix}`;
+    const app = `querybara-st-${suffix}`;
     await collect(victim, `SET application_name = '${app}'`);
     const sleeping = collect(victim, 'SELECT pg_sleep(30)').then(
       () => 'finished',

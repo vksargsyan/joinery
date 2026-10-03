@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { connectionProfileSchema } from '@joinery/core';
-import { createPassphraseSealer, openStore } from '@joinery/storage';
+import { connectionProfileSchema } from '@querybara/core';
+import { createPassphraseSealer, openStore } from '@querybara/storage';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startSshServer, type TestSshServer } from '../ssh-server';
@@ -15,13 +15,13 @@ import { startSshServer, type TestSshServer } from '../ssh-server';
  * The BUILT binary against the MongoDB replica set (spec §9): `test` for URIs and profiles,
  * directly and through an SSH tunnel; `query` running command documents with relaxed Extended
  * JSON output (canonical with --format json); the write rules; and the SQL-only commands
- * refusing a MongoDB target. Gated on JOINERY_TEST_MONGODB_URL; every run uses its own database
+ * refusing a MongoDB target. Gated on QUERYBARA_TEST_MONGODB_URL; every run uses its own database
  * and drops it afterwards.
  */
 
-const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const DB = `joinery_cli_${randomBytes(4).toString('hex')}`;
+const BIN = fileURLToPath(new URL('../../dist/querybara.mjs', import.meta.url));
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const DB = `querybara_cli_${randomBytes(4).toString('hex')}`;
 const SSH_USER = 'tunnel';
 const SSH_PASSWORD = 'it-Mongo-Bastion-4c1';
 const PASSPHRASE = 'it-mongo-store';
@@ -36,13 +36,13 @@ interface Result {
   readonly stderr: string;
 }
 
-function joinery(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
+function querybara(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [BIN, ...args], {
       env: {
         PATH: process.env['PATH'] ?? '',
         HOME: workDir,
-        JOINERY_STORE: storePath,
+        QUERYBARA_STORE: storePath,
         NO_COLOR: '1',
         ...env,
       },
@@ -81,15 +81,15 @@ function singleHostUrl(): string {
 }
 
 const query = (command: string, ...extra: string[]) =>
-  joinery(['query', url(), '--database', DB, ...extra, '-e', command]);
+  querybara(['query', url(), '--database', DB, ...extra, '-e', command]);
 
 beforeAll(async () => {
   if (!MONGO_URL) return;
   if (!existsSync(BIN)) {
-    throw new Error(`${BIN} is missing: run "pnpm --filter @joinery/cli build" first`);
+    throw new Error(`${BIN} is missing: run "pnpm --filter @querybara/cli build" first`);
   }
-  workDir = mkdtempSync(join(tmpdir(), 'joinery-cli-mongo-'));
-  storePath = join(workDir, 'joinery.db');
+  workDir = mkdtempSync(join(tmpdir(), 'querybara-cli-mongo-'));
+  storePath = join(workDir, 'querybara.db');
   ssh = await startSshServer({ user: SSH_USER, password: SSH_PASSWORD });
 });
 
@@ -99,22 +99,22 @@ afterAll(async () => {
   if (workDir) rmSync(workDir, { recursive: true, force: true });
 });
 
-describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
+describe.skipIf(!MONGO_URL)('querybara-cli with MongoDB', () => {
   it('tests a MongoDB URI step by step', async () => {
-    const result = await joinery(['test', url()]);
+    const result = await querybara(['test', url()]);
     expect(result.code, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toMatch(/✓ Auth/);
     expect(result.stdout).toMatch(/✓ Version\s+MongoDB \d+\.\d+/);
     expect(result.stdout).toContain('replica set rs0');
     expect(result.stdout).toContain('Connection OK.');
-    const json = await joinery(['test', url(), '--json']);
+    const json = await querybara(['test', url(), '--json']);
     expect(JSON.parse(json.stdout)).toMatchObject({ engine: 'mongodb', ok: true });
   });
 
   it('tests through an SSH tunnel to a single host', async () => {
-    const result = await joinery(
+    const result = await querybara(
       ['test', singleHostUrl(), '--ssh', `${SSH_USER}@127.0.0.1:${ssh!.port}`, '--ssh-accept-new'],
-      { JOINERY_SSH_PASSWORD: SSH_PASSWORD },
+      { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD },
     );
     expect(result.code, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toMatch(/✓ TCP\s+Connected to the SSH server 127\.0\.0\.1:\d+/);
@@ -123,7 +123,7 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
     );
     expect(result.stdout).toMatch(/✓ Ping/);
     expect(result.stdout + result.stderr).not.toContain(SSH_PASSWORD);
-    const queried = await joinery(
+    const queried = await querybara(
       [
         'query',
         singleHostUrl(),
@@ -132,7 +132,7 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
         '-e',
         '{ ping: 1 }',
       ],
-      { JOINERY_SSH_PASSWORD: SSH_PASSWORD },
+      { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD },
     );
     expect(queried.code, queried.stderr).toBe(0);
     expect(queried.stdout).toContain('"ok": 1');
@@ -140,8 +140,8 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
 
   it('tests and queries the replica set through an SSH tunnel, every member through it', async () => {
     const hop = ['--ssh', `${SSH_USER}@127.0.0.1:${ssh!.port}`, '--ssh-accept-new'];
-    const env = { JOINERY_SSH_PASSWORD: SSH_PASSWORD };
-    const tested = await joinery(['test', url(), ...hop], env);
+    const env = { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD };
+    const tested = await querybara(['test', url(), ...hop], env);
     expect(tested.code, tested.stdout + tested.stderr).toBe(0);
     expect(tested.stdout).toMatch(
       new RegExp(
@@ -150,7 +150,7 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
     );
     expect(tested.stdout).toContain('replica set rs0');
     const forwards = ssh!.stats.forwards;
-    const queried = await joinery(['query', url(), ...hop, '-e', '{ hello: 1 }'], env);
+    const queried = await querybara(['query', url(), ...hop, '-e', '{ hello: 1 }'], env);
     expect(queried.code, queried.stderr).toBe(0);
     expect(queried.stdout).toContain('"setName": "rs0"');
     expect(ssh!.stats.forwards).toBeGreaterThan(forwards);
@@ -189,7 +189,7 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
 
     const file = join(workDir, 'commands.json');
     writeFileSync(file, '[{ count: "orders" }, { distinct: "orders", key: "_id" }]');
-    const both = await joinery(['query', url(), '--database', DB, '-f', file]);
+    const both = await querybara(['query', url(), '--database', DB, '-f', file]);
     expect(both.code, both.stderr).toBe(0);
     expect(both.stderr).toMatch(/\[1\] count/);
     expect(both.stderr).toMatch(/\[2\] distinct/);
@@ -244,13 +244,13 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
     } finally {
       store.close();
     }
-    const env = { JOINERY_PASSPHRASE: PASSPHRASE };
-    const tested = await joinery(['test', 'orders-mongo'], env);
+    const env = { QUERYBARA_PASSPHRASE: PASSPHRASE };
+    const tested = await querybara(['test', 'orders-mongo'], env);
     expect(tested.code, tested.stdout + tested.stderr).toBe(0);
-    const counted = await joinery(['query', 'orders-mongo', '-e', '{ count: "orders" }'], env);
+    const counted = await querybara(['query', 'orders-mongo', '-e', '{ count: "orders" }'], env);
     expect(counted.stdout).toContain('"n": 3');
     // Production: every write asks, so without a terminal it needs --yes.
-    const write = await joinery(
+    const write = await querybara(
       ['query', 'orders-mongo', '-e', '{ insert: "orders", documents: [{ _id: 10 }] }'],
       env,
     );
@@ -266,7 +266,7 @@ describe.skipIf(!MONGO_URL)('joinery-cli with MongoDB', () => {
       ['run-file', url(), join(workDir, 'commands.json')],
     ];
     for (const args of sqlOnly) {
-      const refused = await joinery(args, env);
+      const refused = await querybara(args, env);
       expect(refused.code, `${args[0]}: ${refused.stderr}`).toBe(2);
       expect(refused.stderr, args[0]).toContain(
         'is a MongoDB connection; this command works with PostgreSQL, MySQL and MariaDB',

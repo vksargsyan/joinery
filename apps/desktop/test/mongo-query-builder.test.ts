@@ -6,7 +6,7 @@ import {
   parseFindText,
   toEjson,
   type SchemaAnalysis,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CollectionView } from '../src/renderer/src/state/mongo/collection-view';

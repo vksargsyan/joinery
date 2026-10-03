@@ -1,11 +1,15 @@
-import type { ConnectionCheckResult, ConnectionProfileInput, ResolvedProfile } from '@joinery/core';
+import type {
+  ConnectionCheckResult,
+  ConnectionProfileInput,
+  ResolvedProfile,
+} from '@querybara/core';
 import {
   MemoryKnownHosts,
   TransportManager,
   connectThroughTransport,
   knownHostsVerifier,
   runSshStep,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {

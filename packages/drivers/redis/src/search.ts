@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   hashFields,
   jsonFields,
@@ -11,7 +11,7 @@ import {
   type SearchIndexInfo,
   type SearchKeyType,
   type SearchResult,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 import type { Arg } from './client';
 import type { RedisContext } from './context';
@@ -27,8 +27,8 @@ import type { SearchQueryOptions, SearchSuggestOptions } from './types';
 
 /** "unknown command" for FT.*: the module is not loaded. */
 function notLoaded(error: unknown): never {
-  if (error instanceof JoineryError && /unknown command/i.test(error.message)) {
-    throw new JoineryError(
+  if (error instanceof QuerybaraError && /unknown command/i.test(error.message)) {
+    throw new QuerybaraError(
       {
         code: 'NOT_SUPPORTED',
         message: 'The search module (Redis Query Engine) is not loaded on this server',

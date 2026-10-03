@@ -2,7 +2,7 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { buildSearchClientPlan, parseNodeUrl, redactSecrets } from '../src';

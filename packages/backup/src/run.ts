@@ -1,7 +1,7 @@
 import { open } from 'node:fs/promises';
 
-import { JoineryError, isSqlEngine, type EngineId, type Session } from '@joinery/core';
-import { decodeSource, gunzip, isGzip, type Sink } from '@joinery/transfer';
+import { QuerybaraError, isSqlEngine, type EngineId, type Session } from '@querybara/core';
+import { decodeSource, gunzip, isGzip, type Sink } from '@querybara/transfer';
 
 import type { Manifest } from './archive/manifest';
 import { ArchiveReader, fileArchiveSource } from './archive/reader';
@@ -39,7 +39,7 @@ import type {
 } from './types';
 
 /**
- * One entry point per task for the job runner and joinery-cli: back up any engine's session,
+ * One entry point per task for the job runner and querybara-cli: back up any engine's session,
  * look inside a backup file, plan a restore (what it adds, needs and would drop), and run it.
  * The engine comes from the session (backups) or from the file (restores).
  */
@@ -119,7 +119,7 @@ export async function runBackup(request: BackupRequest): Promise<BackupSummary> 
       ...(request.pattern !== undefined ? { pattern: request.pattern } : {}),
     });
   }
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Backups of ${session.engine} are not supported`,
   });
@@ -135,13 +135,13 @@ export interface BackupInspection {
   readonly encrypted: boolean;
   /** Absent when the archive is encrypted and no passphrase was given. */
   readonly manifest?: Manifest;
-  /** Plain SQL backups written by Joinery name their engine in the first line. */
+  /** Plain SQL backups written by Querybara name their engine in the first line. */
   readonly engine?: EngineId;
   readonly serverVersion?: string;
   readonly database?: string;
 }
 
-const SCRIPT_HEADER = /^-- Joinery backup of (.+) \((\w+) ([^)]*)\)/;
+const SCRIPT_HEADER = /^-- Querybara backup of (.+) \((\w+) ([^)]*)\)/;
 
 /** The first few kilobytes of a script, as text (gunzipped when needed). */
 async function scriptHeader(path: string, gzip: boolean): Promise<string> {
@@ -169,7 +169,7 @@ async function scriptHeader(path: string, gzip: boolean): Promise<string> {
 /** Reads a backup's header (and the manifest of an archive, given its passphrase). */
 export async function inspectBackup(path: string, passphrase?: string): Promise<BackupInspection> {
   const handle = await open(path, 'r').catch((error: NodeJS.ErrnoException) => {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: error.code === 'ENOENT' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
       message: error.code === 'ENOENT' ? `${path} does not exist` : `${path} cannot be read`,
     });
@@ -190,7 +190,7 @@ export async function inspectBackup(path: string, passphrase?: string): Promise<
     const source = await fileArchiveSource(path);
     const probe = await ArchiveReader.probe(source).finally(() => source.close());
     if (probe.encrypted && (passphrase === undefined || passphrase === '')) {
-      return { format: 'jbak', size, encrypted: true };
+      return { format: 'qbak', size, encrypted: true };
     }
     const archive = await ArchiveReader.open(path, {
       ...(passphrase !== undefined ? { passphrase } : {}),
@@ -198,7 +198,7 @@ export async function inspectBackup(path: string, passphrase?: string): Promise<
     try {
       const { manifest } = archive;
       return {
-        format: 'jbak',
+        format: 'qbak',
         size,
         encrypted: archive.encrypted,
         manifest,
@@ -285,7 +285,7 @@ export async function planRestore(request: RestoreRequest): Promise<RestorePlanS
   const archive = await openArchive(request);
   if (!archive) {
     if (!isSqlEngine(session.engine)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `A SQL script cannot be restored into ${session.engine}`,
       });
@@ -310,7 +310,7 @@ export async function planRestore(request: RestoreRequest): Promise<RestorePlanS
         ...(request.data !== undefined ? { data: request.data } : {}),
       });
       return {
-        format: 'jbak',
+        format: 'qbak',
         objects: plan.objects.map((o) => o.id),
         added: plan.added,
         skipped: plan.skipped,
@@ -321,7 +321,7 @@ export async function planRestore(request: RestoreRequest): Promise<RestorePlanS
     if (isMongoBackupSession(session)) {
       const plan = await planMongoRestore({ session, archive, ...select });
       return {
-        format: 'jbak',
+        format: 'qbak',
         objects: plan.objects.map((o) => o.id),
         added: plan.added,
         skipped: plan.skipped,
@@ -336,7 +336,7 @@ export async function planRestore(request: RestoreRequest): Promise<RestorePlanS
         ...(request.replace !== undefined ? { replace: request.replace } : {}),
       });
       return {
-        format: 'jbak',
+        format: 'qbak',
         objects: archive.manifest.objects.map((o) => o.id),
         added: [],
         skipped: [],
@@ -347,7 +347,7 @@ export async function planRestore(request: RestoreRequest): Promise<RestorePlanS
             : [],
       };
     }
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `Restores into ${session.engine} are not supported`,
     });
@@ -373,7 +373,7 @@ export async function runRestore(request: RestoreRequest): Promise<RestoreSummar
   const archive = await openArchive(request);
   if (!archive) {
     if (!isSqlEngine(session.engine)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `A SQL script cannot be restored into ${session.engine}`,
       });
@@ -414,7 +414,7 @@ export async function runRestore(request: RestoreRequest): Promise<RestoreSummar
         ...(request.absoluteTtl !== undefined ? { absoluteTtl: request.absoluteTtl } : {}),
       });
     }
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `Restores into ${session.engine} are not supported`,
     });

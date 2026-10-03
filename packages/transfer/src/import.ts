@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   newId,
   rowAt,
   type CellValue,
@@ -7,7 +7,7 @@ import {
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import {
   ConversionError,
@@ -102,8 +102,8 @@ interface PendingRow {
   readonly bytes: number;
 }
 
-function invalid(message: string, hint?: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
+function invalid(message: string, hint?: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
 }
 
 /** Key columns for a mode: given, else the primary key, else the first unique key. */
@@ -150,7 +150,7 @@ function messageOf(error: unknown): string {
 
 function isCancel(error: unknown, signal: AbortSignal | undefined): boolean {
   if (signal?.aborted === true) return true;
-  return error instanceof JoineryError && error.code === 'CANCELLED';
+  return error instanceof QuerybaraError && error.code === 'CANCELLED';
 }
 
 /**
@@ -351,18 +351,18 @@ export async function importRows(options: ImportOptions): Promise<ImportSummary>
   const writeChunk = async (rows: readonly PendingRow[]): Promise<void> => {
     checkSignal();
     const guarded = savepoints();
-    if (guarded) await control('SAVEPOINT joinery_import');
+    if (guarded) await control('SAVEPOINT querybara_import');
     try {
       await execRows(rows);
-      if (guarded) await control('RELEASE SAVEPOINT joinery_import');
+      if (guarded) await control('RELEASE SAVEPOINT querybara_import');
       wrote(rows.length);
       return;
     } catch (error) {
       if (isCancel(error, signal)) throw new Stop('cancelled');
-      if (guarded) await control('ROLLBACK TO SAVEPOINT joinery_import');
+      if (guarded) await control('ROLLBACK TO SAVEPOINT querybara_import');
       assertTxAlive(error);
       if (rows.length === 1) {
-        if (guarded) await control('RELEASE SAVEPOINT joinery_import');
+        if (guarded) await control('RELEASE SAVEPOINT querybara_import');
         const row = rows[0]!;
         const column = columnFromError(error, columns);
         record({
@@ -378,16 +378,16 @@ export async function importRows(options: ImportOptions): Promise<ImportSummary>
     for (const row of rows) {
       checkSignal();
       const rowGuard = savepoints();
-      if (rowGuard) await control('SAVEPOINT joinery_row');
+      if (rowGuard) await control('SAVEPOINT querybara_row');
       try {
         await execRows([row]);
-        if (rowGuard) await control('RELEASE SAVEPOINT joinery_row');
+        if (rowGuard) await control('RELEASE SAVEPOINT querybara_row');
         wrote(1);
       } catch (error) {
         if (isCancel(error, signal)) throw new Stop('cancelled');
         if (rowGuard) {
-          await control('ROLLBACK TO SAVEPOINT joinery_row');
-          await control('RELEASE SAVEPOINT joinery_row');
+          await control('ROLLBACK TO SAVEPOINT querybara_row');
+          await control('RELEASE SAVEPOINT querybara_row');
         }
         assertTxAlive(error);
         const column = columnFromError(error, columns);
@@ -399,7 +399,7 @@ export async function importRows(options: ImportOptions): Promise<ImportSummary>
         });
       }
     }
-    if (guarded) await control('RELEASE SAVEPOINT joinery_import');
+    if (guarded) await control('RELEASE SAVEPOINT querybara_import');
   };
 
   let packetBudget = 64 * 1024 * 1024;

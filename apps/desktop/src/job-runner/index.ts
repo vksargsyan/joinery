@@ -1,10 +1,10 @@
-import type { ResolvedProfile } from '@joinery/core';
+import type { ResolvedProfile } from '@querybara/core';
 import {
   TransportManager,
   connectThroughTransport,
   needsTransport,
   tunnelledProfile,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 
 import { loadAdapter } from '../connection-host/adapters';
 import { HostKeyBridge } from '../connection-host/host-keys';

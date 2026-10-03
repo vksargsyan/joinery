@@ -41,7 +41,7 @@ import type {
   TopologyNode,
   ZRangeOptions,
   ZSetEntry,
-} from '@joinery/driver-redis';
+} from '@querybara/driver-redis';
 import type {
   AclSelector,
   AclUser,
@@ -70,14 +70,14 @@ import type {
   SearchIndexDefinition,
   SearchIndexInfo,
   SlowlogEntry,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { z } from 'zod';
 
 import { idSchema } from './common';
 
 /**
  * Zod schemas for the Redis session services the connection host serves (spec §10, §15). Each
- * is annotated with the driver's own type (from @joinery/driver-redis and @joinery/redis-tools,
+ * is annotated with the driver's own type (from @querybara/driver-redis and @querybara/redis-tools,
  * imported as types only, so nothing of the driver reaches the renderer), so a drift between
  * the driver and the contract fails to compile. Keys, fields, members and values are bytes
  * (Uint8Array) everywhere: the page shows and parses them with `displayBytes` and

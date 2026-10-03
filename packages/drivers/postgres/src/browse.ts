@@ -1,5 +1,5 @@
-import { JoineryError, type BrowseNode, type BrowseNodeKind } from '@joinery/core';
-import { bool, num, opt, str } from '@joinery/driver-sql-base';
+import { QuerybaraError, type BrowseNode, type BrowseNodeKind } from '@querybara/core';
+import { bool, num, opt, str } from '@querybara/driver-sql-base';
 
 import type { QueryFn } from './introspect';
 
@@ -96,8 +96,8 @@ function node(
   };
 }
 
-function notFound(path: readonly string[]): JoineryError {
-  return new JoineryError({
+function notFound(path: readonly string[]): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_FOUND',
     message: `Nothing to browse at ${path.join(' / ')}`,
   });
@@ -145,7 +145,7 @@ export async function browsePostgres(
 
   const [database, schema, folder, object, subfolder] = path;
   if (database !== currentDatabase) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `This session is connected to "${currentDatabase}"; open a connection to "${database}" to browse it`,
     });

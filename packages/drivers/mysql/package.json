@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/driver-mysql",
+  "name": "@querybara/driver-mysql",
   "version": "0.0.0",
   "private": true,
   "description": "MySQL and MariaDB driver adapter (mysql2).",
@@ -13,9 +13,9 @@
     "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
-    "@joinery/sql-tools": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
+    "@querybara/sql-tools": "workspace:*",
     "mysql2": "^3.24.4"
   },
   "devDependencies": {

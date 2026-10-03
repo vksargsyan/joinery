@@ -7,13 +7,13 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * End-to-end tests of the BUILT binary (dist/joinery.mjs) against real servers, as a child
- * process with a temporary store. Gated on JOINERY_TEST_POSTGRES_URL, JOINERY_TEST_MARIADB_URL
- * and JOINERY_TEST_MYSQL_URL; `pnpm test:integration` builds first. Every database is created
+ * End-to-end tests of the BUILT binary (dist/querybara.mjs) against real servers, as a child
+ * process with a temporary store. Gated on QUERYBARA_TEST_POSTGRES_URL, QUERYBARA_TEST_MARIADB_URL
+ * and QUERYBARA_TEST_MYSQL_URL; `pnpm test:integration` builds first. Every database is created
  * with a unique name and dropped afterwards; the servers are shared.
  */
 
-const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
+const BIN = fileURLToPath(new URL('../../dist/querybara.mjs', import.meta.url));
 
 interface Engine {
   readonly name: 'postgres' | 'mariadb' | 'mysql';
@@ -22,9 +22,9 @@ interface Engine {
 
 const ENGINES: Engine[] = (
   [
-    ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-    ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
-    ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
+    ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+    ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
+    ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
   ] as const
 )
   .filter((entry): entry is readonly [Engine['name'], string] => Boolean(entry[1]))
@@ -45,17 +45,17 @@ interface Result {
 
 interface RunOptions {
   readonly env?: Record<string, string>;
-  /** Run the file itself (shebang) instead of `node dist/joinery.mjs`. */
+  /** Run the file itself (shebang) instead of `node dist/querybara.mjs`. */
   readonly direct?: boolean;
   /** Called with the child once it started (e.g. to send SIGINT). */
   readonly onSpawn?: (child: ReturnType<typeof spawn>) => void;
 }
 
-function joinery(args: readonly string[], options: RunOptions = {}): Promise<Result> {
+function querybara(args: readonly string[], options: RunOptions = {}): Promise<Result> {
   const env: Record<string, string> = {
     PATH: process.env['PATH'] ?? '',
     HOME: workDir,
-    JOINERY_STORE: storePath,
+    QUERYBARA_STORE: storePath,
     NO_COLOR: '1',
     ...options.env,
   };
@@ -100,7 +100,7 @@ function passwordOf(engine: Engine): string {
 
 /** Runs SQL on the server's default database and expects success. */
 async function admin(engine: Engine, sql: string, database?: string): Promise<void> {
-  const result = await joinery(['query', urlFor(engine, database), '--yes', '-q', '-e', sql]);
+  const result = await querybara(['query', urlFor(engine, database), '--yes', '-q', '-e', sql]);
   if (result.code !== 0) throw new Error(`admin SQL failed (${result.code}): ${result.stderr}`);
 }
 
@@ -115,7 +115,7 @@ async function statementRunning(engine: Engine, marker: string, timeoutMs = 20_0
       : `SELECT COUNT(*) AS n FROM information_schema.PROCESSLIST WHERE ID <> CONNECTION_ID() AND INFO LIKE '%${marker}%'`;
   const deadline = performance.now() + timeoutMs;
   while (performance.now() < deadline) {
-    const result = await joinery(['query', urlFor(engine), '--format', 'csv', '-e', sql]);
+    const result = await querybara(['query', urlFor(engine), '--format', 'csv', '-e', sql]);
     if (result.code === 0 && /^n\r?\n[1-9]/m.test(result.stdout)) return;
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
@@ -133,9 +133,9 @@ function mysqlSeries(count: number): string {
 beforeAll(() => {
   if (ENGINES.length === 0) return;
   if (!existsSync(BIN))
-    throw new Error(`${BIN} is missing: run "pnpm --filter @joinery/cli build" first`);
-  workDir = mkdtempSync(join(tmpdir(), 'joinery-cli-it-'));
-  storePath = join(workDir, 'joinery.db');
+    throw new Error(`${BIN} is missing: run "pnpm --filter @querybara/cli build" first`);
+  workDir = mkdtempSync(join(tmpdir(), 'querybara-cli-it-'));
+  storePath = join(workDir, 'querybara.db');
 });
 
 afterAll(() => {
@@ -144,10 +144,10 @@ afterAll(() => {
 
 describe.skipIf(ENGINES.length === 0)('built binary', () => {
   it('prints help through the shebang without an ExperimentalWarning', async () => {
-    const direct = await joinery(['--help'], { direct: true });
+    const direct = await querybara(['--help'], { direct: true });
     expect(direct.code).toBe(0);
-    expect(direct.stdout).toContain('Usage: joinery');
-    const listed = await joinery(['profiles', 'list']);
+    expect(direct.stdout).toContain('Usage: querybara');
+    const listed = await querybara(['profiles', 'list']);
     expect(listed.code).toBe(0);
     for (const result of [direct, listed])
       expect(result.stderr).not.toContain('ExperimentalWarning');
@@ -175,7 +175,7 @@ describe.each(ENGINES)('$name', (engine) => {
   });
 
   it('test passes step by step', async () => {
-    const result = await joinery(['test', urlFor(engine)]);
+    const result = await querybara(['test', urlFor(engine)]);
     expect(result.code, result.stderr).toBe(0);
     expect(result.stdout).toMatch(/✓ TCP/);
     expect(result.stdout).toMatch(/✓ Auth/);
@@ -186,7 +186,7 @@ describe.each(ENGINES)('$name', (engine) => {
   it('test exits 1 at the auth step for a wrong password', async () => {
     const url = new URL(urlFor(engine));
     url.password = 'definitely-wrong';
-    const result = await joinery(['test', url.toString()]);
+    const result = await querybara(['test', url.toString()]);
     expect(result.code).toBe(1);
     expect(result.stdout).toMatch(/✗ Auth/);
     expect(result.stdout).toContain('hint:');
@@ -221,7 +221,7 @@ CALL item_report();
 SELECT id, name, price FROM items ORDER BY id;
 `,
     );
-    const result = await joinery(['query', urlFor(engine, name), '-f', file, '--format', 'csv']);
+    const result = await querybara(['query', urlFor(engine, name), '-f', file, '--format', 'csv']);
     expect(result.code, result.stderr).toBe(0);
     expect(result.stdout).toBe('n\n2\n\nid,name,price\n1,a,3.00\n2,b,2.25\n');
     expect(result.stderr).toContain(`Ran ${pg ? 6 : 5} statements`);
@@ -232,7 +232,7 @@ SELECT id, name, price FROM items ORDER BY id;
     const sql = pg
       ? `select g as id, 'name ' || g as name, g::bigint * 1000000000000 as big, null::text as empty from generate_series(1, 50000) g`
       : `SELECT n AS id, CONCAT('name ', n) AS name, CAST(n AS SIGNED) * 1000000000000 AS big, NULL AS \`empty\` FROM ${mysqlSeries(50000)} ORDER BY n`;
-    const csv = await joinery(['query', urlFor(engine), '--format', 'csv', '-e', sql]);
+    const csv = await querybara(['query', urlFor(engine), '--format', 'csv', '-e', sql]);
     expect(csv.code, csv.stderr).toBe(0);
     const lines = csv.stdout.trimEnd().split('\n');
     expect(lines).toHaveLength(50001);
@@ -241,7 +241,7 @@ SELECT id, name, price FROM items ORDER BY id;
     expect(lines[50000]).toBe('50000,name 50000,50000000000000000,');
     expect(csv.stderr).toContain('50,000 rows');
 
-    const json = await joinery(['query', urlFor(engine), '--format', 'json', '-e', sql]);
+    const json = await querybara(['query', urlFor(engine), '--format', 'json', '-e', sql]);
     expect(json.code, json.stderr).toBe(0);
     const rows = JSON.parse(json.stdout) as { id: number; name: string; empty: null }[];
     expect(rows).toHaveLength(50000);
@@ -249,7 +249,7 @@ SELECT id, name, price FROM items ORDER BY id;
     // Beyond 2^53: the digits are exact in the text.
     expect(json.stdout).toContain('"big":50000000000000000,');
 
-    const jsonl = await joinery([
+    const jsonl = await querybara([
       'query',
       urlFor(engine),
       '--format',
@@ -266,11 +266,11 @@ SELECT id, name, price FROM items ORDER BY id;
     const name = await createDatabase('safety');
     const url = urlFor(engine, name);
     await admin(engine, 'CREATE TABLE t (id INT PRIMARY KEY); INSERT INTO t VALUES (1), (2)', name);
-    const refused = await joinery(['query', url, '-e', 'DELETE FROM t']);
+    const refused = await querybara(['query', url, '-e', 'DELETE FROM t']);
     expect(refused.code).toBe(2);
     expect(refused.stderr).toContain('needs confirmation: DELETE without WHERE removes every row');
     expect(refused.stderr).toContain('--yes');
-    const count = await joinery([
+    const count = await querybara([
       'query',
       url,
       '--format',
@@ -279,7 +279,7 @@ SELECT id, name, price FROM items ORDER BY id;
       'SELECT COUNT(*) AS n FROM t',
     ]);
     expect(count.stdout).toBe('n\n2\n');
-    const allowed = await joinery(['query', url, '--yes', '-e', 'DELETE FROM t']);
+    const allowed = await querybara(['query', url, '--yes', '-e', 'DELETE FROM t']);
     expect(allowed.code).toBe(0);
     expect(allowed.stderr).toContain('2 rows affected');
   });
@@ -318,7 +318,7 @@ SELECT id, name, price FROM items ORDER BY id;
     const src = urlFor(engine, source);
     const tgt = urlFor(engine, target);
 
-    const before = await joinery([
+    const before = await querybara([
       'compare',
       src,
       tgt,
@@ -343,11 +343,11 @@ SELECT id, name, price FROM items ORDER BY id;
     expect(readFileSync(join(workDir, 'report.html'), 'utf8')).toContain('customers');
 
     if (!pg) {
-      const refused = await joinery(['compare', src, tgt, '--apply', '--include-destructive']);
+      const refused = await querybara(['compare', src, tgt, '--apply', '--include-destructive']);
       expect(refused.code).toBe(2);
       expect(refused.stderr).toContain('outside transactions');
     }
-    const applied = await joinery([
+    const applied = await querybara([
       'compare',
       src,
       tgt,
@@ -358,7 +358,7 @@ SELECT id, name, price FROM items ORDER BY id;
     expect(applied.code, `${applied.stdout}\n${applied.stderr}`).toBe(0);
     expect(applied.stderr).toContain('the target now matches the source');
 
-    const after = await joinery(['compare', src, tgt]);
+    const after = await querybara(['compare', src, tgt]);
     expect(after.code, `${after.stdout}\n${after.stderr}`).toBe(0);
     expect(after.stdout).toContain('No differences.');
   });
@@ -395,7 +395,7 @@ SELECT id, name, price FROM items ORDER BY id;
     }
     const src = urlFor(engine, source);
     const tgt = urlFor(engine, target);
-    const found = await joinery([
+    const found = await querybara([
       'data-compare',
       src,
       tgt,
@@ -412,7 +412,7 @@ SELECT id, name, price FROM items ORDER BY id;
     });
     expect(readFileSync(join(workDir, 'sync.sql'), 'utf8')).toMatch(/^(BEGIN|START TRANSACTION);/);
 
-    const applied = await joinery([
+    const applied = await querybara([
       'data-compare',
       src,
       tgt,
@@ -424,7 +424,7 @@ SELECT id, name, price FROM items ORDER BY id;
     expect(applied.code, `${applied.stdout}\n${applied.stderr}`).toBe(0);
     expect(applied.stdout).toMatch(/insert\s+20/);
 
-    const again = await joinery(['data-compare', src, tgt, '--table', 'plans']);
+    const again = await querybara(['data-compare', src, tgt, '--table', 'plans']);
     expect(again.code, again.stderr).toBe(0);
     expect(again.stdout).toMatch(/equal\s+500/);
   });
@@ -432,7 +432,7 @@ SELECT id, name, price FROM items ORDER BY id;
   it('dumps the schema as DDL', async () => {
     const name = await createDatabase('ddl');
     await admin(engine, 'CREATE TABLE widgets (id INT PRIMARY KEY, label VARCHAR(40))', name);
-    const result = await joinery(['ddl', urlFor(engine, name)]);
+    const result = await querybara(['ddl', urlFor(engine, name)]);
     expect(result.code, result.stderr).toBe(0);
     expect(result.stdout).toMatch(/CREATE TABLE .*widgets/);
   });
@@ -442,7 +442,7 @@ SELECT id, name, price FROM items ORDER BY id;
     const marker = `jcli_sigint_${RUN_ID}`;
     const sql = pg ? `select pg_sleep(30) as ${marker}` : `SELECT SLEEP(30) AS ${marker}`;
     let sentAt = 0;
-    const result = await joinery(['query', urlFor(engine), '-e', sql], {
+    const result = await querybara(['query', urlFor(engine), '-e', sql], {
       onSpawn: (child) => {
         // Ctrl+C once the statement runs: a fixed delay raced the CLI's start on busy runners,
         // and a SIGINT before it listens ends the process by the signal instead of exit 130.
@@ -480,26 +480,28 @@ SELECT id, name, price FROM items ORDER BY id;
     url.username = user;
     url.password = password;
 
-    const env = { JOINERY_PASSPHRASE: `it-${RUN_ID}` };
+    const env = { QUERYBARA_PASSPHRASE: `it-${RUN_ID}` };
     const profile = `it-${engine.name}-${RUN_ID}`;
-    const added = await joinery(
+    const added = await querybara(
       ['profiles', 'add', profile, url.toString(), '--environment', 'test', '--folder', 'CI'],
       { env },
     );
     expect(added.code, added.stderr).toBe(0);
-    const list = await joinery(['profiles', 'list'], { env });
+    const list = await querybara(['profiles', 'list'], { env });
     expect(list.stdout).toContain(profile);
-    const show = await joinery(['profiles', 'show', profile], { env });
+    const show = await querybara(['profiles', 'show', profile], { env });
     expect(show.stdout).toContain('Password:     saved (readable here)');
-    const json = await joinery(['profiles', 'show', profile, '--json'], { env });
+    const json = await querybara(['profiles', 'show', profile, '--json'], { env });
     expect(JSON.parse(json.stdout)).toMatchObject({
       name: profile,
       auth: { user },
       presentation: { environment: 'test' },
     });
-    const tested = await joinery(['test', profile, '--verbose'], { env });
+    const tested = await querybara(['test', profile, '--verbose'], { env });
     expect(tested.code, tested.stderr).toBe(0);
-    const query = await joinery(['query', profile, '--verbose', '-e', 'SELECT 1 AS one'], { env });
+    const query = await querybara(['query', profile, '--verbose', '-e', 'SELECT 1 AS one'], {
+      env,
+    });
     expect(query.code, query.stderr).toBe(0);
     for (const result of [added, list, show, json, tested, query]) {
       expect(result.stdout + result.stderr).not.toContain(password);
@@ -507,12 +509,12 @@ SELECT id, name, price FROM items ORDER BY id;
     expect(readFileSync(storePath).includes(Buffer.from(password))).toBe(false);
 
     // Without the passphrase the saved value is unreadable, and a non-interactive run says why.
-    const locked = await joinery(['test', profile]);
+    const locked = await querybara(['test', profile]);
     expect(locked.code).toBe(2);
     expect(locked.stderr).toContain(
-      `JOINERY_PASSWORD_${profile.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`,
+      `QUERYBARA_PASSWORD_${profile.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`,
     );
-    const fromEnv = await joinery(['test', profile], { env: { JOINERY_PASSWORD: password } });
+    const fromEnv = await querybara(['test', profile], { env: { QUERYBARA_PASSWORD: password } });
     expect(fromEnv.code, fromEnv.stderr).toBe(0);
     expect(fromEnv.stdout + fromEnv.stderr).not.toContain(password);
   });

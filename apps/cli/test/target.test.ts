@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { Reporter } from '../src/reporter';
@@ -46,9 +46,9 @@ describe('target syntax', () => {
   });
 
   it('derives the per-profile password variable', () => {
-    expect(passwordEnvName('Prod DB')).toBe('JOINERY_PASSWORD_PROD_DB');
-    expect(passwordEnvName('my-app.eu')).toBe('JOINERY_PASSWORD_MY_APP_EU');
-    expect(passwordEnvName('--x--')).toBe('JOINERY_PASSWORD_X');
+    expect(passwordEnvName('Prod DB')).toBe('QUERYBARA_PASSWORD_PROD_DB');
+    expect(passwordEnvName('my-app.eu')).toBe('QUERYBARA_PASSWORD_MY_APP_EU');
+    expect(passwordEnvName('--x--')).toBe('QUERYBARA_PASSWORD_X');
   });
 });
 
@@ -58,7 +58,7 @@ describe('URI targets', () => {
   let store: StoreHandle;
   beforeEach(() => {
     ({ dir, cleanup } = tempDir());
-    store = new StoreHandle({ path: join(dir, 'joinery.db'), source: '--store' }, {});
+    store = new StoreHandle({ path: join(dir, 'querybara.db'), source: '--store' }, {});
   });
   afterEach(() => {
     store.close();
@@ -95,11 +95,11 @@ describe('URI targets', () => {
     ).toBe('verify-ca');
   });
 
-  it('takes JOINERY_PASSWORD when the URI has no password, and --database', async () => {
+  it('takes QUERYBARA_PASSWORD when the URI has no password, and --database', async () => {
     const target = await resolveTarget(
       'mariadb://root@h/db',
       { database: 'other' },
-      deps(store, { JOINERY_PASSWORD: 'from-env' }),
+      deps(store, { QUERYBARA_PASSWORD: 'from-env' }),
     );
     expect(target.profile.engine).toBe('mariadb');
     expect(target.profile.options.defaultDatabase).toBe('other');
@@ -135,7 +135,7 @@ describe('URI targets', () => {
 describe('profile targets', () => {
   let dir: string;
   let cleanup: () => void;
-  const storeArgs = (): string[] => ['--store', join(dir, 'joinery.db')];
+  const storeArgs = (): string[] => ['--store', join(dir, 'querybara.db')];
 
   beforeEach(() => {
     ({ dir, cleanup } = tempDir());
@@ -149,7 +149,7 @@ describe('profile targets', () => {
   }
 
   function withStore<T>(env: Record<string, string>, fn: (handle: StoreHandle) => T): T {
-    const handle = new StoreHandle({ path: join(dir, 'joinery.db'), source: '--store' }, env);
+    const handle = new StoreHandle({ path: join(dir, 'querybara.db'), source: '--store' }, env);
     try {
       return fn(handle);
     } finally {
@@ -157,8 +157,8 @@ describe('profile targets', () => {
     }
   }
 
-  it('unseals a password saved with JOINERY_PASSPHRASE', async () => {
-    const env = { JOINERY_PASSPHRASE: 'correct horse' };
+  it('unseals a password saved with QUERYBARA_PASSPHRASE', async () => {
+    const env = { QUERYBARA_PASSPHRASE: 'correct horse' };
     await addProfile(env, 'Shop DB', URI, '--environment', 'production');
     const target = await withStore(env, (store) => resolveTarget('shop db', {}, deps(store, env)));
     expect(Object.values(target.secrets)).toEqual([PASSWORD]);
@@ -166,9 +166,9 @@ describe('profile targets', () => {
     expect(target.policy).toMatchObject({ production: true, confirmWrites: true, readOnly: false });
   });
 
-  it('falls back to JOINERY_PASSWORD_<PROFILE> when the saved value is unreadable here', async () => {
-    await addProfile({ JOINERY_PASSPHRASE: 'one' }, 'Shop DB', URI);
-    const env = { JOINERY_PASSPHRASE: 'another', JOINERY_PASSWORD_SHOP_DB: 'env-pw' };
+  it('falls back to QUERYBARA_PASSWORD_<PROFILE> when the saved value is unreadable here', async () => {
+    await addProfile({ QUERYBARA_PASSPHRASE: 'one' }, 'Shop DB', URI);
+    const env = { QUERYBARA_PASSPHRASE: 'another', QUERYBARA_PASSWORD_SHOP_DB: 'env-pw' };
     const target = await withStore(env, (store) => resolveTarget('Shop DB', {}, deps(store, env)));
     expect(Object.values(target.secrets)).toEqual(['env-pw']);
   });
@@ -185,9 +185,9 @@ describe('profile targets', () => {
     const error = await withStore({}, (store) =>
       resolveTarget('Shop DB', {}, deps(store)).catch((e: unknown) => e),
     );
-    expect(error).toBeInstanceOf(JoineryError);
-    expect((error as JoineryError).message).toContain('not available');
-    expect((error as JoineryError).hint).toContain('JOINERY_PASSWORD_SHOP_DB');
+    expect(error).toBeInstanceOf(QuerybaraError);
+    expect((error as QuerybaraError).message).toContain('not available');
+    expect((error as QuerybaraError).hint).toContain('QUERYBARA_PASSWORD_SHOP_DB');
   });
 
   it('finds profiles by id and case-insensitive name, and reports unknown ones', async () => {
@@ -208,7 +208,7 @@ describe('profile targets', () => {
     const result = await run([...storeArgs(), 'test', 'nowhere']);
     expect(result.code).toBe(2);
     expect(result.stderr).toContain('No profile named "nowhere"');
-    expect(result.stderr).toContain(join(dir, 'joinery.db'));
+    expect(result.stderr).toContain(join(dir, 'querybara.db'));
   });
 });
 
@@ -217,7 +217,7 @@ describe('connecting', () => {
     const session = new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 1 }));
     const adapter = new FakeAdapter('postgres', session, (resolved) =>
       Object.keys(resolved.secrets).length === 0
-        ? new JoineryError({ code: 'AUTH_FAILED', message: 'password authentication failed' })
+        ? new QuerybaraError({ code: 'AUTH_FAILED', message: 'password authentication failed' })
         : undefined,
     );
     const prompter = new ScriptedPrompter(true, { secret: ['late-pw'] });
@@ -236,7 +236,7 @@ describe('connecting', () => {
     });
     expect(failing.code).toBe(2);
     expect(failing.stderr).toContain('error: password authentication failed');
-    expect(failing.stderr).toContain('set JOINERY_PASSWORD, or run in a terminal');
+    expect(failing.stderr).toContain('set QUERYBARA_PASSWORD, or run in a terminal');
   });
 
   it('never prints a URI password, even with --verbose', async () => {

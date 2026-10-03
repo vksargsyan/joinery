@@ -1,4 +1,4 @@
-import { tableOptionCatalog, type TableOptionInfo, type ValidationIssue } from '@joinery/sync';
+import { tableOptionCatalog, type TableOptionInfo, type ValidationIssue } from '@querybara/sync';
 import { useMemo } from 'react';
 
 import { issuesAt, type DesignerForm } from '../../state/designer/form';

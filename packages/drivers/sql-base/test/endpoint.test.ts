@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { describeTarget, parseConnectionUri, resolveEndpoint } from '../src';
@@ -37,12 +37,12 @@ describe('parseConnectionUri', () => {
   it('rejects malformed URIs without echoing them', () => {
     const attempt = (): unknown =>
       parseConnectionUri('postgres://u:hunter2@h1:5432,h2:5432/db', 'postgres');
-    expect(attempt).toThrow(JoineryError);
+    expect(attempt).toThrow(QuerybaraError);
     try {
       attempt();
     } catch (error) {
-      expect((error as JoineryError).code).toBe('VALIDATION_FAILED');
-      expect((error as JoineryError).message).not.toContain('hunter2');
+      expect((error as QuerybaraError).code).toBe('VALIDATION_FAILED');
+      expect((error as QuerybaraError).message).not.toContain('hunter2');
     }
     expect(() => parseConnectionUri('db.example.com:5432', 'postgres')).toThrow(/no scheme/);
   });

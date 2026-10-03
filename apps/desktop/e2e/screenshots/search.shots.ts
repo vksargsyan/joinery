@@ -3,7 +3,7 @@ import {
   isSearchSession,
   searchProfileFromUrl,
   type SearchSession,
-} from '@joinery/driver-elasticsearch';
+} from '@querybara/driver-elasticsearch';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import type { LaunchedApp } from '../app';

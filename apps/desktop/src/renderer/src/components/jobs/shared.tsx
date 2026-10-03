@@ -3,7 +3,7 @@ import type {
   ImportSettings,
   TransferPreview,
   TransferProfile,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 

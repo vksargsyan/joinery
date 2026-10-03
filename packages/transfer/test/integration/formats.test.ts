@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 
-import type { Session } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { Session } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -45,7 +45,7 @@ describe.skipIf(SERVERS.length === 0)('Excel and XML', () => {
   let large = '';
 
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'joinery-formats-'));
+    dir = await mkdtemp(join(tmpdir(), 'querybara-formats-'));
     large = join(dir, 'large.xlsx');
     await writeLargeWorkbook(large, LARGE_ROWS);
   }, 120_000);

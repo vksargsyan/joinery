@@ -40,7 +40,7 @@ export const scheduleRuleSchema = z.discriminatedUnion('kind', [
 ]);
 export type ScheduleRule = z.infer<typeof scheduleRuleSchema>;
 
-/** What happens to runs missed while Joinery was closed or the computer slept. */
+/** What happens to runs missed while Querybara was closed or the computer slept. */
 export const missedRunPolicySchema = z.enum([
   /** One catch-up run as soon as possible, however many were missed. */
   'run-once',

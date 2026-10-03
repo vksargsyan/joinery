@@ -1,4 +1,4 @@
-import type { ColumnDef, TableDef } from '@joinery/core';
+import type { ColumnDef, TableDef } from '@querybara/core';
 
 import { referencedNames, tokenizeSql } from '../sql-text';
 import { findType, parseType } from './catalog';

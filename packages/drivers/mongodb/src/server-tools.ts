@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   newId,
   type AccessDetails,
   type AccessOverview,
@@ -28,7 +28,7 @@ import {
   type TopQuery,
   type TopQueryOptions,
   type TopQueryOrder,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   Int32,
   Long,
@@ -41,7 +41,7 @@ import {
   toEjson,
   type BsonDocument,
   type BsonValue,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 import { numberOf } from './admin';
 import { checkCollectionName, checkDatabaseName } from './context';
@@ -60,14 +60,14 @@ import type { MongoSession } from './types';
  */
 
 /** The comment on the tools' own $currentOp, so the list can mark (and skip killing) it. */
-const OWN_COMMENT = 'joinery server tools';
+const OWN_COMMENT = 'querybara server tools';
 
-function notSupported(message: string, hint?: string): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message, ...(hint ? { hint } : {}) });
+function notSupported(message: string, hint?: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message, ...(hint ? { hint } : {}) });
 }
 
-function invalid(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+function invalid(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 function doc(value: BsonValue | undefined): BsonDocument | undefined {
@@ -675,7 +675,7 @@ export class MongoServerTools implements ServerTools {
     try {
       replSet = await this.#command('admin', { replSetGetStatus: 1 });
     } catch (error) {
-      const code = error instanceof JoineryError ? error.engineCode : undefined;
+      const code = error instanceof QuerybaraError ? error.engineCode : undefined;
       if (code === 'Unauthorized') {
         notices.push({
           level: 'info',
@@ -743,7 +743,7 @@ export class MongoServerTools implements ServerTools {
     try {
       ops = await run(true);
     } catch (error) {
-      if (!(error instanceof JoineryError) || error.engineCode !== 'Unauthorized') throw error;
+      if (!(error instanceof QuerybaraError) || error.engineCode !== 'Unauthorized') throw error;
       ops = await run(false);
       notices.push({
         level: 'info',
@@ -782,7 +782,7 @@ export class MongoServerTools implements ServerTools {
     try {
       status = await this.#command(database, { profile: new Int32(-1) });
     } catch (error) {
-      if (error instanceof JoineryError && error.engineCode === 'Unauthorized') {
+      if (error instanceof QuerybaraError && error.engineCode === 'Unauthorized') {
         return {
           ...base,
           profiler: null,
@@ -813,7 +813,7 @@ export class MongoServerTools implements ServerTools {
         cursor: {},
       });
     } catch (error) {
-      if (error instanceof JoineryError && error.engineCode === 'Unauthorized') {
+      if (error instanceof QuerybaraError && error.engineCode === 'Unauthorized') {
         return {
           ...base,
           profiler,
@@ -1106,7 +1106,11 @@ export class MongoServerTools implements ServerTools {
         reply = await this.#command(step.db, step.command, options.signal);
       } catch (error) {
         // Dropping a system.profile that does not exist yet is fine.
-        if ('drop' in step.command && error instanceof JoineryError && error.code === 'NOT_FOUND') {
+        if (
+          'drop' in step.command &&
+          error instanceof QuerybaraError &&
+          error.code === 'NOT_FOUND'
+        ) {
           continue;
         }
         throw enrichMongoError(error, action);
@@ -1159,7 +1163,7 @@ export class MongoServerTools implements ServerTools {
   }
 }
 
-function usersElsewhere(): JoineryError {
+function usersElsewhere(): QuerybaraError {
   return notSupported(
     'MongoDB users and roles have their own editor',
     'Open Users and roles from a database in the explorer',
@@ -1180,7 +1184,7 @@ export function opidOf(id: string): BsonValue {
 
 /** Hints for the roles MongoDB actions need. */
 export function enrichMongoError(error: unknown, action: ServerAction): unknown {
-  if (!(error instanceof JoineryError) || error.engineCode !== 'Unauthorized') return error;
+  if (!(error instanceof QuerybaraError) || error.engineCode !== 'Unauthorized') return error;
   const hint =
     action.kind === 'session'
       ? "Killing another user's operation needs the killop action (clusterMonitor or hostManager role)"
@@ -1193,7 +1197,7 @@ export function enrichMongoError(error: unknown, action: ServerAction): unknown 
           : action.kind === 'profiler' || action.kind === 'topQueries'
             ? 'The profiler needs the enableProfiler action (dbAdmin role on the database)'
             : error.hint;
-  return new JoineryError({ ...error.toJSON(), ...(hint !== undefined ? { hint } : {}) });
+  return new QuerybaraError({ ...error.toJSON(), ...(hint !== undefined ? { hint } : {}) });
 }
 
 export function describeMongoAction(action: ServerAction): {

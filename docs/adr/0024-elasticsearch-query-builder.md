@@ -18,7 +18,7 @@ same text, not a second query.
 
 ## Decision
 
-_*A pure Query DSL model in `@joinery/search-tools`, built into the query bar's texts and read
+_*A pure Query DSL model in `@querybara/search-tools`, built into the query bar's texts and read
 back from them; clauses the model does not break down are kept as JSON inside it.*_
 
 - **The model** (`query-builder.ts`), plain data:

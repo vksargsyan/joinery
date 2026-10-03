@@ -1,4 +1,4 @@
-import { fromEjson, formatShellInline, toEjson, type StagePreview } from '@joinery/mongo-tools';
+import { fromEjson, formatShellInline, toEjson, type StagePreview } from '@querybara/mongo-tools';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as MainClient from '../src/renderer/src/lib/main-client';

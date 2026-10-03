@@ -1,4 +1,4 @@
-import type { PlanNode } from '@joinery/core';
+import type { PlanNode } from '@querybara/core';
 
 /**
  * The visual explain's view model (spec §6: plans render as a node tree with cost and row

@@ -1,6 +1,6 @@
-import { isSqlEngine, type SqlDialect } from '@joinery/core';
-import type { AppSettings, Snippet } from '@joinery/ipc';
-import type { SqlSnippet } from '@joinery/sql-tools';
+import { isSqlEngine, type SqlDialect } from '@querybara/core';
+import type { AppSettings, Snippet } from '@querybara/ipc';
+import type { SqlSnippet } from '@querybara/sql-tools';
 
 import { mainApi } from '../lib/main-client';
 import type { CatalogContext, KeywordCaseSetting } from '../workers/language-service';

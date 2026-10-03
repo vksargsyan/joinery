@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import { assertAllowed, type RedisSession } from '@joinery/driver-redis';
+import { QuerybaraError } from '@querybara/core';
+import { assertAllowed, type RedisSession } from '@querybara/driver-redis';
 import {
   lookupCommand,
   quoteRepr,
@@ -10,8 +10,8 @@ import {
   splitCommands,
   utf8Text,
   type CommandCatalog,
-} from '@joinery/redis-tools';
-import { connectThroughTransport, needsTransport, type TransportSession } from '@joinery/tunnel';
+} from '@querybara/redis-tools';
+import { connectThroughTransport, needsTransport, type TransportSession } from '@querybara/tunnel';
 
 import type { QueryOptions } from './commands/query';
 import { cancellable, closeQuietly, missingPasswordHint } from './connect';
@@ -27,7 +27,7 @@ import {
 } from './target';
 
 /**
- * Redis in joinery-cli (spec §10): `joinery query <target> -e 'SET k v'` runs redis-cli style
+ * Redis in querybara-cli (spec §10): `querybara query <target> -e 'SET k v'` runs redis-cli style
  * command lines (one command per line, redis-cli quoting) through the session's `execute` and
  * prints redis-cli's output; `--format json` prints each reply tree as JSON (an array), `jsonl`
  * one per line. Commands that would take over the connection (SUBSCRIBE, MONITOR...) are
@@ -225,7 +225,7 @@ async function openRedis(
     try {
       return { ...(await open(target)), target };
     } catch (error) {
-      const refused = error instanceof JoineryError && error.code === 'AUTH_FAILED';
+      const refused = error instanceof QuerybaraError && error.code === 'AUTH_FAILED';
       if (!refused || target.passwordKnown) throw error;
       if (!runtime.ctx.prompter.interactive) {
         throw new CliError(error.message, {
@@ -249,7 +249,7 @@ function isRedisSession(session: TransportSession['session']): session is RedisS
   return session.engine === 'redis';
 }
 
-/** `joinery query` on a Redis target (see the module comment). */
+/** `querybara query` on a Redis target (see the module comment). */
 export async function redisQueryCommand(
   runtime: Runtime,
   spec: string,
@@ -276,7 +276,7 @@ export async function redisQueryCommand(
   try {
     commands = splitCommands(await readInput(runtime, options)).filter((c) => c.length > 0);
   } catch (error) {
-    if (error instanceof JoineryError)
+    if (error instanceof QuerybaraError)
       throw new CliError(error.message, { hint: error.hint ?? '' });
     throw error;
   }
@@ -289,12 +289,12 @@ export async function redisQueryCommand(
     try {
       assertAllowed(args.map(utf8Text));
     } catch (error) {
-      if (!(error instanceof JoineryError)) throw error;
+      if (!(error instanceof QuerybaraError)) throw error;
       const streaming = /^(p|s)?(un)?subscribe$|^monitor$/i.test(utf8Text(args[0]!));
       throw new CliError(error.message, {
         code: 'NOT_SUPPORTED',
         hint: streaming
-          ? 'joinery query waits for one reply per command; use the Pub/Sub or Monitor tool of the Joinery app, or redis-cli'
+          ? 'querybara query waits for one reply per command; use the Pub/Sub or Monitor tool of the Querybara app, or redis-cli'
           : (error.hint ?? ''),
       });
     }
@@ -352,7 +352,7 @@ export async function redisQueryCommand(
           `${prefix}${words[0]?.toUpperCase() ?? ''} · ${formatDuration(runtime.ctx.now() - started)}`,
         );
       } catch (error) {
-        if (!(error instanceof JoineryError)) throw error;
+        if (!(error instanceof QuerybaraError)) throw error;
         failures += 1;
         reporter.error(formatError(error, { verbose: reporter.verbose }));
         if (!options.continueOnError) break;

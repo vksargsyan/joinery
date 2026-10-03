@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type SqlDialect } from '@querybara/core';
 
 import { formatCell } from './cells';
 import type { ColumnInfo } from './columns';
@@ -89,7 +89,7 @@ function requireSql(
   format: string,
 ): { dialect: SqlDialect; table: TableRef } {
   if (options.dialect === undefined || options.table === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Copy as ${format} needs the dialect and the table`,
     });
@@ -100,7 +100,7 @@ function requireSql(
 function literal(value: EditValue): Fragment[] {
   if (isDefault(value)) return ['DEFAULT'];
   if (isLargeValue(value)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'A large value was only previewed; load it in full before copying it as SQL',
     });
@@ -182,7 +182,7 @@ export function copyRows(
       const { dialect, table } = requireSql(options, 'UPDATE');
       const identity = options.identity;
       if (identity === undefined || identity.kind === 'none') {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'Copy as UPDATE needs a primary key, a unique key or matching on all columns',
         });
@@ -190,7 +190,7 @@ export function copyRows(
       const position = new Map(columns.map((c, i) => [c.name, i]));
       const missing = identity.columns.filter((name) => !position.has(name));
       if (missing.length > 0 && identity.kind !== 'all-columns') {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Copy as UPDATE needs the key column${missing.length === 1 ? '' : 's'} ${missing.join(', ')} in the selection`,
         });
@@ -200,7 +200,7 @@ export function copyRows(
         .map((c, i) => [c, i] as const)
         .filter(([c]) => !c.generated && !keyColumns.includes(c.name));
       if (sets.length === 0) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'Copy as UPDATE needs at least one column besides the key',
         });
@@ -213,7 +213,7 @@ export function copyRows(
               const at = position.get(name)!;
               const value = row[at] ?? null;
               if (isDefault(value) || isLargeValue(value)) {
-                throw new JoineryError({
+                throw new QuerybaraError({
                   code: 'VALIDATION_FAILED',
                   message: `Copy as UPDATE needs the loaded value of ${name}`,
                 });

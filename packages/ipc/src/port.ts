@@ -1,5 +1,5 @@
 /**
- * The one thing RPC needs from a message port. Joinery moves messages over three port kinds —
+ * The one thing RPC needs from a message port. Querybara moves messages over three port kinds —
  * DOM `MessagePort` in the renderer, Electron `MessagePortMain` in the main and utility processes,
  * and `node:worker_threads` `MessagePort` in tests — and each has its own event API. Adapters
  * below bring them all to this shape. Messages are posted as-is, so they go through structured

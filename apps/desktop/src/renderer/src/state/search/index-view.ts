@@ -16,7 +16,7 @@ import {
   type ReindexPlan,
   type SearchAliasInfo,
   type SearchIndexSummary,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorMessage } from '../../lib/errors';
 import { formatCount } from '../../lib/format';

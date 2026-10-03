@@ -74,7 +74,7 @@ export function UrlListField(props: { readonly form: ConnectionForm }) {
       </label>
       {sniff && (
         <p className="ml-5 -mt-1 text-xs text-muted">
-          Joinery then also sends requests to the addresses the nodes publish, which must be
+          Querybara then also sends requests to the addresses the nodes publish, which must be
           reachable from this computer. Not used through an SSH tunnel or a proxy.
         </p>
       )}

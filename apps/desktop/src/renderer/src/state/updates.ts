@@ -1,4 +1,4 @@
-import type { UpdateChannel, UpdateStatus, UpdatesOffReason } from '@joinery/ipc';
+import type { UpdateChannel, UpdateStatus, UpdatesOffReason } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { mainApi } from '../lib/main-client';
@@ -41,7 +41,7 @@ export function offReasonText(reason: UpdatesOffReason): string {
     case 'unsigned':
       return 'This build is not code-signed, so it does not update itself.';
     case 'unsupported-install':
-      return 'This installation (MSI, zip or unpacked folder) is updated by installing the new version, not by Joinery.';
+      return 'This installation (MSI, zip or unpacked folder) is updated by installing the new version, not by Querybara.';
   }
 }
 
@@ -53,16 +53,16 @@ export function statusText(status: UpdateStatus): string {
       return offReasonText(state.reason);
     case 'idle':
       return status.autoCheck
-        ? 'Joinery checks for updates automatically.'
+        ? 'Querybara checks for updates automatically.'
         : 'Automatic checks are off.';
     case 'checking':
       return 'Checking for updates…';
     case 'up-to-date':
-      return `Joinery ${status.currentVersion} is up to date.`;
+      return `Querybara ${status.currentVersion} is up to date.`;
     case 'downloading':
-      return `Downloading Joinery ${state.version}… ${Math.round(state.percent)} %`;
+      return `Downloading Querybara ${state.version}… ${Math.round(state.percent)} %`;
     case 'ready':
-      return `Joinery ${state.version} is ready. Restart to install it.`;
+      return `Querybara ${state.version} is ready. Restart to install it.`;
     case 'error':
       return `The last check failed: ${state.message}`;
   }

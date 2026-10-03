@@ -16,8 +16,8 @@ import type {
   TriggerDef,
   TypeDef,
   ViewDef,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 import { trimStatement, wrapParens } from './sql-text';
 
@@ -26,7 +26,7 @@ import { trimStatement, wrapParens } from './sql-text';
  * and ER forward engineering share it. Statements carry no trailing semicolon; use
  * `formatScript` to join them into a runnable script.
  *
- * Rendering follows the snapshot producer conventions (see @joinery/core schema.ts) so that
+ * Rendering follows the snapshot producer conventions (see @querybara/core schema.ts) so that
  * re-introspecting the created object yields the snapshot it was rendered from: types and
  * defaults are emitted verbatim, PostgreSQL view bodies and routine definitions as reported by
  * the server, MySQL DEFINER only when asked for.

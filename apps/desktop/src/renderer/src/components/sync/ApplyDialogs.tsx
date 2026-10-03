@@ -1,4 +1,4 @@
-import type { DataScriptPreview, StructureScript } from '@joinery/ipc';
+import type { DataScriptPreview, StructureScript } from '@querybara/ipc';
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 

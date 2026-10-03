@@ -1,4 +1,4 @@
-import { newId } from '@joinery/core';
+import { newId } from '@querybara/core';
 import {
   BSONRegExp,
   BSON_TYPES,
@@ -25,7 +25,7 @@ import {
   type SchemaAnalysis,
   type SchemaField,
   type SchemaTypeCount,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 /**
  * The visual query builder's model (spec §9, "Browsing and editing"): the fields to build with,

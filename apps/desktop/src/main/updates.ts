@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import type {
   AppCommand,
   AppSettings,
@@ -12,7 +12,7 @@ import type {
   UpdateState,
   UpdateStatus,
   mainContract,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import type { AppUpdater, Logger } from 'electron-updater';
 
 import {
@@ -213,7 +213,7 @@ export class UpdateController implements UpdatesService {
 
   install(): void {
     if (this.#state.state !== 'ready' || !this.#updater) {
-      throw new JoineryError({ code: 'NOT_FOUND', message: 'No update is ready to install' });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: 'No update is ready to install' });
     }
     this.#options.beforeInstall?.();
     void this.#updater.then((updater) => updater.quitAndInstall());
@@ -560,7 +560,7 @@ export function updateHandlers(
     },
     install: () => {
       if (!service) {
-        throw new JoineryError({ code: 'NOT_FOUND', message: 'No update is ready to install' });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: 'No update is ready to install' });
       }
       service.install();
     },

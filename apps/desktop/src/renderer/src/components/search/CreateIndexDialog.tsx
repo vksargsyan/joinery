@@ -1,4 +1,4 @@
-import { formatJson } from '@joinery/search-tools';
+import { formatJson } from '@querybara/search-tools';
 import { useMemo, useState } from 'react';
 
 import {

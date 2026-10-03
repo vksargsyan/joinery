@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/driver-postgres",
+  "name": "@querybara/driver-postgres",
   "version": "0.0.0",
   "private": true,
   "description": "PostgreSQL driver adapter (pg, pg-cursor).",
@@ -13,9 +13,9 @@
     "test:integration": "vitest run test/integration --testTimeout=60000 --hookTimeout=60000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
-    "@joinery/sql-tools": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
+    "@querybara/sql-tools": "workspace:*",
     "pg": "^8.23.0",
     "pg-cursor": "^2.22.0"
   },

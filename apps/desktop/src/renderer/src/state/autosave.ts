@@ -4,7 +4,7 @@ import type {
   AutosaveKind,
   AutosaveSaveInput,
   StoredProfile,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 

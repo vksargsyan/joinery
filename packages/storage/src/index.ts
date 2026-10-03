@@ -1,6 +1,6 @@
 /**
- * @joinery/storage: the local SQLite store (spec §4, §5, §6, §16). Used by the desktop main
- * process and by joinery-cli; it never imports Electron. The desktop plugs Electron safeStorage
+ * @querybara/storage: the local SQLite store (spec §4, §5, §6, §16). Used by the desktop main
+ * process and by querybara-cli; it never imports Electron. The desktop plugs Electron safeStorage
  * in through `SecretSealer`.
  */
 

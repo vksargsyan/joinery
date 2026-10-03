@@ -4,8 +4,8 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import { buildConfigRows, infoField } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { buildConfigRows, infoField } from '@querybara/redis-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { redisProfileFromUrl, type RedisSession } from '../../src';
@@ -155,9 +155,9 @@ describe.skipIf(!REDIS_URL || !REDIS_ACL_USER)('configuration as a restricted AC
 
   it('fails with a permission error the page can explain', async () => {
     const error = await app.configRead().catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
     expect(error).toMatchObject({ code: 'NOT_SUPPORTED', engineCode: 'NOPERM' });
-    expect((error as JoineryError).hint).toMatch(/\+config\|get/);
+    expect((error as QuerybaraError).hint).toMatch(/\+config\|get/);
     await expect(app.configApply([{ name: 'lfu-log-factor', value: '10' }])).rejects.toMatchObject({
       code: 'NOT_SUPPORTED',
       engineCode: 'NOPERM',
@@ -263,7 +263,7 @@ async function privateServer(
   withFile: boolean,
 ): Promise<{ url: string; dir: string; stop: () => Promise<void> }> {
   const port = await freePort();
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-config-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-config-'));
   const settings = ['port', String(port), 'bind', '127.0.0.1', 'save', '', 'dir', dir];
   let args: string[];
   if (withFile) {

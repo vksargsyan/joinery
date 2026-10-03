@@ -1,5 +1,5 @@
-import { JoineryError, cancelledError, type SqlDialect } from '@joinery/core';
-import { StatementSplitter } from '@joinery/sql-tools';
+import { QuerybaraError, cancelledError, type SqlDialect } from '@querybara/core';
+import { StatementSplitter } from '@querybara/sql-tools';
 
 import { CsvParser, type CsvField } from './csv';
 import { concatBytes, openInput, type ByteSource } from './io';
@@ -549,7 +549,7 @@ export async function previewSource(
     const given = options.xml?.rowPath;
     const rowPath = given !== undefined ? normalizeRowPath(given) : rowPaths[0]?.path;
     if (rowPath === undefined) {
-      throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The XML has no elements' });
+      throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The XML has no elements' });
     }
     const xmlBuilder = new XmlRowBuilder(rowPath);
     xmlBuilder.collect(parts);

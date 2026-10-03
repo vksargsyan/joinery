@@ -1,4 +1,4 @@
-# Joinery
+# Querybara
 
 A cross-platform desktop database manager built with Electron, React and Node.js, in TypeScript
 end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreSQL, Studio
@@ -6,7 +6,7 @@ end to end. The target is Navicat Premium parity for MySQL, MariaDB and PostgreS
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/images/desktop-query-light.png">
-  <img alt="Joinery running a query against PostgreSQL: the shop schema in the side bar, a monthly revenue query in the editor and its 54 rows in the grid" src="docs/images/desktop-query-dark.png">
+  <img alt="Querybara running a query against PostgreSQL: the shop schema in the side bar, a monthly revenue query in the editor and its 54 rows in the grid" src="docs/images/desktop-query-dark.png">
 </picture>
 
 ## Status
@@ -93,7 +93,7 @@ What works today:
   history and a desktop notification when a long job ends.
 - **Backup and restore**: logical backups of PostgreSQL, MySQL and MariaDB in one consistent
   snapshot, MongoDB collections with their options and indexes, and Redis keys with their TTLs,
-  to SQL, gzipped SQL or the Joinery archive ([.jbak](docs/backup-archive-format.md): one file
+  to SQL, gzipped SQL or the Querybara archive ([.qbak](docs/backup-archive-format.md): one file
   per object, optional AES-256-GCM encryption with a passphrase); pg_dump and mysqldump when
   installed; restores of everything or selected objects into any database, listing what would
   be dropped before asking; a Redis BGSAVE button.
@@ -143,12 +143,12 @@ What works today:
   validate; settings with SET, ALTER DATABASE, ALTER SYSTEM, SET GLOBAL / PERSIST or
   setParameter. Every change shows its exact statement first.
 - **Schedules**: backups, SQL files, exports and saved comparisons run on a schedule while
-  Joinery is open (every N minutes or hours, times on chosen weekdays, or days of the month),
+  Querybara is open (every N minutes or hours, times on chosen weekdays, or days of the month),
   set up with Schedule… where each is run once. Each run writes a new file named from a template
   and can keep only the newest N; comparisons keep a report when they find differences. Missed
   runs are caught up once or skipped; notifications go out when a run fails or finds
-  differences; closing Joinery with schedules on asks first.
-- **joinery-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
+  differences; closing Querybara with schedules on asks first.
+- **querybara-cli**: the same engine headless — test, query, compare, data-compare, ddl, import,
   export, run-file, transfer and profile management; test and query for MongoDB, Redis and
   Elasticsearch too; backup and restore for every engine.
 
@@ -156,28 +156,28 @@ What works today:
 
 pnpm workspaces with Turborepo ([ADR 0001](docs/adr/0001-monorepo-and-source-packages.md)).
 
-| Path                             | Package                         | What it is                                                                                        |
-| -------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `apps/desktop`                   | `@joinery/desktop`              | Electron app: main, sandboxed preload, React renderer, connection hosts, job runner               |
-| `apps/cli`                       | `@joinery/cli`                  | `joinery` command-line tool                                                                       |
-| `packages/core`                  | `@joinery/core`                 | Domain types, capability flags, schema snapshot, driver adapter contract                          |
-| `packages/ipc`                   | `@joinery/ipc`                  | Typed RPC over MessagePort with zod-validated contracts                                           |
-| `packages/storage`               | `@joinery/storage`              | Local SQLite store, migrations, sealed secrets, URI/pgpass import                                 |
-| `packages/sql-tools`             | `@joinery/sql-tools`            | Lexer, statement splitter, parameters, safety checks, formatter, diagnostics, query builder model |
-| `packages/sync`                  | `@joinery/sync`                 | Structure diff and script generation, data compare                                                |
-| `packages/table-data`            | `@joinery/table-data`           | Table data paging, filters, staged changes and apply, cell parsing, copy/paste                    |
-| `packages/drivers/sql-base`      | `@joinery/driver-sql-base`      | Shared endpoint, TLS, error mapping and Test Connection logic                                     |
-| `packages/drivers/postgres`      | `@joinery/driver-postgres`      | PostgreSQL adapter (pg, pg-cursor)                                                                |
-| `packages/drivers/mysql`         | `@joinery/driver-mysql`         | MySQL and MariaDB adapter (mysql2)                                                                |
-| `packages/drivers/mongodb`       | `@joinery/driver-mongodb`       | MongoDB adapter (mongodb) with document, index, GridFS and change stream services                 |
-| `packages/mongo-tools`           | `@joinery/mongo-tools`          | mongosh-style query parsing, Extended JSON, find() text, schema analysis                          |
-| `packages/drivers/redis`         | `@joinery/driver-redis`         | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools               |
-| `packages/redis-tools`           | `@joinery/redis-tools`          | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs, RDB reader       |
-| `packages/drivers/elasticsearch` | `@joinery/driver-elasticsearch` | Elasticsearch adapter on its own HTTP client: documents, SQL, administration                      |
-| `packages/search-tools`          | `@joinery/search-tools`         | Console parser, lossless JSON, request classifier, SQL and admin reply readers, autocomplete      |
-| `packages/tunnel`                | `@joinery/tunnel`               | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks                   |
-| `packages/transfer`              | `@joinery/transfer`             | Streaming CSV/TSV/JSON/Excel/XML/Parquet import, export also to HTML/Markdown, ZIP, mapping       |
-| `packages/backup`                | `@joinery/backup`               | Backup and restore for every engine, the .jbak archive, pg_dump/mysqldump                         |
+| Path                             | Package                           | What it is                                                                                        |
+| -------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `apps/desktop`                   | `@querybara/desktop`              | Electron app: main, sandboxed preload, React renderer, connection hosts, job runner               |
+| `apps/cli`                       | `@querybara/cli`                  | `querybara` command-line tool                                                                     |
+| `packages/core`                  | `@querybara/core`                 | Domain types, capability flags, schema snapshot, driver adapter contract                          |
+| `packages/ipc`                   | `@querybara/ipc`                  | Typed RPC over MessagePort with zod-validated contracts                                           |
+| `packages/storage`               | `@querybara/storage`              | Local SQLite store, migrations, sealed secrets, URI/pgpass import                                 |
+| `packages/sql-tools`             | `@querybara/sql-tools`            | Lexer, statement splitter, parameters, safety checks, formatter, diagnostics, query builder model |
+| `packages/sync`                  | `@querybara/sync`                 | Structure diff and script generation, data compare                                                |
+| `packages/table-data`            | `@querybara/table-data`           | Table data paging, filters, staged changes and apply, cell parsing, copy/paste                    |
+| `packages/drivers/sql-base`      | `@querybara/driver-sql-base`      | Shared endpoint, TLS, error mapping and Test Connection logic                                     |
+| `packages/drivers/postgres`      | `@querybara/driver-postgres`      | PostgreSQL adapter (pg, pg-cursor)                                                                |
+| `packages/drivers/mysql`         | `@querybara/driver-mysql`         | MySQL and MariaDB adapter (mysql2)                                                                |
+| `packages/drivers/mongodb`       | `@querybara/driver-mongodb`       | MongoDB adapter (mongodb) with document, index, GridFS and change stream services                 |
+| `packages/mongo-tools`           | `@querybara/mongo-tools`          | mongosh-style query parsing, Extended JSON, find() text, schema analysis                          |
+| `packages/drivers/redis`         | `@querybara/driver-redis`         | Redis and Valkey adapter (ioredis): standalone, Sentinel, Cluster; keys, CLI, tools               |
+| `packages/redis-tools`           | `@querybara/redis-tools`          | redis-cli tokenizer and reply formats, command docs, INFO parsers, value codecs, RDB reader       |
+| `packages/drivers/elasticsearch` | `@querybara/driver-elasticsearch` | Elasticsearch adapter on its own HTTP client: documents, SQL, administration                      |
+| `packages/search-tools`          | `@querybara/search-tools`         | Console parser, lossless JSON, request classifier, SQL and admin reply readers, autocomplete      |
+| `packages/tunnel`                | `@querybara/tunnel`               | SSH tunnels (jump hosts, shared sessions), HTTP/SOCKS5 proxies, host key checks                   |
+| `packages/transfer`              | `@querybara/transfer`             | Streaming CSV/TSV/JSON/Excel/XML/Parquet import, export also to HTML/Markdown, ZIP, mapping       |
+| `packages/backup`                | `@querybara/backup`               | Backup and restore for every engine, the .qbak archive, pg_dump/mysqldump                         |
 
 Packages under `packages/` never import Electron, so the CLI and the tests use them directly.
 
@@ -194,10 +194,10 @@ pnpm check            # format check, lint, typecheck and unit tests across the 
 Run the desktop app in development:
 
 ```sh
-pnpm --filter @joinery/desktop dev
+pnpm --filter @querybara/desktop dev
 ```
 
-Build a test installer for the current OS with `pnpm --filter @joinery/desktop package` (output
+Build a test installer for the current OS with `pnpm --filter @querybara/desktop package` (output
 in `apps/desktop/dist`). The Package workflow builds and smoke-tests the installers of every
 platform: AppImage, deb and rpm (x64, arm64), NSIS, MSI and zip (x64, arm64), and a universal
 macOS DMG. A `v*` tag builds a release, signed and notarised when the signing secrets are set,
@@ -209,21 +209,21 @@ in System Settings → Privacy & Security the first time they open.
 Build and use the CLI:
 
 ```sh
-pnpm --filter @joinery/cli build
-node apps/cli/dist/joinery.mjs --help
-node apps/cli/dist/joinery.mjs compare postgres://app@db1/shop postgres://app@db2/shop --out sync.sql
-node apps/cli/dist/joinery.mjs query "postgres://app@10.0.3.7/shop" --ssh ops@bastion.example.com --ssh-agent -e "select 1"
-node apps/cli/dist/joinery.mjs import dev --table public.people --file people.csv --mode upsert --key id
-node apps/cli/dist/joinery.mjs export dev --table orders --table items --format sql-ddl --one-file --out shop.sql.gz --gzip
-node apps/cli/dist/joinery.mjs import dev --table sales --file q3.xlsx --sheet July --create --key id
-node apps/cli/dist/joinery.mjs export dev --table orders --table items --format xlsx --one-file --out shop.xlsx
-node apps/cli/dist/joinery.mjs export dev --table events --format parquet --codec zstd --out events.parquet
-node apps/cli/dist/joinery.mjs run-file dev migrate.sql --continue
-JOINERY_BACKUP_PASSPHRASE=… node apps/cli/dist/joinery.mjs backup prod --out shop.jbak --encrypt
-node apps/cli/dist/joinery.mjs restore dev shop.jbak --select public.orders --database shop_copy --create-database
+pnpm --filter @querybara/cli build
+node apps/cli/dist/querybara.mjs --help
+node apps/cli/dist/querybara.mjs compare postgres://app@db1/shop postgres://app@db2/shop --out sync.sql
+node apps/cli/dist/querybara.mjs query "postgres://app@10.0.3.7/shop" --ssh ops@bastion.example.com --ssh-agent -e "select 1"
+node apps/cli/dist/querybara.mjs import dev --table public.people --file people.csv --mode upsert --key id
+node apps/cli/dist/querybara.mjs export dev --table orders --table items --format sql-ddl --one-file --out shop.sql.gz --gzip
+node apps/cli/dist/querybara.mjs import dev --table sales --file q3.xlsx --sheet July --create --key id
+node apps/cli/dist/querybara.mjs export dev --table orders --table items --format xlsx --one-file --out shop.xlsx
+node apps/cli/dist/querybara.mjs export dev --table events --format parquet --codec zstd --out events.parquet
+node apps/cli/dist/querybara.mjs run-file dev migrate.sql --continue
+QUERYBARA_BACKUP_PASSPHRASE=… node apps/cli/dist/querybara.mjs backup prod --out shop.qbak --encrypt
+node apps/cli/dist/querybara.mjs restore dev shop.qbak --select public.orders --database shop_copy --create-database
 ```
 
-The CLI shares the desktop app's saved connections (`--store` or `JOINERY_STORE` point it at
+The CLI shares the desktop app's saved connections (`--store` or `QUERYBARA_STORE` point it at
 another store file).
 
 ## Tests
@@ -233,17 +233,17 @@ another store file).
   Each engine's suite runs only when its URL is set, for example:
 
   ```sh
-  export JOINERY_TEST_POSTGRES_URL=postgres://postgres:postgres@127.0.0.1:5432/joinery_test
-  export JOINERY_TEST_MYSQL_URL=mysql://root:secret@127.0.0.1:3306/joinery_test
-  export JOINERY_TEST_MARIADB_URL=mariadb://root:secret@127.0.0.1:3307/joinery_test
+  export QUERYBARA_TEST_POSTGRES_URL=postgres://postgres:postgres@127.0.0.1:5432/querybara_test
+  export QUERYBARA_TEST_MYSQL_URL=mysql://root:secret@127.0.0.1:3306/querybara_test
+  export QUERYBARA_TEST_MARIADB_URL=mariadb://root:secret@127.0.0.1:3307/querybara_test
   pnpm test:integration
   ```
 
-  Test URLs default to TLS off; add `?tls=verify-full` (and the `JOINERY_TEST_*_TLS_CA`
+  Test URLs default to TLS off; add `?tls=verify-full` (and the `QUERYBARA_TEST_*_TLS_CA`
   variables) to test TLS.
 
-- `xvfb-run -a pnpm --filter @joinery/desktop test:e2e` drives the built Electron app with
-  Playwright against `JOINERY_TEST_POSTGRES_URL` (drop `xvfb-run` on a desktop).
+- `xvfb-run -a pnpm --filter @querybara/desktop test:e2e` drives the built Electron app with
+  Playwright against `QUERYBARA_TEST_POSTGRES_URL` (drop `xvfb-run` on a desktop).
 
 CI runs format, lint, typecheck and unit tests, a dependency audit, the integration suites
 against PostgreSQL, MySQL and MariaDB service containers (the full version matrix nightly), and

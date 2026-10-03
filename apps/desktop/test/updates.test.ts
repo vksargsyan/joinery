@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { AppCommand, UpdateStatus } from '@joinery/ipc';
+import { QuerybaraError } from '@querybara/core';
+import type { AppCommand, UpdateStatus } from '@querybara/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { menuTemplate } from '../src/main/menu';
@@ -22,7 +22,11 @@ import {
  * handlers. No network, no Electron.
  */
 
-const FEED: UpdateFeed = { owner: 'vksargsyan', repo: 'joinery', publisherNames: ['Joinery Ltd'] };
+const FEED: UpdateFeed = {
+  owner: 'vksargsyan',
+  repo: 'querybara',
+  publisherNames: ['Querybara Ltd'],
+};
 const ON: UpdateEnvironment = {
   availability: { enabled: true },
   policy: NO_POLICY,
@@ -97,7 +101,7 @@ describe('UpdateController', () => {
       factory,
       environment: {
         availability: { enabled: false, reason: 'policy' },
-        policy: { disabled: true, sources: ['JOINERY_DISABLE_UPDATES'] },
+        policy: { disabled: true, sources: ['QUERYBARA_DISABLE_UPDATES'] },
         install: 'deb',
       },
     });
@@ -126,7 +130,7 @@ describe('UpdateController', () => {
       state: { state: 'up-to-date' },
       lastCheckedAt: '2026-09-29T12:00:00.000Z',
       requestId: 0,
-      releaseNotesUrl: 'https://github.com/vksargsyan/joinery/releases/tag/v1.0.0',
+      releaseNotesUrl: 'https://github.com/vksargsyan/querybara/releases/tag/v1.0.0',
     });
     expect(fake.configured).toEqual([{ channel: 'latest', allowPrerelease: false }]);
     await vi.advanceTimersByTimeAsync(60_000);
@@ -165,10 +169,10 @@ describe('UpdateController', () => {
     await updates.check();
     expect(updates.status()).toMatchObject({
       state: { state: 'downloading', version: '1.1.0', percent: 42.5 },
-      releaseNotesUrl: 'https://github.com/vksargsyan/joinery/releases/tag/v1.1.0',
+      releaseNotesUrl: 'https://github.com/vksargsyan/querybara/releases/tag/v1.1.0',
       requestId: 1,
     });
-    expect(() => updates.install()).toThrow(JoineryError);
+    expect(() => updates.install()).toThrow(QuerybaraError);
 
     fake.events?.progress(150);
     expect(updates.status().state).toMatchObject({ percent: 100 });
@@ -275,7 +279,7 @@ describe('updateErrorMessage', () => {
     // provider wraps the "latest version" error in a feed error with another code.
     const wrapped = Object.assign(
       new Error(
-        'Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/vksargsyan/joinery/releases/latest), please ensure a production release exists: HttpError: 406 \n    at GitHubProvider.getLatestTagName,\nXML:\n<feed/>',
+        'Cannot parse releases feed: Error: Unable to find latest version on GitHub (https://github.com/vksargsyan/querybara/releases/latest), please ensure a production release exists: HttpError: 406 \n    at GitHubProvider.getLatestTagName,\nXML:\n<feed/>',
       ),
       { code: 'ERR_UPDATER_INVALID_RELEASE_FEED' },
     );
@@ -328,7 +332,7 @@ describe('streams and handlers', () => {
     abort.abort();
     await stream.return(undefined);
     await off.check(undefined, {} as never);
-    expect(() => off.install(undefined, {} as never)).toThrow(JoineryError);
+    expect(() => off.install(undefined, {} as never)).toThrow(QuerybaraError);
 
     const { fake, factory } = fakeUpdater();
     const { updates } = controller({ factory, autoCheck: false });
@@ -353,22 +357,22 @@ describe('the menu', () => {
       );
     const windows = menuTemplate({
       platform: 'win32',
-      appName: 'Joinery',
+      appName: 'Querybara',
       development: false,
       commands,
     });
     expect(labels(windows)).toEqual(
-      expect.arrayContaining(['Release Notes', 'Check for Updates…', 'About Joinery']),
+      expect.arrayContaining(['Release Notes', 'Check for Updates…', 'About Querybara']),
     );
     const mac = menuTemplate({
       platform: 'darwin',
-      appName: 'Joinery',
+      appName: 'Querybara',
       development: false,
       commands,
     });
     const appMenu = mac[0]?.submenu;
     expect(Array.isArray(appMenu) && appMenu.slice(0, 2).map((item) => item.label)).toEqual([
-      'About Joinery',
+      'About Querybara',
       'Check for Updates…',
     ]);
     for (const template of [windows, mac]) {
@@ -381,8 +385,8 @@ describe('the menu', () => {
     }
     expect(clicks.sort()).toEqual(['about', 'about', 'check', 'check', 'notes', 'notes']);
     expect(
-      labels(menuTemplate({ platform: 'linux', appName: 'Joinery', development: false })),
-    ).not.toContain('About Joinery');
+      labels(menuTemplate({ platform: 'linux', appName: 'Querybara', development: false })),
+    ).not.toContain('About Querybara');
   });
 });
 
@@ -393,7 +397,7 @@ describe('the window menu bar (Windows, Linux)', () => {
       for (const development of [false, true]) {
         const native = menuTemplate({
           platform,
-          appName: 'Joinery',
+          appName: 'Querybara',
           development,
           commands: {
             about: () => {},
@@ -404,7 +408,7 @@ describe('the window menu bar (Windows, Linux)', () => {
             keyboardShortcuts: () => {},
           },
         });
-        const page = windowMenus({ platform, appName: 'Joinery', development });
+        const page = windowMenus({ platform, appName: 'Querybara', development });
         expect(page.map((m) => m.label)).toEqual(native.map((m) => m.label ?? 'Help'));
         native.forEach((menu, i) => {
           const items = (menu.submenu as Electron.MenuItemConstructorOptions[]).map((item) =>

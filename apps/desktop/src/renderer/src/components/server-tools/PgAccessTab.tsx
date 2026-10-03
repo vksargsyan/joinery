@@ -8,7 +8,7 @@ import {
   type PolicyCommand,
   type RlsTable,
   type ServerAction,
-} from '@joinery/core';
+} from '@querybara/core';
 import { useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

@@ -1,13 +1,13 @@
 import { randomBytes } from 'node:crypto';
 
-import { newId, rowAt, type CellValue, type Session, type SqlDialect } from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import { quoteIdent } from '@joinery/sql-tools';
+import { newId, rowAt, type CellValue, type Session, type SqlDialect } from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import { quoteIdent } from '@querybara/sql-tools';
 
 /**
- * Real-server plumbing: the configured servers (JOINERY_TEST_*_URL), a scratch database per
+ * Real-server plumbing: the configured servers (QUERYBARA_TEST_*_URL), a scratch database per
  * suite that is always dropped, and plain query helpers that bypass the package under test.
  */
 
@@ -20,9 +20,9 @@ export interface TestServer {
 }
 
 const ENV: readonly (readonly [ServerEngine, string])[] = [
-  ['postgres', 'JOINERY_TEST_POSTGRES_URL'],
-  ['mysql', 'JOINERY_TEST_MYSQL_URL'],
-  ['mariadb', 'JOINERY_TEST_MARIADB_URL'],
+  ['postgres', 'QUERYBARA_TEST_POSTGRES_URL'],
+  ['mysql', 'QUERYBARA_TEST_MYSQL_URL'],
+  ['mariadb', 'QUERYBARA_TEST_MARIADB_URL'],
 ];
 
 export function configuredServers(): TestServer[] {

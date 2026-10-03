@@ -5,7 +5,7 @@ import {
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { checkRedisConnection, type RedisCheckDeps } from './check';
 import { RedisSessionImpl } from './session';

@@ -1,4 +1,4 @@
-import { Long, ObjectId, Timestamp, parseShellDocument } from '@joinery/mongo-tools';
+import { Long, ObjectId, Timestamp, parseShellDocument } from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

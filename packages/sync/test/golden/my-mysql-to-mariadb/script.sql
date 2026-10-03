@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mysql billing
 -- Target: mariadb billing
 -- Operations: 2

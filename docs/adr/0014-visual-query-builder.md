@@ -1,4 +1,4 @@
-# 0014. Visual query builder: a query model on Joinery's lexer, run through the query tab path
+# 0014. Visual query builder: a query model on Querybara's lexer, run through the query tab path
 
 - Status: Accepted
 - Date: 2026-09-30
@@ -14,7 +14,7 @@ auto-layout, and the per-connection metadata cache (§5).
 
 Two-way sync needs a parser that reads what the generator writes, for every dialect, and says
 precisely what it cannot read. ADR 0003 put dt-sql-parser behind `diagnose()` only; ADR 0005
-built autocomplete on Joinery's own lexer instead of the parser's APIs. Both parsers were
+built autocomplete on Querybara's own lexer instead of the parser's APIs. Both parsers were
 measured there: dt-sql-parser has no MariaDB grammar and grammar gaps masked by rewrites, costs
 300+ KB of grammar per dialect and 0.2-0.6 s to warm up, and gives a parse tree of the whole
 language that we would have to walk and reject most of; node-sql-parser rejected 10-21 of ~50
@@ -22,7 +22,7 @@ everyday statements per dialect.
 
 ## Decision
 
-**A pure query model in `@joinery/sql-tools`** (`src/query-model/`): plain, JSON-safe data
+**A pure query model in `@querybara/sql-tools`** (`src/query-model/`): plain, JSON-safe data
 (`QueryModel`: tables with aliases; joins between two tables with a type and column
 comparisons ANDed; the select list of columns, `t.*`, aggregates and expressions with aliases;
 WHERE and HAVING as trees of AND/OR groups, optionally negated, of typed conditions (=, <>, <,
@@ -47,7 +47,7 @@ OFFSET; DISTINCT).
   with backslashes and NUL-free Unicode, nested and negated groups, every operator and join
   type).
 - `parseQuery(sql, dialect, { columnsOf })` is a recursive-descent reader over `significantTokens`
-  from Joinery's lexer (ADR 0005's approach, no new dependency). It returns `ok` with a model,
+  from Querybara's lexer (ADR 0005's approach, no new dependency). It returns `ok` with a model,
   `invalid` (unfinished or broken SQL, with its offsets), or `unsupported` naming the construct:
   another statement or several, WITH, UNION / INTERSECT / EXCEPT, subqueries, window functions,
   DISTINCT ON, ROLLUP / CUBE / GROUPING SETS, locking clauses, SELECT INTO, USING and NATURAL

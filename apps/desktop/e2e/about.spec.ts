@@ -47,10 +47,10 @@ async function clickMenuItem(app: ElectronApplication, label: string): Promise<v
 test('shows the version, runtime and why a development run does not update', async () => {
   // About lives in the application menu only. Until the page listens to the menu (just after
   // launch), a click on it goes nowhere, so click again until the box opens.
-  await expect(page.getByRole('button', { name: 'About Joinery' })).toHaveCount(0);
-  const dialog = page.getByRole('dialog', { name: 'About Joinery' });
+  await expect(page.getByRole('button', { name: 'About Querybara' })).toHaveCount(0);
+  const dialog = page.getByRole('dialog', { name: 'About Querybara' });
   await expect(async () => {
-    await clickMenuItem(launched.app, 'About Joinery');
+    await clickMenuItem(launched.app, 'About Querybara');
     await expect(dialog).toBeVisible({ timeout: 1000 });
   }).toPass();
   await expect(dialog.getByTestId('about-version')).toHaveText(`Version ${VERSION}`);
@@ -62,7 +62,7 @@ test('shows the version, runtime and why a development run does not update', asy
 });
 
 test('saves the update channel and automatic checks as settings', async () => {
-  const dialog = page.getByRole('dialog', { name: 'About Joinery' });
+  const dialog = page.getByRole('dialog', { name: 'About Querybara' });
   const channel = dialog.getByLabel('Update channel');
   await expect(channel).toHaveValue('stable');
   await channel.selectOption('beta');
@@ -75,7 +75,7 @@ test('saves the update channel and automatic checks as settings', async () => {
   await expect(dialog).toBeHidden();
 
   // The menu's About item opens the same box, which reads the saved preferences back.
-  await clickMenuItem(launched.app, 'About Joinery');
+  await clickMenuItem(launched.app, 'About Querybara');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel('Update channel')).toHaveValue('beta');
   await expect(dialog.getByLabel('Check for updates automatically')).not.toBeChecked();
@@ -85,7 +85,7 @@ test('saves the update channel and automatic checks as settings', async () => {
 });
 
 test('lists the third-party licences the build shipped', async () => {
-  const dialog = page.getByRole('dialog', { name: 'About Joinery' });
+  const dialog = page.getByRole('dialog', { name: 'About Querybara' });
   await dialog.getByRole('tab', { name: 'Third-party licences' }).click();
   const packages = dialog.getByRole('list', { name: 'Third-party packages' });
   await expect(packages.getByText('react', { exact: true })).toBeVisible();

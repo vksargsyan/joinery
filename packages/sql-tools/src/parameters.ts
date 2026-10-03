@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type QueryParams, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type QueryParams, type SqlDialect } from '@querybara/core';
 
 import { tokenize } from './lexer';
 
@@ -86,7 +86,7 @@ export function findParameters(
 
 /**
  * The values to prompt for, in binding order: unique names in order of first use, unique `$n`
- * numbers ascending, or one entry per `?`. Throws a VALIDATION_FAILED JoineryError when the text
+ * numbers ascending, or one entry per `?`. Throws a VALIDATION_FAILED QuerybaraError when the text
  * mixes placeholder styles.
  */
 export function parameterNames(parameters: readonly SqlParameter[]): string[] {
@@ -105,7 +105,7 @@ export function parameterNames(parameters: readonly SqlParameter[]): string[] {
  *
  * PostgreSQL output numbers placeholders `$1..$k` compactly, reusing a number for a repeated name;
  * MySQL/MariaDB output has one `?` and one value per occurrence. Throws a VALIDATION_FAILED
- * JoineryError, with `position` set, for mixed styles, missing values or a wrong value count.
+ * QuerybaraError, with `position` set, for mixed styles, missing values or a wrong value count.
  */
 export function bindParameters(
   text: string,
@@ -184,6 +184,6 @@ function describeStyle(style: ParameterStyle): string {
   return style === 'named' ? ':name' : style === 'numbered' ? '$n' : '?';
 }
 
-function invalid(message: string, at: SqlParameter): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message, position: at.start });
+function invalid(message: string, at: SqlParameter): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message, position: at.start });
 }

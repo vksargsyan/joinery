@@ -1,4 +1,4 @@
-import { JoineryError, errorCodeSchema } from '@joinery/core';
+import { QuerybaraError, errorCodeSchema } from '@querybara/core';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -66,7 +66,7 @@ const baseHandlers: Handlers = {
   },
   fail: ({ code, plain }) => {
     if (plain) throw new Error('boom');
-    throw new JoineryError({
+    throw new QuerybaraError({
       code,
       message: 'it failed',
       detail: 'details',
@@ -79,7 +79,7 @@ const baseHandlers: Handlers = {
   count: async function* ({ n, failAt }, { progress }) {
     progress('starting');
     for (let i = 0; i < n; i++) {
-      if (i === failAt) throw new JoineryError({ code: 'SQL_ERROR', message: `failed at ${i}` });
+      if (i === failAt) throw new QuerybaraError({ code: 'SQL_ERROR', message: `failed at ${i}` });
       yield i;
     }
   },
@@ -99,12 +99,12 @@ async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {
   return items;
 }
 
-async function rejection(promise: Promise<unknown>): Promise<JoineryError> {
+async function rejection(promise: Promise<unknown>): Promise<QuerybaraError> {
   try {
     await promise;
   } catch (error) {
-    expect(error).toBeInstanceOf(JoineryError);
-    return error as JoineryError;
+    expect(error).toBeInstanceOf(QuerybaraError);
+    return error as QuerybaraError;
   }
   throw new Error('Expected a rejection');
 }

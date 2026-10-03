@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -16,11 +16,11 @@ import { connect, query, scratchDatabase } from './db';
  * dialogs are stubbed in the main process, so they answer with files in a temporary folder.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Transfer';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -31,7 +31,7 @@ let direct: Session | undefined;
 let work = '';
 
 test.beforeAll(async () => {
-  work = mkdtempSync(join(tmpdir(), 'joinery-e2e-transfer-'));
+  work = mkdtempSync(join(tmpdir(), 'querybara-e2e-transfer-'));
   database = await scratchDatabase(PG_URL!);
   direct = await connect(PG_URL!, database.name);
   await query(

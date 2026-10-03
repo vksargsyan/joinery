@@ -1,5 +1,5 @@
-import { ENGINES, type EngineFamily, type EngineId } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import { ENGINES, type EngineFamily, type EngineId } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import {

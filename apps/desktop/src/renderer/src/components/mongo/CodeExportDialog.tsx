@@ -3,7 +3,7 @@ import 'monaco-editor/languages/definitions/go/register';
 import 'monaco-editor/languages/definitions/java/register';
 import 'monaco-editor/languages/definitions/php/register';
 import 'monaco-editor/languages/definitions/python/register';
-import { CODE_EXPORT_LANGUAGES, type CodeLanguage } from '@joinery/mongo-tools';
+import { CODE_EXPORT_LANGUAGES, type CodeLanguage } from '@querybara/mongo-tools';
 import { useMemo, useState } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';

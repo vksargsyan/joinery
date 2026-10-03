@@ -1,15 +1,15 @@
 import { randomBytes } from 'node:crypto';
 
-import type { CellValue, ResolvedProfile, Session, SqlDialect } from '@joinery/core';
-import { newId, rowAt } from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { CellValue, ResolvedProfile, Session, SqlDialect } from '@querybara/core';
+import { newId, rowAt } from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import { quoteIdent } from '@querybara/sql-tools';
 
 /**
  * Real-server plumbing for the transfer suites: the servers configured through
- * JOINERY_TEST_*_URL, scratch databases that are always dropped, and small query helpers.
+ * QUERYBARA_TEST_*_URL, scratch databases that are always dropped, and small query helpers.
  */
 
 export type ServerEngine = 'postgres' | 'mysql' | 'mariadb';
@@ -22,9 +22,9 @@ export interface TestServer {
 }
 
 const ENV: readonly (readonly [ServerEngine, string])[] = [
-  ['postgres', 'JOINERY_TEST_POSTGRES_URL'],
-  ['mysql', 'JOINERY_TEST_MYSQL_URL'],
-  ['mariadb', 'JOINERY_TEST_MARIADB_URL'],
+  ['postgres', 'QUERYBARA_TEST_POSTGRES_URL'],
+  ['mysql', 'QUERYBARA_TEST_MYSQL_URL'],
+  ['mariadb', 'QUERYBARA_TEST_MARIADB_URL'],
 ];
 
 function profileFor(engine: ServerEngine, url: string, database?: string): ResolvedProfile {

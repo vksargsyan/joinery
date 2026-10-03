@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { toEjson, type WriteSummary } from '@joinery/mongo-tools';
+import { QuerybaraError } from '@querybara/core';
+import { toEjson, type WriteSummary } from '@querybara/mongo-tools';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BulkFlow, bulkState, type BulkWrites } from '../src/renderer/src/state/mongo/bulk-flow';
@@ -155,7 +155,7 @@ describe('document editor', () => {
       replace: vi.fn(async () => {
         attempts += 1;
         if (attempts === 1) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'CONFLICT',
             message: 'The document changed',
             detail: current,
@@ -180,7 +180,7 @@ describe('document editor', () => {
 
     const again = new EditorFlow(editState(doc), {
       replace: async () => {
-        throw new JoineryError({ code: 'CONFLICT', message: 'changed', detail: current });
+        throw new QuerybaraError({ code: 'CONFLICT', message: 'changed', detail: current });
       },
       insert: vi.fn(),
     });
@@ -197,7 +197,7 @@ describe('document editor', () => {
     const flow = new EditorFlow(insertState('{ name: 1 }'), {
       replace: vi.fn(),
       insert: async () => {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'Document failed validation: name: bsonType string expected, got int',
           detail: 'name: bsonType string expected, got int\nmissing required field: email',
@@ -212,7 +212,7 @@ describe('document editor', () => {
     const cancelled = new EditorFlow(insertState('{}'), {
       replace: vi.fn(),
       insert: async () => {
-        throw new JoineryError({ code: 'CANCELLED', message: 'Not saved' });
+        throw new QuerybaraError({ code: 'CANCELLED', message: 'Not saved' });
       },
     });
     await cancelled.save();

@@ -35,14 +35,14 @@ permissions:
   contents: read
 
 env:
-  JOINERY_E2E_OUTPUT: ${{ github.workspace }}/packaged-results
+  QUERYBARA_E2E_OUTPUT: ${{ github.workspace }}/packaged-results
   # A pushed tag, or a manual run on a tag.
   RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
   # The staged rollout of a release (scripts/rollout.ts): the manual run's input, else the
   # repository variable, else everyone. format() keeps an input of 0 from reading as unset.
   ROLLOUT: >-
     ${{ github.event_name == 'workflow_dispatch' && format('{0}', inputs.rollout)
-    || vars.JOINERY_ROLLOUT_PERCENT || '100' }}
+    || vars.QUERYBARA_ROLLOUT_PERCENT || '100' }}
 
 jobs:
   linux:
@@ -52,17 +52,17 @@ jobs:
     env:
       # Ubuntu runners restrict the unprivileged user namespaces Chromium's sandbox needs; only
       # the smoke test's launcher honours this (e2e/packaged/launch.ts), never the app.
-      JOINERY_E2E_NO_SANDBOX: '1'
+      QUERYBARA_E2E_NO_SANDBOX: '1'
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: joinery
-          POSTGRES_PASSWORD: joinery
-          POSTGRES_DB: joinery_test
+          POSTGRES_USER: querybara
+          POSTGRES_PASSWORD: querybara
+          POSTGRES_DB: querybara_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-cmd "pg_isready -U querybara" --health-interval 5s --health-timeout 5s
           --health-retries 20
     steps:
       - uses: actions/checkout@v7
@@ -74,7 +74,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # rpmbuild for the rpm target; electron-builder brings its own fpm and AppImage tools.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
-      - run: pnpm --filter @joinery/desktop build
+      - run: pnpm --filter @querybara/desktop build
       - name: Package
         working-directory: apps/desktop
         run: |
@@ -88,11 +88,11 @@ jobs:
         run: |
           version="$(node -p "require('./package.json').version")"
           # The commit's time, so the same commit gives the same bill.
-          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" pnpm run sbom --out "dist/joinery-$version.cdx.json"
-          cp out/renderer/THIRD_PARTY_NOTICES.txt "dist/joinery-$version-THIRD_PARTY_NOTICES.txt"
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" pnpm run sbom --out "dist/querybara-$version.cdx.json"
+          cp out/renderer/THIRD_PARTY_NOTICES.txt "dist/querybara-$version-THIRD_PARTY_NOTICES.txt"
       - uses: actions/upload-artifact@v7
         with:
-          name: joinery-linux
+          name: querybara-linux
           path: |
             apps/desktop/dist/*.AppImage
             apps/desktop/dist/*.deb
@@ -103,7 +103,7 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v7
         with:
-          name: joinery-sbom
+          name: querybara-sbom
           path: |
             apps/desktop/dist/*.cdx.json
             apps/desktop/dist/*-THIRD_PARTY_NOTICES.txt
@@ -112,29 +112,29 @@ jobs:
       - name: Install the deb and smoke test (PostgreSQL)
         working-directory: apps/desktop
         env:
-          JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
-          JOINERY_PACKAGED_APP: /opt/Joinery/joinery
+          QUERYBARA_TEST_POSTGRES_URL: postgres://querybara:querybara@127.0.0.1:5432/querybara_test
+          QUERYBARA_PACKAGED_APP: /opt/Querybara/querybara
         run: |
-          sudo apt-get install -y ./dist/joinery_*_amd64.deb
+          sudo apt-get install -y ./dist/querybara_*_amd64.deb
           # A test build has no update feed; a release's deb updates itself.
           if [ "$RELEASE" = true ]; then
-            export JOINERY_EXPECT_UPDATE_STATUS='checks for updates automatically'
-            export JOINERY_E2E_UPDATE_CHECK=1
+            export QUERYBARA_EXPECT_UPDATE_STATUS='checks for updates automatically'
+            export QUERYBARA_E2E_UPDATE_CHECK=1
           else
-            export JOINERY_EXPECT_UPDATE_STATUS='test build'
+            export QUERYBARA_EXPECT_UPDATE_STATUS='test build'
           fi
           xvfb-run -a pnpm exec playwright test -c e2e/packaged.config.ts
       - name: Smoke test the AppImage (updates turned off by policy)
         working-directory: apps/desktop
         env:
-          JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
+          QUERYBARA_TEST_POSTGRES_URL: postgres://querybara:querybara@127.0.0.1:5432/querybara_test
           # Runs without FUSE, which the runner lacks.
           APPIMAGE_EXTRACT_AND_RUN: '1'
-          JOINERY_DISABLE_UPDATES: '1'
-          JOINERY_EXPECT_UPDATE_STATUS: administrator
+          QUERYBARA_DISABLE_UPDATES: '1'
+          QUERYBARA_EXPECT_UPDATE_STATUS: administrator
         run: |
-          JOINERY_PACKAGED_APP="$(ls "$PWD"/dist/Joinery-*-x86_64.AppImage)"
-          export JOINERY_PACKAGED_APP
+          QUERYBARA_PACKAGED_APP="$(ls "$PWD"/dist/Querybara-*-x86_64.AppImage)"
+          export QUERYBARA_PACKAGED_APP
           xvfb-run -a pnpm exec playwright test -c e2e/packaged.config.ts
       - if: failure()
         uses: actions/upload-artifact@v7
@@ -149,17 +149,17 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     env:
-      JOINERY_E2E_NO_SANDBOX: '1'
+      QUERYBARA_E2E_NO_SANDBOX: '1'
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: joinery
-          POSTGRES_PASSWORD: joinery
-          POSTGRES_DB: joinery_test
+          POSTGRES_USER: querybara
+          POSTGRES_PASSWORD: querybara
+          POSTGRES_DB: querybara_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-cmd "pg_isready -U querybara" --health-interval 5s --health-timeout 5s
           --health-retries 20
     steps:
       - uses: actions/checkout@v7
@@ -171,17 +171,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@v8
         with:
-          name: joinery-linux
+          name: querybara-linux
           path: apps/desktop/dist
       - name: Install the deb and smoke test (PostgreSQL)
         working-directory: apps/desktop
         env:
-          JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
-          JOINERY_PACKAGED_APP: /opt/Joinery/joinery
+          QUERYBARA_TEST_POSTGRES_URL: postgres://querybara:querybara@127.0.0.1:5432/querybara_test
+          QUERYBARA_PACKAGED_APP: /opt/Querybara/querybara
         run: |
           command -v xvfb-run >/dev/null || (sudo apt-get update && sudo apt-get install -y xvfb)
-          sudo apt-get install -y ./dist/joinery_*_arm64.deb
-          file /opt/Joinery/joinery | grep -q aarch64
+          sudo apt-get install -y ./dist/querybara_*_arm64.deb
+          file /opt/Querybara/querybara | grep -q aarch64
           xvfb-run -a pnpm exec playwright test -c e2e/packaged.config.ts
       - if: failure()
         uses: actions/upload-artifact@v7
@@ -214,7 +214,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @joinery/desktop build
+      - run: pnpm --filter @querybara/desktop build
       - name: Package
         working-directory: apps/desktop
         shell: bash
@@ -240,7 +240,7 @@ jobs:
           if [ "$RELEASE" = true ]; then pnpm run rollout "$ROLLOUT" dist; fi
       - uses: actions/upload-artifact@v7
         with:
-          name: joinery-windows
+          name: querybara-windows
           path: |
             apps/desktop/dist/*.exe
             apps/desktop/dist/*.exe.blockmap
@@ -265,45 +265,45 @@ jobs:
             $bin = Join-Path $root.FullName 'bin'
           }
           $env:PGPASSWORD = 'root'
-          & (Join-Path $bin 'createdb.exe') -h 127.0.0.1 -U postgres joinery_test
+          & (Join-Path $bin 'createdb.exe') -h 127.0.0.1 -U postgres querybara_test
           if ($LASTEXITCODE -ne 0) { Write-Output '::warning::createdb failed: smoke tests without a server'; exit 0 }
-          'JOINERY_TEST_POSTGRES_URL=postgres://postgres:root@127.0.0.1:5432/joinery_test' |
+          'QUERYBARA_TEST_POSTGRES_URL=postgres://postgres:root@127.0.0.1:5432/querybara_test' |
             Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Install with NSIS and smoke test
         working-directory: apps/desktop
         shell: pwsh
         run: |
-          $installer = Get-ChildItem dist -Filter 'Joinery-Setup-*.exe' | Select-Object -First 1
+          $installer = Get-ChildItem dist -Filter 'Querybara-Setup-*.exe' | Select-Object -First 1
           Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
-          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'joinery.exe' |
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'querybara.exe' |
             Select-Object -First 1
-          if (-not $exe) { throw 'The NSIS installer did not install joinery.exe' }
-          $env:JOINERY_PACKAGED_APP = $exe.FullName
+          if (-not $exe) { throw 'The NSIS installer did not install querybara.exe' }
+          $env:QUERYBARA_PACKAGED_APP = $exe.FullName
           # A test build has no feed; an unsigned release refuses to update without a publisher.
           $expect = 'not code-signed'
           if ($env:RELEASE -ne 'true') { $expect = 'test build' }
           elseif ($env:WIN_CSC_LINK -or $env:AZURE_CLIENT_ID) {
             $expect = 'checks for updates automatically'
-            $env:JOINERY_E2E_UPDATE_CHECK = '1'
+            $env:QUERYBARA_E2E_UPDATE_CHECK = '1'
           }
-          $env:JOINERY_EXPECT_UPDATE_STATUS = $expect
+          $env:QUERYBARA_EXPECT_UPDATE_STATUS = $expect
           pnpm exec playwright test -c e2e/packaged.config.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install the MSI and check the Group Policy switch
         working-directory: apps/desktop
         shell: pwsh
         run: |
-          $msi = Get-ChildItem dist -Filter 'Joinery-*-x64.msi' | Select-Object -First 1
+          $msi = Get-ChildItem dist -Filter 'Querybara-*-x64.msi' | Select-Object -First 1
           $log = Join-Path $env:RUNNER_TEMP 'msi.log'
           $install = Start-Process msiexec.exe -ArgumentList '/i', "`"$($msi.FullName)`"", '/qn', '/l*v', "`"$log`"" -Wait -PassThru
           if ($install.ExitCode -ne 0) { Get-Content $log -Tail 50; throw "msiexec exited $($install.ExitCode)" }
-          $exe = Get-ChildItem "$env:ProgramFiles\Joinery", "${env:ProgramFiles(x86)}\Joinery" -Recurse -Filter 'joinery.exe' -ErrorAction SilentlyContinue |
+          $exe = Get-ChildItem "$env:ProgramFiles\Querybara", "${env:ProgramFiles(x86)}\Querybara" -Recurse -Filter 'querybara.exe' -ErrorAction SilentlyContinue |
             Select-Object -First 1
-          if (-not $exe) { throw 'The MSI did not install joinery.exe' }
+          if (-not $exe) { throw 'The MSI did not install querybara.exe' }
           # The machine-wide policy a Group Policy or Intune deployment sets.
-          reg add 'HKLM\SOFTWARE\Policies\Joinery' /v DisableUpdates /t REG_DWORD /d 1 /f
-          $env:JOINERY_PACKAGED_APP = $exe.FullName
-          $env:JOINERY_EXPECT_UPDATE_STATUS = 'administrator'
+          reg add 'HKLM\SOFTWARE\Policies\Querybara' /v DisableUpdates /t REG_DWORD /d 1 /f
+          $env:QUERYBARA_PACKAGED_APP = $exe.FullName
+          $env:QUERYBARA_EXPECT_UPDATE_STATUS = 'administrator'
           pnpm exec playwright test -c e2e/packaged.config.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - if: failure()
@@ -332,7 +332,20 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @joinery/desktop build
+      - name: Compile the macOS 26 icon
+        # build/Assets.car is committed, but only actool from Xcode 26 or later compiles it, so a
+        # catalog compiled on a Mac can lag behind build/icon.svg. Compiling it here keeps the
+        # package's macOS 26 icon the current one (ADR 0033).
+        run: |
+          xcode="$(ls -d /Applications/Xcode_26*.app /Applications/Xcode_2[7-9]*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$xcode" ]; then
+            echo "::error::No Xcode 26 or later on this runner, so Assets.car cannot be compiled"
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          pnpm --filter @querybara/desktop icons | tee "$RUNNER_TEMP/icons.log"
+          grep -q '^build/Assets.car  actool' "$RUNNER_TEMP/icons.log"
+      - run: pnpm --filter @querybara/desktop build
       - name: Package
         id: package
         working-directory: apps/desktop
@@ -365,16 +378,16 @@ jobs:
         env:
           SIGNED: ${{ steps.package.outputs.signed }}
         run: |
-          codesign --verify --deep --strict --verbose=2 Joinery.app
-          codesign --display --verbose=2 Joinery.app 2>&1 | grep -E '^(Identifier|Format|Signature|Authority|TeamIdentifier)'
-          lipo -archs "Joinery.app/Contents/MacOS/$(defaults read "$PWD/Joinery.app/Contents/Info" CFBundleExecutable)"
+          codesign --verify --deep --strict --verbose=2 Querybara.app
+          codesign --display --verbose=2 Querybara.app 2>&1 | grep -E '^(Identifier|Format|Signature|Authority|TeamIdentifier)'
+          lipo -archs "Querybara.app/Contents/MacOS/$(defaults read "$PWD/Querybara.app/Contents/Info" CFBundleExecutable)"
           if [ "$SIGNED" = true ]; then
-            xcrun stapler validate Joinery.app
-            spctl --assess --type execute --verbose Joinery.app
+            xcrun stapler validate Querybara.app
+            spctl --assess --type execute --verbose Querybara.app
           fi
       - uses: actions/upload-artifact@v7
         with:
-          name: joinery-macos
+          name: querybara-macos
           path: |
             apps/desktop/dist/*.dmg
             apps/desktop/dist/*.zip
@@ -394,25 +407,25 @@ jobs:
           "$bin/initdb" -D "$RUNNER_TEMP/pg" -U postgres --auth=trust >/dev/null
           "$bin/pg_ctl" -D "$RUNNER_TEMP/pg" -l "$RUNNER_TEMP/pg.log" -w start \
             -o "-p 5432 -k $RUNNER_TEMP -c listen_addresses=127.0.0.1"
-          "$bin/createdb" -h 127.0.0.1 -U postgres joinery_test
+          "$bin/createdb" -h 127.0.0.1 -U postgres querybara_test
       - name: Install from the DMG and smoke test
         working-directory: apps/desktop
         env:
-          JOINERY_TEST_POSTGRES_URL: postgres://postgres:postgres@127.0.0.1:5432/joinery_test
+          QUERYBARA_TEST_POSTGRES_URL: postgres://postgres:postgres@127.0.0.1:5432/querybara_test
           SIGNED: ${{ steps.package.outputs.signed }}
         run: |
           mountpoint="$(mktemp -d)"
           hdiutil attach dist/*.dmg -nobrowse -readonly -mountpoint "$mountpoint"
-          app="$RUNNER_TEMP/Applications/Joinery.app"
-          ditto "$mountpoint/Joinery.app" "$app"
+          app="$RUNNER_TEMP/Applications/Querybara.app"
+          ditto "$mountpoint/Querybara.app" "$app"
           hdiutil detach "$mountpoint"
-          JOINERY_PACKAGED_APP="$app/Contents/MacOS/$(defaults read "$app/Contents/Info" CFBundleExecutable)"
-          export JOINERY_PACKAGED_APP
+          QUERYBARA_PACKAGED_APP="$app/Contents/MacOS/$(defaults read "$app/Contents/Info" CFBundleExecutable)"
+          export QUERYBARA_PACKAGED_APP
           if [ "$SIGNED" = true ]; then
-            export JOINERY_EXPECT_UPDATE_STATUS='checks for updates automatically'
-            export JOINERY_E2E_UPDATE_CHECK=1
+            export QUERYBARA_EXPECT_UPDATE_STATUS='checks for updates automatically'
+            export QUERYBARA_E2E_UPDATE_CHECK=1
           else
-            export JOINERY_EXPECT_UPDATE_STATUS='test build'
+            export QUERYBARA_EXPECT_UPDATE_STATUS='test build'
           fi
           pnpm exec playwright test -c e2e/packaged.config.ts
       - if: failure()
@@ -434,7 +447,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          pattern: joinery-*
+          pattern: querybara-*
           path: release
           merge-multiple: true
       - name: Create the draft release
@@ -453,7 +466,7 @@ jobs:
           shopt -s extglob
           sha256sum -- !(*.yml) > SHA256SUMS.txt
           ls -l
-          flags=(--draft --verify-tag --title "Joinery $version" --generate-notes)
+          flags=(--draft --verify-tag --title "Querybara $version" --generate-notes)
           # A pre-release version (1.2.0-beta.1) feeds the beta channel only.
           case "$version" in *-*) flags+=(--prerelease) ;; esac
           if gh release view "$TAG" >/dev/null 2>&1; then

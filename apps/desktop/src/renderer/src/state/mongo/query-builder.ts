@@ -1,5 +1,5 @@
-import { newId } from '@joinery/core';
-import { formatFindText, type SchemaAnalysis } from '@joinery/mongo-tools';
+import { newId } from '@querybara/core';
+import { formatFindText, type SchemaAnalysis } from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

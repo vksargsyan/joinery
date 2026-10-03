@@ -1,5 +1,5 @@
-import type { CellValue, ColumnKind } from '@joinery/core';
-import { JoineryError } from '@joinery/core';
+import type { CellValue, ColumnKind } from '@querybara/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { CanonicalOptions } from './canonical';
 import { compareKeys, compareKind, valuesEqual } from './canonical';
@@ -86,7 +86,7 @@ export function planMerge(options: MergeOptions): MergePlan {
   const targetKey = options.keyColumns.map((k) => columnIndex(options.targetColumns, k));
   const missing = options.keyColumns.filter((_k, i) => sourceKey[i] === -1 || targetKey[i] === -1);
   if (missing.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Key column ${missing.join(', ')} is missing on one side`,
       hint: 'Data compare needs the same primary or unique key on both tables.',
@@ -158,7 +158,7 @@ class OrderedStream {
       if (this.previous !== undefined) {
         const order = compareKeys(this.key(this.previous), this.key(row), this.keyKinds);
         if (order > 0) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: `The ${this.side} rows are not sorted by key (at ${JSON.stringify(this.key(row), stringifyCell)})`,
             hint: 'The two servers order the key differently; compare with a binary collation on string keys.',
@@ -166,7 +166,7 @@ class OrderedStream {
         }
         if (order === 0) {
           if (sameRow(this.previous, row)) continue;
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: `Key ${JSON.stringify(this.key(row), stringifyCell)} is not unique in the ${this.side}`,
           });

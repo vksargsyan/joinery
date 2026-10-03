@@ -42,11 +42,11 @@ it; Vite, esbuild and Vitest can. Under Vitest, loading one grammar takes about 
 
 ## Decision
 
-Use **dt-sql-parser** for diagnostics, behind a single function in `@joinery/sql-tools`:
+Use **dt-sql-parser** for diagnostics, behind a single function in `@querybara/sql-tools`:
 `diagnose(text, dialect): Promise<SqlDiagnostic[]>` (message, start/end offsets). Nothing
 else in the codebase imports the parser.
 
-- The script is split with Joinery's own splitter (DELIMITER, dollar quotes, BEGIN ATOMIC)
+- The script is split with Querybara's own splitter (DELIMITER, dollar quotes, BEGIN ATOMIC)
   and each statement is parsed on its own; only its first error is reported.
 - The grammar for the dialect is loaded lazily with a dynamic import of its own entry point
   (`dt-sql-parser/dist/parser/mysql` or `.../postgresql`), then warmed with one parse.
@@ -67,7 +67,7 @@ client would also split and reject.
 ## Consequences
 
 - The language worker carries about 310-360 KB gzip per grammar, loaded on first use.
-  Packages that import `@joinery/sql-tools` but never call `diagnose` (connection host, CLI)
+  Packages that import `@querybara/sql-tools` but never call `diagnose` (connection host, CLI)
   never load the parser, which also sidesteps its Node.js import problem.
 - The first parse in a worker costs 0.2-0.6 s; the warm-up parse moves it to load time.
 - The adapter calls dt-sql-parser's internal `parseWithCache` to skip `validate()`'s fallback,

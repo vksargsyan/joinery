@@ -33,7 +33,7 @@ import {
  * canonical Extended JSON text parses to the value it describes.
  */
 
-const RUNS = Number(process.env['JOINERY_FUZZ_RUNS'] ?? 300);
+const RUNS = Number(process.env['QUERYBARA_FUZZ_RUNS'] ?? 300);
 
 const OPERATORS = ['$gt', '$in', '$and', '$set', '$ref', '$id', '$db', '$type', '$regex'];
 

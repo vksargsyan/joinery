@@ -1,6 +1,6 @@
-import { newId, type ColumnMeta, type ExplainResult } from '@joinery/core';
-import type { RpcStream } from '@joinery/ipc';
-import type { ResultChunk } from '@joinery/core';
+import { newId, type ColumnMeta, type ExplainResult } from '@querybara/core';
+import type { RpcStream } from '@querybara/ipc';
+import type { ResultChunk } from '@querybara/core';
 import { create } from 'zustand';
 
 import type { HostClient } from '../lib/main-client';

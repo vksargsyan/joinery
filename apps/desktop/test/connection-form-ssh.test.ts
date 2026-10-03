@@ -1,5 +1,5 @@
-import { connectionProfileSchema } from '@joinery/core';
-import { safeProfileSchema } from '@joinery/ipc';
+import { connectionProfileSchema } from '@querybara/core';
+import { safeProfileSchema } from '@querybara/ipc';
 import { describe, expect, it } from 'vitest';
 
 import {

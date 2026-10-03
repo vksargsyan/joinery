@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   secretRefSchema,
   secretRefsOf,
   type ConnectionProfile,
   type SecretRef,
   type SecretRefInput,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import type { RepositoryContext } from '../internal/context';
 import { parseOrThrow } from '../internal/errors';
@@ -65,7 +65,7 @@ export class SecretStore {
   set(refInput: SecretRefInput, value: string): void {
     const ref = parseSecretRef(refInput);
     if (typeof value !== 'string') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'Secret values must be strings',
       });
@@ -73,7 +73,7 @@ export class SecretStore {
     switch (ref.policy) {
       case 'save': {
         if (!this.#sealer.isAvailable()) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'NOT_SUPPORTED',
             message: 'Secure storage is not available, so the secret cannot be saved',
             hint: 'Choose "remember for this session" or "ask every time" instead.',
@@ -182,7 +182,7 @@ export class SecretStore {
     } catch (error) {
       // The sealer is pluggable, so its error text is not trusted to be free of the value.
       const reason = error instanceof Error ? error.message : '';
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'INTERNAL',
         message: 'The secret could not be sealed',
         ...(reason && (value === '' || !reason.includes(value)) ? { detail: reason } : {}),
@@ -198,7 +198,7 @@ export class SecretStore {
 function parseSecretRef(input: SecretRefInput): SecretRef {
   const ref = parseOrThrow(secretRefSchema, input, 'secret reference');
   if (isReservedSecretId(ref.id)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${ref.id}" is reserved and cannot be a secret id`,
     });

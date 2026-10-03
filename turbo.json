@@ -11,7 +11,7 @@
     },
     "test:integration": {
       "cache": false,
-      "env": ["JOINERY_TEST_*"]
+      "env": ["QUERYBARA_TEST_*"]
     }
   }
 }

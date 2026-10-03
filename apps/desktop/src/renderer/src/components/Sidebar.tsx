@@ -6,8 +6,8 @@ import {
   type EngineId,
   type Environment,
   type SqlDialect,
-} from '@joinery/core';
-import type { Folder, StoredProfile } from '@joinery/ipc';
+} from '@querybara/core';
+import type { Folder, StoredProfile } from '@querybara/ipc';
 import { useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';

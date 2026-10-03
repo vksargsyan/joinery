@@ -18,7 +18,7 @@ describe('profiles', () => {
     env: Record<string, string> = {},
     prompter?: ScriptedPrompter,
   ): Promise<RunResult> => {
-    const result = await run(['--store', join(dir, 'joinery.db'), ...argv], {
+    const result = await run(['--store', join(dir, 'querybara.db'), ...argv], {
       env,
       cwd: dir,
       ...(prompter ? { prompter } : {}),
@@ -46,12 +46,12 @@ describe('profiles', () => {
     const result = await cli(['profiles', 'list']);
     expect(result.code).toBe(0);
     expect(result.stderr).toContain('No profiles');
-    expect(existsSync(join(dir, 'joinery.db'))).toBe(false);
+    expect(existsSync(join(dir, 'querybara.db'))).toBe(false);
     expect(JSON.parse((await cli(['profiles', 'list', '--json'])).stdout)).toEqual([]);
   });
 
   it('adds, lists and shows profiles without printing secrets', async () => {
-    const env = { JOINERY_PASSPHRASE: PASSPHRASE };
+    const env = { QUERYBARA_PASSPHRASE: PASSPHRASE };
     const added = await cli(
       [
         'profiles',
@@ -69,7 +69,7 @@ describe('profiles', () => {
     );
     expect(added.code).toBe(0);
     expect(added.stdout).toContain('Added profile "Shop" (PostgreSQL at db.example:6543');
-    expect(added.stderr).toContain('saved, sealed with JOINERY_PASSPHRASE');
+    expect(added.stderr).toContain('saved, sealed with QUERYBARA_PASSPHRASE');
 
     const list = await cli(['profiles', 'list'], env);
     expect(list.stdout).toMatch(
@@ -95,7 +95,7 @@ describe('profiles', () => {
     expect(locked.stdout).toContain('saved, but not readable here');
 
     // The database file holds only the sealed value.
-    expect(readFileSync(join(dir, 'joinery.db')).includes(Buffer.from(PASSWORD))).toBe(false);
+    expect(readFileSync(join(dir, 'querybara.db')).includes(Buffer.from(PASSWORD))).toBe(false);
   });
 
   it('does not save a URI password without a passphrase, and refuses --password-policy save', async () => {
@@ -114,14 +114,14 @@ describe('profiles', () => {
       'save',
     ]);
     expect(refused.code).toBe(2);
-    expect(refused.stderr).toContain('JOINERY_PASSPHRASE');
+    expect(refused.stderr).toContain('QUERYBARA_PASSPHRASE');
   });
 
   it('prompts for a password to save when the URI has none', async () => {
     const prompter = new ScriptedPrompter(true, { secret: [PASSWORD] });
     const added = await cli(
       ['profiles', 'import-uri', 'mysql://root@127.0.0.1:3307/app', '--password-policy', 'save'],
-      { JOINERY_PASSPHRASE: PASSPHRASE },
+      { QUERYBARA_PASSPHRASE: PASSPHRASE },
       prompter,
     );
     expect(added.code).toBe(0);
@@ -160,7 +160,10 @@ describe('profiles', () => {
   });
 
   it('exports and imports an encrypted file with folders and secrets', async () => {
-    const env = { JOINERY_PASSPHRASE: PASSPHRASE, JOINERY_EXPORT_PASSPHRASE: EXPORT_PASSPHRASE };
+    const env = {
+      QUERYBARA_PASSPHRASE: PASSPHRASE,
+      QUERYBARA_EXPORT_PASSPHRASE: EXPORT_PASSPHRASE,
+    };
     await cli(
       ['profiles', 'add', 'Shop', `postgres://app:${PASSWORD}@h/db`, '--folder', 'A/B'],
       env,
@@ -194,7 +197,7 @@ describe('profiles', () => {
     expect(again.stderr).toContain('1 profile already existed');
 
     const wrong = await cli(['profiles', 'import', 'out.jnx'], {
-      JOINERY_EXPORT_PASSPHRASE: 'wrong',
+      QUERYBARA_EXPORT_PASSPHRASE: 'wrong',
     });
     expect(wrong.code).toBe(2);
   });
@@ -203,6 +206,6 @@ describe('profiles', () => {
     await cli(['profiles', 'add', 'Shop', 'postgres://a@h/db']);
     const result = await cli(['profiles', 'export', 'out.jnx']);
     expect(result.code).toBe(2);
-    expect(result.stderr).toContain('JOINERY_EXPORT_PASSPHRASE');
+    expect(result.stderr).toContain('QUERYBARA_EXPORT_PASSPHRASE');
   });
 });

@@ -5,7 +5,7 @@ import {
   isSearchSession,
   searchProfileFromUrl,
   type SearchSession,
-} from '@joinery/driver-elasticsearch';
+} from '@querybara/driver-elasticsearch';
 
 /**
  * Direct Elasticsearch access for the end-to-end tests: a session that bypasses
@@ -19,9 +19,9 @@ export async function connectSearch(url: string): Promise<SearchSession> {
   return session;
 }
 
-/** `joinery-e2e-<random>`, unique per run (index names are lower case). */
+/** `querybara-e2e-<random>`, unique per run (index names are lower case). */
 export function e2eIndex(): string {
-  return `joinery-e2e-${randomBytes(4).toString('hex')}`;
+  return `querybara-e2e-${randomBytes(4).toString('hex')}`;
 }
 
 /** Whether an index exists. */

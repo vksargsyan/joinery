@@ -1,4 +1,4 @@
-import { ENGINES, JoineryError, isSqlEngine, type Session } from '@joinery/core';
+import { ENGINES, QuerybaraError, isSqlEngine, type Session } from '@querybara/core';
 
 import { mongoToSqlExecution, sqlToMongoExecution } from './mongo-transfer';
 import { assertRunnable, runExecution, type Execution, type LogLevel } from './pipeline';
@@ -15,7 +15,7 @@ import { sqlToSqlExecution } from './sql-transfer';
 
 /**
  * Data transfer between databases (spec §12): `planDbTransfer` shows what a transfer will do
- * (the wizard's mapping and review steps, `joinery transfer --dry-run`), `runDbTransfer` does
+ * (the wizard's mapping and review steps, `querybara transfer --dry-run`), `runDbTransfer` does
  * it. Supported pairs: MySQL, MariaDB and PostgreSQL to any of the three; SQL engines to
  * MongoDB and back; Redis to Redis. Each pair builds an Execution for the one pipeline, so a
  * new target engine plugs in here.
@@ -48,7 +48,7 @@ async function executionFor(
   const options = resolveOptions(spec.options);
   const support = transferSupport(source.engine, target.engine);
   if (!support.supported)
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: support.reason! });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: support.reason! });
   let execution: Execution;
   if (isSqlEngine(source.engine) && isSqlEngine(target.engine)) {
     execution = await sqlToSqlExecution(spec, options, source, target);

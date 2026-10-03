@@ -1,4 +1,4 @@
-import { JoineryError, cancelledError, type CellValue, type Session } from '@joinery/core';
+import { QuerybaraError, cancelledError, type CellValue, type Session } from '@querybara/core';
 
 import { rowKeyAt, rowKeyOf, type RowKey } from './identity';
 import type { ChangePlan, PlannedStatement } from './plan';
@@ -28,16 +28,20 @@ export interface ApplyResult {
   readonly rows: readonly AppliedRow[];
 }
 
-const SAVEPOINT = 'joinery_apply';
+const SAVEPOINT = 'querybara_apply';
 
 function withRow(statement: PlannedStatement, error: unknown): unknown {
-  if (!(error instanceof JoineryError) || error.code === 'CANCELLED' || error.code === 'CONFLICT') {
+  if (
+    !(error instanceof QuerybaraError) ||
+    error.code === 'CANCELLED' ||
+    error.code === 'CONFLICT'
+  ) {
     return error;
   }
   const verb =
     statement.kind === 'insert' ? 'insert' : statement.kind === 'update' ? 'update' : 'delete';
   const data = error.toJSON();
-  return new JoineryError(
+  return new QuerybaraError(
     {
       ...data,
       message: `Could not ${verb} ${statement.kind === 'insert' ? statement.label : `row ${statement.label}`}: ${error.message}`,
@@ -47,9 +51,9 @@ function withRow(statement: PlannedStatement, error: unknown): unknown {
   );
 }
 
-function conflict(statement: PlannedStatement, touched: number): JoineryError {
+function conflict(statement: PlannedStatement, touched: number): QuerybaraError {
   const verb = statement.kind === 'delete' ? 'deleted' : 'updated';
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'CONFLICT',
     message:
       touched === 0

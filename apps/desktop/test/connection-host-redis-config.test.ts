@@ -1,7 +1,7 @@
 import { MessageChannel } from 'node:worker_threads';
 
-import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
+import { connectionProfileSchema, type ConnectionProfileInput } from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../src/connection-host/host';

@@ -74,7 +74,7 @@ export class EditorAutosaveRepository {
   }
 
   /**
-   * Every saved buffer, in tab order. A row this build cannot read (a kind a newer Joinery
+   * Every saved buffer, in tab order. A row this build cannot read (a kind a newer Querybara
    * wrote) is left out rather than failing the whole restore.
    */
   list(): AutosaveEntry[] {

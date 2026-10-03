@@ -1,4 +1,4 @@
-import type { SchemaSnapshot, TableDef } from '@joinery/core';
+import type { SchemaSnapshot, TableDef } from '@querybara/core';
 import {
   compareSchemas,
   generateScript,
@@ -6,7 +6,7 @@ import {
   type DiffSummary,
   type SyncOperation,
   type SyncWarning,
-} from '@joinery/sync';
+} from '@querybara/sync';
 
 import { editedSchema, modelChanges, renameRules, type EditContext, type ModelState } from './edit';
 

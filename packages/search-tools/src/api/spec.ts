@@ -4,7 +4,7 @@ import data from './spec.json' with { type: 'json' };
  * The console's API data (ADR 0010): endpoints and request body types generated from the open
  * Elasticsearch API specification (github.com/elastic/elasticsearch-specification, Apache
  * License 2.0) by `scripts/generate-api-spec.mjs`, which records the branch and date in
- * `source`. Regenerate it with `pnpm --filter @joinery/search-tools generate:api`.
+ * `source`. Regenerate it with `pnpm --filter @querybara/search-tools generate:api`.
  *
  * Type references are compact strings:
  *

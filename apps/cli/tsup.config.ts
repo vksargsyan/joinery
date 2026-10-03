@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 /**
- * joinery-cli ships as one ESM file (ADR 0001: internal packages are source-only, so the CLI
+ * querybara-cli ships as one ESM file (ADR 0001: internal packages are source-only, so the CLI
  * bundles them). The database drivers stay external runtime dependencies (mongodb with the bson
  * package it shares with mongo-tools, so both use one copy), and so do ssh2 (it is
  * CommonJS and optionally loads the native cpu-features and its own crypto binding) and socks.
@@ -9,7 +9,7 @@ import { defineConfig } from 'tsup';
  * external so the bundle neither carries nor loads it.
  */
 export default defineConfig({
-  entry: { joinery: 'src/bin.ts' },
+  entry: { querybara: 'src/bin.ts' },
   format: ['esm'],
   outExtension: () => ({ js: '.mjs' }),
   platform: 'node',
@@ -32,5 +32,5 @@ export default defineConfig({
     'ioredis',
     /^dt-sql-parser(\/.*)?$/,
   ],
-  noExternal: [/^@joinery\//, 'commander', 'zod', 'sql-formatter'],
+  noExternal: [/^@querybara\//, 'commander', 'zod', 'sql-formatter'],
 });

@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { toBytes, type RedisBytes } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { toBytes, type RedisBytes } from '@querybara/redis-tools';
 
 import type { Arg } from './client';
 import type { RedisContext } from './context';
@@ -376,7 +376,7 @@ export async function streamAdd(
   options: StreamAddOptions = {},
 ): Promise<string | null> {
   if (fields.length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'A stream entry needs at least one field',
     });
@@ -455,8 +455,8 @@ export async function streamAutoClaim(
 // RedisJSON, HyperLogLog, bitmaps, geo
 
 function jsonNotLoaded(error: unknown): never {
-  if (error instanceof JoineryError && /unknown command/i.test(error.message)) {
-    throw new JoineryError(
+  if (error instanceof QuerybaraError && /unknown command/i.test(error.message)) {
+    throw new QuerybaraError(
       {
         code: 'NOT_SUPPORTED',
         message: 'The RedisJSON module is not loaded on this server',
@@ -558,7 +558,7 @@ export async function geoSearch(
 
 function requireItems(count: number, what: string): void {
   if (count === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `A new ${what} needs at least one element (Redis does not store empty collections)`,
     });
@@ -577,7 +577,7 @@ export async function createKey(
 ): Promise<void> {
   const k = toBytes(key);
   if ((await exists(ctx, [k])) > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFLICT',
       message: 'A key with this name already exists',
       hint: 'Pick another name, or open the existing key',

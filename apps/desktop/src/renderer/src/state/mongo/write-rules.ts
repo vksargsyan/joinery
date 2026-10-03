@@ -1,4 +1,4 @@
-import { requiresWriteConfirmation } from '@joinery/core';
+import { requiresWriteConfirmation } from '@querybara/core';
 
 import { profileById } from '../data';
 import { confirm } from '../dialogs';

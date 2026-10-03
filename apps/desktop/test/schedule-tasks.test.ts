@@ -10,8 +10,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { JobEvent, JobInfo, JobSpec, ScheduleTask } from '@joinery/ipc';
-import { openStore, type ScheduleRecord, type SecretSealer, type Store } from '@joinery/storage';
+import type { JobEvent, JobInfo, JobSpec, ScheduleTask } from '@querybara/ipc';
+import { openStore, type ScheduleRecord, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { JobManager, JobStartExtras } from '../src/main/jobs';
@@ -37,7 +37,7 @@ const cleanup: (() => void)[] = [];
 afterEach(() => cleanup.splice(0).forEach((fn) => fn()));
 
 function folder(): string {
-  const path = mkdtempSync(join(tmpdir(), 'joinery-scheduled-'));
+  const path = mkdtempSync(join(tmpdir(), 'querybara-scheduled-'));
   cleanup.push(() => rmSync(path, { recursive: true, force: true }));
   return path;
 }
@@ -136,9 +136,9 @@ describe('scheduled runs', () => {
     const { store, profile } = storeWith();
     const dir = folder();
     for (const [i, name] of [
-      'Nightly-2026-09-27-02-00.jbak',
-      'Nightly-2026-09-28-02-00.jbak',
-      'Nightly-2026-09-29-02-00.jbak',
+      'Nightly-2026-09-27-02-00.qbak',
+      'Nightly-2026-09-28-02-00.qbak',
+      'Nightly-2026-09-29-02-00.qbak',
     ].entries()) {
       writeFileSync(join(dir, name), '');
       const time = new Date(2026, 8, 27 + i, 2, 0);
@@ -146,20 +146,20 @@ describe('scheduled runs', () => {
     }
     const s = schedule(store, profile.id, {
       kind: 'backup',
-      job: { kind: 'backup', profileId: profile.id, database: 'shop', format: 'jbak' },
+      job: { kind: 'backup', profileId: profile.id, database: 'shop', format: 'qbak' },
       encrypted: true,
-      output: { folder: dir, fileName: '{name}-{date}-{time}.jbak', keep: 2 },
+      output: { folder: dir, fileName: '{name}-{date}-{time}.qbak', keep: 2 },
     });
     store.secrets.set(passphraseRef(s.id), 'correct horse');
     const { jobs, started } = fakeJobs();
     const outcome = await executeSchedule({ store, jobs, now: () => at }, s);
 
-    const path = join(dir, 'Nightly-2026-09-30-02-00.jbak');
+    const path = join(dir, 'Nightly-2026-09-30-02-00.qbak');
     expect(started[0]!.spec).toEqual({
       kind: 'backup',
       profileId: profile.id,
       database: 'shop',
-      format: 'jbak',
+      format: 'qbak',
       output: { path },
       encryption: { passphrase: 'correct horse' },
     });
@@ -167,8 +167,8 @@ describe('scheduled runs', () => {
     expect(outcome).toMatchObject({ status: 'success', outputs: [path], jobId: 'job-1' });
     // The backup job did not write the file here (the runner does), so two older ones stay.
     expect(readdirSync(dir).sort()).toEqual([
-      'Nightly-2026-09-28-02-00.jbak',
-      'Nightly-2026-09-29-02-00.jbak',
+      'Nightly-2026-09-28-02-00.qbak',
+      'Nightly-2026-09-29-02-00.qbak',
     ]);
   });
 
@@ -176,9 +176,9 @@ describe('scheduled runs', () => {
     const dir = folder();
     const task: ScheduleTask = {
       kind: 'backup',
-      job: { kind: 'backup', profileId: 'p', format: 'jbak' },
+      job: { kind: 'backup', profileId: 'p', format: 'qbak' },
       encrypted: true,
-      output: { folder: dir, fileName: '{date}.jbak', keep: null },
+      output: { folder: dir, fileName: '{date}.qbak', keep: null },
     };
     const { store, profile } = storeWith();
     const { jobs, started } = fakeJobs();

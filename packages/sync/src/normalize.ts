@@ -15,7 +15,7 @@ import type {
   TriggerDef,
   TypeDef,
   ViewDef,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import type { CompareOptions, ResolvedCompareOptions } from './options';
 import { resolveCompareOptions } from './options';

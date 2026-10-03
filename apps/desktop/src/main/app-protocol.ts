@@ -2,13 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 /**
- * The renderer is served from a privileged custom scheme, `app://joinery/`, rather than file://
+ * The renderer is served from a privileged custom scheme, `app://querybara/`, rather than file://
  * (Electron security checklist): the page gets a real origin for its CSP `'self'`, module workers
  * and the MessagePort origin check, and file:// keeps no extra privileges (fuse off).
  */
 
 export const APP_SCHEME = 'app';
-export const APP_HOST = 'joinery';
+export const APP_HOST = 'querybara';
 export const APP_ORIGIN = `${APP_SCHEME}://${APP_HOST}`;
 export const APP_ENTRY_URL = `${APP_ORIGIN}/index.html`;
 

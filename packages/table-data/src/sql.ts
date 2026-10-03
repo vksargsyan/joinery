@@ -1,5 +1,5 @@
-import { JoineryError, type CellValue, type SqlDialect } from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+import { QuerybaraError, type CellValue, type SqlDialect } from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 import { comparedAsText, isSingleFloat, type ColumnInfo } from './columns';
 import { isLargeValue, toHex } from './values';
@@ -54,7 +54,7 @@ export function renderQuery(fragments: readonly Fragment[], dialect: SqlDialect)
       sql += fragment;
     } else {
       if (isLargeValue(fragment.value)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message:
             'A large value was only previewed; load it in full before writing or matching it',
@@ -89,7 +89,7 @@ export function sqlLiteral(value: CellValue, dialect: SqlDialect): string {
   if (typeof value === 'number') {
     if (Number.isFinite(value)) return Object.is(value, -0) ? '-0' : String(value);
     if (dialect !== 'postgres') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `MySQL and MariaDB cannot store ${String(value)}`,
       });
@@ -100,7 +100,7 @@ export function sqlLiteral(value: CellValue, dialect: SqlDialect): string {
   if (value instanceof Uint8Array) {
     return dialect === 'postgres' ? `'\\x${toHex(value)}'::bytea` : `X'${toHex(value)}'`;
   }
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: 'A large value was only previewed; load it in full before writing it',
   });

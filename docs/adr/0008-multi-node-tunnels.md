@@ -12,7 +12,7 @@ not for the topologies the spec lists (§2, §4): a MongoDB replica set (a host 
 discover the other servers from the first one and connect to them by the names or addresses
 those servers announce, which usually resolve and route only behind the bastion. ADR 0007 therefore
 refused these topologies behind a tunnel or proxy, in the tunnel layer, both drivers, the
-connection dialog and joinery-cli.
+connection dialog and querybara-cli.
 
 The two drivers reach servers differently. The official `mongodb` driver can send every
 connection it opens through a SOCKS5 proxy (`proxyHost`, `proxyPort`, `proxyUsername`,
@@ -48,7 +48,7 @@ Everything a transport opened (SOCKS endpoint, forwards, reserve, their channels
 it, and its SSH sessions are released as before; a crashed connection host takes its listeners
 with it. `tunnelledProfile` passes the route to the driver as `nodeRoute` on the resolved
 profile (`RoutedProfile`, read with `nodeRouteOf`); nothing in core changed, and a route never
-crosses a process boundary: connection hosts, the job runner and joinery-cli open their own.
+crosses a process boundary: connection hosts, the job runner and querybara-cli open their own.
 
 **MongoDB uses the SOCKS endpoint.** With a node route, `buildMongoClientPlan` keeps the
 profile's own seeds or SRV name and discovery, sets the driver's proxy options to the route's
@@ -84,7 +84,7 @@ proxies carry replica sets and clusters too.
 
 ## Consequences
 
-- The connection dialog and joinery-cli accept these topologies with SSH (including jump hosts)
+- The connection dialog and querybara-cli accept these topologies with SSH (including jump hosts)
   and proxies; the dialog explains how nodes are reached and that SRV lookups stay local.
 - Every server connection costs a direct-tcpip channel on the one SSH session (the MongoDB
   driver keeps a pool and monitoring connections per member); sshd's MaxSessions does not limit

@@ -1,7 +1,7 @@
 import { connect as netConnect, type Socket } from 'node:net';
 import { networkInterfaces } from 'node:os';
 
-import type { ConnectionProfileInput, HostPort } from '@joinery/core';
+import type { ConnectionProfileInput, HostPort } from '@querybara/core';
 import { SocksClient } from 'socks';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 

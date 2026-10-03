@@ -1,6 +1,6 @@
-import { isSqlEngine, requiresWriteConfirmation } from '@joinery/core';
-import type { BackupJob, JobInfo, RestoreJob, RestorePlan, StoredProfile } from '@joinery/ipc';
-import { replyText, utf8Bytes } from '@joinery/redis-tools';
+import { isSqlEngine, requiresWriteConfirmation } from '@querybara/core';
+import type { BackupJob, JobInfo, RestoreJob, RestorePlan, StoredProfile } from '@querybara/ipc';
+import { replyText, utf8Bytes } from '@querybara/redis-tools';
 import { create } from 'zustand';
 
 import { destructive } from '../../../../shared/redis-safety';
@@ -58,7 +58,7 @@ export function backupTarget(profile: StoredProfile, location: BackupLocation = 
   };
 }
 
-/** Engines Joinery backs up. */
+/** Engines Querybara backs up. */
 export function backsUp(profile: StoredProfile): boolean {
   return isSqlEngine(profile.engine) || profile.engine === 'mongodb' || profile.engine === 'redis';
 }

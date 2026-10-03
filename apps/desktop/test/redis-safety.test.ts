@@ -1,5 +1,5 @@
-import { connectionProfileSchema } from '@joinery/core';
-import { utf8Bytes } from '@joinery/redis-tools';
+import { connectionProfileSchema } from '@querybara/core';
+import { utf8Bytes } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

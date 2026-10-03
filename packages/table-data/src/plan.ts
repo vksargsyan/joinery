@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type SqlDialect } from '@querybara/core';
 
 import type { ChangeSet, RowChange, RowInsert } from './changes';
 import type { ColumnInfo } from './columns';
@@ -80,7 +80,7 @@ export interface ChangePlan {
 }
 
 function invalid(message: string): never {
-  throw new JoineryError({ code: 'VALIDATION_FAILED', message });
+  throw new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 /** The statements that write `changes` to the table (see the module comment for the rules). */
@@ -102,7 +102,7 @@ export function planChanges(changes: ChangeSet, options: PlanOptions): ChangePla
   const deleted = changes.deletedRows();
   const edited = changes.editedRows();
   if (identity.kind === 'none' && deleted.length + edited.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: 'The table has no primary or unique key, so rows cannot be changed or deleted',
       hint: 'Accept matching rows on all columns to edit this table',

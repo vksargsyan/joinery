@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { JoineryError, schemaSnapshotSchema, type CellValue } from '@joinery/core';
+import { QuerybaraError, schemaSnapshotSchema, type CellValue } from '@querybara/core';
 import { InvalidArgumentError } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -12,7 +12,7 @@ import {
   memorySink,
   openFileReader,
   readRows,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 
 import { describeRowError, exportFileName } from '../src/commands/transfer';
 import { columnMap, delimiter } from '../src/options';
@@ -28,7 +28,7 @@ import {
 } from './helpers';
 
 /**
- * `joinery import`, `export` and `run-file` in-process against a fake session: option parsing
+ * `querybara import`, `export` and `run-file` in-process against a fake session: option parsing
  * and validation, the write rules, progress-free summaries on stderr, data on stdout for
  * `--out -`, and the exit codes (0 done, 1 rows skipped or statements failed, 2 failed).
  */
@@ -258,7 +258,7 @@ describe('import', () => {
   it('stops at a failing row, rolls back and exits 2', async () => {
     const s = session((text) =>
       text.startsWith('INSERT')
-        ? { error: new JoineryError({ code: 'SQL_ERROR', message: 'duplicate key' }) }
+        ? { error: new QuerybaraError({ code: 'SQL_ERROR', message: 'duplicate key' }) }
         : undefined,
     );
     writeFileSync(join(dir, 'p.csv'), 'id,full_name\n1,Ada\n');
@@ -581,7 +581,7 @@ describe('run-file', () => {
     session((text) =>
       text.includes('missing')
         ? {
-            error: new JoineryError({
+            error: new QuerybaraError({
               code: 'SQL_ERROR',
               message: 'relation "missing" does not exist',
             }),

@@ -1,4 +1,4 @@
-import type { TransferExportFormat } from '@joinery/ipc';
+import type { TransferExportFormat } from '@querybara/ipc';
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 

@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: postgres app_dev
 -- Target: postgres app_prod
 -- Operations: 11 (1 destructive)
@@ -33,26 +33,26 @@ ALTER TYPE "public"."triple" DROP ATTRIBUTE "w", ADD ATTRIBUTE "z" numeric(5,2);
 -- Alter type public.code
 --   info: The domain is recreated and its columns converted through text; functions using it must be recreated too
 --   may-fail: The conversion fails on values the new definition rejects
-ALTER DOMAIN "public"."code" RENAME TO "code__joinery_old";
+ALTER DOMAIN "public"."code" RENAME TO "code__querybara_old";
 CREATE DOMAIN "public"."code" AS character varying(20);
 ALTER TABLE "public"."people" ALTER COLUMN "c" TYPE public.code USING "c"::text::public.code;
-DROP DOMAIN "public"."code__joinery_old";
+DROP DOMAIN "public"."code__querybara_old";
 
 -- Alter type public.email
 --   info: The domain is recreated and its columns converted through text; functions using it must be recreated too
 --   may-fail: The conversion fails on values the new definition rejects
-ALTER DOMAIN "public"."email" RENAME TO "email__joinery_old";
+ALTER DOMAIN "public"."email" RENAME TO "email__querybara_old";
 CREATE DOMAIN "public"."email" AS text COLLATE "C" CONSTRAINT "email_check" CHECK ((VALUE ~~ '%@%'::text));
 ALTER TABLE "public"."people" ALTER COLUMN "e" TYPE public.email USING "e"::text::public.email;
-DROP DOMAIN "public"."email__joinery_old";
+DROP DOMAIN "public"."email__querybara_old";
 
 -- Alter type public.pair
 --   info: The type is recreated and its columns converted through text; functions using it must be recreated too
 --   may-fail: The conversion fails on values the new definition rejects
-ALTER TYPE "public"."pair" RENAME TO "pair__joinery_old";
+ALTER TYPE "public"."pair" RENAME TO "pair__querybara_old";
 CREATE TYPE "public"."pair" AS ("a" integer, "b" text);
 ALTER TABLE "public"."people" ALTER COLUMN "p" TYPE public.pair USING "p"::text::public.pair;
-DROP TYPE "public"."pair__joinery_old";
+DROP TYPE "public"."pair__querybara_old";
 
 -- Alter column public.people.m
 ALTER TABLE "public"."people" ALTER COLUMN "m" SET DEFAULT 'meh'::public.mood;

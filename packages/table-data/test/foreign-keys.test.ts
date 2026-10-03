@@ -1,4 +1,4 @@
-import { foreignKeyDefSchema, tableDefSchema } from '@joinery/core';
+import { foreignKeyDefSchema, tableDefSchema } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

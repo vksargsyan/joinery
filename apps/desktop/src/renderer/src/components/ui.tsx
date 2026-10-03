@@ -1,4 +1,4 @@
-import type { Environment } from '@joinery/core';
+import type { Environment } from '@querybara/core';
 import { Dialog as RadixDialog } from 'radix-ui';
 import {
   forwardRef,

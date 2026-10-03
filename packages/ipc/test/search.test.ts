@@ -1,4 +1,4 @@
-import type { SearchClusterInfo, SearchPage, SearchTable } from '@joinery/search-tools';
+import type { SearchClusterInfo, SearchPage, SearchTable } from '@querybara/search-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -211,7 +211,7 @@ class NodeSqliteDatabase implements SqliteDatabase {
 
   transaction<T>(fn: () => T): T {
     const depth = this.#depth;
-    const savepoint = `joinery_savepoint_${depth}`;
+    const savepoint = `querybara_savepoint_${depth}`;
     this.#db.exec(depth === 0 ? 'BEGIN IMMEDIATE' : `SAVEPOINT ${savepoint}`);
     this.#depth = depth + 1;
     try {

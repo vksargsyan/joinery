@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   compareVersions,
   connectionProfileSchema,
@@ -214,7 +214,7 @@ describe('schema snapshots', () => {
 
 describe('errors', () => {
   it('serialises across a process boundary', () => {
-    const error = new JoineryError({
+    const error = new QuerybaraError({
       code: 'SQL_ERROR',
       message: 'relation "nope" does not exist',
       sqlState: '42P01',

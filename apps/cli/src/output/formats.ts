@@ -1,4 +1,4 @@
-import type { CellValue, ColumnMeta } from '@joinery/core';
+import type { CellValue, ColumnMeta } from '@querybara/core';
 
 import { cellJson, cellText, isNumericKind, uniqueKeys } from './cells';
 import type { Sink } from './sink';

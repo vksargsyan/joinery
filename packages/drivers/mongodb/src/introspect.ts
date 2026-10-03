@@ -5,8 +5,8 @@ import type {
   SchemaSnapshot,
   TableDef,
   ViewDef,
-} from '@joinery/core';
-import { toEjson } from '@joinery/mongo-tools';
+} from '@querybara/core';
+import { toEjson } from '@querybara/mongo-tools';
 import type { Document } from 'mongodb';
 
 import { indexKind, numberOf } from './admin';

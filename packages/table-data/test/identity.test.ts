@@ -1,4 +1,4 @@
-import { tableDefSchema } from '@joinery/core';
+import { tableDefSchema } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

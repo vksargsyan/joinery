@@ -6,7 +6,7 @@ import {
   type JoinType,
   type QueryJoin,
   type QueryModel,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 import { Tabs } from 'radix-ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 

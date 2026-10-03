@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type SqlDialect } from '@querybara/core';
 
 import { comparedAsText, type ColumnInfo } from './columns';
 import {
@@ -445,7 +445,7 @@ export function compileFilter(
   );
   const first = issues[0];
   if (first) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Invalid filter: ${first.message}`,
     });

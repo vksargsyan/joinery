@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { MongoDbSession, type MongoSession } from '@joinery/driver-mongodb';
-import { toEjson, type WriteSummary } from '@joinery/mongo-tools';
+} from '@querybara/core';
+import { MongoDbSession, type MongoSession } from '@querybara/driver-mongodb';
+import { toEjson, type WriteSummary } from '@querybara/mongo-tools';
 
 /**
  * A MongoSession double for the connection host's `mongo.*` handlers: it records every call
@@ -31,7 +31,7 @@ export function fakeMongoSession(documents: readonly object[] = []): FakeMongoSe
     calls.push({ method, args });
   };
   const unused = (method: string) => () => {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: `${method} is not faked` });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: `${method} is not faked` });
   };
   const fake = {
     engine: 'mongodb' as const,
@@ -91,7 +91,7 @@ export function fakeMongoSession(documents: readonly object[] = []): FakeMongoSe
       const original = String(args[1]);
       const at = fake.documents.indexOf(original);
       if (at < 0) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'CONFLICT',
           message: 'The document changed since it was read; it was not replaced',
           detail: fake.documents[0] ?? '{}',

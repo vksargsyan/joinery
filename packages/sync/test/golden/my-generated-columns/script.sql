@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb generated_columns_dev
 -- Target: mariadb generated_columns_prod
 -- Operations: 5

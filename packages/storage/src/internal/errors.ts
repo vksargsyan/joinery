@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { z } from 'zod';
 
 /**
@@ -15,20 +15,20 @@ export function parseOrThrow<S extends z.ZodType>(
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   // Zod issue messages describe the expectation and the path, not the rejected input.
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `Invalid ${what}`,
     detail: z.prettifyError(result.error),
   });
 }
 
-export function notFound(what: string, id: string): JoineryError {
-  return new JoineryError({ code: 'NOT_FOUND', message: `${what} ${id} does not exist` });
+export function notFound(what: string, id: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_FOUND', message: `${what} ${id} does not exist` });
 }
 
 /** Optimistic concurrency failure: the row changed since the caller read it. */
 export function versionConflict(what: string, id: string, expected: number, actual: number) {
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'CONFLICT',
     message: `${what} ${id} was changed elsewhere (version ${actual}, expected ${expected})`,
     hint: 'Reload it and apply the change again.',
@@ -36,8 +36,8 @@ export function versionConflict(what: string, id: string, expected: number, actu
 }
 
 /** A stored row no longer parses: a bug or a hand-edited database, never user input. */
-export function corruptRow(what: string, id: string, cause?: unknown): JoineryError {
-  return new JoineryError(
+export function corruptRow(what: string, id: string, cause?: unknown): QuerybaraError {
+  return new QuerybaraError(
     { code: 'INTERNAL', message: `Stored ${what} ${id} is unreadable` },
     cause === undefined ? undefined : { cause },
   );

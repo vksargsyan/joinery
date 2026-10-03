@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   cancelledError,
   capabilitiesFor,
   type BrowseNode,
@@ -8,8 +8,8 @@ import {
   type ResolvedProfile,
   type ResultChunk,
   type SchemaSnapshot,
-} from '@joinery/core';
-import { SessionGate } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import { SessionGate } from '@querybara/driver-sql-base';
 import {
   DEFAULT_KEY_DELIMITER,
   parseInfo,
@@ -32,7 +32,7 @@ import {
   type SearchIndexInfo,
   type SearchKeyType,
   type SlowlogEntry,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { Cluster, type Redis } from 'ioredis';
 
 import { browseRedis } from './browse';
@@ -141,7 +141,7 @@ async function probeServer(conn: RedisConnection, database: number): Promise<Red
       await conn.raw(['select', String(database)]);
     } catch (error) {
       if (isReplyError(error) && /out of range/i.test(error.message)) {
-        throw new JoineryError(
+        throw new QuerybaraError(
           {
             code: 'VALIDATION_FAILED',
             message: `Database ${database} does not exist on this server`,
@@ -310,10 +310,10 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
 
   private assertUsable(): void {
     if (!this.conn.isOpen) {
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
     }
     if (this.multi) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'CONFLICT',
         message: 'A MULTI transaction is open on this session',
         hint: 'Run EXEC or DISCARD in the CLI first',
@@ -398,7 +398,7 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
   ): Promise<{ reply: RedisReply; node?: string }> {
     return this.gate.run(async () => {
       if (!this.conn.isOpen) {
-        throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+        throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
       }
       const id = options.executionId;
       if (id !== undefined && this.cancelled.has(id)) throw cancelledError();
@@ -533,7 +533,7 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
     const match = /^(?:db)?(\d+)$/i.exec(name.trim());
     if (!match) {
       return Promise.reject(
-        new JoineryError({
+        new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `"${name}" is not a logical database`,
         }),
@@ -543,7 +543,10 @@ export class RedisSessionImpl implements RedisSession, RedisContext {
     return this.gate.run(async () => {
       if (this.conn.isCluster) {
         if (db === 0) return;
-        throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'A cluster has only database 0' });
+        throw new QuerybaraError({
+          code: 'NOT_SUPPORTED',
+          message: 'A cluster has only database 0',
+        });
       }
       await this.call(['select', String(db)]);
       this.currentDb = db;

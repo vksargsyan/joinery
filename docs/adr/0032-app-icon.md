@@ -1,6 +1,7 @@
 # 0032. The app icon: a joined cylinder, and an Icon Composer icon for macOS 26
 
-- Status: Accepted
+- Status: Superseded in part by [0033](0033-querybara-name-and-icon.md) (the artwork and the macOS
+  tile)
 - Date: 2026-10-01
 
 ## Context
@@ -46,7 +47,7 @@ Xcode 26's actool on the packaging machine, and it then replaces the `.icns` wit
 - On macOS 26 and later the icon fills the system's tile in the Dock, Finder and Launchpad, with
   the system's shadow. Tinted mode tints it as it does every app.
 - Changing the SVG means regenerating on a Mac with Xcode 26:
-  `pnpm --filter @joinery/desktop icons`. Elsewhere the generator says that `Assets.car` was not
+  `pnpm --filter @querybara/desktop icons`. Elsewhere the generator says that `Assets.car` was not
   compiled.
 - The unit test cannot tell a stale `Assets.car` from a fresh one: actool's output is not
   reproducible byte for byte.

@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   compactJson,
   parseAllocationExplain,
@@ -24,7 +24,7 @@ import {
   type SearchSimulatedDocument,
   type SearchSnapshotInfo,
   type SearchTaskStatus,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { queryString, segment, type SearchContext } from './context';
 import { mapResponseError } from './errors';
@@ -43,7 +43,7 @@ import type {
  * server task and the Tasks API, shard allocation with its explanation and the disk
  * watermarks, the named resources (index and component templates, ILM or ISM policies, ingest
  * pipelines, snapshot repositories), pipeline simulation, and snapshots. Replies are read by
- * @joinery/search-tools, which the tests feed recorded replies too.
+ * @querybara/search-tools, which the tests feed recorded replies too.
  */
 
 // ---------------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ export async function resizeIndex(
   opts: ResizeOptions = {},
 ): Promise<void> {
   if (kind === 'clone' && !ctx.facts.capabilities.cloneIndex) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'This cluster cannot clone indices (Elasticsearch 7.4 and later can)',
     });
@@ -126,7 +126,7 @@ export async function startReindex(
   opts: ReindexOptions,
 ): Promise<{ taskId: string }> {
   if (opts.source.length === 0) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Name the index to copy from' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Name the index to copy from' });
   }
   if (opts.query !== undefined && opts.query.trim() !== '') assertJsonObject(opts.query, 'query');
   const source = [
@@ -159,7 +159,10 @@ export async function startReindex(
   );
   const task = stringAt(node, 'task');
   if (task === undefined) {
-    throw new JoineryError({ code: 'INTERNAL', message: 'The reindex answered without a task id' });
+    throw new QuerybaraError({
+      code: 'INTERNAL',
+      message: 'The reindex answered without a task id',
+    });
   }
   return { taskId: task };
 }
@@ -169,7 +172,7 @@ export async function startReindex(
 
 function taskPath(taskId: string): string {
   if (!/^[^:/\s]+:\d+$/.test(taskId)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${taskId}" is not a task id (node:number)`,
     });
@@ -253,7 +256,7 @@ export async function allocationExplain(
     !shard &&
     /no unassigned shards|unable to find any unassigned shards/i.test(response.body)
   ) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: 'Every shard is assigned: there is nothing to explain',
       hint: 'Pick a shard to see why it is where it is',
@@ -289,7 +292,7 @@ export async function diskAllocation(
 /** Refuses a resource kind the cluster does not have. */
 function checkKind(ctx: SearchContext, kind: SearchResourceKind): void {
   if (kind === 'lifecycle-policy' && !ctx.facts.capabilities.lifecycle) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'This cluster has no index lifecycle management (the OSS distribution lacks it)',
     });
@@ -298,7 +301,7 @@ function checkKind(ctx: SearchContext, kind: SearchResourceKind): void {
     (kind === 'index-template' || kind === 'component-template') &&
     !ctx.facts.capabilities.composableTemplates
   ) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message:
         'This cluster has only legacy index templates (Elasticsearch 7.8 added composable ones)',
@@ -308,7 +311,7 @@ function checkKind(ctx: SearchContext, kind: SearchResourceKind): void {
 
 function resourceName(name: string): string {
   if (name === '' || /[\s/\\*?"<>|,#]/.test(name)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${name}" is not a valid name: no spaces, slashes, commas or wildcards`,
     });
@@ -367,13 +370,13 @@ export async function simulatePipeline(
   try {
     parseJsonTree(docs);
   } catch (error) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The documents are not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
     });
   }
   if (pipeline === undefined && opts.id === undefined) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Give a pipeline to simulate' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Give a pipeline to simulate' });
   }
   const { text } = await ctx.json(
     {

@@ -1,6 +1,6 @@
 import * as zlib from 'node:zlib';
 
-import { JoineryError, type CellValue, type ColumnMeta, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type ColumnMeta, type SqlDialect } from '@querybara/core';
 import {
   parquetMetadataAsync,
   parquetRead,
@@ -60,8 +60,8 @@ const CODEC = {
   none: 'UNCOMPRESSED',
 } as const satisfies Record<ParquetCompression, string>;
 
-function corrupt(what: string): JoineryError {
-  return new JoineryError({
+function corrupt(what: string): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `The Parquet file is damaged: ${what}`,
   });
@@ -139,7 +139,7 @@ function lz4Hadoop(input: Uint8Array, outputLength: number): Uint8Array {
 function zstd(name: 'zstdCompressSync' | 'zstdDecompressSync'): (input: Uint8Array) => Buffer {
   const fn = (zlib as Partial<typeof zlib>)[name];
   if (typeof fn !== 'function') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'ZSTD compression needs Node.js 22.15 or later',
     });
@@ -280,8 +280,8 @@ const GROUP_ROWS = 100_000;
  */
 const GROUP_BYTES = 8 * 1024 * 1024;
 
-function invalidValue(message: string, hint?: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
+function invalidValue(message: string, hint?: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
 }
 
 const HEX = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'));
@@ -305,8 +305,8 @@ function cellText(value: Exclude<CellValue, null>): string {
   throw largeValue();
 }
 
-function largeValue(): JoineryError {
-  return new JoineryError({
+function largeValue(): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: 'A large value was only previewed; fetch it in full before exporting',
   });
@@ -637,13 +637,13 @@ export class ParquetFileWriter {
     names: readonly string[] = columns.map((c) => c.name),
   ): void {
     if (this.writer !== undefined) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'A Parquet file holds one table',
       });
     }
     if (columns.length === 0) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The result has no columns to write to Parquet',
       });
@@ -657,7 +657,7 @@ export class ParquetFileWriter {
       schema: [{ name: 'root', num_children: columns.length }, ...this.plans.map((p) => p.element)],
       codec: CODEC[compression],
       compressors: COMPRESSORS,
-      kvMetadata: [{ key: 'writer', value: 'Joinery' }],
+      kvMetadata: [{ key: 'writer', value: 'Querybara' }],
     });
   }
 
@@ -673,8 +673,8 @@ export class ParquetFileWriter {
           try {
             value = this.plans[c]!.value(cell);
           } catch (error) {
-            if (!(error instanceof JoineryError)) throw error;
-            throw new JoineryError({
+            if (!(error instanceof QuerybaraError)) throw error;
+            throw new QuerybaraError({
               code: error.code,
               message: `Column "${this.names[c]!}", row ${this.rows + 1}: ${error.message}`,
               ...(error.hint !== undefined ? { hint: error.hint } : {}),
@@ -702,7 +702,7 @@ export class ParquetFileWriter {
     try {
       await this.writer.write({ columnData, rowGroupSize: rows });
     } catch (error) {
-      throw error instanceof JoineryError
+      throw error instanceof QuerybaraError
         ? error
         : invalidValue(`Could not write a Parquet row group: ${(error as Error).message}`);
     }
@@ -715,7 +715,7 @@ export class ParquetFileWriter {
 
   async close(): Promise<void> {
     if (this.writer === undefined) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'Nothing was exported, so there is no Parquet file to write',
       });
@@ -754,8 +754,8 @@ export function isParquet(head: Uint8Array): boolean {
   return startsWith(head, MAGIC) || startsWith(head, ENCRYPTED_MAGIC);
 }
 
-function refuse(message: string, hint?: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
+function refuse(message: string, hint?: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
 }
 
 /** How a top-level leaf's raw values become cells, and what the column is. */
@@ -1169,11 +1169,11 @@ async function describe(reader: RandomAccessReader): Promise<ParquetFile> {
           onComplete: (result) => (rows = result),
         });
       } catch (error) {
-        if (error instanceof JoineryError) throw error;
+        if (error instanceof QuerybaraError) throw error;
         const message = (error as Error).message;
         if (/unsupported compression codec/.test(message)) {
           throw refuse(
-            `This Parquet file uses a compression Joinery does not read (${message.split(': ').pop()})`,
+            `This Parquet file uses a compression Querybara does not read (${message.split(': ').pop()})`,
             'Rewrite it with Snappy, ZSTD, GZIP, Brotli or LZ4',
           );
         }

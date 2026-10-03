@@ -1,5 +1,5 @@
-import type { BulkDeleteProgress, BulkDeleteResult } from '@joinery/driver-redis';
-import { parseInfo, utf8Bytes } from '@joinery/redis-tools';
+import type { BulkDeleteProgress, BulkDeleteResult } from '@querybara/driver-redis';
+import { parseInfo, utf8Bytes } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

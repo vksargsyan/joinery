@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { isPortMessage } from '../../../shared/bridge';
 
@@ -48,7 +48,7 @@ function claim(key: string, timeoutMs: number): Promise<MessagePort> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       waiting.delete(key);
-      reject(new JoineryError({ code: 'TIMEOUT', message: 'The app did not answer in time' }));
+      reject(new QuerybaraError({ code: 'TIMEOUT', message: 'The app did not answer in time' }));
     }, timeoutMs);
     waiting.set(key, {
       resolve: (port) => {
@@ -64,7 +64,7 @@ function claim(key: string, timeoutMs: number): Promise<MessagePort> {
 export function requestMainPort(timeoutMs = 10_000): Promise<MessagePort> {
   listen();
   const port = claim('main', timeoutMs);
-  window.joinery.requestMainPort();
+  window.querybara.requestMainPort();
   return port;
 }
 

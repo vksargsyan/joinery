@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { ByteSource } from './io';
 
@@ -58,7 +58,7 @@ export function decoderFor(encoding: string): InstanceType<typeof TextDecoder> {
   try {
     return new TextDecoder(encoding);
   } catch {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Unknown text encoding "${encoding}"`,
       hint: 'Use a WHATWG encoding name such as utf-8, utf-16le, windows-1252 or iso-8859-2',

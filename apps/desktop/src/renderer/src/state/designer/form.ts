@@ -9,8 +9,8 @@ import {
   type SqlEngineId,
   type TableDef,
   type TriggerDef,
-} from '@joinery/core';
-import { emptyTable, newColumn, type DesignRenames, type ValidationIssue } from '@joinery/sync';
+} from '@querybara/core';
+import { emptyTable, newColumn, type DesignRenames, type ValidationIssue } from '@querybara/sync';
 
 /**
  * The table designer's form (spec §8): the edited table as rows the user adds, removes,

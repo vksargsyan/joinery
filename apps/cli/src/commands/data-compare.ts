@@ -17,7 +17,7 @@ import {
   type Session,
   type SqlDialect,
   type TlsMode,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   DataSyncScriptBuilder,
   columnIndex,
@@ -29,7 +29,7 @@ import {
   type RowDiff,
   type TableRef,
   type TablePair,
-} from '@joinery/sync';
+} from '@querybara/sync';
 
 import { cancellable, closeQuietly, drain, type Connection } from '../connect';
 import { CliError, EXIT, formatError, type ExitCode } from '../errors';
@@ -79,7 +79,7 @@ interface CompareRun {
 }
 
 /**
- * `joinery data-compare <source> <target> --table <name>`: data compare (spec §13, data sync).
+ * `querybara data-compare <source> <target> --table <name>`: data compare (spec §13, data sync).
  * Checksums key ranges on both servers, streams only mismatched ranges, prints counts per
  * action, and writes a sync script or applies it in one transaction. Scripts are spooled to
  * temporary files per action, so memory stays flat for large diffs. Exit 0: no differences
@@ -424,7 +424,7 @@ export class SyncSpool {
   #count = 0;
 
   constructor(options: DataSyncOptions) {
-    this.#dir = mkdtempSync(join(tmpdir(), 'joinery-sync-'));
+    this.#dir = mkdtempSync(join(tmpdir(), 'querybara-sync-'));
     const only = (action: RowAction): DataSyncScriptBuilder =>
       new DataSyncScriptBuilder({
         ...options,

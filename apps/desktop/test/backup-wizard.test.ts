@@ -2,8 +2,8 @@ import {
   BACKUP_FORMATS,
   BACKUP_OBJECT_KINDS,
   NATIVE_TOOL_NAMES as TOOL_NAMES,
-} from '@joinery/backup';
-import { schemaSnapshotSchema } from '@joinery/core';
+} from '@querybara/backup';
+import { schemaSnapshotSchema } from '@querybara/core';
 import {
   BACKUP_FILE_FORMATS,
   BACKUP_OBJECT_KIND_NAMES,
@@ -12,7 +12,7 @@ import {
   restoreJobSchema,
   type BackupInspection,
   type NativeToolInfo,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -40,7 +40,7 @@ import {
 /**
  * The backup and restore wizards' rules (spec §14): formats per engine and method, the object
  * catalog and the selection it becomes, what blocks a start, and the job specs, which must
- * pass the IPC schemas. The IPC lists that mirror @joinery/backup are checked here too.
+ * pass the IPC schemas. The IPC lists that mirror @querybara/backup are checked here too.
  */
 
 const PG: BackupTarget = {
@@ -117,7 +117,7 @@ const TOOLS: NativeToolInfo[] = [
   },
 ];
 
-describe('the IPC lists mirror @joinery/backup', () => {
+describe('the IPC lists mirror @querybara/backup', () => {
   it('has the same object kinds, formats and tools', () => {
     expect([...BACKUP_OBJECT_KIND_NAMES]).toEqual([...BACKUP_OBJECT_KINDS]);
     expect([...BACKUP_FILE_FORMATS]).toEqual([...BACKUP_FORMATS, 'custom']);
@@ -127,15 +127,15 @@ describe('the IPC lists mirror @joinery/backup', () => {
 
 describe('backup options', () => {
   it('offers the formats of each engine and method', () => {
-    expect(formatsFor('postgres', 'joinery')).toEqual(['jbak', 'sql', 'sql-gz']);
+    expect(formatsFor('postgres', 'querybara')).toEqual(['qbak', 'sql', 'sql-gz']);
     expect(formatsFor('postgres', 'native')).toEqual(['custom', 'sql', 'sql-gz']);
     expect(formatsFor('mysql', 'native')).toEqual(['sql', 'sql-gz']);
-    expect(formatsFor('mongodb', 'joinery')).toEqual(['jbak']);
-    expect(formatsFor('redis', 'native')).toEqual(['jbak']);
+    expect(formatsFor('mongodb', 'querybara')).toEqual(['qbak']);
+    expect(formatsFor('redis', 'native')).toEqual(['qbak']);
   });
 
   it('keeps options consistent when they change', () => {
-    const start = { ...defaultBackupOptions(PG), encrypt: true, path: '/b/shop.jbak' };
+    const start = { ...defaultBackupOptions(PG), encrypt: true, path: '/b/shop.qbak' };
     const native = changeOptions('postgres', start, { method: 'native' });
     expect(native).toMatchObject({ format: 'custom', encrypt: false, path: undefined });
     const script = changeOptions('postgres', { ...start, path: '/b/shop.sql' }, { format: 'sql' });
@@ -149,22 +149,22 @@ describe('backup options', () => {
     expect(nativeRestoreTool('postgres', 'sql', TOOLS)?.name).toBe('psql');
     expect(nativeRestoreTool('postgres', 'custom', TOOLS)).toBeUndefined();
     expect(nativeRestoreTool('mariadb', 'sql-gz', TOOLS)).toBeUndefined();
-    expect(nativeRestoreTool('postgres', 'jbak', TOOLS)).toBeUndefined();
+    expect(nativeRestoreTool('postgres', 'qbak', TOOLS)).toBeUndefined();
   });
 
   it('suggests a safe file name', () => {
     const now = new Date(2026, 8, 29, 14, 5);
-    expect(defaultFileName(PG, 'jbak', now)).toBe('shop-20260929-1405.jbak');
+    expect(defaultFileName(PG, 'qbak', now)).toBe('shop-20260929-1405.qbak');
     expect(defaultFileName({ ...PG, database: '../etc passwd' }, 'sql-gz', now)).toBe(
       'etc_passwd-20260929-1405.sql.gz',
     );
-    expect(defaultFileName({ ...PG, engine: 'redis', database: '3' }, 'jbak', now)).toBe(
-      'Shop-db3-20260929-1405.jbak',
+    expect(defaultFileName({ ...PG, engine: 'redis', database: '3' }, 'qbak', now)).toBe(
+      'Shop-db3-20260929-1405.qbak',
     );
   });
 
   it('says what blocks the start', () => {
-    const options = { ...defaultBackupOptions(PG), path: '/b/shop.jbak' };
+    const options = { ...defaultBackupOptions(PG), path: '/b/shop.qbak' };
     expect(backupProblem(PG, options, { empty: false })).toBeUndefined();
     expect(backupProblem(PG, options, { empty: true })).toMatch(/at least one object/);
     expect(
@@ -245,14 +245,14 @@ describe('backup jobs', () => {
       encrypt: true,
       passphrase: 'correct horse',
       passphraseAgain: 'correct horse',
-      path: '/b/shop.jbak',
+      path: '/b/shop.qbak',
     };
     const job = backupJobSpec(PG, options, { selection: { schemas: ['public'] } });
     expect(backupJobSchema.parse(job)).toEqual(job);
     expect(job).toMatchObject({
       kind: 'backup',
       database: 'shop',
-      format: 'jbak',
+      format: 'qbak',
       compress: true,
       encryption: { passphrase: 'correct horse' },
       selection: { schemas: ['public'] },
@@ -273,20 +273,20 @@ describe('backup jobs', () => {
     const mongo = { ...PG, engine: 'mongodb' as const };
     const job = backupJobSpec(
       mongo,
-      { ...defaultBackupOptions(mongo), documentFormat: 'ejson', path: '/b/app.jbak' },
+      { ...defaultBackupOptions(mongo), documentFormat: 'ejson', path: '/b/app.qbak' },
       { collections: ['people'] },
     );
     expect(job).toMatchObject({ collections: ['people'], documentFormat: 'ejson' });
     expect(job).not.toHaveProperty('structure');
     const redis = { ...PG, engine: 'redis' as const, database: '2', pattern: 'user:*' };
     expect(
-      backupJobSpec(redis, { ...defaultBackupOptions(redis), path: '/b/r.jbak' }, {}),
+      backupJobSpec(redis, { ...defaultBackupOptions(redis), path: '/b/r.qbak' }, {}),
     ).toMatchObject({ database: '2', pattern: 'user:*' });
   });
 });
 
 const ARCHIVE: BackupInspection = {
-  format: 'jbak',
+  format: 'qbak',
   size: 2048,
   encrypted: true,
   engine: 'postgres',
@@ -344,7 +344,7 @@ describe('restores', () => {
     ).toMatch(/database/);
     expect(restoreProblem({ ...PG, engine: 'mysql' }, ARCHIVE, choices)).toMatch(/postgres backup/);
     const custom: BackupInspection = { format: 'custom', size: 10, encrypted: false };
-    expect(restoreProblem(PG, custom, { ...choices, method: 'joinery' })).toMatch(/pg_restore/);
+    expect(restoreProblem(PG, custom, { ...choices, method: 'querybara' })).toMatch(/pg_restore/);
   });
 
   it('carries the confirmed conflicts and the production confirmation', () => {
@@ -355,7 +355,7 @@ describe('restores', () => {
       createDatabase: true,
       database: 'shop_copy',
     };
-    const job = restoreJobSpec(PG, '/b/shop.jbak', ARCHIVE, choices, {
+    const job = restoreJobSpec(PG, '/b/shop.qbak', ARCHIVE, choices, {
       conflicts: [
         {
           id: 'table:public.orders',
@@ -371,7 +371,7 @@ describe('restores', () => {
       kind: 'restore',
       profileId: PG.profileId,
       database: 'shop_copy',
-      path: '/b/shop.jbak',
+      path: '/b/shop.qbak',
       passphrase: 'correct horse',
       select: ['table:public.orders'],
       structure: true,

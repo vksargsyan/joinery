@@ -1,4 +1,4 @@
-import type { ConfigApplyResult, ConfigNode, ConfigTarget } from '@joinery/driver-redis';
+import type { ConfigApplyResult, ConfigNode, ConfigTarget } from '@querybara/driver-redis';
 import {
   CONFIG_GROUPS,
   configSetCommands,
@@ -9,7 +9,7 @@ import {
   type ConfigChange,
   type ConfigGroupId,
   type ConfigRow,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 import { formatCommandLine } from '../../../../shared/redis-safety';
 

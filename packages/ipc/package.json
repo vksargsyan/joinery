@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/ipc",
+  "name": "@querybara/ipc",
   "version": "0.0.0",
   "private": true,
   "description": "Typed RPC over MessagePort with zod-validated contracts, streaming, cancellation and progress.",
@@ -12,12 +12,12 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/driver-redis": "workspace:*",
-    "@joinery/mongo-tools": "workspace:*",
-    "@joinery/redis-tools": "workspace:*",
-    "@joinery/search-tools": "workspace:*",
-    "@joinery/sync": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/driver-redis": "workspace:*",
+    "@querybara/mongo-tools": "workspace:*",
+    "@querybara/redis-tools": "workspace:*",
+    "@querybara/search-tools": "workspace:*",
+    "@querybara/sync": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * Column type canonicalisation and data-loss analysis. Each rule is listed where it is applied;

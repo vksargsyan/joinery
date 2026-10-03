@@ -1,11 +1,11 @@
-import type { MongoSavedPipeline, RpcStream } from '@joinery/ipc';
+import type { MongoSavedPipeline, RpcStream } from '@querybara/ipc';
 import {
   formatShell,
   stageInfo,
   type DocumentPage,
   type ExplainVerbosity,
   type Namespace,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

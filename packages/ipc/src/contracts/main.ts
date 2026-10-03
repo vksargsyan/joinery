@@ -79,7 +79,7 @@ const byId = z.object({ id: idSchema });
  * profiles cross as `safeProfileSchema`, which has no field a secret value can live in.
  *
  * `openConnection` returns a connection id only. The desktop app transfers the MessagePort to the
- * connection host out of band (e.g. `webContents.postMessage('joinery:connection-port',
+ * connection host out of band (e.g. `webContents.postMessage('querybara:connection-port',
  * { connectionId }, [port])`), since ports cannot travel inside a validated payload; the renderer
  * then talks `connectionHostContract` over it.
  */
@@ -103,7 +103,7 @@ export const mainContract = defineContract({
     delete: { input: byId, output: z.void() },
     /**
      * Parses a pasted connection URI into a draft profile (spec §4), in main so the renderer and
-     * joinery-cli share one parser. The URI's password stays out of the result.
+     * querybara-cli share one parser. The URI's password stays out of the result.
      */
     parseUri: { input: parseUriInputSchema, output: parsedConnectionUriSchema },
     /**

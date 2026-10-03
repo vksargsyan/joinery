@@ -1,5 +1,5 @@
-import { atLeast } from '@joinery/core';
-import type { SchemaSnapshot, SqlDialect, SqlEngineId } from '@joinery/core';
+import { atLeast } from '@querybara/core';
+import type { SchemaSnapshot, SqlDialect, SqlEngineId } from '@querybara/core';
 
 import { canonicalPgType } from '../types';
 import { pgIdent } from './names';

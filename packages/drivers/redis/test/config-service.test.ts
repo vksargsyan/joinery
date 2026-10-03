@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import type { Redis } from 'ioredis';
 import { describe, expect, it } from 'vitest';
 
@@ -100,7 +100,7 @@ describe('reading the configuration', () => {
       reply("ERR unknown command 'CONFIG', with args beginning with: 'GET' '*' "),
     );
     const error = await configRead(renamed.ctx).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
     expect(error).toMatchObject({
       code: 'NOT_SUPPORTED',
       message: expect.stringContaining('renamed or disabled'),

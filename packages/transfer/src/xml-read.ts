@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { BatchParts } from './rows';
 import { detectEncoding } from './text';
@@ -21,7 +21,7 @@ import {
  * - attributes of child elements, as `child@attribute`;
  * - the row element's own text, when it has any, named after the row element.
  * Namespace declarations and `xsi:` attributes are not columns. Names are used as written
- * (with their prefix), with SQL/XML `_xHHHH_` escapes decoded, so Joinery's own XML export
+ * (with their prefix), with SQL/XML `_xHHHH_` escapes decoded, so Querybara's own XML export
  * reads back with its column names. Columns appear in order of first appearance.
  *
  * Without a path, `detectRowPaths` ranks the paths of a sample: record-like elements (with
@@ -86,7 +86,7 @@ export function normalizeRowPath(path: string): string {
     .map((part) => part.trim())
     .filter((part) => part !== '');
   if (parts.length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The row path is empty',
       hint: 'Give the path of the repeated row element, such as /orders/order',
@@ -242,7 +242,7 @@ export class XmlRowBuilder implements XmlHandler {
     let at = this.keys.get(key);
     if (at !== undefined) return at;
     if (this.columns.length >= MAX_COLUMNS) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `Invalid XML on line ${this.rowLine}: the rows have more than ${MAX_COLUMNS} columns`,
         hint: 'Choose the path of the repeated row elements',
@@ -264,7 +264,7 @@ export class XmlRowBuilder implements XmlHandler {
   }
 
   private tooLong(): never {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Invalid XML on line ${this.rowLine}: a value is longer than ${this.maxLength} characters`,
     });

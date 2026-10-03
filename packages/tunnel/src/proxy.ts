@@ -1,6 +1,6 @@
 import { connect as netConnect, type Socket } from 'node:net';
 
-import type { HostPort, JoineryError, ProxyOptions } from '@joinery/core';
+import type { HostPort, QuerybaraError, ProxyOptions } from '@querybara/core';
 import { SocksClient } from 'socks';
 
 import { errorMessage, hostLabel, mapSocketError, timeoutError, tunnelError } from './errors';
@@ -99,7 +99,7 @@ function mapSocksError(
   where: string,
   target: HostPort,
   timeoutMs: number,
-): JoineryError {
+): QuerybaraError {
   const message = errorMessage(error);
   const name = `SOCKS5 proxy ${where}`;
   if (/Authentication failed/i.test(message)) {
@@ -163,7 +163,7 @@ function httpConnect(
     const socket = netConnect({ host: proxy.host, port: proxy.port });
     let settled = false;
     let head = Buffer.alloc(0);
-    const fail = (error: JoineryError): void => {
+    const fail = (error: QuerybaraError): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);

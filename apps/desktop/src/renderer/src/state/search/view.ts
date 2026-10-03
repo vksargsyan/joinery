@@ -1,4 +1,4 @@
-import type { RequestSafety, SearchClusterInfo } from '@joinery/search-tools';
+import type { RequestSafety, SearchClusterInfo } from '@querybara/search-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

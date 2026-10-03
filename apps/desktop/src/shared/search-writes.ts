@@ -1,5 +1,5 @@
-import { JoineryError, requiresWriteConfirmation, type ConnectionProfile } from '@joinery/core';
-import { classifyRequest, type RequestSafety, type SearchRequest } from '@joinery/search-tools';
+import { QuerybaraError, requiresWriteConfirmation, type ConnectionProfile } from '@querybara/core';
+import { classifyRequest, type RequestSafety, type SearchRequest } from '@querybara/search-tools';
 
 /**
  * The write rules for Elasticsearch (spec §4, §11), shared by the connection host
@@ -85,13 +85,13 @@ export function checkSearchWrite(
 ): void {
   const decision = decideSearchWrite(operation, policy);
   if (decision.action === 'refuse') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: `${decision.reason}: ${what.charAt(0).toLowerCase()}${what.slice(1)} was not run`,
     });
   }
   if (decision.action === 'confirm' && confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `${what} needs confirmation`,
       hint: decision.reason,

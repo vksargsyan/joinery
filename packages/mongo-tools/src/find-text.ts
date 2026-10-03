@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import {
   bsonTag,
@@ -350,7 +350,7 @@ export function toFindQuery(query: QueryModel): FindQuery {
 function ejsonDocument(text: string, what: string): BsonDocument {
   const value = fromEjson(text, what);
   if (!isBsonDocument(value)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The ${what} must be a document`,
     });
@@ -372,7 +372,7 @@ export function fromFindQuery(query: FindQuery): QueryModel {
   if (query.hint !== undefined) {
     const hint = fromEjson(query.hint, 'hint');
     if (typeof hint !== 'string' && !isBsonDocument(hint)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The hint must be an index name or a key pattern',
       });

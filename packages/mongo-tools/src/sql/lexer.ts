@@ -1,8 +1,8 @@
 import { SqlTranslationError } from './errors';
 
 /**
- * The SQL lexer behind `sqlToMql`. Joinery owns its SQL lexing (ADR 0005); this one is separate
- * from @joinery/sql-tools because the translator reads one dialect of its own: backticks and
+ * The SQL lexer behind `sqlToMql`. Querybara owns its SQL lexing (ADR 0005); this one is separate
+ * from @querybara/sql-tools because the translator reads one dialect of its own: backticks and
  * double quotes both quote identifiers (MySQL and ANSI), single quotes are strings with `''` as
  * the only escape, and `--` and `/* *\/` are comments. Keeping it here also keeps this package
  * free of sql-tools' parser and formatter dependencies in the renderer bundle.

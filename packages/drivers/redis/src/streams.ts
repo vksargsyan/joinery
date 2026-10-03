@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { toBytes, unescapeRepr, utf8Bytes } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { toBytes, unescapeRepr, utf8Bytes } from '@querybara/redis-tools';
 import type { Cluster, Redis } from 'ioredis';
 
 import { addressOf, type RedisConnection } from './client';
@@ -109,7 +109,7 @@ export async function subscribe(
   const patterns = (options.patterns ?? []).map((p) => Buffer.from(toBytes(p)));
   const shards = (options.shardChannels ?? []).map((c) => Buffer.from(toBytes(c)));
   if (channels.length + patterns.length + shards.length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'Subscribe to at least one channel or pattern',
     });

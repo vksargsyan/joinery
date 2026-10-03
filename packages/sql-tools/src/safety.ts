@@ -1,4 +1,8 @@
-import { requiresWriteConfirmation, type ConnectionProfile, type SqlDialect } from '@joinery/core';
+import {
+  requiresWriteConfirmation,
+  type ConnectionProfile,
+  type SqlDialect,
+} from '@querybara/core';
 
 import { isTrivia, tokenize, type TokenKind } from './lexer';
 

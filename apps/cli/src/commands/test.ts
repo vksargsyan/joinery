@@ -5,9 +5,9 @@ import {
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type DriverAdapter,
-} from '@joinery/core';
+} from '@querybara/core';
 
-import { checkConnectionThroughTransport, needsTransport } from '@joinery/tunnel';
+import { checkConnectionThroughTransport, needsTransport } from '@querybara/tunnel';
 
 import { missingPasswordHint } from '../connect';
 import { EXIT, type ExitCode } from '../errors';
@@ -36,7 +36,7 @@ const STEP_LABELS: Readonly<Record<ConnectionCheckStep, string>> = {
 };
 
 /**
- * `joinery test <target>`: Test Connection (spec §4). Runs the adapter's stepwise check (DNS,
+ * `querybara test <target>`: Test Connection (spec §4). Runs the adapter's stepwise check (DNS,
  * TCP, SSH, TLS, auth, ping, version) and prints ✓ or ✗ per step with the fix hint of the
  * failing one. With an SSH tunnel or a proxy, DNS and TCP check the first server on the way, the
  * SSH step opens the route, and the later steps run through it. Exit 0 when every step passed,

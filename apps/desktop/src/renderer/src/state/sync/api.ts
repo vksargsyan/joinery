@@ -14,7 +14,7 @@ import type {
   StructureExportInput,
   StructureResult,
   StructureScript,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 
 import { mainApi } from '../../lib/main-client';
 import { profileById } from '../data';

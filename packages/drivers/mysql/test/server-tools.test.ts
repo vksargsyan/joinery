@@ -1,4 +1,4 @@
-import { JoineryError, MASKED_SECRET, type ServerAction } from '@joinery/core';
+import { QuerybaraError, MASKED_SECRET, type ServerAction } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -26,7 +26,7 @@ describe('MySQL server tool statements', () => {
   it('kills a query or a connection by thread id', () => {
     expect(killStatement('cancel', '12').sql).toBe('KILL QUERY 12');
     expect(killStatement('terminate', '12').sql).toBe('KILL CONNECTION 12');
-    expect(() => killStatement('cancel', '12 OR 1')).toThrow(JoineryError);
+    expect(() => killStatement('cancel', '12 OR 1')).toThrow(QuerybaraError);
   });
 
   it('runs the table maintenance statements with their options', () => {
@@ -263,7 +263,7 @@ describe('MySQL server tool statements', () => {
         { kind: 'grant', grantee, object: { kind: 'global' }, privileges: ['ALL; DROP'] },
         'mysql',
       ),
-    ).toThrow(JoineryError);
+    ).toThrow(QuerybaraError);
     expect(() =>
       grantStatement(
         { kind: 'grant', grantee, object: { kind: 'schema', name: 's' }, privileges: ['USAGE'] },
@@ -589,7 +589,7 @@ describe('MySQL server tool readers', () => {
   });
 
   it('explains refusals', () => {
-    const denied = new JoineryError({
+    const denied = new QuerybaraError({
       code: 'SQL_ERROR',
       message: 'Access denied',
       engineCode: 1227,
@@ -601,10 +601,10 @@ describe('MySQL server tool readers', () => {
           denied,
           { kind: 'setting', name: 'x', value: '1', scope: 'global' },
           'mysql',
-        ) as JoineryError
+        ) as QuerybaraError
       ).hint,
     ).toMatch(/SYSTEM_VARIABLES_ADMIN/);
-    const notOwner = new JoineryError({
+    const notOwner = new QuerybaraError({
       code: 'SQL_ERROR',
       message: 'You are not owner of thread 5',
       engineCode: 1095,
@@ -615,7 +615,7 @@ describe('MySQL server tool readers', () => {
           notOwner,
           { kind: 'session', operation: 'terminate', id: '5' },
           'mariadb',
-        ) as JoineryError
+        ) as QuerybaraError
       ).hint,
     ).toMatch(/CONNECTION ADMIN/);
   });

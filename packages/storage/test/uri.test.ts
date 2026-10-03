@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 
-import { secretRefsOf } from '@joinery/core';
+import { secretRefsOf } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -1,4 +1,4 @@
-import { parseSearchInfo, type SearchIndexInfo } from '@joinery/redis-tools';
+import { parseSearchInfo, type SearchIndexInfo } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import { classifyRedisCommand } from '../src/shared/redis-safety';

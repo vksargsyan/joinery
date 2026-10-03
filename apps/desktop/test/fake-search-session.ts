@@ -1,13 +1,13 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   type DriverAdapter,
   type ResolvedProfile,
   type ResultChunk,
   type Session,
-} from '@joinery/core';
-import { ElasticSearchSession, type SearchSession } from '@joinery/driver-elasticsearch';
-import { searchCapabilities, type SearchRequest } from '@joinery/search-tools';
+} from '@querybara/core';
+import { ElasticSearchSession, type SearchSession } from '@querybara/driver-elasticsearch';
+import { searchCapabilities, type SearchRequest } from '@querybara/search-tools';
 
 /**
  * A SearchSession double for the connection host's `search.*` handlers: it records every call
@@ -30,7 +30,7 @@ export function fakeSearchSession(): FakeSearchSession {
       return answer(...args);
     };
   const unused = (method: string) => () => {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: `${method} is not faked` });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: `${method} is not faked` });
   };
   const write = (index: unknown, id: unknown, result: string) => ({
     index: String(index),

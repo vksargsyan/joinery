@@ -1,4 +1,4 @@
-import { newId as makeId, type SqlDialect } from '@joinery/core';
+import { newId as makeId, type SqlDialect } from '@querybara/core';
 import {
   emptyQueryModel,
   generateQuery,
@@ -12,7 +12,7 @@ import {
   type QueryIssue,
   type QueryModel,
   type SelectItem,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

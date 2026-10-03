@@ -10,7 +10,7 @@ import {
   type KeyObject,
 } from 'node:crypto';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import ssh2 from 'ssh2';
 
 import { errorMessage } from './errors';
@@ -39,7 +39,7 @@ export interface PrivateKeyInfo {
   readonly comment?: string;
   /**
    * For a PuTTY key: the same key as PKCS#8 PEM, encrypted with the same passphrase when the PPK
-   * was encrypted, which OpenSSH and Joinery both read. Save it with owner-only permissions.
+   * was encrypted, which OpenSSH and Querybara both read. Save it with owner-only permissions.
    */
   readonly converted?: string;
 }
@@ -619,13 +619,13 @@ export function importPrivateKey(text: string, passphrase?: string): PrivateKeyI
   const decoded = decodePrivateKey(text, passphrase || undefined);
   switch (decoded.status) {
     case 'invalid':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
-        message: `This is not a private key Joinery can use: ${decoded.reason}`,
+        message: `This is not a private key Querybara can use: ${decoded.reason}`,
         hint: 'Choose an OpenSSH, PEM, PKCS#8 or PuTTY (.ppk) private key file',
       });
     case 'bad-passphrase':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The passphrase for this private key is wrong',
         hint: 'Enter the passphrase the key was created with',
@@ -671,23 +671,23 @@ export function ssh2KeyFrom(
     case 'ok':
       return decoded.ssh2Key;
     case 'locked':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'SSH_FAILED',
         message: `The SSH private key ${label} is encrypted, and no passphrase was provided`,
         hint: 'Enter the key passphrase, or save it in the profile',
         engineCode: 'PASSPHRASE_REQUIRED',
       });
     case 'bad-passphrase':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'SSH_FAILED',
         message: `The passphrase for the SSH private key ${label} is wrong`,
         hint: 'Re-enter the key passphrase',
         engineCode: 'BAD_PASSPHRASE',
       });
     case 'invalid':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'SSH_FAILED',
-        message: `The file ${label} is not an SSH private key Joinery can use: ${decoded.reason}`,
+        message: `The file ${label} is not an SSH private key Querybara can use: ${decoded.reason}`,
         hint: 'Choose an OpenSSH, PEM, PKCS#8 or PuTTY (.ppk) private key in the SSH settings',
       });
   }

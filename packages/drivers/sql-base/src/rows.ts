@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 
 /** A row of an internal catalog query, keyed by column name. */
 export type Row = Readonly<Record<string, CellValue>>;

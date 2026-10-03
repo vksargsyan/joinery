@@ -1,5 +1,5 @@
-import { tableDefSchema, type SqlDialect } from '@joinery/core';
-import { renderCreateTable } from '@joinery/sync';
+import { tableDefSchema, type SqlDialect } from '@querybara/core';
+import { renderCreateTable } from '@querybara/sync';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -348,7 +348,7 @@ describe('import statements', () => {
       'INSERT INTO "items" ("id") VALUES ($1) ON CONFLICT ("id") DO NOTHING',
     );
     expect(buildStatement(plan('mysql', 'upsert', { rowAlias: true }), 1)).toBe(
-      'INSERT INTO `items` (`id`, `name`) VALUES (?, ?) AS joinery_new ON DUPLICATE KEY UPDATE `name` = joinery_new.`name`',
+      'INSERT INTO `items` (`id`, `name`) VALUES (?, ?) AS querybara_new ON DUPLICATE KEY UPDATE `name` = querybara_new.`name`',
     );
     expect(buildStatement(plan('mariadb', 'upsert'), 1)).toBe(
       'INSERT INTO `items` (`id`, `name`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `name` = VALUES(`name`)',

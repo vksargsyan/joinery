@@ -1,8 +1,8 @@
 import { join } from 'node:path';
 
-import { newId, type Session } from '@joinery/core';
-import type { MongoSession } from '@joinery/driver-mongodb';
-import { fileSink } from '@joinery/transfer';
+import { newId, type Session } from '@querybara/core';
+import type { MongoSession } from '@querybara/driver-mongodb';
+import { fileSink } from '@querybara/transfer';
 import { EJSON, type Document } from 'bson';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -23,7 +23,7 @@ import { connectMongo, scratchName, tempDir } from './helpers';
  * options, same indexes.
  */
 
-const URL = process.env['JOINERY_TEST_MONGODB_URL'];
+const URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
 const FAST = { log2N: 10, r: 8, p: 1 };
 
 async function command(session: Session, doc: Document): Promise<Document[]> {
@@ -173,7 +173,7 @@ describe.skipIf(!URL)('MongoDB backup and restore', () => {
     const summary = await backupMongo({
       session: source,
       output: fileSink(path),
-      format: 'jbak',
+      format: 'qbak',
       documentFormat: format,
       ...(encrypt ? { encryption: { passphrase: 'mongo secret', cost: FAST } } : {}),
     });
@@ -212,7 +212,7 @@ describe.skipIf(!URL)('MongoDB backup and restore', () => {
     ['ejson', false],
   ] as const) {
     it(`round-trips ${format} documents, options and indexes into another database`, async () => {
-      const path = await backup(format, `mongo-${format}.jbak`, encrypt);
+      const path = await backup(format, `mongo-${format}.qbak`, encrypt);
       const archive = await ArchiveReader.open(path, encrypt ? { passphrase: 'mongo secret' } : {});
       expect(archive.manifest.options['documentFormat']).toBe(format);
       const target = await database(`restored_${format}`);
@@ -226,7 +226,7 @@ describe.skipIf(!URL)('MongoDB backup and restore', () => {
   }
 
   it('restores a view with the collection it reads, and asks before dropping', async () => {
-    const path = await backup('bson', 'selective.jbak');
+    const path = await backup('bson', 'selective.qbak');
     const archive = await ArchiveReader.open(path);
     const target = await database('selected');
     const plan = await planMongoRestore({

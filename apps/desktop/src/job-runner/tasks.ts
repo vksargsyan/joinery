@@ -2,14 +2,14 @@ import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   tableDefSchema,
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   ExportJob,
   ImportJob,
@@ -22,9 +22,9 @@ import type {
   RunSqlFileJob,
   TransferPreview,
   TransferPreviewInput,
-} from '@joinery/ipc';
-import { analyzeStatement, quoteIdent, quoteQualified } from '@joinery/sql-tools';
-import { renderTableStatements } from '@joinery/sync';
+} from '@querybara/ipc';
+import { analyzeStatement, quoteIdent, quoteQualified } from '@querybara/sql-tools';
+import { renderTableStatements } from '@querybara/sync';
 import {
   autoMatch,
   createTable,
@@ -47,12 +47,12 @@ import {
   type ExportTablesSummary,
   type SourceCell,
   type TransferProgress,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 
-export { exportFileName } from '@joinery/transfer';
+export { exportFileName } from '@querybara/transfer';
 
 /**
- * What the job runner does with the @joinery/transfer engine (spec §12): the three job kinds
+ * What the job runner does with the @querybara/transfer engine (spec §12): the three job kinds
  * (import, export, Run SQL File), and the quick requests the wizards make before a job starts
  * (file preview, auto-match, the new table plan). Everything here takes a driver session and
  * plain data, so the tests drive it with a fake session and temporary files.
@@ -78,7 +78,7 @@ const MAX_PREVIEW_CELL = 500;
 
 function dialectOf(session: Session): SqlDialect {
   if (isSqlEngine(session.engine)) return session.engine;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Data transfer with ${session.engine} is not supported yet`,
   });
@@ -92,13 +92,13 @@ async function fileSize(path: string): Promise<number> {
   try {
     const info = await stat(path);
     if (info.isDirectory()) {
-      throw new JoineryError({ code: 'VALIDATION_FAILED', message: `${path} is a folder` });
+      throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: `${path} is a folder` });
     }
     return info.size;
   } catch (error) {
-    if (error instanceof JoineryError) throw error;
+    if (error instanceof QuerybaraError) throw error;
     const code = (error as NodeJS.ErrnoException).code;
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: code === 'ENOENT' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
       message: code === 'ENOENT' ? `${path} does not exist` : `${path} cannot be read (${code})`,
     });
@@ -187,7 +187,7 @@ export function newTableDef(
 ): TableDef {
   const missing = primaryKey.filter((key) => !columns.some((c) => c.name === key));
   if (missing.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Primary key column "${missing[0]}" is not one of the new columns`,
     });
@@ -196,7 +196,7 @@ export function newTableDef(
   for (const column of columns) {
     const key = dialect === 'postgres' ? column.name : column.name.toLowerCase();
     if (seen.has(key)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `Column "${column.name}" appears twice`,
       });
@@ -283,7 +283,7 @@ function transferProgress(
 export async function runImport(job: ImportJob, context: JobContext): Promise<JobOutcome> {
   const { session, signal } = context;
   if (context.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: 'This connection is read-only, so nothing was imported',
     });
@@ -437,21 +437,21 @@ export async function runExport(job: ExportJob, context: JobContext): Promise<Jo
   let summary: ExportSummary | ExportTablesSummary;
   context.progress({ phase: 'Exporting', rowsWritten: 0, bytes: 0 });
   if (zip && job.output.kind !== 'file') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'A ZIP export writes one file',
     });
   }
   if (job.source.kind === 'query') {
     if (job.output.kind !== 'file') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'A query result exports to one file',
       });
     }
     if (analyzeStatement(job.source.text, dialect).isWrite) {
       // The export runs the statement again: a write would happen a second time.
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The statement writes, so it is not run again to export its rows',
         hint: 'Export the rows with a SELECT instead.',
@@ -566,7 +566,7 @@ function readOnlySession(
       statement++;
       if (analyzeStatement(text, dialect).isWrite) {
         refuse(text, statement);
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'READ_ONLY',
           message: `This connection is read-only, so statement ${statement} was not run: it writes`,
         });

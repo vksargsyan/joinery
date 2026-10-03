@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb mariadb_sequences_dev
 -- Target: mariadb mariadb_sequences_prod
 -- Operations: 5

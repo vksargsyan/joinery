@@ -1,4 +1,4 @@
-import { BSON_TYPES } from '@joinery/mongo-tools';
+import { BSON_TYPES } from '@querybara/mongo-tools';
 import { DropdownMenu } from 'radix-ui';
 import { useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 
@@ -34,8 +34,8 @@ import { Segmented, SmallSelect } from './parts';
  * the builder reads it back, or says why it cannot and stays read-only.
  */
 
-const FIELD_DRAG = 'application/x-joinery-field';
-const SORT_DRAG = 'application/x-joinery-sort-key';
+const FIELD_DRAG = 'application/x-querybara-field';
+const SORT_DRAG = 'application/x-querybara-sort-key';
 
 const ZONE = 'flex flex-col gap-1 rounded border border-dashed border-border bg-panel-2/40 p-1.5';
 const ZONE_OVER = 'border-accent bg-accent/10';

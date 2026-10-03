@@ -1,5 +1,5 @@
-import type { ErrorData } from '@joinery/core';
-import type { DataLossSeverity, TableDesign } from '@joinery/sync';
+import type { ErrorData } from '@querybara/core';
+import type { DataLossSeverity, TableDesign } from '@querybara/sync';
 
 /**
  * The designer's save review (spec §8: Save shows the ALTER script first; risky changes show a

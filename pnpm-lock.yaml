@@ -99,49 +99,49 @@ importers:
         specifier: ^1.17.0
         version: 1.17.0
     devDependencies:
-      '@joinery/backup':
+      '@querybara/backup':
         specifier: workspace:*
         version: link:../../packages/backup
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@joinery/driver-elasticsearch':
+      '@querybara/driver-elasticsearch':
         specifier: workspace:*
         version: link:../../packages/drivers/elasticsearch
-      '@joinery/driver-mongodb':
+      '@querybara/driver-mongodb':
         specifier: workspace:*
         version: link:../../packages/drivers/mongodb
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../../packages/drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../../packages/drivers/postgres
-      '@joinery/driver-redis':
+      '@querybara/driver-redis':
         specifier: workspace:*
         version: link:../../packages/drivers/redis
-      '@joinery/mongo-tools':
+      '@querybara/mongo-tools':
         specifier: workspace:*
         version: link:../../packages/mongo-tools
-      '@joinery/redis-tools':
+      '@querybara/redis-tools':
         specifier: workspace:*
         version: link:../../packages/redis-tools
-      '@joinery/search-tools':
+      '@querybara/search-tools':
         specifier: workspace:*
         version: link:../../packages/search-tools
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../../packages/sql-tools
-      '@joinery/storage':
+      '@querybara/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@joinery/sync':
+      '@querybara/sync':
         specifier: workspace:*
         version: link:../../packages/sync
-      '@joinery/transfer':
+      '@querybara/transfer':
         specifier: workspace:*
         version: link:../../packages/transfer
-      '@joinery/tunnel':
+      '@querybara/tunnel':
         specifier: workspace:*
         version: link:../../packages/tunnel
       '@types/node':
@@ -171,58 +171,58 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.9.1
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.89.0(@types/react@19.3.0)(react@19.3.0))(zod@4.6.5)
-      '@joinery/backup':
+      '@querybara/backup':
         specifier: workspace:*
         version: link:../../packages/backup
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@joinery/driver-elasticsearch':
+      '@querybara/driver-elasticsearch':
         specifier: workspace:*
         version: link:../../packages/drivers/elasticsearch
-      '@joinery/driver-mongodb':
+      '@querybara/driver-mongodb':
         specifier: workspace:*
         version: link:../../packages/drivers/mongodb
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../../packages/drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../../packages/drivers/postgres
-      '@joinery/driver-redis':
+      '@querybara/driver-redis':
         specifier: workspace:*
         version: link:../../packages/drivers/redis
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../../packages/drivers/sql-base
-      '@joinery/ipc':
+      '@querybara/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
-      '@joinery/mongo-tools':
+      '@querybara/mongo-tools':
         specifier: workspace:*
         version: link:../../packages/mongo-tools
-      '@joinery/redis-tools':
+      '@querybara/redis-tools':
         specifier: workspace:*
         version: link:../../packages/redis-tools
-      '@joinery/search-tools':
+      '@querybara/search-tools':
         specifier: workspace:*
         version: link:../../packages/search-tools
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../../packages/sql-tools
-      '@joinery/storage':
+      '@querybara/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@joinery/sync':
+      '@querybara/sync':
         specifier: workspace:*
         version: link:../../packages/sync
-      '@joinery/table-data':
+      '@querybara/table-data':
         specifier: workspace:*
         version: link:../../packages/table-data
-      '@joinery/transfer':
+      '@querybara/transfer':
         specifier: workspace:*
         version: link:../../packages/transfer
-      '@joinery/tunnel':
+      '@querybara/tunnel':
         specifier: workspace:*
         version: link:../../packages/tunnel
       '@playwright/test':
@@ -330,19 +330,19 @@ importers:
 
   packages/backup:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
-      '@joinery/mongo-tools':
+      '@querybara/mongo-tools':
         specifier: workspace:*
         version: link:../mongo-tools
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../sql-tools
-      '@joinery/sync':
+      '@querybara/sync':
         specifier: workspace:*
         version: link:../sync
-      '@joinery/transfer':
+      '@querybara/transfer':
         specifier: workspace:*
         version: link:../transfer
       bson:
@@ -352,19 +352,19 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
-      '@joinery/driver-mongodb':
+      '@querybara/driver-mongodb':
         specifier: workspace:*
         version: link:../drivers/mongodb
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../drivers/postgres
-      '@joinery/driver-redis':
+      '@querybara/driver-redis':
         specifier: workspace:*
         version: link:../drivers/redis
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../drivers/sql-base
       '@types/node':
@@ -395,16 +395,16 @@ importers:
 
   packages/drivers/elasticsearch:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../core
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../sql-base
-      '@joinery/search-tools':
+      '@querybara/search-tools':
         specifier: workspace:*
         version: link:../../search-tools
-      '@joinery/tunnel':
+      '@querybara/tunnel':
         specifier: workspace:*
         version: link:../../tunnel
     devDependencies:
@@ -420,16 +420,16 @@ importers:
 
   packages/drivers/mongodb:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../core
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../sql-base
-      '@joinery/mongo-tools':
+      '@querybara/mongo-tools':
         specifier: workspace:*
         version: link:../../mongo-tools
-      '@joinery/tunnel':
+      '@querybara/tunnel':
         specifier: workspace:*
         version: link:../../tunnel
       mongodb:
@@ -448,13 +448,13 @@ importers:
 
   packages/drivers/mysql:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../core
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../sql-base
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../../sql-tools
       mysql2:
@@ -473,13 +473,13 @@ importers:
 
   packages/drivers/postgres:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../core
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../sql-base
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../../sql-tools
       pg:
@@ -507,16 +507,16 @@ importers:
 
   packages/drivers/redis:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../core
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../sql-base
-      '@joinery/redis-tools':
+      '@querybara/redis-tools':
         specifier: workspace:*
         version: link:../../redis-tools
-      '@joinery/tunnel':
+      '@querybara/tunnel':
         specifier: workspace:*
         version: link:../../tunnel
       ioredis:
@@ -535,10 +535,10 @@ importers:
 
   packages/drivers/sql-base:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../core
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../../sql-tools
     devDependencies:
@@ -554,22 +554,22 @@ importers:
 
   packages/ipc:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
-      '@joinery/driver-redis':
+      '@querybara/driver-redis':
         specifier: workspace:*
         version: link:../drivers/redis
-      '@joinery/mongo-tools':
+      '@querybara/mongo-tools':
         specifier: workspace:*
         version: link:../mongo-tools
-      '@joinery/redis-tools':
+      '@querybara/redis-tools':
         specifier: workspace:*
         version: link:../redis-tools
-      '@joinery/search-tools':
+      '@querybara/search-tools':
         specifier: workspace:*
         version: link:../search-tools
-      '@joinery/sync':
+      '@querybara/sync':
         specifier: workspace:*
         version: link:../sync
       zod:
@@ -588,7 +588,7 @@ importers:
 
   packages/mongo-tools:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
       bson:
@@ -610,7 +610,7 @@ importers:
 
   packages/redis-tools:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
       '@msgpack/msgpack':
@@ -650,7 +650,7 @@ importers:
 
   packages/sql-tools:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
       dt-sql-parser:
@@ -678,7 +678,7 @@ importers:
 
   packages/storage:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
       zod:
@@ -697,20 +697,20 @@ importers:
 
   packages/sync:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../sql-tools
     devDependencies:
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../drivers/postgres
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../drivers/sql-base
       '@types/node':
@@ -728,20 +728,20 @@ importers:
 
   packages/table-data:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../sql-tools
     devDependencies:
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../drivers/postgres
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../drivers/sql-base
       '@types/node':
@@ -759,16 +759,16 @@ importers:
 
   packages/transfer:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
-      '@joinery/mongo-tools':
+      '@querybara/mongo-tools':
         specifier: workspace:*
         version: link:../mongo-tools
-      '@joinery/sql-tools':
+      '@querybara/sql-tools':
         specifier: workspace:*
         version: link:../sql-tools
-      '@joinery/sync':
+      '@querybara/sync':
         specifier: workspace:*
         version: link:../sync
       hyparquet:
@@ -778,19 +778,19 @@ importers:
         specifier: 0.16.10
         version: 0.16.10
     devDependencies:
-      '@joinery/driver-mongodb':
+      '@querybara/driver-mongodb':
         specifier: workspace:*
         version: link:../drivers/mongodb
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../drivers/postgres
-      '@joinery/driver-redis':
+      '@querybara/driver-redis':
         specifier: workspace:*
         version: link:../drivers/redis
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../drivers/sql-base
       '@types/node':
@@ -808,10 +808,10 @@ importers:
 
   packages/tunnel:
     dependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../core
-      '@joinery/driver-sql-base':
+      '@querybara/driver-sql-base':
         specifier: workspace:*
         version: link:../drivers/sql-base
       socks:
@@ -821,10 +821,10 @@ importers:
         specifier: ^1.17.0
         version: 1.17.0
     devDependencies:
-      '@joinery/driver-mysql':
+      '@querybara/driver-mysql':
         specifier: workspace:*
         version: link:../drivers/mysql
-      '@joinery/driver-postgres':
+      '@querybara/driver-postgres':
         specifier: workspace:*
         version: link:../drivers/postgres
       '@types/node':

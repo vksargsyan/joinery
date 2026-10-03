@@ -1,5 +1,5 @@
-import { ENGINES, isSqlEngine } from '@joinery/core';
-import type { BackupInspection, BackupMethod, RestorePlan } from '@joinery/ipc';
+import { ENGINES, isSqlEngine } from '@querybara/core';
+import type { BackupInspection, BackupMethod, RestorePlan } from '@querybara/ipc';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -70,7 +70,7 @@ export function RestoreDialog(props: {
     staleTime: 60_000,
   });
 
-  const archive = inspection?.format === 'jbak';
+  const archive = inspection?.format === 'qbak';
   const steps: readonly Step[] =
     archive && (inspection.objects?.length ?? 0) > 1
       ? ['file', 'objects', 'target', 'review', 'progress']
@@ -115,7 +115,7 @@ export function RestoreDialog(props: {
       await mainApi().dialogs.openFile({
         title: 'Restore a backup',
         filters: [
-          { name: 'Backups', extensions: ['jbak', 'sql', 'gz', 'dump', 'backup'] },
+          { name: 'Backups', extensions: ['qbak', 'sql', 'gz', 'dump', 'backup'] },
           { name: 'All files', extensions: ['*'] },
         ],
       })
@@ -317,12 +317,12 @@ function FileStep(props: {
   readonly onUnlock: () => void;
 }) {
   const { inspection } = props;
-  const locked = inspection?.format === 'jbak' && !inspection.objects;
+  const locked = inspection?.format === 'qbak' && !inspection.objects;
   const fit = inspection ? engineFit(props.target.engine, inspection.engine) : undefined;
   return (
     <div className="flex flex-col items-start gap-2">
       <p className="text-muted">
-        Joinery archives (.jbak), SQL scripts (.sql, .sql.gz) and pg_dump archives restore here.
+        Querybara archives (.qbak), SQL scripts (.sql, .sql.gz) and pg_dump archives restore here.
       </p>
       <Button onClick={props.onChoose} disabled={props.busy}>
         Choose backup file…
@@ -489,7 +489,7 @@ function TargetStep(props: {
 }) {
   const { target, inspection, choices, change } = props;
   const sql = isSqlEngine(target.engine);
-  const script = inspection.format !== 'jbak';
+  const script = inspection.format !== 'qbak';
   return (
     <div className="flex flex-col gap-3">
       {sql && (
@@ -546,8 +546,8 @@ function TargetStep(props: {
           onChange={(method) => change({ method })}
           options={[
             {
-              value: 'joinery',
-              label: 'Joinery (statement by statement)',
+              value: 'querybara',
+              label: 'Querybara (statement by statement)',
               disabled: inspection.format === 'custom',
             },
             {

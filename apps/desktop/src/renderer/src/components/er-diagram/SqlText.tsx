@@ -1,11 +1,11 @@
-import type { SqlDialect } from '@joinery/core';
-import { tokenize } from '@joinery/sql-tools';
+import type { SqlDialect } from '@querybara/core';
+import { tokenize } from '@querybara/sql-tools';
 import { useMemo } from 'react';
 
 import { cx } from '../ui';
 
 /**
- * A read-only SQL script, highlighted with Joinery's lexer (the editor's own tokens, no editor):
+ * A read-only SQL script, highlighted with Querybara's lexer (the editor's own tokens, no editor):
  * keywords, names, strings, numbers and comments. Selectable, for copying a part of it.
  */
 export function SqlText(props: {

@@ -1,5 +1,5 @@
-import type { CellValue, Session, TableDef } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { CellValue, Session, TableDef } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {

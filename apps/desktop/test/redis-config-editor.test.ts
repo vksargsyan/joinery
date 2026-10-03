@@ -1,4 +1,4 @@
-import { CONFIG_SECRET_MASK, buildConfigRows, type ConfigRow } from '@joinery/redis-tools';
+import { CONFIG_SECRET_MASK, buildConfigRows, type ConfigRow } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -8,14 +8,14 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * `joinery import`, `export` and `run-file` from the BUILT binary against real servers
- * (PostgreSQL, MySQL, MariaDB; each skipped when its JOINERY_TEST_*_URL is unset): files in
+ * `querybara import`, `export` and `run-file` from the BUILT binary against real servers
+ * (PostgreSQL, MySQL, MariaDB; each skipped when its QUERYBARA_TEST_*_URL is unset): files in
  * every format into existing and new tables, upserts, skipped rows and exit codes, exports to
  * files, folders, gzip and stdout, and an export → run-file round trip into another database.
  * Every database is created with a unique name and dropped afterwards.
  */
 
-const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
+const BIN = fileURLToPath(new URL('../../dist/querybara.mjs', import.meta.url));
 
 interface Engine {
   readonly name: 'postgres' | 'mariadb' | 'mysql';
@@ -24,9 +24,9 @@ interface Engine {
 
 const ENGINES: Engine[] = (
   [
-    ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-    ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
-    ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
+    ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+    ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
+    ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
   ] as const
 )
   .filter((entry): entry is readonly [Engine['name'], string] => Boolean(entry[1]))
@@ -42,11 +42,11 @@ interface Result {
   readonly stderr: string;
 }
 
-function joinery(args: readonly string[], stdin?: string | Uint8Array): Promise<Result> {
+function querybara(args: readonly string[], stdin?: string | Uint8Array): Promise<Result> {
   const env: Record<string, string> = {
     PATH: process.env['PATH'] ?? '',
     HOME: workDir,
-    JOINERY_STORE: join(workDir, 'joinery.db'),
+    QUERYBARA_STORE: join(workDir, 'querybara.db'),
     NO_COLOR: '1',
   };
   return new Promise((resolve, reject) => {
@@ -78,13 +78,20 @@ function urlFor(engine: Engine, database?: string): string {
 }
 
 async function admin(engine: Engine, sql: string, database?: string): Promise<void> {
-  const result = await joinery(['query', urlFor(engine, database), '--yes', '-q', '-e', sql]);
+  const result = await querybara(['query', urlFor(engine, database), '--yes', '-q', '-e', sql]);
   if (result.code !== 0) throw new Error(`admin SQL failed (${result.code}): ${result.stderr}`);
 }
 
 /** Rows of a query as JSON objects (`query --format json` writes decimals as strings). */
 async function rows(engine: Engine, database: string, sql: string): Promise<unknown[]> {
-  const result = await joinery(['query', urlFor(engine, database), '--format', 'json', '-e', sql]);
+  const result = await querybara([
+    'query',
+    urlFor(engine, database),
+    '--format',
+    'json',
+    '-e',
+    sql,
+  ]);
   if (result.code !== 0) throw new Error(`query failed: ${result.stderr}`);
   return JSON.parse(result.stdout) as unknown[];
 }
@@ -97,8 +104,8 @@ function file(name: string, content: string | Uint8Array): string {
 beforeAll(() => {
   if (ENGINES.length === 0) return;
   if (!existsSync(BIN))
-    throw new Error(`${BIN} is missing: run "pnpm --filter @joinery/cli build" first`);
-  workDir = mkdtempSync(join(tmpdir(), 'joinery-cli-transfer-'));
+    throw new Error(`${BIN} is missing: run "pnpm --filter @querybara/cli build" first`);
+  workDir = mkdtempSync(join(tmpdir(), 'querybara-cli-transfer-'));
 });
 
 afterAll(() => {
@@ -133,7 +140,7 @@ describe.each(ENGINES)('$name', (engine) => {
       'people.csv',
       'ID,Full Name,score,joined\n1,Ada Lovelace,9.5,2024-01-02\n2,"Hopper, Grace",,2024-02-03\n3,Linus,7.25,\n',
     );
-    const imported = await joinery(['import', url, '--table', 'people', '--file', 'people.csv']);
+    const imported = await querybara(['import', url, '--table', 'people', '--file', 'people.csv']);
     expect(imported.code, imported.stderr).toBe(0);
     expect(imported.stderr).toContain('Imported 3 rows into');
     expect(
@@ -145,7 +152,7 @@ describe.each(ENGINES)('$name', (engine) => {
     ]);
 
     file('changes.tsv', 'id\tname\n2\tGrace Hopper\n4\tBarbara\n');
-    const upsert = await joinery([
+    const upsert = await querybara([
       'import',
       url,
       '--table',
@@ -170,7 +177,7 @@ describe.each(ENGINES)('$name', (engine) => {
     ]);
 
     file('bad.csv', 'id,full_name\n10,Ok\nnope,Bad\n11,\n12,Fine\n');
-    const skipped = await joinery([
+    const skipped = await querybara([
       'import',
       url,
       '--table',
@@ -190,12 +197,12 @@ describe.each(ENGINES)('$name', (engine) => {
     expect(readFileSync(join(workDir, 'bad.log'), 'utf8')).toContain('row 2 (line 3)');
     expect(await rows(engine, db, 'SELECT COUNT(*) AS n FROM people')).toEqual([{ n: 7 }]);
 
-    const stopped = await joinery(['import', url, '--table', 'people', '--file', 'bad.csv']);
+    const stopped = await querybara(['import', url, '--table', 'people', '--file', 'bad.csv']);
     expect(stopped.code).toBe(2);
     expect(stopped.stderr).toContain('nothing was kept');
     expect(await rows(engine, db, 'SELECT COUNT(*) AS n FROM people')).toEqual([{ n: 7 }]);
 
-    const replace = await joinery([
+    const replace = await querybara([
       'import',
       url,
       '--table',
@@ -207,7 +214,7 @@ describe.each(ENGINES)('$name', (engine) => {
     ]);
     expect(replace.code).toBe(2);
     expect(replace.stderr).toContain('--yes');
-    const replaced = await joinery([
+    const replaced = await querybara([
       'import',
       url,
       '--table',
@@ -229,7 +236,7 @@ describe.each(ENGINES)('$name', (engine) => {
       'events.jsonl',
       '{"id": 1, "kind": "click", "at": "2024-05-06T07:08:09Z", "meta": {"x": 1}}\n{"id": 2, "kind": "view", "at": "2024-05-06T07:08:10Z", "meta": null}\n',
     );
-    const jsonl = await joinery([
+    const jsonl = await querybara([
       'import',
       url,
       '--table',
@@ -264,7 +271,7 @@ describe.each(ENGINES)('$name', (engine) => {
         ]),
       ),
     );
-    const gz = await joinery([
+    const gz = await querybara([
       'import',
       url,
       '--table',
@@ -279,7 +286,7 @@ describe.each(ENGINES)('$name', (engine) => {
       { sku: 'B-2', qty: 5000000000 },
     ]);
 
-    const piped = await joinery(
+    const piped = await querybara(
       ['import', url, '--table', 'piped', '--file', '-', '--create', '--delimiter', ';'],
       'a;b\n1;x\n2;y\n',
     );
@@ -303,7 +310,7 @@ describe.each(ENGINES)('$name', (engine) => {
 break')`,
       source,
     );
-    const csv = await joinery([
+    const csv = await querybara([
       'export',
       url,
       '--table',
@@ -316,7 +323,7 @@ break')`,
     expect(csv.code, csv.stderr).toBe(0);
     expect(csv.stdout).toBe('id,name\r\n1,Ada\r\n2,"Grace, ""Amazing"" Hopper"\r\n');
 
-    const json = await joinery([
+    const json = await querybara([
       'export',
       url,
       '--query',
@@ -333,7 +340,7 @@ break')`,
       { id: 12, total: 99999999.99, note: 'line\nbreak' },
     ]);
 
-    const folder = await joinery([
+    const folder = await querybara([
       'export',
       url,
       '--table',
@@ -358,7 +365,7 @@ break')`,
     ).toBe('{"id":1,"name":"Ada"}\n{"id":2,"name":"Grace, \\"Amazing\\" Hopper"}\n');
 
     const dump = `dump-${engine.name}.sql`;
-    const ddl = await joinery([
+    const ddl = await querybara([
       'export',
       url,
       '--table',
@@ -377,7 +384,7 @@ break')`,
     // Foreign keys come last, so the table order does not matter on import.
     expect(script.lastIndexOf('FOREIGN KEY')).toBeGreaterThan(script.lastIndexOf('INSERT INTO'));
 
-    const ran = await joinery(['run-file', urlFor(engine, target), dump]);
+    const ran = await querybara(['run-file', urlFor(engine, target), dump]);
     expect(ran.code, ran.stderr).toBe(0);
     const query =
       'SELECT o.id, c.name, o.total, o.note FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id';
@@ -396,7 +403,7 @@ break')`,
       db,
     );
     const book = `items-${engine.name}.xlsx`;
-    const exported = await joinery([
+    const exported = await querybara([
       'export',
       url,
       '--table',
@@ -416,7 +423,7 @@ break')`,
       ['from_file', ['--file', book], undefined],
       ['from_stdin', ['--file', '-'], readFileSync(join(workDir, book))],
     ] as const) {
-      const imported = await joinery(
+      const imported = await querybara(
         ['import', url, '--table', table, ...args, '--create', '--key', 'id'],
         stdin,
       );
@@ -427,11 +434,20 @@ break')`,
       ).toEqual(await rows(engine, db, 'SELECT id, label, price, added FROM items ORDER BY id'));
     }
 
-    const xml = await joinery(['export', url, '--table', 'items', '--format', 'xml', '--out', '-']);
+    const xml = await querybara([
+      'export',
+      url,
+      '--table',
+      'items',
+      '--format',
+      'xml',
+      '--out',
+      '-',
+    ]);
     expect(xml.code, xml.stderr).toBe(0);
     expect(xml.stdout).toContain('<label>Anvil &amp; &lt;co&gt;</label>');
     file(`items-${engine.name}.xml`, xml.stdout);
-    const loaded = await joinery([
+    const loaded = await querybara([
       'import',
       url,
       '--table',
@@ -444,7 +460,7 @@ break')`,
       await rows(engine, db, 'SELECT id, label, price, added FROM xml_items ORDER BY id'),
     ).toEqual(await rows(engine, db, 'SELECT id, label, price, added FROM items ORDER BY id'));
 
-    const page = await joinery([
+    const page = await querybara([
       'export',
       url,
       '--table',
@@ -455,7 +471,7 @@ break')`,
       '-',
     ]);
     expect(page.stdout).toContain('<td>Anvil &amp; &lt;co&gt;</td>');
-    const markdown = await joinery([
+    const markdown = await querybara([
       'export',
       url,
       '--table',
@@ -468,7 +484,7 @@ break')`,
     expect(markdown.stdout.split('\n')[2]).toBe('| 1 | Anvil \\& \\<co\\> | 19.99 | 2024-01-02 |');
 
     const zip = `items-${engine.name}.zip`;
-    const zipped = await joinery([
+    const zipped = await querybara([
       'export',
       url,
       '--table',
@@ -497,7 +513,7 @@ break')`,
         "CREATE TABLE audit (id INT, what VARCHAR(20));\nINSERT INTO missing_table VALUES (1);\nINSERT INTO audit VALUES (1, 'kept');\n",
       ),
     );
-    const continued = await joinery([
+    const continued = await querybara([
       'run-file',
       url,
       `script-${engine.name}.sql.gz`,
@@ -509,7 +525,7 @@ break')`,
     expect(continued.stderr).toContain('1 failed');
     expect(await rows(engine, db, 'SELECT what FROM audit')).toEqual([{ what: 'kept' }]);
 
-    const stopped = await joinery(['run-file', url, `script-${engine.name}.sql.gz`]);
+    const stopped = await querybara(['run-file', url, `script-${engine.name}.sql.gz`]);
     expect(stopped.code).toBe(2);
     expect(stopped.stderr).toContain('already exists');
   });
@@ -525,7 +541,7 @@ break')`,
       'CREATE TABLE bulk (id INT PRIMARY KEY, label VARCHAR(20), amount DECIMAL(10,2))',
       db,
     );
-    const result = await joinery([
+    const result = await querybara([
       'import',
       url,
       '--table',

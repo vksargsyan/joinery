@@ -1,11 +1,11 @@
-import { connectionProfileSchema, errorDataSchema, type ResolvedProfile } from '@joinery/core';
+import { connectionProfileSchema, errorDataSchema, type ResolvedProfile } from '@querybara/core';
 import {
   connectionCheckResultSchema,
   hostKeyInfoSchema,
   mongoGridFsBucketSchema,
   mongoGridFsTransferProgressSchema,
   serverInfoSchema,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { z } from 'zod';
 
 /**

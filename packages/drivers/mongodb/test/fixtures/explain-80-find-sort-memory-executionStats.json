@@ -1,7 +1,7 @@
 {
   "explainVersion": "1",
   "queryPlanner": {
-    "namespace": "joinery_explain_probe.orders",
+    "namespace": "querybara_explain_probe.orders",
     "parsedQuery": {
       "tags": {
         "$eq": "t1"
@@ -114,7 +114,7 @@
     },
     "skip": 2,
     "limit": 10,
-    "$db": "joinery_explain_probe"
+    "$db": "querybara_explain_probe"
   },
   "ok": 1
 }

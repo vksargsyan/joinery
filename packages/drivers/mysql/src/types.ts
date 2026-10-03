@@ -1,5 +1,5 @@
-import type { CellValue, ColumnKind, ColumnMeta } from '@joinery/core';
-import { parseInteger, toBytes } from '@joinery/driver-sql-base';
+import type { CellValue, ColumnKind, ColumnMeta } from '@querybara/core';
+import { parseInteger, toBytes } from '@querybara/driver-sql-base';
 import type { FieldPacket, TypeCast } from 'mysql2';
 
 /**

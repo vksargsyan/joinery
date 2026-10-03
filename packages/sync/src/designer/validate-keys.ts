@@ -1,5 +1,5 @@
-import { atLeast } from '@joinery/core';
-import type { ColumnDef, ForeignKeyDef, TableDef } from '@joinery/core';
+import { atLeast } from '@querybara/core';
+import type { ColumnDef, ForeignKeyDef, TableDef } from '@querybara/core';
 
 import { canonicalCharset, canonicalCollation } from '../normalize';
 import { canonicalType, isMysqlTextType } from '../types';

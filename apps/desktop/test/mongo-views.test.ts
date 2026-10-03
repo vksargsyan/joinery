@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   toColumnChunk,
   type ConnectionProfileInput,
   type ResultChunk,
-} from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
-import { fromEjson, toEjson, type DocumentPage, type FindQuery } from '@joinery/mongo-tools';
+} from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
+import { fromEjson, toEjson, type DocumentPage, type FindQuery } from '@querybara/mongo-tools';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { HostClient } from '../src/renderer/src/lib/main-client';
@@ -72,7 +72,7 @@ function fakeHost(count: number) {
       record('execute', input);
       return (async function* (): AsyncGenerator<ResultChunk> {
         if (input.text.includes('boom')) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: 'Unexpected }',
             position: 7,
@@ -133,7 +133,7 @@ function fakeHost(count: number) {
           const current = documents.find(
             (doc) => JSON.stringify(JSON.parse(doc)._id) === JSON.stringify(id),
           );
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'CONFLICT',
             message: 'The document changed',
             detail: current!,

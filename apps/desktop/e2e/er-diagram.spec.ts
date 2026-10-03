@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -15,14 +15,14 @@ import { connect, query, scratchDatabase } from './db';
  * then one (the table of the other schema as a stub); a table selected brings out its
  * relationships and the inspector lists them; columns shown all, keys only or none; a search
  * rings the tables it matches; tables hidden and shown; views added; the diagram exported as
- * SVG, PNG and Mermaid; a new table picked up on Refresh. Screenshots go to JOINERY_E2E_SHOTS.
+ * SVG, PNG and Mermaid; a new table picked up on Refresh. Screenshots go to QUERYBARA_E2E_SHOTS.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E ER diagram';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -56,7 +56,7 @@ test.beforeAll(async () => {
   ]) {
     await query(direct, sql);
   }
-  exports = mkdtempSync(join(tmpdir(), 'joinery-er-'));
+  exports = mkdtempSync(join(tmpdir(), 'querybara-er-'));
   launched = await launchApp();
   page = launched.page;
 });

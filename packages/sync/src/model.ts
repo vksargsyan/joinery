@@ -1,4 +1,4 @@
-import type { EngineId, SqlDialect } from '@joinery/core';
+import type { EngineId, SqlDialect } from '@querybara/core';
 
 import type { ResolvedCompareOptions } from './options';
 

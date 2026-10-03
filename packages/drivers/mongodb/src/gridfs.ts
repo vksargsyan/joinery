@@ -1,8 +1,8 @@
 import { Readable, type Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { JoineryError, cancelledError } from '@joinery/core';
-import { toEjson, type GridFsBucketRef, type GridFsFileInfo } from '@joinery/mongo-tools';
+import { QuerybaraError, cancelledError } from '@querybara/core';
+import { toEjson, type GridFsBucketRef, type GridFsFileInfo } from '@querybara/mongo-tools';
 import { GridFSBucket, type Document, type ObjectId, type Sort } from 'mongodb';
 
 import { numberOf } from './admin';
@@ -217,10 +217,10 @@ export async function downloadFileTo(
   return bytes;
 }
 
-function notFoundOr(ctx: MongoContext, error: unknown): JoineryError {
+function notFoundOr(ctx: MongoContext, error: unknown): QuerybaraError {
   const message = error instanceof Error ? error.message : String(error);
   if (/FileNotFound|file not found/i.test(message)) {
-    return new JoineryError(
+    return new QuerybaraError(
       { code: 'NOT_FOUND', message: 'The GridFS file does not exist' },
       { cause: error },
     );

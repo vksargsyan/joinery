@@ -1,5 +1,5 @@
-import type { ColumnDef, SqlDialect, TableDef } from '@joinery/core';
-import { quoteIdent, quoteQualified } from '@joinery/sql-tools';
+import type { ColumnDef, SqlDialect, TableDef } from '@querybara/core';
+import { quoteIdent, quoteQualified } from '@querybara/sql-tools';
 
 /**
  * Parameterised statements for the import modes (spec §12): multi-row INSERT, upsert
@@ -70,7 +70,7 @@ export function buildStatement(plan: StatementPlan, rows: number): string {
         : `UPDATE SET ${updates.map((c) => `${quoteIdent(c, dialect)} = EXCLUDED.${quoteIdent(c, dialect)}`).join(', ')}`;
     return sql;
   }
-  const alias = 'joinery_new';
+  const alias = 'querybara_new';
   if (plan.rowAlias === true) sql += ` AS ${alias}`;
   const assign = (c: string): string => {
     const ident = quoteIdent(c, dialect);

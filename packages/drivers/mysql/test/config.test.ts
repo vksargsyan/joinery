@@ -4,8 +4,8 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { FileReader } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { FileReader } from '@querybara/driver-sql-base';
 import { describe, expect, it } from 'vitest';
 
 import { buildMysqlConnectionPlan } from '../src';
@@ -69,7 +69,7 @@ describe('buildMysqlConnectionPlan', () => {
       rowsAsArray: true,
       multipleStatements: false,
       flags: ['-LOCAL_FILES'],
-      connectAttributes: { program_name: 'Joinery' },
+      connectAttributes: { program_name: 'Querybara' },
     });
     expect(plan.options.ssl).toBeUndefined();
     expect(plan.options.stream).toBeUndefined();

@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type SqlDialect } from '@querybara/core';
 
 import { canSort, type ColumnInfo } from './columns';
 import { compileFilter, type FilterNode } from './filter';
@@ -88,7 +88,7 @@ export interface BrowseQuery extends SqlQuery {
 const MAX_LIMIT = 1_000_000;
 
 function fail(message: string): never {
-  throw new JoineryError({ code: 'VALIDATION_FAILED', message });
+  throw new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 function columnMap(columns: readonly ColumnInfo[]): Map<string, ColumnInfo> {

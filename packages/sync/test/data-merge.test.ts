@@ -1,4 +1,4 @@
-import type { CellValue, ColumnKind } from '@joinery/core';
+import type { CellValue, ColumnKind } from '@querybara/core';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 

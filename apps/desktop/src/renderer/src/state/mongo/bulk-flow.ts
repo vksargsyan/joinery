@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { isBsonDocument, parseShell, toEjson, type WriteSummary } from '@joinery/mongo-tools';
+import { QuerybaraError } from '@querybara/core';
+import { isBsonDocument, parseShell, toEjson, type WriteSummary } from '@querybara/mongo-tools';
 
 import { errorMessage } from '../../lib/errors';
 import { issueOf, type TextIssue } from './query-bar';
@@ -53,7 +53,7 @@ export function bulkState(kind: BulkKind, filter: string): BulkState {
 export function updateEjson(text: string): string {
   const value = parseShell(text);
   if (!Array.isArray(value) && !isBsonDocument(value)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The update must be a document such as { $set: { … } } or a pipeline [ … ]',
     });

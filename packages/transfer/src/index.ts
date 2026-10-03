@@ -1,7 +1,7 @@
 /**
- * @joinery/transfer — streaming import and export (spec §12).
+ * @querybara/transfer — streaming import and export (spec §12).
  *
- * One pipeline for the wizards, scheduled jobs and joinery-cli: byte sources and sinks with
+ * One pipeline for the wizards, scheduled jobs and querybara-cli: byte sources and sinks with
  * backpressure, optional gzip and ZIP; incremental CSV/TSV, JSON, JSON Lines and XML readers
  * and streaming Excel (.xlsx) and Parquet readers; preview with format, encoding, dialect,
  * header, sheet, row path and type detection; column mapping and conversions; batched,

@@ -9,18 +9,18 @@ import { expect, type Page } from '@playwright/test';
 import { connectionTab, launchApp, openNewConnection, type LaunchedApp } from '../app';
 
 /**
- * The screenshot harness for the Joinery website (docs/website-spec.md §6). Every scene is
+ * The screenshot harness for the Querybara website (docs/website-spec.md §6). Every scene is
  * captured from the real app at 1440×900 and 2× scale, once per theme: the app's theme setting is
  * "system" and the harness switches the emulated colour scheme, which the app follows live.
  *
- * The scenes run against the website's demo databases (joinery-website/scripts/demo-up.sh);
- * JOINERY_E2E_SHOTS names the output folder (`<folder>/dark/<id>.png`, `<folder>/light/<id>.png`).
+ * The scenes run against the website's demo databases (querybara-website/scripts/demo-up.sh);
+ * QUERYBARA_E2E_SHOTS names the output folder (`<folder>/dark/<id>.png`, `<folder>/light/<id>.png`).
  */
 
-export const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+export const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 
-/** The demo CA (joinery-website/scripts/demo-up.sh); every demo server presents a cert from it. */
-export const DEMO_CA = process.env['JOINERY_DEMO_CA'] ?? '/tmp/larchwood-demo/ca.pem';
+/** The demo CA (querybara-website/scripts/demo-up.sh); every demo server presents a cert from it. */
+export const DEMO_CA = process.env['QUERYBARA_DEMO_CA'] ?? '/tmp/larchwood-demo/ca.pem';
 
 export interface DemoProfile {
   /** The connection's name in the sidebar. */
@@ -89,11 +89,11 @@ export type Theme = 'dark' | 'light';
 
 /** Launches the app on a fresh store whose theme setting is "system", sized for the shots. */
 export async function launchForShots(): Promise<LaunchedApp> {
-  const userData = mkdtempSync(join(tmpdir(), 'joinery-shots-'));
+  const userData = mkdtempSync(join(tmpdir(), 'querybara-shots-'));
   // The first launch creates and migrates the store; the theme is then set before the real run.
   const first = await launchApp({ userData });
   await first.app.close();
-  const db = new DatabaseSync(join(userData, 'joinery.db'));
+  const db = new DatabaseSync(join(userData, 'querybara.db'));
   db.prepare(
     `INSERT INTO settings (key, value, version, updated_at) VALUES ('app', ?, 1, ?)
      ON CONFLICT (key) DO UPDATE SET value = excluded.value`,

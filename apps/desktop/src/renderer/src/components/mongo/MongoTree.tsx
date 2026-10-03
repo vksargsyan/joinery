@@ -1,6 +1,6 @@
-import type { BrowseNode } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
-import { formatShellInline, fromEjson } from '@joinery/mongo-tools';
+import type { BrowseNode } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
+import { formatShellInline, fromEjson } from '@querybara/mongo-tools';
 import { DropdownMenu } from 'radix-ui';
 import type { ReactNode } from 'react';
 

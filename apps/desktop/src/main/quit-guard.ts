@@ -1,5 +1,5 @@
 /**
- * Asks before Joinery closes while schedules are on (ADR 0021): they run only while it is
+ * Asks before Querybara closes while schedules are on (ADR 0021): they run only while it is
  * open. Closing the last window (Windows, Linux) or quitting (every platform: the menu, the
  * Dock, Cmd+Q) shows one question; confirming goes on with the quit, and "Don't ask again"
  * turns the question off (the Schedules panel turns it back on). A shutdown, a logout or an
@@ -93,13 +93,13 @@ export function quitQuestion(
             : `${running.length} scheduled runs are going now and will be stopped.`,
         ];
   return {
-    message: `${verb} Joinery? Schedules don’t run while it’s closed.`,
+    message: `${verb} Querybara? Schedules don’t run while it’s closed.`,
     detail: [
       `${on}${due}`,
       ...stopped,
-      'Runs missed while Joinery is closed are caught up, or skipped, as each schedule says, when it opens again.',
+      'Runs missed while Querybara is closed are caught up, or skipped, as each schedule says, when it opens again.',
     ].join('\n\n'),
-    buttons: [`${verb} Joinery`, 'Cancel'],
+    buttons: [`${verb} Querybara`, 'Cancel'],
     checkboxLabel: 'Don’t ask again',
   };
 }
@@ -137,7 +137,7 @@ export class QuitGuard<W> {
   }
 
   /**
-   * The last window is closing on Windows or Linux, which quits Joinery: true when it may
+   * The last window is closing on Windows or Linux, which quits Querybara: true when it may
    * close. Otherwise the caller keeps it open while the question is asked over it.
    */
   lastWindowClosing(window: W): boolean {
@@ -159,7 +159,7 @@ export class QuitGuard<W> {
         this.#options.quit();
       },
       () => {
-        // A question that cannot be shown must not keep Joinery from closing.
+        // A question that cannot be shown must not keep Querybara from closing.
         this.#asking = false;
         this.#confirmed = true;
         this.#options.quit();

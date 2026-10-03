@@ -1,5 +1,5 @@
-import { JoineryError, type ResultChunk } from '@joinery/core';
-import { array, bulk, integer, status, type RedisReply } from '@joinery/redis-tools';
+import { QuerybaraError, type ResultChunk } from '@querybara/core';
+import { array, bulk, integer, status, type RedisReply } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import { assertAllowed } from '../src';
@@ -43,7 +43,7 @@ describe('assertAllowed', () => {
     ['quit'],
     ['reset'],
   ])('refuses %s', (...words) => {
-    expect(() => assertAllowed(words)).toThrow(JoineryError);
+    expect(() => assertAllowed(words)).toThrow(QuerybaraError);
   });
 
   it.each([

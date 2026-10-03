@@ -1,4 +1,4 @@
-import { bindParameters } from '@joinery/sql-tools';
+import { bindParameters } from '@querybara/sql-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

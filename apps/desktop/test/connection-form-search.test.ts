@@ -1,6 +1,6 @@
-import { connectionProfileSchema, newId, type ConnectionProfile } from '@joinery/core';
-import { parsedConnectionUriSchema } from '@joinery/ipc';
-import { parseConnectionUri } from '@joinery/storage';
+import { connectionProfileSchema, newId, type ConnectionProfile } from '@querybara/core';
+import { parsedConnectionUriSchema } from '@querybara/ipc';
+import { parseConnectionUri } from '@querybara/storage';
 import { describe, expect, it } from 'vitest';
 
 import {

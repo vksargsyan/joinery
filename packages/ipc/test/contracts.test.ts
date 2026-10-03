@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   newId,
   schemaSnapshotSchema,
@@ -10,7 +10,7 @@ import {
   type PlanNode,
   type ResultChunk,
   type SchemaSnapshot,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { z } from 'zod';
 
@@ -423,7 +423,7 @@ describe('mainContract never hands a secret to the renderer', () => {
     const stored = { ...safeProfileSchema.parse(profile()), version: 3 };
     const leaky = { ...stored, password: 'hunter2', auth: { ...stored.auth, secret: 'hunter2' } };
     const notUsed = (): never => {
-      throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'not used' });
+      throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'not used' });
     };
     const emptyPage = { entries: [], nextCursor: null };
     serve(ports.server, mainContract, {
@@ -445,7 +445,7 @@ describe('mainContract never hands a secret to the renderer', () => {
       settings: { get: () => DEFAULT_APP_SETTINGS, set: () => DEFAULT_APP_SETTINGS },
       app: {
         info: () => ({
-          name: 'Joinery',
+          name: 'Querybara',
           version: '0.0.0',
           platform: 'linux',
           arch: 'x64',
@@ -585,8 +585,8 @@ describe('parseRequest', () => {
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(JoineryError);
-    const error = caught as JoineryError;
+    expect(caught).toBeInstanceOf(QuerybaraError);
+    const error = caught as QuerybaraError;
     expect(error.code).toBe('VALIDATION_FAILED');
     expect(error.message).toContain('refId');
     expect(JSON.stringify(error.toJSON())).not.toContain('hunter2');
@@ -606,7 +606,7 @@ describe('desktop additions', () => {
   function serveMain(overrides: Partial<HandlersOf<typeof mainContract>> = {}) {
     const ports = portPair();
     const notUsed = (): never => {
-      throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'not used' });
+      throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'not used' });
     };
     const emptyPage = { entries: [], nextCursor: null };
     const handlers: HandlersOf<typeof mainContract> = {
@@ -783,13 +783,13 @@ describe('desktop additions', () => {
   it('only accepts https links for the system browser', async () => {
     const main = serveMain();
     await expect(
-      main.app.openExternal({ url: 'https://joinery.dev/docs' }),
+      main.app.openExternal({ url: 'https://querybara.dev/docs' }),
     ).resolves.toBeUndefined();
     for (const url of [
-      'http://joinery.dev',
+      'http://querybara.dev',
       'javascript:alert(1)',
       'file:///etc/passwd',
-      'joinery://app/index.html',
+      'querybara://app/index.html',
     ]) {
       await expect(main.app.openExternal({ url }), url).rejects.toMatchObject({
         code: 'VALIDATION_FAILED',
@@ -975,7 +975,7 @@ describe('metadata cache and snippets', () => {
             .filter((entry) => !databases || databases.includes(entry.database)),
         put: ({ profileId, snapshot }) => {
           if (profileId === 'gone') {
-            throw new JoineryError({ code: 'NOT_FOUND', message: 'Profile gone was not found' });
+            throw new QuerybaraError({ code: 'NOT_FOUND', message: 'Profile gone was not found' });
           }
           const entry = { snapshot, storedAt: now };
           cache.set(key(profileId, snapshot.database), entry);

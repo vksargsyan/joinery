@@ -1,5 +1,5 @@
 /**
- * @joinery/ipc — typed RPC over MessagePort (spec §3, "IPC contract"). Contracts are zod schemas
+ * @querybara/ipc — typed RPC over MessagePort (spec §3, "IPC contract"). Contracts are zod schemas
  * validated on both ends; streams use credit-based flow control; every call can be cancelled.
  * No Electron import: this runs in the renderer, the main and utility processes, the CLI and tests.
  */

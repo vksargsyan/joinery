@@ -1,5 +1,5 @@
-import { atLeast } from '@joinery/core';
-import type { ColumnDef, SqlEngineId, TableDef } from '@joinery/core';
+import { atLeast } from '@querybara/core';
+import type { ColumnDef, SqlEngineId, TableDef } from '@querybara/core';
 
 import { maxIdentifierLength } from './names';
 import { renameIdentifiers } from './prepare';

@@ -1,4 +1,4 @@
-import { schemaDefSchema, schemaSnapshotSchema } from '@joinery/core';
+import { schemaDefSchema, schemaSnapshotSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -12,7 +12,7 @@ import { idSchema } from './common';
  * applied to whichever database it is opened on.
  */
 
-export const ER_MODEL_FORMAT = 'joinery.er-model';
+export const ER_MODEL_FORMAT = 'querybara.er-model';
 
 const tablePlaceSchema = z.object({
   /** The table's schema, when it is not the edited one (a table of another schema). */

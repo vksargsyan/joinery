@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 import type { FieldPacket, ResultSetHeader } from 'mysql2';
 
 /** The mysql2 command events a result stream listens to (Query and Execute both emit them). */

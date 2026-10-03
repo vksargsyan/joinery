@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import type { SchemaSnapshotInput } from '../src';

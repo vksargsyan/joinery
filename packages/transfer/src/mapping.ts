@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   tableDefSchema,
   type CellValue,
   type ColumnDef,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
-import { canonicalType } from '@joinery/sync';
+} from '@querybara/core';
+import { canonicalType } from '@querybara/sync';
 
 import type { DateOrder, InferredColumn } from './infer';
 import { isJsonText, type SourceCell } from './types';
@@ -15,7 +15,7 @@ import { isJsonText, type SourceCell } from './types';
  * Column mapping (spec §12): matching file columns to table columns, converting each cell to
  * what the target column takes, and inferring a table for "create a new table from the file".
  *
- * Conversions produce CellValues by the driver conventions (@joinery/core results.ts):
+ * Conversions produce CellValues by the driver conventions (@querybara/core results.ts):
  * integers as number or bigint, decimals and dates as text, booleans as boolean, JSON as its
  * text, binary as Uint8Array. They validate what they transform and fail with a message that
  * names the value; everything else is left for the server to judge.
@@ -546,7 +546,7 @@ const MAX_NAME: Readonly<Record<SqlDialect, number>> = { postgres: 63, mysql: 64
 /**
  * A table definition for importing a file into a new table, with the mapping from the file's
  * columns. Names are trimmed, cut to the engine's limit and made unique; render the table
- * with @joinery/sync's `renderTableStatements` (or run it with `createTable`).
+ * with @querybara/sync's `renderTableStatements` (or run it with `createTable`).
  */
 export function tableFromColumns(
   columns: readonly InferredColumn[],
@@ -578,7 +578,7 @@ export function tableFromColumns(
   });
   const missing = [...keys].filter((k) => !columns.some((c) => c.name === k));
   if (missing.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Primary key column ${missing.map((m) => `"${m}"`).join(', ')} is not in the file`,
     });

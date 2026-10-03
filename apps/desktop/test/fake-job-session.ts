@@ -1,6 +1,6 @@
 import {
   BASE_CAPABILITIES,
-  JoineryError,
+  QuerybaraError,
   cancelledError,
   schemaSnapshotSchema,
   tableDefSchema,
@@ -14,7 +14,7 @@ import {
   type SchemaSnapshot,
   type Session,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * A driver session for the job runner tests: it knows one table (for imports), answers every
@@ -55,7 +55,7 @@ export class FakeJobSession implements Session {
     if (options.signal?.aborted) throw cancelledError();
     this.statements.push({ text, params });
     const failure = this.failWhen?.(text, params);
-    if (failure !== undefined) throw new JoineryError({ code: 'SQL_ERROR', message: failure });
+    if (failure !== undefined) throw new QuerybaraError({ code: 'SQL_ERROR', message: failure });
     const upper = text.trim().toUpperCase();
     if (upper === 'BEGIN' || upper === 'START TRANSACTION') {
       this.inTransaction = true;

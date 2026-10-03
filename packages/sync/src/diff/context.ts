@@ -4,7 +4,7 @@ import type {
   SequenceDef,
   SqlDialect,
   TriggerDef,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import type { NormalizeContext } from '../normalize';
 import type { RenameRule, ResolvedCompareOptions } from '../options';

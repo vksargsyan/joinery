@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import { JoineryError } from '@joinery/core';
-import { fileSink } from '@joinery/transfer';
+import { QuerybaraError } from '@querybara/core';
+import { fileSink } from '@querybara/transfer';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import {
@@ -22,12 +22,12 @@ import {
  * manifest), the manifest schema a reader enforces, and the confirmation rule.
  */
 
-const dir = mkdtempSync(join(tmpdir(), 'joinery-inspect-'));
+const dir = mkdtempSync(join(tmpdir(), 'querybara-inspect-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const MANIFEST: ManifestContent = {
   createdAt: '2026-09-29T12:00:00.000Z',
-  producer: 'Joinery test',
+  producer: 'Querybara test',
   engine: 'mariadb',
   serverVersion: '11.4.3-MariaDB',
   database: 'shop',
@@ -45,7 +45,7 @@ const MANIFEST: ManifestContent = {
 
 describe('inspectBackup', () => {
   it('reads an archive manifest, and only says "encrypted" without the passphrase', async () => {
-    const path = join(dir, 'x.jbak');
+    const path = join(dir, 'x.qbak');
     const writer = await ArchiveWriter.create({
       sink: fileSink(path),
       encryption: { passphrase: 'pw', cost: { log2N: 10, r: 8, p: 1 } },
@@ -54,11 +54,11 @@ describe('inspectBackup', () => {
     await writer.finish(MANIFEST);
 
     const locked = await inspectBackup(path);
-    expect(locked).toMatchObject({ format: 'jbak', encrypted: true });
+    expect(locked).toMatchObject({ format: 'qbak', encrypted: true });
     expect(locked.manifest).toBeUndefined();
     const open = await inspectBackup(path, 'pw');
     expect(open).toMatchObject({
-      format: 'jbak',
+      format: 'qbak',
       encrypted: true,
       engine: 'mariadb',
       database: 'shop',
@@ -68,7 +68,7 @@ describe('inspectBackup', () => {
   });
 
   it('recognises plain and gzipped scripts, pg_dump archives and our header line', async () => {
-    const script = '-- Joinery backup of shop (postgres 16.4)\n-- Created ...\nSELECT 1;\n';
+    const script = '-- Querybara backup of shop (postgres 16.4)\n-- Created ...\nSELECT 1;\n';
     writeFileSync(join(dir, 'a.sql'), script);
     writeFileSync(join(dir, 'a.sql.gz'), gzipSync(Buffer.from(script)));
     writeFileSync(join(dir, 'other.sql'), 'CREATE TABLE t (a int);\n');
@@ -93,7 +93,7 @@ describe('inspectBackup', () => {
 
 describe('manifest', () => {
   it('rejects manifests of other formats and malformed entries', () => {
-    const base = { ...MANIFEST, format: 'joinery-backup', formatVersion: 1, entries: [] };
+    const base = { ...MANIFEST, format: 'querybara-backup', formatVersion: 1, entries: [] };
     expect(manifestSchema.safeParse(base).success).toBe(true);
     expect(manifestSchema.safeParse({ ...base, formatVersion: 2 }).success).toBe(false);
     expect(
@@ -135,9 +135,9 @@ describe('checkConfirmed', () => {
     } catch (e) {
       error = e;
     }
-    expect(error).toBeInstanceOf(JoineryError);
-    expect((error as JoineryError).code).toBe('CONFIRMATION_REQUIRED');
-    expect((error as JoineryError).message).toBe(
+    expect(error).toBeInstanceOf(QuerybaraError);
+    expect((error as QuerybaraError).code).toBe('CONFIRMATION_REQUIRED');
+    expect((error as QuerybaraError).message).toBe(
       'Restoring drops 1 existing object first and needs confirmation: v',
     );
   });

@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { fromEjson, parseShellDocument, toEjson } from '@joinery/mongo-tools';
+import { QuerybaraError } from '@querybara/core';
+import { fromEjson, parseShellDocument, toEjson } from '@querybara/mongo-tools';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as MainClient from '../src/renderer/src/lib/main-client';
@@ -85,7 +85,7 @@ function fakeHost(overrides: Record<string, unknown> = {}) {
         info: async (input: { ns: { collection: string } }) => {
           rec.record('info', input);
           if (input.ns.collection === 'ghosts') {
-            throw new JoineryError({ code: 'NOT_FOUND', message: 'ns does not exist' });
+            throw new QuerybaraError({ code: 'NOT_FOUND', message: 'ns does not exist' });
           }
           return {
             name: input.ns.collection,
@@ -216,7 +216,7 @@ describe('running SQL', () => {
     });
     host.cancel = async (input: object) => {
       rec.record('cancel', input);
-      fail(new JoineryError({ code: 'CANCELLED', message: 'The operation was cancelled' }));
+      fail(new QuerybaraError({ code: 'CANCELLED', message: 'The operation was cancelled' }));
     };
     connectHost(host);
     const q = sqlTab('SELECT * FROM orders');

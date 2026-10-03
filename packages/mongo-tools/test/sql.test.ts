@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -505,7 +505,7 @@ describe('SQL errors', () => {
     expect(error.end).toBeGreaterThanOrEqual(error.offset);
     expect(error.position).toBe(error.offset);
     expect(error.message).toMatch(/\(line \d+, column \d+\)$/);
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
   });
 
   it('locates errors by line and column and covers the whole bad range', () => {

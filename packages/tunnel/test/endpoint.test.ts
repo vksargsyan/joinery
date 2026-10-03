@@ -1,4 +1,4 @@
-import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
+import { connectionProfileSchema, type ConnectionProfileInput } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { cloudIdUrl, needsTransport, tunnelReach, tunnelTarget } from '../src';

@@ -1,4 +1,4 @@
-import { errorDataSchema } from '@joinery/core';
+import { errorDataSchema } from '@querybara/core';
 import {
   autoMatchInputSchema,
   hostKeyInfoSchema,
@@ -12,7 +12,7 @@ import {
   rdbAnalyzeProgressSchema,
   transferJobSchema,
   transferPreviewInputSchema,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { z } from 'zod';
 
 import {

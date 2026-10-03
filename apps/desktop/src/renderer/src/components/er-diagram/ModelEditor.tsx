@@ -4,8 +4,8 @@ import type {
   ReferentialAction,
   SqlEngineId,
   TableDef,
-} from '@joinery/core';
-import { typeCatalog } from '@joinery/sync';
+} from '@querybara/core';
+import { typeCatalog } from '@querybara/sync';
 import { DropdownMenu } from 'radix-ui';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
@@ -205,7 +205,7 @@ function KeptIndicator(props: { readonly kept: 'none' | 'pending' | 'kept' | 'fa
       title={
         failed
           ? 'The changes could not be kept: they are lost if the diagram closes'
-          : 'Unapplied changes are kept: close the diagram or Joinery and they come back'
+          : 'Unapplied changes are kept: close the diagram or Querybara and they come back'
       }
     >
       {props.kept === 'pending' ? (

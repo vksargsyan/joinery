@@ -115,7 +115,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "DEFINER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         },
@@ -127,7 +127,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "DEFINER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         },
@@ -139,7 +139,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "INVOKER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         },
@@ -151,7 +151,7 @@
           "options": {
             "algorithm": "UNDEFINED",
             "security": "DEFINER",
-            "definer": "joinery@localhost"
+            "definer": "querybara@localhost"
           },
           "indexes": []
         }
@@ -163,7 +163,7 @@
           "signature": "",
           "language": "SQL",
           "definition": "CREATE PROCEDURE `audit_all`(IN p_note varchar(100), OUT p_n int)\n    MODIFIES SQL DATA\n    COMMENT 'audits'\nBEGIN\n  DECLARE done int DEFAULT 0;\n  INSERT INTO log (msg) VALUES (CONCAT('audit; ', p_note));\n  SELECT COUNT(*) INTO p_n FROM acc;\nEND",
-          "definer": "joinery@localhost",
+          "definer": "querybara@localhost",
           "comment": "audits"
         },
         {
@@ -173,7 +173,7 @@
           "returns": "decimal(10,2)",
           "language": "SQL",
           "definition": "CREATE FUNCTION `fee`(x decimal(10,2)) RETURNS decimal(10,2)\n    DETERMINISTIC\n    COMMENT 'fee ''calc'''\nRETURN x * 0.02",
-          "definer": "joinery@localhost",
+          "definer": "querybara@localhost",
           "comment": "fee 'calc'"
         }
       ],

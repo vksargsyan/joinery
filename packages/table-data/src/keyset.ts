@@ -1,4 +1,4 @@
-import type { CellValue, SqlDialect } from '@joinery/core';
+import type { CellValue, SqlDialect } from '@querybara/core';
 
 import { comparedAsText, type ColumnInfo } from './columns';
 import { compare, ident, joinFragments, param, type Fragment } from './sql';

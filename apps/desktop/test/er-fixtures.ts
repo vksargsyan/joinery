@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 
 /** Snapshots for the ER diagram and ER model tests. */
 

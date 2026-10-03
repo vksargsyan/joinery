@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   Int32,
   bsonTag,
@@ -27,7 +27,7 @@ import {
   type UserInfo,
   type ValidationAction,
   type ValidationLevel,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import type { Document, IndexSpecification } from 'mongodb';
 
 import {
@@ -153,7 +153,7 @@ export async function createIndex(
 ): Promise<string> {
   const keys = documentArg(spec.keys, 'index keys');
   if (Object.keys(keys).length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'An index needs at least one key',
     });
@@ -193,7 +193,7 @@ export async function createIndex(
 
 export async function dropIndex(ctx: MongoContext, ns: Namespace, name: string): Promise<void> {
   if (name === '_id_') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The _id index cannot be dropped',
     });
@@ -264,7 +264,7 @@ export async function collectionInfo(ctx: MongoContext, ns: Namespace): Promise<
       .toArray();
     const entry = entries[0];
     if (!entry) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: `There is no collection "${ns.collection}" in database "${ns.db}"`,
       });
@@ -390,7 +390,7 @@ export async function collMod(
   if (changes.expireAfterSeconds !== undefined)
     command['expireAfterSeconds'] = changes.expireAfterSeconds;
   if (Object.keys(command).length === 1) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Nothing to change' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Nothing to change' });
   }
   await ctx.exclusive(() => ctx.db(ns.db).command(command, ctx.sessionOption()));
 }
@@ -543,7 +543,7 @@ export async function updateUser(
     command['customData'] = documentArg(spec.customData, 'custom data');
   if (spec.mechanisms !== undefined) command['mechanisms'] = [...spec.mechanisms];
   if (Object.keys(command).length === 1) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Nothing to change' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Nothing to change' });
   }
   await ctx.exclusive(() => ctx.db(db).command(command));
 }
@@ -572,7 +572,7 @@ export async function updateRole(
   if (spec.privileges !== undefined) command['privileges'] = privilegeDocs(spec.privileges);
   if (spec.roles !== undefined) command['roles'] = roleDocs(spec.roles);
   if (Object.keys(command).length === 1) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Nothing to change' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Nothing to change' });
   }
   await ctx.exclusive(() => ctx.db(db).command(command));
 }

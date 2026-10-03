@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 
-import type { Session } from '@joinery/core';
-import { quoteIdent } from '@joinery/sql-tools';
+import type { Session } from '@querybara/core';
+import { quoteIdent } from '@querybara/sql-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -63,7 +63,7 @@ describe.skipIf(SERVERS.length === 0)('performance', () => {
   let dir: string;
 
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'joinery-transfer-perf-'));
+    dir = await mkdtemp(join(tmpdir(), 'querybara-transfer-perf-'));
     const sink = fileSink(join(dir, 'rows.csv'));
     const encoder = new TextEncoder();
     await sink.write(encoder.encode('id,code,qty,price,created_at,active,note,ratio\n'));

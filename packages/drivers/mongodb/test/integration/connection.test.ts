@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { ConnectionCheckResult, ConnectionProfileInput, ResolvedProfile } from '@joinery/core';
+import type {
+  ConnectionCheckResult,
+  ConnectionProfileInput,
+  ResolvedProfile,
+} from '@querybara/core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { checkConnection, isMongoSession, mongodbAdapter, type MongoSession } from '../../src';
@@ -154,7 +158,7 @@ describe.skipIf(!MONGO_URL)('MongoDB connection (replica set)', () => {
 });
 
 describe.skipIf(!STANDALONE_URL)('MongoDB connection (7.0 standalone, TLS, X.509)', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-mongo-it-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-mongo-it-'));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
   const tls = (
@@ -271,7 +275,7 @@ describe.skipIf(!STANDALONE_URL)('MongoDB connection (7.0 standalone, TLS, X.509
       let reply = '';
       for await (const chunk of status)
         if (chunk.type === 'rows') reply = chunk.data[0]![0] as string;
-      expect(reply).toContain('OU=clients,O=Joinery,CN=joinery-x509');
+      expect(reply).toContain('OU=clients,O=Querybara,CN=querybara-x509');
     } finally {
       await session.close();
     }

@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { readNumber } from './internal/rows';
 import type { SqliteDatabase } from './sqlite';
@@ -329,7 +329,7 @@ export function readSchemaVersion(db: SqliteDatabase): number {
 /**
  * Brings the database up to the latest schema. Safe to call on every open and from two
  * processes at once: each step re-checks the version inside its write transaction. Refuses a
- * store written by a newer Joinery rather than risk corrupting it.
+ * store written by a newer Querybara rather than risk corrupting it.
  */
 export function migrate(
   db: SqliteDatabase,
@@ -365,18 +365,18 @@ function assertOrdered(migrations: readonly Migration[]): void {
 
 function assertKnownVersion(version: number, latest: number, location: string): void {
   if (version <= latest) return;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
-    message: `The Joinery data store at ${location} has schema version ${version}, but this version of Joinery only understands up to ${latest}.`,
-    hint: 'Update Joinery to open this data store; it was written by a newer version.',
+    message: `The Querybara data store at ${location} has schema version ${version}, but this version of Querybara only understands up to ${latest}.`,
+    hint: 'Update Querybara to open this data store; it was written by a newer version.',
   });
 }
 
 function supportsTrigramFts(db: SqliteDatabase): boolean {
   try {
     db.transaction(() => {
-      db.exec("CREATE VIRTUAL TABLE temp.joinery_fts_probe USING fts5 (x, tokenize = 'trigram')");
-      db.exec('DROP TABLE temp.joinery_fts_probe');
+      db.exec("CREATE VIRTUAL TABLE temp.querybara_fts_probe USING fts5 (x, tokenize = 'trigram')");
+      db.exec('DROP TABLE temp.querybara_fts_probe');
     });
     return true;
   } catch {

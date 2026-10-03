@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { RedisSession } from '@joinery/driver-redis';
+import type { RedisSession } from '@querybara/driver-redis';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectRedis } from './redis';
@@ -15,13 +15,13 @@ import { connectRedis } from './redis';
  * policy with no memory limit, the LFU factor), and the originals are restored in any case.
  */
 
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-const REDIS_ACL_USER = process.env['JOINERY_TEST_REDIS_ACL_USER'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const REDIS_ACL_USER = process.env['QUERYBARA_TEST_REDIS_ACL_USER'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Redis Config';
 const ACL_NAME = 'E2E Redis Config ACL';
 
-test.skip(!REDIS_URL, 'Set JOINERY_TEST_REDIS_URL to run the Redis end-to-end tests');
+test.skip(!REDIS_URL, 'Set QUERYBARA_TEST_REDIS_URL to run the Redis end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -195,7 +195,7 @@ test('shows the exact command and asks before rewriting the configuration file',
 });
 
 test('explains why an ACL user without CONFIG cannot see the configuration', async () => {
-  test.skip(!REDIS_ACL_USER, 'Set JOINERY_TEST_REDIS_ACL_USER for the ACL case');
+  test.skip(!REDIS_ACL_USER, 'Set QUERYBARA_TEST_REDIS_ACL_USER for the ACL case');
   const [user, password] = REDIS_ACL_USER!.split(':') as [string, string];
   const url = new URL(REDIS_URL!);
   url.username = user;

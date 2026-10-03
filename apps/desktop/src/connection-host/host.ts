@@ -1,22 +1,22 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   type ConnectionProfile,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   connectionHostContract,
   serve,
   type HandlersOf,
   type PortLike,
   type ServerInfo,
-} from '@joinery/ipc';
-import { analyzeStatement } from '@joinery/sql-tools';
-import { applyChanges } from '@joinery/table-data';
-import type { TransportSession } from '@joinery/tunnel';
+} from '@querybara/ipc';
+import { analyzeStatement } from '@querybara/sql-tools';
+import { applyChanges } from '@querybara/table-data';
+import type { TransportSession } from '@querybara/tunnel';
 
 import { redisWritePolicy } from '../shared/redis-safety';
 import { searchWritePolicy } from '../shared/search-writes';
@@ -38,7 +38,7 @@ export interface ConnectionHostOptions {
    * The SSH session under the tunnel dropped, taking every session of this host with it. Called
    * once; main then restarts the host, which reopens the tunnel.
    */
-  readonly onTransportLost?: (error: JoineryError) => void;
+  readonly onTransportLost?: (error: QuerybaraError) => void;
 }
 
 /** A driver session and how to close it (and release its tunnel). */
@@ -58,7 +58,7 @@ export class ConnectionHost {
   readonly #resolved: ResolvedProfile;
   readonly #sessions = new Map<string, OpenedSession & { readonly owner: symbol }>();
   readonly #open: SessionOpener;
-  readonly #onTransportLost: ((error: JoineryError) => void) | undefined;
+  readonly #onTransportLost: ((error: QuerybaraError) => void) | undefined;
   #meta: OpenedSession | undefined;
   #info: ServerInfo | undefined;
   #lost = false;
@@ -174,7 +174,7 @@ export class ConnectionHost {
   #session(sessionId: string): Session {
     const entry = this.#sessions.get(sessionId);
     if (!entry) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: 'The session is closed',
         hint: 'Run the statement again to open a new session.',
@@ -185,7 +185,7 @@ export class ConnectionHost {
 
   #metaSession(): Session {
     if (!this.#meta)
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
     return this.#meta.session;
   }
 
@@ -199,8 +199,8 @@ export class ConnectionHost {
   }
 
   #handlers(owner: symbol): HandlersOf<typeof connectionHostContract> {
-    const unsupported = (what: string): JoineryError =>
-      new JoineryError({
+    const unsupported = (what: string): QuerybaraError =>
+      new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `${what} is not supported for this engine`,
       });
@@ -278,7 +278,7 @@ export class ConnectionHost {
       applyChanges: ({ sessionId, plan }, { signal }) => {
         // The grid refuses too; this keeps a read-only profile read-only whatever the page sends.
         if (this.#resolved.profile.presentation.readOnly) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'READ_ONLY',
             message: 'This connection is read-only, so the changes were not applied',
           });
@@ -291,7 +291,7 @@ export class ConnectionHost {
       },
       serverInfo: () => {
         if (!this.#info)
-          throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
+          throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
         return this.#info;
       },
       redis: redisHandlers({
@@ -330,7 +330,7 @@ export function checkExplainAnalyze(
   if (!isSqlEngine(profile.engine)) return;
   if (!analyzeStatement(text, profile.engine).isWrite) return;
   if (profile.presentation.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message:
         'This connection is read-only, and EXPLAIN ANALYZE would run a statement that writes',
@@ -338,7 +338,7 @@ export function checkExplainAnalyze(
     });
   }
   if (!confirmed) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: 'EXPLAIN ANALYZE of a statement that writes needs confirmation',
     });

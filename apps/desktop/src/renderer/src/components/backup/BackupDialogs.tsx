@@ -1,4 +1,4 @@
-import type { StoredProfile } from '@joinery/ipc';
+import type { StoredProfile } from '@querybara/ipc';
 
 import {
   backsUp,

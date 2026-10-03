@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import { isTrivia, tokenize, type Token } from '../lexer';
 import { splitStatements } from '../splitter';
@@ -80,7 +80,7 @@ class Stop {
 
 /**
  * Reads the SELECT the visual builder can show back into a model (spec §8: "SQL it can parse
- * opens back in the builder"), on Joinery's own lexer (ADR 0003, ADR 0014). Anything outside
+ * opens back in the builder"), on Querybara's own lexer (ADR 0003, ADR 0014). Anything outside
  * that subset — another statement, several statements, WITH, UNION, subqueries, window
  * functions, DISTINCT ON, ROLLUP, locking clauses, USING and NATURAL joins, join conditions
  * that are not column comparisons, FULL JOIN on MySQL/MariaDB — gives `unsupported` naming the

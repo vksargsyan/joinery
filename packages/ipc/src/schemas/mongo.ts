@@ -1,4 +1,4 @@
-import type { PlanNode } from '@joinery/core';
+import type { PlanNode } from '@querybara/core';
 import type {
   BsonTypeName,
   ChangeEvent,
@@ -39,7 +39,7 @@ import type {
   ValidationLevel,
   WatchScope,
   WriteSummary,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -52,7 +52,7 @@ import { pageSizeSchema } from './results';
  * to the connection host. Every document, filter, pipeline and BSON value is canonical Extended
  * JSON text (mongo-tools' `toEjson`), so nothing here holds a bson instance.
  *
- * Each result schema is annotated with its @joinery/mongo-tools wire type as both input and
+ * Each result schema is annotated with its @querybara/mongo-tools wire type as both input and
  * output, so a drift between the driver's shapes and these schemas fails to compile.
  */
 

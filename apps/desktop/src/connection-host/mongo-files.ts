@@ -3,7 +3,7 @@ import { stat, unlink } from 'node:fs/promises';
 import { once } from 'node:events';
 import { finished } from 'node:stream/promises';
 
-import { JoineryError, type Session } from '@joinery/core';
+import { QuerybaraError, type Session } from '@querybara/core';
 
 import type { HostRequest } from '../shared/host-protocol';
 import { asMongoSession } from './mongo';
@@ -67,7 +67,7 @@ export async function runHostRequest(
         total = page.files[0]?.length;
       }
       if (total === undefined) {
-        throw new JoineryError({ code: 'NOT_FOUND', message: 'The GridFS file does not exist' });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The GridFS file does not exist' });
       }
       const out = createWriteStream(request.path);
       let bytes = 0;

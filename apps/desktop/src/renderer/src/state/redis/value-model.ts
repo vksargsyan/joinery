@@ -1,4 +1,4 @@
-import type { NewKeyValue } from '@joinery/driver-redis';
+import type { NewKeyValue } from '@querybara/driver-redis';
 import {
   bytesEqual,
   detectJson,
@@ -14,7 +14,7 @@ import {
   tryUtf8,
   utf8Bytes,
   type RedisBytes,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * The value editors' edit models (spec §10): how each type's value is shown and how an edit

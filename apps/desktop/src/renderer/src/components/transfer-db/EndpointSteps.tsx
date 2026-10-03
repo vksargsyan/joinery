@@ -1,4 +1,4 @@
-import { ENGINES, isSqlEngine } from '@joinery/core';
+import { ENGINES, isSqlEngine } from '@querybara/core';
 import type { ReactNode } from 'react';
 
 import { openExportTables } from '../../state/transfer-dialogs';
