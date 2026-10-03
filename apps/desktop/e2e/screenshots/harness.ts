@@ -87,8 +87,15 @@ export const WIDTH = 1440;
 export const HEIGHT = 900;
 export type Theme = 'dark' | 'light';
 
-/** Launches the app on a fresh store whose theme setting is "system", sized for the shots. */
-export async function launchForShots(): Promise<LaunchedApp> {
+/**
+ * Launches the app on a fresh store whose theme setting is "system", sized for the shots
+ * (1440×900 at 2×) unless `options` say otherwise; the footage recorder (../clips) uses
+ * 1920×1080 at 1×.
+ */
+export async function launchForShots(
+  options: { readonly width?: number; readonly height?: number; readonly scale?: number } = {},
+): Promise<LaunchedApp> {
+  const { width = WIDTH, height = HEIGHT, scale = 2 } = options;
   const userData = mkdtempSync(join(tmpdir(), 'querybara-shots-'));
   // The first launch creates and migrates the store; the theme is then set before the real run.
   const first = await launchApp({ userData });
@@ -100,7 +107,7 @@ export async function launchForShots(): Promise<LaunchedApp> {
   ).run(JSON.stringify({ theme: 'system' }), new Date().toISOString());
   db.close();
 
-  const launched = await launchApp({ userData, args: ['--force-device-scale-factor=2'] });
+  const launched = await launchApp({ userData, args: [`--force-device-scale-factor=${scale}`] });
   await launched.app.evaluate(
     ({ BrowserWindow }, size) => {
       const window = BrowserWindow.getAllWindows()[0];
@@ -108,7 +115,7 @@ export async function launchForShots(): Promise<LaunchedApp> {
       window?.setContentSize(size.width, size.height);
       window?.center();
     },
-    { width: WIDTH, height: HEIGHT },
+    { width, height },
   );
   await setTheme(launched.page, 'dark');
   await launched.page.waitForTimeout(500);
