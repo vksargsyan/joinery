@@ -2,6 +2,7 @@
   "name": "@querybara/storage",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Local SQLite store: schema, migrations, repositories, sealed secrets, URI/pgpass import and encrypted export.",
   "type": "module",
   "exports": {

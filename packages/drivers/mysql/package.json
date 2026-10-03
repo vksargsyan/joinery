@@ -2,6 +2,7 @@
   "name": "@querybara/driver-mysql",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "MySQL and MariaDB driver adapter (mysql2).",
   "type": "module",
   "exports": {

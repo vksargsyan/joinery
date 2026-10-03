@@ -2,6 +2,7 @@
   "name": "@querybara/transfer",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Streaming import and export (CSV, TSV, JSON, JSON Lines, Excel, XML, Parquet, HTML, Markdown, SQL, ZIP), column mapping and batched loads, and data transfer between databases.",
   "type": "module",
   "exports": {

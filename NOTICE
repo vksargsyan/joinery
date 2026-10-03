@@ -1,0 +1,11 @@
+Querybara
+Copyright 2026 Vahagn Sargsyan
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+"Querybara" and the Querybara capybara logo are trademarks of Vahagn Sargsyan. The Apache
+License does not grant permission to use them (section 6). A fork or redistribution must
+use a different name and logo; saying that it is based on Querybara is fine.
+
+Third-party components bundled with the desktop app and the CLI are listed, with their
+licences, in the THIRD_PARTY_NOTICES file attached to each release.

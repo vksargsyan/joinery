@@ -2,6 +2,7 @@
   "name": "@querybara/mongo-tools",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "MongoDB shell-literal parser and formatter, Extended JSON helpers, find() text, schema analysis and document table views; pure TypeScript for the renderer and the driver.",
   "type": "module",
   "exports": {

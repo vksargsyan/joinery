@@ -270,3 +270,29 @@ the desktop end-to-end tests.
 
 Strict TypeScript with no `any`, ESLint and Prettier, an ADR for every major choice, and
 conventional commits.
+
+## Licence
+
+Querybara is open source under the [Apache License 2.0](LICENSE). The name and the capybara logo
+are trademarks; see [NOTICE](NOTICE). Contributions are welcome: see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Privacy
+
+Querybara collects no usage data. It connects only to the servers you configure and to GitHub to
+check for updates, which you can turn off. Details are in [PRIVACY.md](PRIVACY.md).
+
+## Code signing policy
+
+macOS releases are signed with the maintainer's Apple Developer ID and notarised by Apple. Windows
+releases are not code-signed yet: the project has applied to the SignPath Foundation's free code
+signing for open-source projects.
+
+Team roles and their members:
+
+- **Committers and reviewers:** [Vahagn Sargsyan](https://github.com/vksargsyan)
+- **Approvers:** [Vahagn Sargsyan](https://github.com/vksargsyan)
+
+Every release is built from a tagged commit on `main` by the
+[Package workflow](.github/workflows/package.yml) on GitHub-hosted runners, and published only
+after an approver reviews the draft release.

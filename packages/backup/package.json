@@ -2,6 +2,7 @@
   "name": "@querybara/backup",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Logical backup and restore: streaming SQL dumps, the Querybara archive (.qbak) with encryption and selective restore, MongoDB and Redis archives, and the native dump tools.",
   "type": "module",
   "exports": {

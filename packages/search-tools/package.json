@@ -2,6 +2,7 @@
   "name": "@querybara/search-tools",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Elasticsearch console parser and formatter, lossless JSON, request safety, wire types, capability flags and autocomplete from the open API specification. Pure TypeScript: runs in the renderer too.",
   "type": "module",
   "exports": {

@@ -2,6 +2,7 @@
   "name": "@querybara/table-data",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Table data browsing and editing: row identity, filters, paging queries, pending changes, cell parsing, copy and paste.",
   "type": "module",
   "exports": {

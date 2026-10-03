@@ -2,6 +2,7 @@
   "name": "@querybara/core",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Domain types, schema snapshot, capability flags and the driver adapter contract.",
   "type": "module",
   "exports": {

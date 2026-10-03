@@ -2,6 +2,7 @@
   "name": "@querybara/tunnel",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "SSH tunnels (multi-hop, shared bastion sessions) and HTTP/SOCKS5 proxies that give drivers a local endpoint.",
   "type": "module",
   "exports": {

@@ -2,6 +2,7 @@
   "name": "@querybara/sql-tools",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "SQL statement splitter, parameters, safety checks, formatter, diagnostics, autocomplete and dialect rules.",
   "type": "module",
   "exports": {

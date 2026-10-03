@@ -2,6 +2,7 @@
   "name": "@querybara/driver-sql-base",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Shared base adapter for the SQL engines.",
   "type": "module",
   "exports": {

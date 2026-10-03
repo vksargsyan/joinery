@@ -2,6 +2,7 @@
   "name": "@querybara/driver-postgres",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "PostgreSQL driver adapter (pg, pg-cursor).",
   "type": "module",
   "exports": {
