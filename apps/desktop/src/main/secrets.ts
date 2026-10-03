@@ -46,6 +46,30 @@ export function resolveProfile(
   return { profile, secrets: redactedRecord(values) };
 }
 
+/**
+ * Saves again the values typed for saved secrets whose sealed copy cannot be opened here: sealed
+ * on another machine, or by version 0.1.0, whose keychain entry carried the app's previous name.
+ * Without this the user is asked for them on every connect. Call it only once the typed values
+ * have worked, so a mistyped password is not kept. Never throws: a value that cannot be sealed
+ * stays unreadable and is asked for again next time.
+ */
+export function resaveUnreadableSecrets(
+  store: Store,
+  profile: ConnectionProfile,
+  typed: Readonly<Record<string, string>>,
+): void {
+  if (!store.secrets.canSave()) return;
+  for (const ref of store.secrets.resolve(profile).unreadable) {
+    const value = Object.hasOwn(typed, ref.id) ? typed[ref.id] : undefined;
+    if (value === undefined) continue;
+    try {
+      store.secrets.set(ref, value);
+    } catch {
+      // The connection still works; the user is asked again next time.
+    }
+  }
+}
+
 const INSPECT = Symbol.for('nodejs.util.inspect.custom');
 
 /** A frozen id → value record whose JSON, inspect and string forms show "[redacted]". */
