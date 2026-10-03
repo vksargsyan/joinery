@@ -36,5 +36,5 @@ supersede it with a new one.
 | [0029](0029-objects-view.md)                     | The Objects view as Navicat's; a click on a table opens it           | Accepted                   |
 | [0030](0030-table-pages-and-pointer-menus.md)    | Table data in pages as Navicat's; menus open at the pointer          | Accepted                   |
 | [0031](0031-command-palette-and-keybindings.md)  | A command palette, Go to Object and key bindings as VS Code's        | Accepted                   |
-| [0032](0032-app-icon.md)                         | The app icon: a joined cylinder; Icon Composer for macOS 26          | Superseded in part by 0033 |
+| [0032](0032-app-icon.md)                         | The app icon: a database cylinder; Icon Composer for macOS 26        | Superseded in part by 0033 |
 | [0033](0033-querybara-name-and-icon.md)          | The name Querybara, and a capybara icon on a cream tile              | Accepted                   |

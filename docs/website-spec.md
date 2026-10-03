@@ -76,7 +76,7 @@ Rules for accuracy:
 
 ## 3. Design direction: "utterly beautiful", made testable
 
-**Concept: precision craft.** Fine hairlines, an exact grid, and parts that interlock. A small dovetail is the one recurring motif, used for section dividers and list markers. Never use wood textures, woodgrain or clip art.
+**Concept: precision craft.** Fine hairlines and an exact grid. A small rounded pebble is the one recurring motif, used for section dividers and list markers. Never use wood textures, woodgrain or clip art.
 
 **Brand palette.** Derive it from the product:
 

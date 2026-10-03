@@ -1,4 +1,4 @@
-# 0032. The app icon: a joined cylinder, and an Icon Composer icon for macOS 26
+# 0032. The app icon: a database cylinder, and an Icon Composer icon for macOS 26
 
 - Status: Superseded in part by [0033](0033-querybara-name-and-icon.md) (the artwork and the macOS
   tile)
@@ -6,7 +6,7 @@
 
 ## Context
 
-The icon was a dovetail joint in amber and navy. Those colours were not Kiln's, and the mark did
+The icon before this one was in amber and navy. Those colours were not Kiln's, and the mark did
 not say "database".
 
 macOS 26 and later draw an app's icon from an asset catalog (`Assets.car`, compiled from an Icon
@@ -20,7 +20,7 @@ Xcode 26's actool on the packaging machine, and it then replaces the `.icns` wit
 
 **The artwork** (`apps/desktop/build/icon.svg`):
 
-- A database cylinder built from interlocking parts: three rust bands and a tall face under an
+- A database cylinder: three rust bands and a tall face under an
   ivory top. (Replaced by the capybara in 0033.)
 - It has a transparent ground. Windows, Linux and the About dialog show it free-standing, at the
   size the SVG gives it.
