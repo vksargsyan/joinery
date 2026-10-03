@@ -24,3 +24,11 @@ onlyBuiltDependencies:
 # Windows installer tooling; its install script is not needed to build or test.
 ignoredBuiltDependencies:
   - electron-winstaller
+
+# Advisories `pnpm audit` should not fail on, each with why and when to drop it.
+auditConfig:
+  ignoreGhsas:
+    # http-cache-semantics <=4.2.0 (no patched release yet), reached only through
+    # electron-builder > @electron/get > got > cacheable-request, which downloads Electron at
+    # build time; nothing in the app or the CLI runs it. Drop once a patched release exists.
+    - GHSA-ch52-4w7c-c8xp
