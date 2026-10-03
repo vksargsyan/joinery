@@ -212,13 +212,15 @@ reg add HKLM\SOFTWARE\Policies\Querybara /v DisableUpdates /t REG_DWORD /d 1 /f
 
 ## Icons
 
-Every icon comes from `apps/desktop/build/icon.svg` (a joined database cylinder, ADR 0032):
+Every icon comes from `apps/desktop/build/icon.svg` (the capybara, ADR 0033):
 `pnpm --filter @querybara/desktop icons` renders `icon.ico` (16–256 px), `icons/<n>x<n>.png`
 (Linux, and the window icon) and `icon.png`, the artwork free-standing; and for macOS the
-artwork on a Tenmoku tile: `icon.icns` (macOS 15 and earlier, with Apple's margin) and the Icon
+artwork on a cream tile: `icon.icns` (macOS 15 and earlier, with Apple's margin) and the Icon
 Composer package `icon.icon`, which it compiles into `Assets.car` (macOS 26 and later) when Xcode
-26 or later is installed. The outputs are committed, so packaging needs no Xcode 26; regenerate
-on a Mac after changing the SVG. A unit test fails when they no longer match the SVG.
+26 or later is installed. The outputs are committed, except `Assets.car`: the macOS packaging job
+compiles it first, and a local macOS package needs `pnpm --filter @querybara/desktop icons` run
+on a Mac with Xcode 26 beforehand. A unit test fails when the committed icons no longer match
+the SVG.
 
 ## Local builds
 

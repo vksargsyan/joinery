@@ -12,3 +12,7 @@ coverage/
 
 # Playwright run artifacts
 test-results/
+
+# Compiled from apps/desktop/build/icon.icon by `pnpm --filter @querybara/desktop icons` on a Mac
+# with Xcode 26; CI compiles it before packaging (ADR 0033).
+apps/desktop/build/Assets.car

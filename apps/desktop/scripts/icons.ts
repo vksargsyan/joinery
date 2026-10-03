@@ -14,8 +14,9 @@ import { Resvg } from '@resvg/resvg-js';
  * for macOS the artwork on a cream tile, twice: `build/icon.icns` for macOS 15 and earlier, and
  * the Icon Composer package `build/icon.icon/` compiled into `build/Assets.car` for macOS 26 and
  * later, which shrink an icon from an `.icns` alone into a grey tile of their own. The outputs
- * are committed, so packaging needs no renderer and no Xcode; run this again after changing the
- * SVG, on a Mac with Xcode 26 or later so that Assets.car is compiled too:
+ * are committed, so packaging needs no renderer, except Assets.car: only Xcode 26's actool
+ * compiles it, so it is compiled where macOS packages are made (the macOS packaging job runs this
+ * first). Run this again after changing the SVG:
  *
  *   pnpm --filter @querybara/desktop icons
  *
@@ -453,7 +454,7 @@ if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(
   else {
     console.warn(
       `build/${ASSET_CATALOG} was not compiled: it needs macOS with Xcode 26 or later. ` +
-        'Run this again on a Mac before committing, or the macOS 26 icon stays the old one.',
+        'Run this on a Mac with Xcode 26 before packaging for macOS.',
     );
   }
 }

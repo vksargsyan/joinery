@@ -184,9 +184,15 @@ describe('the committed icons', () => {
     for (const icon of expectedIcons()) expect(sizesIn(BUILD_DIR, icon)).toEqual(icon.sizes);
   });
 
-  it('include the asset catalog macOS 26 reads, and the packaging bundles it', () => {
-    const catalog = readFileSync(join(BUILD_DIR, ASSET_CATALOG));
-    expect(catalog.toString('ascii', 0, 8)).toBe('BOMStore');
+  it('leave the asset catalog to a Mac, and the packaging bundles it', () => {
+    // Assets.car is compiled at packaging time, never committed (ADR 0033).
+    const ignored = readFileSync(join(BUILD_DIR, '..', '..', '..', '.gitignore'), 'utf8');
+    expect(ignored).toContain(`apps/desktop/build/${ASSET_CATALOG}`);
+    const workflow = readFileSync(
+      join(BUILD_DIR, '..', '..', '..', '.github', 'workflows', 'package.yml'),
+      'utf8',
+    );
+    expect(workflow).toContain(`grep -q '^build/${ASSET_CATALOG}  actool'`);
     const config = readFileSync(join(BUILD_DIR, '..', 'electron-builder.yml'), 'utf8');
     expect(config).toContain(`from: build/${ASSET_CATALOG}`);
     expect(config).toContain(`CFBundleIconName: ${ASSET_ICON_NAME}`);

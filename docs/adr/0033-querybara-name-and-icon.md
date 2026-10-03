@@ -33,16 +33,14 @@ it free-standing.
 on, in light and dark mode alike. The capybara's dark outline would sink into the Tenmoku tile of 0032. The rest of 0032 stands: the artwork at 70 % of the tile, the `.icns` for macOS 15 and
 earlier, and the Icon Composer package compiled into `Assets.car` for macOS 26 and later.
 
-**`Assets.car` is compiled in CI.** The macOS packaging job selects Xcode 26 or later and runs the
-icon generator before packaging. The job fails when actool is missing rather than ship a stale
-icon. The committed catalog remains for packaging on other machines.
+**`Assets.car` is compiled, not committed.** Only Xcode 26's actool compiles it. The macOS
+packaging job selects Xcode 26 or later and runs the icon generator before packaging, and fails
+when actool is missing rather than ship a package without it. A local macOS package needs the
+generator run on a Mac with Xcode 26 first. This replaces 0032's committed catalog.
 
 ## Consequences
 
 - Installs of 0.1.0 do not update themselves to Querybara. The bundle identifier, the Windows app
   ID and the user-data directory all change, so people reinstall. Saved connections and keychain
   entries stay with the old app.
-- A `.jbak` backup made by 0.1.0 does not restore in Querybara. Restore it with 0.1.0.
-- The committed `Assets.car` holds the old icon until someone runs
-  `pnpm --filter @querybara/desktop icons` on a Mac with Xcode 26 and commits it. Packages built by
-  CI are not affected.
+- A backup archive made by 0.1.0 does not restore in Querybara. Restore it with 0.1.0.
