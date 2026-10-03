@@ -38,3 +38,4 @@ supersede it with a new one.
 | [0031](0031-command-palette-and-keybindings.md)  | A command palette, Go to Object and key bindings as VS Code's        | Accepted                   |
 | [0032](0032-app-icon.md)                         | The app icon: a database cylinder; Icon Composer for macOS 26        | Superseded in part by 0033 |
 | [0033](0033-querybara-name-and-icon.md)          | The name Querybara, and a capybara icon on a cream tile              | Accepted                   |
+| [0034](0034-apache-2-licence.md)                 | Open source under Apache-2.0; name and logo stay trademarks          | Accepted                   |

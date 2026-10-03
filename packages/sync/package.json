@@ -2,6 +2,7 @@
   "name": "@querybara/sync",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Structure diff, data compare and sync script generation.",
   "type": "module",
   "exports": {

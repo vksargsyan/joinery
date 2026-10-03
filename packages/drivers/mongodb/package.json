@@ -2,6 +2,7 @@
   "name": "@querybara/driver-mongodb",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "MongoDB driver adapter (the official mongodb package) with document, index, collection, GridFS, change stream and user services.",
   "type": "module",
   "exports": {

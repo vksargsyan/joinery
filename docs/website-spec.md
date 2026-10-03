@@ -55,7 +55,7 @@ Rules for accuracy:
   - invented metrics, benchmarks, user counts, testimonials or customer logos
   - pricing
   - comparisons that name competitor products
-  - licence claims: the repo has no LICENSE file, so don't call Querybara "open source" or name a licence
+  - licence claims beyond the facts: Querybara is open source under Apache-2.0 (ADR 0034); say so where it helps, link to `LICENSE`, and do not suggest the name or logo are free to use
   - lorem ipsum
 
 ---
@@ -679,7 +679,7 @@ End with a short report that covers:
 
 | Question                                | Default                                  |
 | --------------------------------------- | ---------------------------------------- |
-| Licence: the repo has no LICENSE file   | Say nothing about licence or open source |
+| Licence                                 | Apache-2.0 (ADR 0034): say "open source" |
 | Domain and hosting                      | GitHub Pages workflow present but unused |
 | Pushing either repo / creating a remote | Don't                                    |
 | Exact download asset names per OS       | Link to `releases/latest`                |

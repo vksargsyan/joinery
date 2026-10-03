@@ -2,6 +2,7 @@
   "name": "@querybara/redis-tools",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Redis CLI tokenizer, reply model and formatters, command docs, namespace tree, key patterns, INFO/CLIENT LIST/SLOWLOG/LATENCY parsers and value helpers. Pure TypeScript: runs in the renderer too.",
   "type": "module",
   "exports": {

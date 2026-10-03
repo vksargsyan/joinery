@@ -2,6 +2,7 @@
   "name": "@querybara/driver-elasticsearch",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Elasticsearch driver adapter (capability-flagged version differences) over Node's HTTP client: console requests, cluster, index, alias, data stream and document services.",
   "type": "module",
   "exports": {

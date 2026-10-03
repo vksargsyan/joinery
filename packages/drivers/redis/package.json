@@ -2,6 +2,7 @@
   "name": "@querybara/driver-redis",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Redis and Valkey driver adapter (ioredis): standalone, Sentinel, Cluster, TLS, ACL; key services and server tools.",
   "type": "module",
   "exports": {
