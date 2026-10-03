@@ -70,6 +70,8 @@ const scalar: fc.Arbitrary<BsonValue> = fc.oneof(
   fc.uuid().map((u) => new UUID(u)),
   fc
     .tuple(fc.uint8Array({ maxLength: 24 }), fc.integer({ min: 0, max: 255 }))
+    // Random bytes are no valid vector (bson validates its dtype and padding).
+    .filter(([, subtype]) => subtype !== Binary.SUBTYPE_VECTOR)
     .map(([bytes, subtype]) => new Binary(bytes, subtype)),
   fc
     .tuple(fc.integer({ min: 0, max: 0xffffffff }), fc.integer({ min: 0, max: 0xffffffff }))
