@@ -33,7 +33,7 @@ export interface PassphraseSealerOptions {
   readonly cost?: ScryptCost;
 }
 
-const SEALED_MAGIC = 'JNS1';
+const SEALED_MAGIC = 'QBS1';
 export const PASSPHRASE_SEALER_ID = 'passphrase-v1';
 
 /**
