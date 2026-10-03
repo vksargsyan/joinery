@@ -69,8 +69,8 @@ mac:
   executableName: Querybara
   # macOS 15 and earlier read the .icns; macOS 26 and later the Icon Composer icon compiled into
   # Assets.car, named by CFBundleIconName. Without it they shrink the .icns into a grey tile of
-  # their own. Assets.car is not committed: `pnpm icons` compiles it on a Mac with Xcode 26, as
-  # the macOS packaging job does first.
+  # their own. Assets.car is not committed: `pnpm icons` compiles it on macOS 26 with Xcode 26,
+  # as the workflow's mac-icon job does for the macOS packaging job.
   icon: build/icon.icns
   extraResources:
     - from: build/Assets.car

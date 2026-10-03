@@ -15,8 +15,8 @@ import { Resvg } from '@resvg/resvg-js';
  * the Icon Composer package `build/icon.icon/` compiled into `build/Assets.car` for macOS 26 and
  * later, which shrink an icon from an `.icns` alone into a grey tile of their own. The outputs
  * are committed, so packaging needs no renderer, except Assets.car: only Xcode 26's actool
- * compiles it, so it is compiled where macOS packages are made (the macOS packaging job runs this
- * first). Run this again after changing the SVG:
+ * compiles it, on macOS 26, so it is compiled for each macOS package (the packaging workflow's
+ * mac-icon job runs this). Run this again after changing the SVG:
  *
  *   pnpm --filter @querybara/desktop icons
  *

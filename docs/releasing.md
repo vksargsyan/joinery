@@ -217,9 +217,10 @@ Every icon comes from `apps/desktop/build/icon.svg` (the capybara, ADR 0033):
 (Linux, and the window icon) and `icon.png`, the artwork free-standing; and for macOS the
 artwork on a cream tile: `icon.icns` (macOS 15 and earlier, with Apple's margin) and the Icon
 Composer package `icon.icon`, which it compiles into `Assets.car` (macOS 26 and later) when Xcode
-26 or later is installed. The outputs are committed, except `Assets.car`: the macOS packaging job
-compiles it first, and a local macOS package needs `pnpm --filter @querybara/desktop icons` run
-on a Mac with Xcode 26 beforehand. A unit test fails when the committed icons no longer match
+26 or later is installed. The outputs are committed, except `Assets.car`: actool needs macOS 26
+to compile it, so the workflow's `mac-icon` job compiles it on `macos-26` for the macOS packaging
+job, and a local macOS package needs `pnpm --filter @querybara/desktop icons` run on macOS 26 with
+Xcode 26 beforehand. A unit test fails when the committed icons no longer match
 the SVG.
 
 ## Local builds

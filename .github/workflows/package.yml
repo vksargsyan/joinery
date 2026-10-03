@@ -313,8 +313,41 @@ jobs:
           path: packaged-results
           retention-days: 7
 
+  mac-icon:
+    name: macOS 26 icon (Assets.car)
+    # build/Assets.car is not committed: only Xcode 26's actool compiles an Icon Composer icon, and
+    # it needs macOS 26 to run (on macOS 15 its asset catalog agent crashes). The macOS job packages
+    # what this job compiles (ADR 0033).
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Compile the macOS 26 icon
+        run: |
+          xcode="$(ls -d /Applications/Xcode_26*.app /Applications/Xcode_2[7-9]*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$xcode" ]; then
+            echo "::error::No Xcode 26 or later on this runner, so Assets.car cannot be compiled"
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          pnpm --filter @querybara/desktop icons | tee "$RUNNER_TEMP/icons.log"
+          grep -q '^build/Assets.car  actool' "$RUNNER_TEMP/icons.log"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: querybara-assets-car
+          path: apps/desktop/build/Assets.car
+          retention-days: 14
+          if-no-files-found: error
+
   macos:
     name: macOS DMG and zip (universal)
+    needs: mac-icon
     runs-on: macos-15
     timeout-minutes: 60
     env:
@@ -332,19 +365,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Compile the macOS 26 icon
-        # build/Assets.car is committed, but only actool from Xcode 26 or later compiles it, so a
-        # catalog compiled on a Mac can lag behind build/icon.svg. Compiling it here keeps the
-        # package's macOS 26 icon the current one (ADR 0033).
-        run: |
-          xcode="$(ls -d /Applications/Xcode_26*.app /Applications/Xcode_2[7-9]*.app 2>/dev/null | sort -V | tail -1)"
-          if [ -z "$xcode" ]; then
-            echo "::error::No Xcode 26 or later on this runner, so Assets.car cannot be compiled"
-            exit 1
-          fi
-          sudo xcode-select -s "$xcode"
-          pnpm --filter @querybara/desktop icons | tee "$RUNNER_TEMP/icons.log"
-          grep -q '^build/Assets.car  actool' "$RUNNER_TEMP/icons.log"
+      - name: Take the macOS 26 icon compiled on macOS 26
+        uses: actions/download-artifact@v8
+        with:
+          name: querybara-assets-car
+          path: apps/desktop/build
       - run: pnpm --filter @querybara/desktop build
       - name: Package
         id: package

@@ -33,10 +33,11 @@ it free-standing.
 on, in light and dark mode alike. The capybara's dark outline would sink into the Tenmoku tile of 0032. The rest of 0032 stands: the artwork at 70 % of the tile, the `.icns` for macOS 15 and
 earlier, and the Icon Composer package compiled into `Assets.car` for macOS 26 and later.
 
-**`Assets.car` is compiled, not committed.** Only Xcode 26's actool compiles it. The macOS
-packaging job selects Xcode 26 or later and runs the icon generator before packaging, and fails
-when actool is missing rather than ship a package without it. A local macOS package needs the
-generator run on a Mac with Xcode 26 first. This replaces 0032's committed catalog.
+**`Assets.car` is compiled, not committed.** Only Xcode 26's actool compiles it, and only on
+macOS 26: on macOS 15 its asset catalog agent crashes. A `macos-26` job in the packaging workflow
+compiles it and hands it to the macOS packaging job, and fails rather than let a package go out
+without it. A local macOS package needs the generator run on a Mac with macOS 26 and Xcode 26
+first. This replaces 0032's committed catalog.
 
 ## Consequences
 
