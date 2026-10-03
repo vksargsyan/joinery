@@ -15,7 +15,7 @@ import {
  *
  *   header   magic "QBAK\r\n\x1a\n" | u16 version | u16 flags | u32 n | n bytes JSON
  *            | 32-byte HMAC of all of that (encrypted archives only)
- *   entries  back to back; each is a 16-byte entry header ("JENT" | u32 index | 8-byte nonce
+ *   entries  back to back; each is a 16-byte entry header ("QENT" | u32 index | 8-byte nonce
  *            prefix) and frames: u32 word (bit 31 = last frame, bits 0-30 = payload length),
  *            the payload, then a CRC-32 (plain) or the payload is ciphertext plus a 16-byte
  *            GCM tag (encrypted)
@@ -25,12 +25,12 @@ import {
  * Integers are big-endian. The magic's CR LF and Ctrl-Z catch text-mode copies, as PNG's do.
  */
 
-export const MAGIC = Uint8Array.from([0x4a, 0x42, 0x41, 0x4b, 0x0d, 0x0a, 0x1a, 0x0a]);
+export const MAGIC = Uint8Array.from([0x51, 0x42, 0x41, 0x4b, 0x0d, 0x0a, 0x1a, 0x0a]);
 export const FORMAT_VERSION = 1;
 export const HEADER_FIXED_LENGTH = 16;
-export const ENTRY_MAGIC = Uint8Array.from([0x4a, 0x45, 0x4e, 0x54]);
+export const ENTRY_MAGIC = Uint8Array.from([0x51, 0x45, 0x4e, 0x54]);
 export const ENTRY_HEADER_LENGTH = 16;
-export const TRAILER_MAGIC = Uint8Array.from([0x4a, 0x42, 0x41, 0x4b, 0x45, 0x4e, 0x44, 0x00]);
+export const TRAILER_MAGIC = Uint8Array.from([0x51, 0x42, 0x41, 0x4b, 0x45, 0x4e, 0x44, 0x00]);
 export const TRAILER_LENGTH = 32;
 export const MANIFEST_INDEX = 0xffffffff;
 export const FLAG_ENCRYPTED = 0x1;

@@ -26,7 +26,7 @@ trailer   "QBAKEND\0" | u64 manifest offset | u64 manifest length | u32 0 | u32 
 
 | Bytes | Field                                                                  |
 | ----- | ---------------------------------------------------------------------- |
-| 0-7   | Magic `4A 42 41 4B 0D 0A 1A 0A` ("QBAK\r\n", Ctrl-Z, "\n")             |
+| 0-7   | Magic `51 42 41 4B 0D 0A 1A 0A` ("QBAK\r\n", Ctrl-Z, "\n")             |
 | 8-9   | Format version: `1`                                                    |
 | 10-11 | Flags: `0x1` encrypted, `0x2` compressed; other bits are 0             |
 | 12-15 | `n`, the length of the header JSON (at most 64 KiB)                    |
@@ -45,7 +45,7 @@ An entry is a 16-byte entry header followed by frames:
 
 | Bytes | Field                                                                 |
 | ----- | --------------------------------------------------------------------- |
-| 0-3   | `4A 45 4E 54` ("JENT")                                                |
+| 0-3   | `51 45 4E 54` ("QENT")                                                |
 | 4-7   | The entry's index (0, 1, 2... in file order; `0xFFFFFFFF` = manifest) |
 | 8-15  | Nonce prefix: 8 random bytes (encrypted), zeros (plain)               |
 

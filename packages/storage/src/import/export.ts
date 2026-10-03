@@ -22,7 +22,7 @@ import {
  * versioned JSON document holding the profiles, their folders and, when asked, their secrets.
  */
 
-const EXPORT_MAGIC = 'JNRX';
+const EXPORT_MAGIC = 'QBRX';
 const PAYLOAD_FORMAT = 'querybara.profiles';
 const PAYLOAD_VERSION = 1;
 

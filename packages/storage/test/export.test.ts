@@ -171,7 +171,7 @@ describe('profile export', () => {
     const payload = new TextEncoder().encode(
       JSON.stringify({ format: 'querybara.profiles', version: 2, profiles: [] }),
     );
-    const bytes = encryptEnvelope('JNRX', payload, new PassphraseKeys(PASSPHRASE), TEST_COST);
+    const bytes = encryptEnvelope('QBRX', payload, new PassphraseKeys(PASSPHRASE), TEST_COST);
     expect(thrown(() => importProfiles(bytes, PASSPHRASE))).toMatchObject({
       code: 'NOT_SUPPORTED',
       hint: 'Update Querybara to import it.',

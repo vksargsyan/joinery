@@ -162,8 +162,9 @@ describe('generateIcons', () => {
   it('centres the Icon Composer layer on the artwork at the tile share', () => {
     const layer = decodePng(readFileSync(join(out, ICON_COMPOSER, 'Assets', 'artwork.png')));
     const [left, top, right, bottom] = opaqueBox(layer);
-    // The artwork is taller than wide, so its height is the share.
-    expect(Math.abs((bottom! - top!) / 1024 - MAC_ARTWORK_SHARE)).toBeLessThan(0.01);
+    // The artwork's longer side is the share.
+    const longer = Math.max(right! - left!, bottom! - top!);
+    expect(Math.abs(longer / 1024 - MAC_ARTWORK_SHARE)).toBeLessThan(0.01);
     expect(Math.abs((left! + right!) / 2 - 512)).toBeLessThanOrEqual(2);
     expect(Math.abs((top! + bottom!) / 2 - 512)).toBeLessThanOrEqual(2);
   });
@@ -172,8 +173,8 @@ describe('generateIcons', () => {
     const document = JSON.parse(readFileSync(join(out, ICON_COMPOSER, 'icon.json'), 'utf8'));
     expect(document.groups[0].layers[0]['image-name']).toBe('artwork.png');
     expect(document.fill['linear-gradient']).toEqual([
-      'srgb:0.14118,0.12549,0.10980,1.00000',
-      'srgb:0.06667,0.05882,0.05490,1.00000',
+      'srgb:1.00000,0.99216,0.97255,1.00000',
+      'srgb:0.94510,0.92157,0.87451,1.00000',
     ]);
   });
 });
