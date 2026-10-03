@@ -160,8 +160,9 @@ snippets, settings, schedules, ER model drafts, known SSH hosts and converted SS
 this once, only when Querybara has no data yet, and leaves the old folder as it was.
 
 Saved passwords come along sealed. On Windows they keep working. On macOS and Linux the old
-app's keychain entry holds their key, so Querybara asks for each one once. Backup archives,
-saved ER models and profile exports made by 0.1.0 do not open in Querybara.
+app's keychain entry holds their key, so Querybara asks for each one the first time you connect
+and saves it again. Backup archives, saved ER models and profile exports made by 0.1.0 do not
+open in Querybara.
 
 ## Repository layout
 

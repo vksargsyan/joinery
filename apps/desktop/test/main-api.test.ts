@@ -26,6 +26,8 @@ import { SERVER_INFO, fakeHosts, profileInput, type FakeHostProcess } from './he
 
 const SECRET = 'hunter2-Sup3r$ecret';
 const ASKED = 'typed-at-connect-9f1c';
+/** A password the fake hosts reject, as a server would a mistyped one. */
+const WRONG = 'mistyped-at-connect-4b7e';
 
 const sealer: SecretSealer = {
   id: 'test-xor',
@@ -58,7 +60,17 @@ function setup(options: { canSave?: boolean } = {}) {
   });
   const hosts = fakeHosts((process, message) => {
     if (message.type === 'connect') {
-      setImmediate(() => process.emit({ type: 'ready', info: SERVER_INFO }));
+      const rejected = Object.values(message.resolved.secrets).includes(WRONG);
+      setImmediate(() =>
+        process.emit(
+          rejected
+            ? {
+                type: 'failed',
+                error: { code: 'AUTH_FAILED', message: 'password authentication failed' },
+              }
+            : { type: 'ready', info: SERVER_INFO },
+        ),
+      );
     }
     if (message.type === 'check') {
       setImmediate(() => {
@@ -111,7 +123,7 @@ function setup(options: { canSave?: boolean } = {}) {
   const main: Client<MainContract['shape']> = createClient(renderer, mainContract);
   const leaked = (): boolean => {
     const everything = serialise(received) + serialise(sentPorts);
-    return everything.includes(SECRET) || everything.includes(ASKED);
+    return [SECRET, ASKED, WRONG].some((value) => everything.includes(value));
   };
   return { store, hosts, supervisor, main, sentPorts, received, leaked };
 }
@@ -203,6 +215,61 @@ describe('main contract handlers', () => {
     ]);
     await main.openConnection({ profileId: saved.id, secrets: { [passwordId]: ASKED } });
     expect(store.secrets.get({ id: passwordId, policy: 'session' })).toBe(ASKED);
+  });
+
+  it('saves a password again once it works when its saved copy cannot be opened here', async () => {
+    const { main, hosts, store, leaked } = setup();
+    const { saved, passwordId } = await saveProfileWithPassword(main, 'save');
+    // Sealed with a key this machine does not have, as 0.1.0's under the app's previous name.
+    store.db.run("UPDATE secrets SET sealer = 'another-key' WHERE id = ?", [passwordId]);
+    expect((await main.profiles.secretStatus({ profileId: saved.id })).missing).toEqual([
+      { refId: passwordId, policy: 'save', unreadable: true, label: 'Password' },
+    ]);
+
+    await expect(
+      main.openConnection({ profileId: saved.id, secrets: { [passwordId]: WRONG } }),
+    ).rejects.toMatchObject({ code: 'AUTH_FAILED' });
+    // A password that did not work is not kept: the user is asked again.
+    expect((await main.profiles.secretStatus({ profileId: saved.id })).missing).toEqual([
+      { refId: passwordId, policy: 'save', unreadable: true, label: 'Password' },
+    ]);
+
+    await main.openConnection({ profileId: saved.id, secrets: { [passwordId]: ASKED } });
+    expect(connectMessages(hosts).at(-1)?.resolved.secrets[passwordId]).toBe(ASKED);
+    // Saved again with this machine's key, so the next connect does not ask.
+    expect(await main.profiles.secretStatus({ profileId: saved.id })).toEqual({
+      canSave: true,
+      missing: [],
+    });
+    expect(store.secrets.get({ id: passwordId, policy: 'save' })).toBe(ASKED);
+    expect(store.db.get('SELECT sealer FROM secrets WHERE id = ?', [passwordId])).toEqual({
+      sealer: 'test-xor',
+    });
+    expect(leaked()).toBe(false);
+  });
+
+  it('connects with the typed password but keeps nothing when secure storage is gone', async () => {
+    const { main, store } = setup({ canSave: false });
+    const passwordId = crypto.randomUUID();
+    const saved = await main.profiles.save({
+      profile: profileInput({
+        auth: { method: 'password', user: 'app', password: { id: passwordId, policy: 'save' } },
+      }),
+    });
+    // Saved while a secret service was running; it is not any more.
+    const now = new Date().toISOString();
+    store.db.run(
+      'INSERT INTO secrets (id, sealer, sealed, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [passwordId, 'test-xor', new Uint8Array([1, 2, 3]), now, now],
+    );
+    const unreadable = { refId: passwordId, policy: 'save', unreadable: true, label: 'Password' };
+    expect((await main.profiles.secretStatus({ profileId: saved.id })).missing).toEqual([
+      unreadable,
+    ]);
+    await main.openConnection({ profileId: saved.id, secrets: { [passwordId]: ASKED } });
+    expect((await main.profiles.secretStatus({ profileId: saved.id })).missing).toEqual([
+      unreadable,
+    ]);
   });
 
   it('refuses to save a secret when the system has no secure storage', async () => {

@@ -32,7 +32,7 @@ import { hostKeyPromptEvents, type HostKeyBroker } from './host-keys';
 import type { HostProcessFactory } from './host-process';
 import type { JobManager } from './jobs';
 import { FileGrants, fileDialogHandlers, jobHandlers, type FileDialogs } from './jobs-api';
-import { resolveProfile } from './secrets';
+import { resaveUnreadableSecrets, resolveProfile } from './secrets';
 import { erModelHandlers } from './er-models';
 import type { MenuCommands } from './menu';
 import { scheduleHandlers, type ScheduleEvents } from './schedules-api';
@@ -271,9 +271,14 @@ export function createMainHandlers<P>(
     openConnection: async ({ profileId, secrets }, { progress }) => {
       const profile = requireProfile(profileId);
       progress({ phase: 'Connecting', completed: 0 });
-      const opened = await supervisor.open(profileId, () =>
-        resolveProfile(store, profile, secrets ?? {}, { requireAll: true }),
-      );
+      let started = false;
+      const opened = await supervisor.open(profileId, () => {
+        started = true;
+        return resolveProfile(store, profile, secrets ?? {}, { requireAll: true });
+      });
+      // The typed passwords worked: save again the ones the keychain could not open, so the
+      // user is asked for each once, not on every connect.
+      if (started && secrets) resaveUnreadableSecrets(store, profile, secrets);
       const { local, remote } = services.createChannel();
       supervisor.attach(opened.connectionId, local);
       window.sendPort({ kind: 'connection', connectionId: opened.connectionId }, remote);
