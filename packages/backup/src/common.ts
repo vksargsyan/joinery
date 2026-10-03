@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { RestoreConflict } from './types';
 import { plural } from './util';
@@ -29,7 +29,7 @@ export function checkConfirmed(
     .map((c) => c.qualifiedName)
     .join(', ');
   const more = missing.length > 10 ? ', …' : '';
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'CONFIRMATION_REQUIRED',
     message:
       drops.length > 0

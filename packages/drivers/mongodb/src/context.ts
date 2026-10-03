@@ -1,5 +1,5 @@
-import { JoineryError, cancelledError, newId } from '@joinery/core';
-import { SessionGate } from '@joinery/driver-sql-base';
+import { QuerybaraError, cancelledError, newId } from '@querybara/core';
+import { SessionGate } from '@querybara/driver-sql-base';
 import {
   fromEjson,
   isBsonDocument,
@@ -10,7 +10,7 @@ import {
   type BsonDocument,
   type BsonValue,
   type Namespace,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import type {
   BSONSerializeOptions,
   ClientSession,
@@ -106,7 +106,7 @@ export class MongoContext {
     readonly queryTimeoutMs: number | undefined,
   ) {}
 
-  map(error: unknown, exec?: Execution): JoineryError {
+  map(error: unknown, exec?: Execution): QuerybaraError {
     return mapMongoError(error, {
       where: this.plan.where,
       secrets: this.plan.secrets,
@@ -120,7 +120,7 @@ export class MongoContext {
 
   assertOpen(): void {
     if (this.closed) {
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
     }
   }
 
@@ -165,7 +165,7 @@ export class MongoContext {
     if (opts.signal?.aborted) throw cancelledError();
     const id = opts.executionId ?? newId();
     if (this.executions.has(id)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `An operation with execution id "${id}" is already running`,
       });
@@ -236,7 +236,7 @@ export class MongoContext {
 /** Database names: non-empty, no "/\. "$*<>:|? or NUL (the server's rules). */
 export function checkDatabaseName(name: string): string {
   if (name === '' || /[/\\. "$*<>:|?\0]/.test(name) || name.length > 63) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${name}" is not a valid database name`,
       hint: 'Database names cannot be empty or contain spaces, dots, slashes, quotes, $, *, <, >, :, | or ?',
@@ -248,7 +248,7 @@ export function checkDatabaseName(name: string): string {
 /** Collection names: non-empty, no NUL, not starting with "$" (except the $cmd namespace). */
 export function checkCollectionName(name: string): string {
   if (name === '' || name.includes('\0') || name.startsWith('$')) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${name}" is not a valid collection name`,
     });
@@ -266,7 +266,7 @@ export function documentArg(text: string | undefined, what: string): BsonDocumen
 export function documentsArg(text: string, what: string): BsonDocument[] {
   const value = parseShellPipeline(text);
   if (value.length === 0 && what !== 'pipeline') {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: `The ${what} list is empty` });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: `The ${what} list is empty` });
   }
   return value;
 }
@@ -285,7 +285,7 @@ export function hintArg(text: string | undefined): string | BsonDocument | undef
   if (text === undefined) return undefined;
   const value = valueArg(text, 'hint');
   if (typeof value === 'string' || isBsonDocument(value)) return value;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: 'The hint must be an index name or a key pattern',
   });

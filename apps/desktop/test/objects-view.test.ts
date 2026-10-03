@@ -1,4 +1,4 @@
-import type { BrowseNode } from '@joinery/core';
+import type { BrowseNode } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

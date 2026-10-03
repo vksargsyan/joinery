@@ -1,4 +1,4 @@
-import { BASE_CAPABILITIES, JoineryError, cancelledError, toColumnChunk } from '@joinery/core';
+import { BASE_CAPABILITIES, QuerybaraError, cancelledError, toColumnChunk } from '@querybara/core';
 import type {
   BrowseNode,
   Capabilities,
@@ -8,7 +8,7 @@ import type {
   ResultChunk,
   SchemaSnapshot,
   Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * An in-memory Session for the import and export unit tests. Writes: every INSERT's
@@ -59,7 +59,7 @@ export class FakeSession implements Session {
   }
 
   private fail(message: string): never {
-    throw new JoineryError({ code: 'SQL_ERROR', message });
+    throw new QuerybaraError({ code: 'SQL_ERROR', message });
   }
 
   private async *run(text: string, opts: ExecOptions): AsyncGenerator<ResultChunk> {

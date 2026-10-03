@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { suggestNext } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { suggestNext } from '@querybara/redis-tools';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RedisSession } from '../../src';
@@ -89,12 +89,12 @@ describe.skipIf(!REDIS_URL)('CLI execute (standalone)', () => {
     await session.command(['SET', `${p}s`, 'x']);
     const wrong = await run(session, `lpush ${p}s x`).catch((e: unknown) => e);
     expect(wrong).toMatchObject({ code: 'SQL_ERROR', engineCode: 'WRONGTYPE' });
-    const unknown = (await run(session, 'frobnicate x').catch((e: unknown) => e)) as JoineryError;
+    const unknown = (await run(session, 'frobnicate x').catch((e: unknown) => e)) as QuerybaraError;
     expect(unknown.code).toBe('SQL_ERROR');
     expect(unknown.hint).toMatch(/does not exist/);
     const syntax = (await run(session, 'get "unterminated').catch(
       (e: unknown) => e,
-    )) as JoineryError;
+    )) as QuerybaraError;
     expect(syntax.code).toBe('VALIDATION_FAILED');
   });
 
@@ -111,7 +111,7 @@ describe.skipIf(!REDIS_URL)('CLI execute (standalone)', () => {
     ['client reply off', /Replies/],
     ['quit', /disconnect/],
   ])('refuses %j', async (text, hint) => {
-    const error = (await run(session, text).catch((e: unknown) => e)) as JoineryError;
+    const error = (await run(session, text).catch((e: unknown) => e)) as QuerybaraError;
     expect(error.code).toBe('NOT_SUPPORTED');
     expect(`${error.message} ${error.hint}`).toMatch(hint);
   });
@@ -147,8 +147,8 @@ describe.skipIf(!REDIS_URL)('CLI execute (standalone)', () => {
     const pending = run(session, `blpop ${p}queue 20`, 'blocking-1').catch((e: unknown) => e);
     await sleep(300);
     await session.cancel('blocking-1');
-    const error = (await pending) as JoineryError;
-    expect(error).toBeInstanceOf(JoineryError);
+    const error = (await pending) as QuerybaraError;
+    expect(error).toBeInstanceOf(QuerybaraError);
     expect(error.code).toBe('CANCELLED');
     expect(performance.now() - started).toBeLessThan(5000);
     // The connection comes back in the same database.

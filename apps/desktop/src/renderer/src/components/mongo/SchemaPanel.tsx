@@ -1,4 +1,4 @@
-import { BSON_TYPES, type BsonTypeName } from '@joinery/mongo-tools';
+import { BSON_TYPES, type BsonTypeName } from '@querybara/mongo-tools';
 import { useEffect, useMemo, useState } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';

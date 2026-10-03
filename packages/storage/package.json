@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/storage",
+  "name": "@querybara/storage",
   "version": "0.0.0",
   "private": true,
   "description": "Local SQLite store: schema, migrations, repositories, sealed secrets, URI/pgpass import and encrypted export.",
@@ -12,7 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
+    "@querybara/core": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import { tableDefSchema } from '@joinery/core';
-import { ChangeSet, describeColumns, rowIdentity, type ApplyResult } from '@joinery/table-data';
+import { tableDefSchema } from '@querybara/core';
+import { ChangeSet, describeColumns, rowIdentity, type ApplyResult } from '@querybara/table-data';
 import { describe, expect, it } from 'vitest';
 
 import {

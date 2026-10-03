@@ -1,18 +1,18 @@
 import {
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   type ConnectionCheckResult,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { checkConnection as checkSqlConnection } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import { checkConnection as checkSqlConnection } from '@querybara/driver-sql-base';
 
 import { needsTransport } from './endpoint';
 import type { TransportManager } from './manager';
 import {
-  asJoineryError,
+  asQuerybaraError,
   tunnelledProfile,
   type Transport,
   type TransportOptions,
@@ -45,7 +45,7 @@ export async function runSshStep(
   let transport: Transport | undefined;
   try {
     transport = await manager.open(resolved, options);
-    if (!transport) throw new JoineryError({ code: 'INTERNAL', message: 'No transport opened' });
+    if (!transport) throw new QuerybaraError({ code: 'INTERNAL', message: 'No transport opened' });
     await transport.probe();
     return {
       result: { step: 'ssh', status: 'ok', durationMs: elapsed(), message: transport.description },
@@ -53,7 +53,7 @@ export async function runSshStep(
     };
   } catch (error) {
     await transport?.close().catch(() => undefined);
-    const failure = asJoineryError(error);
+    const failure = asQuerybaraError(error);
     return {
       result: {
         step: 'ssh',
@@ -100,7 +100,7 @@ function sshStepCheckOf(adapter: DriverAdapter): SshStepCheck | undefined {
 }
 
 /**
- * Test Connection for any profile, tunnel or not: what the connection host and joinery-cli call
+ * Test Connection for any profile, tunnel or not: what the connection host and querybara-cli call
  * instead of `adapter.checkConnection`. Without a tunnel or proxy it is the adapter's own check;
  * with one, an adapter given an SshStepCheck (MongoDB, Redis) runs it with the SSH step opened
  * through `manager`, and a SQL engine runs the shared stepwise check the same way; the later
@@ -115,7 +115,7 @@ export async function* checkConnectionThroughTransport(
   const engine = resolved.profile.engine;
   if (!needsTransport(resolved.profile) || resolved.endpointOverride) {
     if (!adapter.checkConnection) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `Test Connection is not available for ${ENGINES[engine].displayName} yet`,
       });
@@ -131,7 +131,7 @@ export async function* checkConnectionThroughTransport(
     return;
   }
   if (!isSqlEngine(engine)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `Test Connection through an SSH tunnel or proxy is not available for ${ENGINES[engine].displayName} yet`,
     });
@@ -166,7 +166,7 @@ export async function connectThroughTransport(
     const session = await adapter.connect(resolved);
     return { session, close: () => session.close() };
   }
-  let tunnelFailure: JoineryError | undefined;
+  let tunnelFailure: QuerybaraError | undefined;
   const unsubscribe = transport.onError((error) => {
     tunnelFailure ??= error;
   });
@@ -175,7 +175,7 @@ export async function connectThroughTransport(
     session = await adapter.connect(tunnelledProfile(resolved, transport));
   } catch (error) {
     await transport.close().catch(() => undefined);
-    throw tunnelFailure ? new JoineryError(tunnelFailure.toJSON(), { cause: error }) : error;
+    throw tunnelFailure ? new QuerybaraError(tunnelFailure.toJSON(), { cause: error }) : error;
   } finally {
     unsubscribe();
   }

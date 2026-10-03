@@ -1,4 +1,4 @@
-import type { CellValue, SqlDialect, TableDef } from '@joinery/core';
+import type { CellValue, SqlDialect, TableDef } from '@querybara/core';
 
 import { describeColumns, type ColumnInfo } from './columns';
 import { isLargeValue, toHex } from './values';

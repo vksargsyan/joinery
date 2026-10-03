@@ -1,4 +1,4 @@
-import { isSyncJobKind, type JobInfo, type JobRowError } from '@joinery/ipc';
+import { isSyncJobKind, type JobInfo, type JobRowError } from '@querybara/ipc';
 
 import { formatCount, formatDuration } from '../../lib/format';
 import {

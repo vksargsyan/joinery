@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
+import type { Session } from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -14,14 +14,14 @@ import { connect, query, scratchDatabase } from './db';
  * statement at the cursor on PostgreSQL, the plan tree with the slowest node highlighted, a
  * row misestimate flagged, the details pane and the raw JSON; ANALYZE of a DELETE only after
  * the warning, rolled back; and, when a MySQL server is configured, EXPLAIN FORMAT=JSON and
- * EXPLAIN ANALYZE there. Screenshots go to JOINERY_E2E_SHOTS when it is set.
+ * EXPLAIN ANALYZE there. Screenshots go to QUERYBARA_E2E_SHOTS when it is set.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const MYSQL_URL = process.env['JOINERY_TEST_MYSQL_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const MYSQL_URL = process.env['QUERYBARA_TEST_MYSQL_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -41,7 +41,7 @@ test.beforeAll(async () => {
   );
   await query(direct, 'ANALYZE items');
   if (MYSQL_URL) {
-    const name = `joinery_e2e_${randomBytes(4).toString('hex')}`;
+    const name = `querybara_e2e_${randomBytes(4).toString('hex')}`;
     const admin = await createMysqlAdapter().connect(resolvedProfileFromUrl(MYSQL_URL));
     await query(admin, `CREATE DATABASE ${name}`);
     await query(admin, `CREATE TABLE ${name}.orders (id int PRIMARY KEY, total int NOT NULL)`);
@@ -157,7 +157,7 @@ test('warns before analyzing a DELETE and rolls it back', async () => {
 });
 
 test('explains on MySQL: JSON estimate and EXPLAIN ANALYZE tree', async () => {
-  test.skip(!mysql, 'Set JOINERY_TEST_MYSQL_URL to explain on MySQL');
+  test.skip(!mysql, 'Set QUERYBARA_TEST_MYSQL_URL to explain on MySQL');
   await addConnection(mysql!.url, 'E2E Explain MySQL');
   const profile = page.getByRole('treeitem', { name: 'E2E Explain MySQL' });
   await profile.locator('[data-tree-row]').first().hover();

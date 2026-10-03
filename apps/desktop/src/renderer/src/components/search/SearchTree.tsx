@@ -1,5 +1,5 @@
-import type { BrowseNode } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import type { BrowseNode } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { DropdownMenu } from 'radix-ui';
 import { useState, type ReactNode } from 'react';
 

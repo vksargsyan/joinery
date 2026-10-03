@@ -1,7 +1,7 @@
 /**
- * @joinery/backup — backup and restore (spec §14).
+ * @querybara/backup — backup and restore (spec §14).
  *
- * - The Joinery archive (.jbak): one file per object plus a manifest, optionally encrypted with
+ * - The Querybara archive (.qbak): one file per object plus a manifest, optionally encrypted with
  *   AES-256-GCM under a scrypt-derived key, streamed in frames so any size fits in flat memory,
  *   with random access for selective restore (`ArchiveWriter`, `ArchiveReader`; the format is
  *   specified in docs/backup-archive-format.md).
@@ -11,9 +11,9 @@
  * - MongoDB collections with their options and indexes, and Redis keys with their TTLs.
  * - The native tools (pg_dump, pg_restore, psql, mysqldump, mysql) when installed.
  * - `runBackup`, `inspectBackup`, `planRestore` and `runRestore` dispatch on the engine, for
- *   the job runner and joinery-cli.
+ *   the job runner and querybara-cli.
  *
- * Never imports Electron: it runs in the job runner utility process and in joinery-cli.
+ * Never imports Electron: it runs in the job runner utility process and in querybara-cli.
  */
 
 export { DEFAULT_SCRYPT_COST, isValidScryptCost, type ScryptCost } from './archive/crypto';

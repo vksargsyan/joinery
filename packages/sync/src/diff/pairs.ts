@@ -1,4 +1,4 @@
-import type { SchemaDef, TableDef, ViewDef } from '@joinery/core';
+import type { SchemaDef, TableDef, ViewDef } from '@querybara/core';
 
 import { nameKey } from '../normalize';
 import type { ResolvedCompareOptions } from '../options';

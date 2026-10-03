@@ -1,4 +1,4 @@
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect } from 'vitest';
 
 import { expectSameData, expectSameStructure, rowsText } from './helpers';
@@ -6,7 +6,7 @@ import { expectSameData, expectSameStructure, rowsText } from './helpers';
 /**
  * The tricky databases the round trips back up and restore, and the checks that prove a
  * restored copy equals its source: the structure compare and the key-range data compare of
- * @joinery/sync, plus queries for what they cannot see (sequence positions, materialised views,
+ * @querybara/sync, plus queries for what they cannot see (sequence positions, materialised views,
  * AUTO_INCREMENT counters, spatial values, a table without a key).
  */
 

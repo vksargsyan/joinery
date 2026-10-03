@@ -8,7 +8,7 @@ import {
   type ResultChunk,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   SearchAliasInfo,
   SearchBulkResult,
@@ -33,7 +33,7 @@ import type {
   SearchSnapshotInfo,
   SearchTable,
   SearchTaskStatus,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import * as admin from './admin';
 import { browseSearch } from './browse';

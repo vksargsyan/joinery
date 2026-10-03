@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ServerAction,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { serverToolsHandlers } from '../src/connection-host/server-tools';
@@ -128,7 +128,7 @@ function sentinelSession(): { session: Session; statements: string[] } {
     execute: (text: string) => {
       statements.push(text);
       return (async function* () {
-        throw new JoineryError({ code: 'INTERNAL', message: 'sentinel' });
+        throw new QuerybaraError({ code: 'INTERNAL', message: 'sentinel' });
         yield* [];
       })();
     },

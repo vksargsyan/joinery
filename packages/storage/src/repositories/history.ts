@@ -1,4 +1,4 @@
-import { JoineryError, newId } from '@joinery/core';
+import { QuerybaraError, newId } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -241,7 +241,7 @@ export class QueryHistoryRepository {
 
 function parseCursor(cursor: string): number {
   if (!/^[1-9]\d{0,15}$/.test(cursor)) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Invalid history cursor' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Invalid history cursor' });
   }
   return Number(cursor);
 }

@@ -1,4 +1,4 @@
-import { engineIdSchema, schemaSnapshotSchema } from '@joinery/core';
+import { engineIdSchema, schemaSnapshotSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -6,7 +6,7 @@ import { idSchema } from './common';
 /**
  * Schemas for the local metadata cache (spec §5: a metadata cache per connection in SQLite feeds
  * autocomplete) and the snippet library (spec §6), as they cross between main and the renderer.
- * They mirror `@joinery/storage`'s records; this package does not depend on storage.
+ * They mirror `@querybara/storage`'s records; this package does not depend on storage.
  */
 
 const timestampSchema = z.iso.datetime({ offset: true });

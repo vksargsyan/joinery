@@ -1,5 +1,5 @@
-import type { ForeignKeyDef, SchemaSnapshot, SqlDialect } from '@joinery/core';
-import type { QueryJoin, QueryModel, QueryTable } from '@joinery/sql-tools';
+import type { ForeignKeyDef, SchemaSnapshot, SqlDialect } from '@querybara/core';
+import type { QueryJoin, QueryModel, QueryTable } from '@querybara/sql-tools';
 
 /**
  * The tables the query builder offers (spec §8: the designers share the metadata cache): one

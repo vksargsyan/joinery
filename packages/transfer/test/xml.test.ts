@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
@@ -135,8 +135,8 @@ describe('XmlParser', () => {
     } catch (caught) {
       error = caught;
     }
-    expect(error).toBeInstanceOf(JoineryError);
-    expect((error as JoineryError).code).toBe('VALIDATION_FAILED');
+    expect(error).toBeInstanceOf(QuerybaraError);
+    expect((error as QuerybaraError).code).toBe('VALIDATION_FAILED');
     expect((error as Error).message).toMatch(message);
   });
 
@@ -250,8 +250,8 @@ describe('XmlParser fuzz', () => {
           try {
             events(split(text, cuts));
           } catch (error) {
-            expect(error).toBeInstanceOf(JoineryError);
-            expect((error as JoineryError).code).toBe('VALIDATION_FAILED');
+            expect(error).toBeInstanceOf(QuerybaraError);
+            expect((error as QuerybaraError).code).toBe('VALIDATION_FAILED');
           }
         },
       ),

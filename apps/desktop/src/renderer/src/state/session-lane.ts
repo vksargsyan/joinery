@@ -1,4 +1,4 @@
-import { JoineryError, newId, rowAt, type CellValue, type ColumnMeta } from '@joinery/core';
+import { QuerybaraError, newId, rowAt, type CellValue, type ColumnMeta } from '@querybara/core';
 
 import { errorInfo } from '../lib/errors';
 import type { HostClient } from '../lib/main-client';
@@ -79,7 +79,7 @@ export class SessionLane {
   run<T>(task: (host: HostClient, sessionId: string) => Promise<T>): Promise<T> {
     const next = this.#queue.then(async () => {
       if (this.#closed) {
-        throw new JoineryError({ code: 'CANCELLED', message: 'The view was closed' });
+        throw new QuerybaraError({ code: 'CANCELLED', message: 'The view was closed' });
       }
       const { host, sessionId } = await this.#ensure();
       try {
@@ -105,7 +105,7 @@ export class SessionLane {
   async #ensure(): Promise<{ host: HostClient; sessionId: string }> {
     const connection = await connect(this.#profileId);
     const host = connection.host;
-    if (!host) throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
+    if (!host) throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
     if (
       this.#sessionId !== undefined &&
       this.#host === host &&

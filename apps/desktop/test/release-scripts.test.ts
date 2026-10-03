@@ -35,7 +35,7 @@ import { thirdPartyReportSchema } from '../src/shared/third-party';
  * update metadata.
  */
 
-const scratch = mkdtempSync(join(tmpdir(), 'joinery-release-'));
+const scratch = mkdtempSync(join(tmpdir(), 'querybara-release-'));
 
 afterAll(() => {
   rmSync(scratch, { recursive: true, force: true });
@@ -158,8 +158,8 @@ describe('the third-party report', () => {
     expect(report.packages[2]).toMatchObject({ licence: 'UNKNOWN' });
     expect(report.packages[2]?.licenceText).toBeUndefined();
 
-    const text = renderNotices(report, 'Joinery');
-    expect(text).toMatch(/^Joinery third-party notices\n/);
+    const text = renderNotices(report, 'Querybara');
+    expect(text).toMatch(/^Querybara third-party notices\n/);
     expect(text).toContain('  alpha 1.0.0  (MIT)');
     expect(text).toContain('MIT licence text');
     expect(text).toContain('Beta notice');
@@ -197,7 +197,7 @@ describe('bundled assets', () => {
     const report = withAssets({ format: 1, packages: [npm] }, [font]);
     expect(report.packages.map((p) => p.name)).toEqual(['Rec Mono (Recursive)', 'zod']);
     expect(thirdPartyReportSchema.parse(report)).toEqual(report);
-    expect(renderNotices(report, 'Joinery')).toContain(
+    expect(renderNotices(report, 'Querybara')).toContain(
       'Rec Mono (Recursive) 1.085\nLicence: OFL-1.1',
     );
   });
@@ -266,7 +266,7 @@ const LOCK = `lockfileVersion: '9.0'
 importers:
   apps/desktop:
     devDependencies:
-      '@joinery/core':
+      '@querybara/core':
         specifier: workspace:*
         version: link:../../packages/core
       react-dom:
@@ -312,9 +312,13 @@ describe('the SBOM', () => {
   const input = {
     lock,
     importer: 'apps/desktop',
-    app: { name: 'Joinery', version: '1.2.3', repository: 'https://github.com/vksargsyan/joinery' },
+    app: {
+      name: 'Querybara',
+      version: '1.2.3',
+      repository: 'https://github.com/vksargsyan/querybara',
+    },
     workspace: (path: string) => ({
-      name: path === 'packages/core' ? '@joinery/core' : path,
+      name: path === 'packages/core' ? '@querybara/core' : path,
       version: '0.0.0',
     }),
     shipped: [
@@ -363,7 +367,7 @@ describe('the SBOM', () => {
       dependencies: { ref: string; dependsOn: string[] }[];
     };
     expect(bom).toMatchObject({ bomFormat: 'CycloneDX', specVersion: '1.6', version: 1 });
-    expect(bom.metadata.component).toMatchObject({ name: 'Joinery', version: '1.2.3' });
+    expect(bom.metadata.component).toMatchObject({ name: 'Querybara', version: '1.2.3' });
     const byName = new Map(bom.components.map((c) => [c.name, c]));
     expect(byName.get('react')).toMatchObject({
       scope: 'required',
@@ -382,7 +386,7 @@ describe('the SBOM', () => {
       ],
     });
     expect(byName.get('string-width')?.licenses).toBeUndefined();
-    expect(byName.get('@joinery/core')).toMatchObject({ scope: 'required' });
+    expect(byName.get('@querybara/core')).toMatchObject({ scope: 'required' });
     expect(byName.get('scheduler')?.hashes).toEqual([{ alg: 'SHA-1', content: '082082' }]);
 
     // Every reference resolves, and every component appears in the graph.
@@ -395,7 +399,7 @@ describe('the SBOM', () => {
     for (const d of bom.dependencies)
       for (const target of d.dependsOn) expect(refs.has(target)).toBe(true);
     const app = bom.dependencies.find((d) => d.ref === bom.metadata.component['bom-ref']);
-    expect(app?.dependsOn).toContain('workspace:@joinery/core@0.0.0');
+    expect(app?.dependsOn).toContain('workspace:@querybara/core@0.0.0');
   });
 
   it('names a bundled asset as a generic component, outside the lockfile', () => {
@@ -468,10 +472,10 @@ function readVersion(name: string): string {
 describe('the staged rollout', () => {
   const LATEST = `version: 1.2.0
 files:
-  - url: Joinery-Setup-1.2.0.exe
+  - url: Querybara-Setup-1.2.0.exe
     sha512: abc==
     size: 100
-path: Joinery-Setup-1.2.0.exe
+path: Querybara-Setup-1.2.0.exe
 sha512: abc==
 releaseDate: '2026-09-29T21:00:00.000Z'
 `;

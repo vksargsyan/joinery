@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { emptyQueryModel, generateQuery, type QueryModel } from '../../src';

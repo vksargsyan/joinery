@@ -1,5 +1,5 @@
-import type { ErrorData } from '@joinery/core';
-import type { Sink } from '@joinery/transfer';
+import type { ErrorData } from '@querybara/core';
+import type { Sink } from '@querybara/transfer';
 
 import type { ArchiveEncryption } from './archive/writer';
 import type { BackupObjectKind, Manifest } from './archive/manifest';
@@ -7,11 +7,11 @@ import type { BackupObjectKind, Manifest } from './archive/manifest';
 /**
  * Options, progress and outcomes shared by every engine's backup and restore. Backups and
  * restores run in the job runner (spec §14: they share its progress events, logs and
- * notifications) and in joinery-cli, so everything here is plain data and callbacks.
+ * notifications) and in querybara-cli, so everything here is plain data and callbacks.
  */
 
-/** Output formats. `sql` and `sql-gz` are SQL engines only; `jbak` is every engine's archive. */
-export const BACKUP_FORMATS = ['sql', 'sql-gz', 'jbak'] as const;
+/** Output formats. `sql` and `sql-gz` are SQL engines only; `qbak` is every engine's archive. */
+export const BACKUP_FORMATS = ['sql', 'sql-gz', 'qbak'] as const;
 export type BackupFormat = (typeof BACKUP_FORMATS)[number];
 
 export type LogLevel = 'info' | 'warning' | 'error';
@@ -62,7 +62,7 @@ export interface BackupCommonOptions {
   readonly compress?: boolean;
   /** Archives: encrypt with this passphrase (AES-256-GCM, scrypt). */
   readonly encryption?: ArchiveEncryption;
-  /** Written into the manifest, e.g. "Joinery 0.1.0". */
+  /** Written into the manifest, e.g. "Querybara 0.1.0". */
   readonly producer?: string;
   readonly signal?: AbortSignal;
   readonly onProgress?: (progress: BackupProgress) => void;

@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 
 import { exportRows, fileSink, fileSource, readRows } from '../src';
 import { FakeSession } from './fake-session';
@@ -30,7 +30,7 @@ let path = '';
 let sheetBytes = 0;
 
 beforeAll(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'joinery-xlsx-memory-'));
+  dir = mkdtempSync(join(tmpdir(), 'querybara-xlsx-memory-'));
   path = join(dir, 'large.xlsx');
   sheetBytes = await writeLargeWorkbook(path, ROWS);
 }, 120_000);

@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
@@ -43,10 +43,10 @@ describe('splitArgs (redis-cli sdssplitargs)', () => {
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(JoineryError);
-    expect((caught as JoineryError).code).toBe('VALIDATION_FAILED');
-    expect((caught as JoineryError).message).toMatch(/^Invalid argument\(s\)/);
-    expect((caught as JoineryError).position).toBe(position);
+    expect(caught).toBeInstanceOf(QuerybaraError);
+    expect((caught as QuerybaraError).code).toBe('VALIDATION_FAILED');
+    expect((caught as QuerybaraError).message).toMatch(/^Invalid argument\(s\)/);
+    expect((caught as QuerybaraError).position).toBe(position);
   });
 });
 

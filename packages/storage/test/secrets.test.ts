@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 
-import { newId, type ConnectionProfile, type SecretRef } from '@joinery/core';
+import { newId, type ConnectionProfile, type SecretRef } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { REDACTED, createPassphraseSealer, openStore, type SecretSealer } from '../src';
@@ -64,7 +64,7 @@ describe('passphrase sealer', () => {
     const sealed = sealer.seal(PLAINTEXT);
     expect(thrown(() => sealer.unseal(sealed.subarray(0, 20)))).toMatchObject({
       code: 'VALIDATION_FAILED',
-      message: 'This is not a Joinery sealed secret',
+      message: 'This is not a Querybara sealed secret',
     });
     expect(thrown(() => sealer.unseal(new TextEncoder().encode('x'.repeat(80))))).toMatchObject({
       code: 'VALIDATION_FAILED',
@@ -336,7 +336,7 @@ describe('secrets never leak', () => {
 
   it('never writes plaintext to the database file or its WAL', () => {
     const dir = tempDir();
-    const location = join(dir, 'joinery.db');
+    const location = join(dir, 'querybara.db');
     const store = track(openStore(location, { sealer: testSealer() }));
     const saved = ref('save');
     const session = ref('session');

@@ -44,7 +44,7 @@ export function ShellEditor(props: {
     const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
-      theme: latest.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
+      theme: latest.current.theme === 'dark' ? 'querybara-dark' : 'querybara-light',
       automaticLayout: true,
       fontSize: 13,
       minimap: { enabled: false },
@@ -60,7 +60,7 @@ export function ShellEditor(props: {
     editorRef.current = editor;
     const subscription = model.onDidChangeContent(() => latest.current.onChange(model.getValue()));
     editor.addAction({
-      id: 'joinery.mongo.run',
+      id: 'querybara.mongo.run',
       label: 'Run',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => latest.current.onRun?.(),
@@ -83,7 +83,7 @@ export function ShellEditor(props: {
         return;
       }
       editorRef.current!.pushUndoStop();
-      editorRef.current!.executeEdits('joinery.set', [
+      editorRef.current!.executeEdits('querybara.set', [
         { range: model.getFullModelRange(), text: props.value },
       ]);
       editorRef.current!.pushUndoStop();
@@ -91,7 +91,7 @@ export function ShellEditor(props: {
   }, [props.value]);
 
   useEffect(() => {
-    monaco.editor.setTheme(props.theme === 'dark' ? 'joinery-dark' : 'joinery-light');
+    monaco.editor.setTheme(props.theme === 'dark' ? 'querybara-dark' : 'querybara-light');
   }, [props.theme]);
 
   useEffect(() => {
@@ -110,14 +110,14 @@ export function ShellEditor(props: {
     const model = editorRef.current?.getModel();
     if (!model) return;
     if (!issue) {
-      monaco.editor.setModelMarkers(model, 'joinery-mongo', []);
+      monaco.editor.setModelMarkers(model, 'querybara-mongo', []);
       return;
     }
     const start = model.getPositionAt(issue.offset);
     const end = model.getPositionAt(
       Math.min(Math.max(issue.end ?? 0, issue.offset + 1), model.getValueLength()),
     );
-    monaco.editor.setModelMarkers(model, 'joinery-mongo', [
+    monaco.editor.setModelMarkers(model, 'querybara-mongo', [
       {
         severity: monaco.MarkerSeverity.Error,
         message: issue.message,

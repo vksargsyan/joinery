@@ -1,26 +1,26 @@
 import {
-  JoineryError,
+  QuerybaraError,
   newId,
   type DriverAdapter,
   type EngineId,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import { createSearchAdapter } from '@joinery/driver-elasticsearch';
+} from '@querybara/core';
+import { createSearchAdapter } from '@querybara/driver-elasticsearch';
 import {
   checkConnection as checkMongoConnection,
   createMongoAdapter,
-} from '@joinery/driver-mongodb';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { createRedisAdapter } from '@joinery/driver-redis';
+} from '@querybara/driver-mongodb';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { createRedisAdapter } from '@querybara/driver-redis';
 import {
   connectThroughTransport,
   needsTransport,
   withSshStepCheck,
   type TransportManager,
   type TransportSession,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 
 import type { AdapterFactory, Prompter } from './context';
 import { CliError } from './errors';
@@ -29,7 +29,7 @@ import { sqlOnlyError } from './mongo';
 import type { Reporter } from './reporter';
 import { passwordEnvName, resolvedProfile, withPassword, type Target } from './target';
 
-/** The adapters joinery-cli ships: the same packages the desktop connection host runs. */
+/** The adapters querybara-cli ships: the same packages the desktop connection host runs. */
 export const defaultAdapters: AdapterFactory = (engine: EngineId): DriverAdapter => {
   switch (engine) {
     case 'postgres':
@@ -50,7 +50,9 @@ export const defaultAdapters: AdapterFactory = (engine: EngineId): DriverAdapter
       return withSshStepCheck(search, (resolved, deps) => search.checkConnection(resolved, deps));
     }
     default:
-      throw new CliError(`joinery-cli cannot connect to ${engine} yet`, { code: 'NOT_SUPPORTED' });
+      throw new CliError(`querybara-cli cannot connect to ${engine} yet`, {
+        code: 'NOT_SUPPORTED',
+      });
   }
 };
 
@@ -91,7 +93,7 @@ function openSession(
  * use MariaDB rules. A target with an SSH tunnel or a proxy connects through it.
  */
 export async function connect(target: Target, deps: ConnectDeps): Promise<Connection> {
-  // SQL commands only: MongoDB targets go through `joinery test` and `joinery query`.
+  // SQL commands only: MongoDB targets go through `querybara test` and `querybara query`.
   const notSql = sqlOnlyError(target);
   if (notSql) throw notSql;
   const adapter = deps.adapters(target.profile.engine);
@@ -132,12 +134,12 @@ export async function connect(target: Target, deps: ConnectDeps): Promise<Connec
 /** What to do when a login without a password was refused and nobody can be asked. */
 export function missingPasswordHint(target: Target): string {
   return target.kind === 'uri'
-    ? 'No password was given: put it in the URI, set JOINERY_PASSWORD, or run in a terminal to be asked'
-    : `No password was given: set ${passwordEnvName(target.label)} or JOINERY_PASSWORD, or run in a terminal to be asked`;
+    ? 'No password was given: put it in the URI, set QUERYBARA_PASSWORD, or run in a terminal to be asked'
+    : `No password was given: set ${passwordEnvName(target.label)} or QUERYBARA_PASSWORD, or run in a terminal to be asked`;
 }
 
-function isAuthFailure(error: unknown): error is JoineryError {
-  return error instanceof JoineryError && error.code === 'AUTH_FAILED';
+function isAuthFailure(error: unknown): error is QuerybaraError {
+  return error instanceof QuerybaraError && error.code === 'AUTH_FAILED';
 }
 
 /** The SQL dialect of a SQL engine. */

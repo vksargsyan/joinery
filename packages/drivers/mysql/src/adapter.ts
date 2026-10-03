@@ -1,13 +1,13 @@
 import {
   capabilitiesFor,
-  JoineryError,
+  QuerybaraError,
   type Capabilities,
   type ConnectionCheckResult,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { checkConnection as checkSqlConnection } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import { checkConnection as checkSqlConnection } from '@querybara/driver-sql-base';
 
 import { MysqlSession } from './session';
 
@@ -32,7 +32,7 @@ export class MysqlAdapter implements DriverAdapter {
     const engine = resolved.profile.engine;
     if (engine !== 'mysql' && engine !== 'mariadb') {
       return Promise.reject(
-        new JoineryError({
+        new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `The MySQL adapter cannot open a ${engine} profile`,
         }),

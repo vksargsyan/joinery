@@ -7,7 +7,7 @@ import {
   type CriteriaOperator,
   type Criterion,
   type QueryExpr,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 import type { ReactNode } from 'react';
 
 import {

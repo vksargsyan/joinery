@@ -1,5 +1,5 @@
-import type { KeyInfo } from '@joinery/driver-redis';
-import { bytesKey, displayBytes, utf8Bytes } from '@joinery/redis-tools';
+import type { KeyInfo } from '@querybara/driver-redis';
+import { bytesKey, displayBytes, utf8Bytes } from '@querybara/redis-tools';
 import { createContext, useContext, useMemo, useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

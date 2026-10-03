@@ -11,9 +11,9 @@ import {
   type ResultChunk,
   type Session,
   type TableDef,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
-import { ChangeSet, describeColumns, planChanges, rowIdentity } from '@joinery/table-data';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
+import { ChangeSet, describeColumns, planChanges, rowIdentity } from '@querybara/table-data';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../src/connection-host/host';

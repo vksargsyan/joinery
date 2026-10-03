@@ -11,7 +11,7 @@ import {
   type ServerAction,
   type ServerSession,
   type ServerSetting,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * View models of the server tools tabs: session filters, the grants matrix grouped by object

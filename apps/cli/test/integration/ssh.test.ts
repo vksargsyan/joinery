@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { connectionProfileSchema } from '@joinery/core';
-import { createPassphraseSealer, openStore } from '@joinery/storage';
+import { connectionProfileSchema } from '@querybara/core';
+import { createPassphraseSealer, openStore } from '@querybara/storage';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startSshServer, type TestSshServer } from '../ssh-server';
@@ -16,10 +16,10 @@ import { startSshServer, type TestSshServer } from '../ssh-server';
  * (and proxy) in this test process forward to the local test servers. Covers `test` printing the
  * SSH step, queries through one and two hops (a jump host), trust on first use with
  * --ssh-accept-new into the known_hosts next to the store, and saved profiles with a tunnel.
- * Gated on the JOINERY_TEST_*_URL variables like the other integration suites.
+ * Gated on the QUERYBARA_TEST_*_URL variables like the other integration suites.
  */
 
-const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
+const BIN = fileURLToPath(new URL('../../dist/querybara.mjs', import.meta.url));
 const SSH_USER = 'tunnel';
 const SSH_PASSWORD = 'it-Bastion-9f2';
 const PASSPHRASE = 'it-store-passphrase';
@@ -31,9 +31,9 @@ interface Engine {
 
 const ENGINES: Engine[] = (
   [
-    ['postgres', process.env['JOINERY_TEST_POSTGRES_URL']],
-    ['mariadb', process.env['JOINERY_TEST_MARIADB_URL']],
-    ['mysql', process.env['JOINERY_TEST_MYSQL_URL']],
+    ['postgres', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+    ['mariadb', process.env['QUERYBARA_TEST_MARIADB_URL']],
+    ['mysql', process.env['QUERYBARA_TEST_MYSQL_URL']],
   ] as const
 )
   .filter((entry): entry is readonly [Engine['name'], string] => Boolean(entry[1]))
@@ -50,13 +50,13 @@ interface Result {
   readonly stderr: string;
 }
 
-function joinery(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
+function querybara(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [BIN, ...args], {
       env: {
         PATH: process.env['PATH'] ?? '',
         HOME: workDir,
-        JOINERY_STORE: storePath,
+        QUERYBARA_STORE: storePath,
         NO_COLOR: '1',
         ...env,
       },
@@ -146,10 +146,10 @@ async function startSocks5(): Promise<typeof socks> {
 beforeAll(async () => {
   if (ENGINES.length === 0) return;
   if (!existsSync(BIN)) {
-    throw new Error(`${BIN} is missing: run "pnpm --filter @joinery/cli build" first`);
+    throw new Error(`${BIN} is missing: run "pnpm --filter @querybara/cli build" first`);
   }
-  workDir = mkdtempSync(join(tmpdir(), 'joinery-cli-ssh-'));
-  storePath = join(workDir, 'joinery.db');
+  workDir = mkdtempSync(join(tmpdir(), 'querybara-cli-ssh-'));
+  storePath = join(workDir, 'querybara.db');
   ssh = await startSshServer({ user: SSH_USER, password: SSH_PASSWORD });
   socks = await startSocks5();
 });
@@ -163,12 +163,12 @@ describe.skipIf(ENGINES.length === 0)('host keys', () => {
   it('refuses an unknown host key without a terminal, then trusts it with --ssh-accept-new', async () => {
     const engine = ENGINES[0]!;
     const hop = ['--ssh', `${SSH_USER}@127.0.0.1:${ssh.port}`, '--ssh-password-env', 'PW'];
-    const refused = await joinery(['test', urlFor(engine), ...hop], { PW: SSH_PASSWORD });
+    const refused = await querybara(['test', urlFor(engine), ...hop], { PW: SSH_PASSWORD });
     expect(refused.code).toBe(1);
     expect(refused.stdout).toMatch(/✗ SSH\s+The host key of the SSH server .* is not known yet/);
     expect(refused.stdout).toContain(ssh.hostKeyFingerprint);
 
-    const accepted = await joinery(['test', urlFor(engine), ...hop, '--ssh-accept-new'], {
+    const accepted = await querybara(['test', urlFor(engine), ...hop, '--ssh-accept-new'], {
       PW: SSH_PASSWORD,
     });
     expect(accepted.code, accepted.stdout + accepted.stderr).toBe(0);
@@ -180,11 +180,11 @@ describe.skipIf(ENGINES.length === 0)('host keys', () => {
 });
 
 describe.each(ENGINES)('$name through SSH', (engine) => {
-  const env = { JOINERY_SSH_PASSWORD: SSH_PASSWORD };
+  const env = { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD };
   const sshArgs = (): string[] => ['--ssh', `${SSH_USER}@127.0.0.1:${ssh.port}`];
 
   it('test prints the SSH step and passes', async () => {
-    const result = await joinery(['test', urlFor(engine), ...sshArgs()], env);
+    const result = await querybara(['test', urlFor(engine), ...sshArgs()], env);
     expect(result.code, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toMatch(/✓ TCP\s+Connected to the SSH server 127\.0\.0\.1:\d+/);
     expect(result.stdout).toMatch(
@@ -197,7 +197,7 @@ describe.each(ENGINES)('$name through SSH', (engine) => {
 
   it('runs queries through a jump host and the SSH server', async () => {
     const forwards = ssh.stats.forwards;
-    const result = await joinery(
+    const result = await querybara(
       [
         'query',
         urlFor(engine),
@@ -218,7 +218,7 @@ describe.each(ENGINES)('$name through SSH', (engine) => {
 
   it('runs a query through a SOCKS5 proxy', async () => {
     const before = socks.connections;
-    const result = await joinery([
+    const result = await querybara([
       'query',
       urlFor(engine),
       '--proxy',
@@ -273,11 +273,11 @@ describe.each(ENGINES)('$name through SSH', (engine) => {
     } finally {
       store.close();
     }
-    const passphrase = { JOINERY_PASSPHRASE: PASSPHRASE };
-    const tested = await joinery(['test', name], passphrase);
+    const passphrase = { QUERYBARA_PASSPHRASE: PASSPHRASE };
+    const tested = await querybara(['test', name], passphrase);
     expect(tested.code, tested.stdout + tested.stderr).toBe(0);
     expect(tested.stdout).toMatch(/✓ SSH/);
-    const queried = await joinery(
+    const queried = await querybara(
       ['query', name, '--format', 'csv', '-e', 'select 1 as one'],
       passphrase,
     );

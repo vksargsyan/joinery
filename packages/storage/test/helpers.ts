@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { newId } from '@joinery/core';
+import { newId } from '@querybara/core';
 import { afterEach } from 'vitest';
 
 import {
@@ -53,7 +53,7 @@ export function memoryStore(
 
 /** A fresh temporary directory, deleted after the test. */
 export function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-storage-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-storage-'));
   tempDirs.push(dir);
   return dir;
 }

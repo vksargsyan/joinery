@@ -1,16 +1,16 @@
 import { existsSync } from 'node:fs';
 
 import {
-  JoineryError,
+  QuerybaraError,
   type ConnectionCheckResult,
   type ConnectionProfileInput,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -35,11 +35,11 @@ import {
  */
 
 const ENGINES = [
-  ['PostgreSQL', process.env['JOINERY_TEST_POSTGRES_URL']],
-  ['MySQL', process.env['JOINERY_TEST_MYSQL_URL']],
-  ['MariaDB', process.env['JOINERY_TEST_MARIADB_URL']],
+  ['PostgreSQL', process.env['QUERYBARA_TEST_POSTGRES_URL']],
+  ['MySQL', process.env['QUERYBARA_TEST_MYSQL_URL']],
+  ['MariaDB', process.env['QUERYBARA_TEST_MARIADB_URL']],
 ] as const;
-const PG_TLS_CA = process.env['JOINERY_TEST_POSTGRES_TLS_CA'];
+const PG_TLS_CA = process.env['QUERYBARA_TEST_POSTGRES_TLS_CA'];
 
 const SSH_PASSWORD = 'bastion-password';
 const ROWS = 5000;
@@ -232,7 +232,7 @@ describe.each(ENGINES)('%s through an SSH tunnel', (name, url) => {
           if (next.done) return undefined;
         }
       })().catch((e: unknown) => e);
-      expect(error).toBeInstanceOf(JoineryError);
+      expect(error).toBeInstanceOf(QuerybaraError);
       expect(error).toMatchObject({ code: 'CONNECTION_FAILED' });
     } finally {
       await close().catch(() => undefined);

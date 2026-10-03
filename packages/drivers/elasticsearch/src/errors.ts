@@ -1,12 +1,16 @@
-import { JoineryError, type ErrorCode, type ErrorData } from '@joinery/core';
-import { mapNetworkError, tlsHint } from '@joinery/driver-sql-base';
-import { offsetOfLineColumn, parseSearchError, type SearchErrorInfo } from '@joinery/search-tools';
+import { QuerybaraError, type ErrorCode, type ErrorData } from '@querybara/core';
+import { mapNetworkError, tlsHint } from '@querybara/driver-sql-base';
+import {
+  offsetOfLineColumn,
+  parseSearchError,
+  type SearchErrorInfo,
+} from '@querybara/search-tools';
 
 import { redactSecrets, type SearchAuthMethod } from './config';
 import { HttpTransportError } from './http';
 
 /**
- * Maps what can go wrong talking to Elasticsearch to JoineryErrors with a fix hint
+ * Maps what can go wrong talking to Elasticsearch to QuerybaraErrors with a fix hint
  * (spec §4): network and TLS failures, and the server's HTTP errors — authentication (401),
  * missing privileges and read-only blocks (403), missing indices (404), version conflicts (409),
  * circuit breakers and rejected executions (429), timeouts, and request syntax errors with the
@@ -49,14 +53,14 @@ function reasonOf(info: SearchErrorInfo | undefined, status: number): string {
 }
 
 /**
- * The JoineryError for a failing HTTP response. `detail` holds the raw error body (redacted),
+ * The QuerybaraError for a failing HTTP response. `detail` holds the raw error body (redacted),
  * so the console and the logs can show everything the server said.
  */
 export function mapResponseError(
   status: number,
   body: string,
   context: SearchErrorContext,
-): JoineryError {
+): QuerybaraError {
   const info = parseSearchError(body);
   const redact = (text: string): string => redactSecrets(text, context.secrets);
   const type = info?.type ?? '';
@@ -65,8 +69,8 @@ export function mapResponseError(
     body.trim() === ''
       ? undefined
       : redact(body.length > 8_000 ? `${body.slice(0, 8_000)}…` : body);
-  const make = (code: ErrorCode, extra: Partial<ErrorData> = {}): JoineryError =>
-    new JoineryError({
+  const make = (code: ErrorCode, extra: Partial<ErrorData> = {}): QuerybaraError =>
+    new QuerybaraError({
       code,
       message: reason,
       ...(type !== '' ? { engineCode: type } : { engineCode: status }),
@@ -136,7 +140,7 @@ export function mapResponseError(
     });
   }
   if (type === 'task_cancelled_exception') {
-    return new JoineryError({ code: 'CANCELLED', message: 'The request was cancelled' });
+    return new QuerybaraError({ code: 'CANCELLED', message: 'The request was cancelled' });
   }
   if (
     status === 503 ||
@@ -169,17 +173,17 @@ export function mapResponseError(
 }
 
 /** Maps a transport failure (no HTTP response) or anything thrown. */
-export function mapTransportError(error: unknown, context: SearchErrorContext): JoineryError {
-  if (error instanceof JoineryError) return error;
+export function mapTransportError(error: unknown, context: SearchErrorContext): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   const name = error instanceof Error ? error.name : '';
   if (context.cancelRequested || name === 'AbortError') {
-    return new JoineryError({ code: 'CANCELLED', message: 'Cancelled' }, { cause: error });
+    return new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' }, { cause: error });
   }
   const redact = (text: string): string => redactSecrets(text, context.secrets);
   if (error instanceof HttpTransportError) {
     const where = error.node.label;
     if (error.code === 'REQUEST_TIMEOUT') {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           code: 'TIMEOUT',
           message: redact(error.message),
@@ -190,7 +194,7 @@ export function mapTransportError(error: unknown, context: SearchErrorContext): 
       );
     }
     if (error.code === 'CONNECT_TIMEOUT') {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           code: 'TIMEOUT',
           message: `Timed out connecting to ${where}`,
@@ -203,13 +207,13 @@ export function mapTransportError(error: unknown, context: SearchErrorContext): 
     const cause = error.cause ?? error;
     const mapped = mapNetworkError(cause, where);
     if (mapped) {
-      return new JoineryError(
+      return new QuerybaraError(
         { ...mapped.toJSON(), message: redact(mapped.message) },
         { cause: error },
       );
     }
     if (/HPE_|Parse Error|wrong version number|packet length too long/i.test(error.message)) {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           code: 'CONNECTION_FAILED',
           message: `${where} did not answer as an HTTP${where.startsWith('https') ? 'S' : ''} server`,
@@ -221,7 +225,7 @@ export function mapTransportError(error: unknown, context: SearchErrorContext): 
         { cause: error },
       );
     }
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: redact(`${where}: ${error.message}`),
@@ -232,14 +236,14 @@ export function mapTransportError(error: unknown, context: SearchErrorContext): 
   }
   const network = mapNetworkError(error, context.where);
   if (network) {
-    return new JoineryError(
+    return new QuerybaraError(
       { ...network.toJSON(), message: redact(network.message) },
       { cause: error },
     );
   }
   const message = error instanceof Error ? error.message : String(error);
   if (/certificate|ssl|tls/i.test(message)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TLS_FAILED',
         message: redact(`TLS negotiation with ${context.where} failed: ${message}`),
@@ -248,5 +252,5 @@ export function mapTransportError(error: unknown, context: SearchErrorContext): 
       { cause: error },
     );
   }
-  return new JoineryError({ code: 'INTERNAL', message: redact(message) }, { cause: error });
+  return new QuerybaraError({ code: 'INTERNAL', message: redact(message) }, { cause: error });
 }

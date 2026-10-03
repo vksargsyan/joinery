@@ -1,4 +1,4 @@
-import { JoineryError, engineIdSchema, newId, type EngineId } from '@joinery/core';
+import { QuerybaraError, engineIdSchema, newId, type EngineId } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -82,7 +82,7 @@ export class SnippetRepository {
     return this.#db.transaction(() => {
       const id = snippet.id ?? newId();
       if (this.get(id)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Snippet ${id} already exists`,
         });

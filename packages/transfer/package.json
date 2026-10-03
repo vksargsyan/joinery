@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/transfer",
+  "name": "@querybara/transfer",
   "version": "0.0.0",
   "private": true,
   "description": "Streaming import and export (CSV, TSV, JSON, JSON Lines, Excel, XML, Parquet, HTML, Markdown, SQL, ZIP), column mapping and batched loads, and data transfer between databases.",
@@ -13,19 +13,19 @@
     "test:integration": "vitest run test/integration --passWithNoTests --testTimeout=120000 --hookTimeout=120000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/mongo-tools": "workspace:*",
-    "@joinery/sql-tools": "workspace:*",
-    "@joinery/sync": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/mongo-tools": "workspace:*",
+    "@querybara/sql-tools": "workspace:*",
+    "@querybara/sync": "workspace:*",
     "hyparquet": "1.31.1",
     "hyparquet-writer": "0.16.10"
   },
   "devDependencies": {
-    "@joinery/driver-mongodb": "workspace:*",
-    "@joinery/driver-mysql": "workspace:*",
-    "@joinery/driver-postgres": "workspace:*",
-    "@joinery/driver-redis": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
+    "@querybara/driver-mongodb": "workspace:*",
+    "@querybara/driver-mysql": "workspace:*",
+    "@querybara/driver-postgres": "workspace:*",
+    "@querybara/driver-redis": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
     "@types/node": "catalog:",
     "fast-check": "catalog:",
     "typescript": "catalog:",

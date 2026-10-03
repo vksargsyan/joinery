@@ -1,5 +1,5 @@
-import type { CellValue, SqlDialect } from '@joinery/core';
-import { significantTokens, type StatementAnalysis, type Token } from '@joinery/sql-tools';
+import type { CellValue, SqlDialect } from '@querybara/core';
+import { significantTokens, type StatementAnalysis, type Token } from '@querybara/sql-tools';
 
 /**
  * What autocomplete needs to know about a session (spec §6) and how statements change it. The
@@ -223,7 +223,7 @@ function databaseStatement(
 }
 
 /**
- * Decides what a run made stale (spec §5: metadata refreshes after DDL run from Joinery).
+ * Decides what a run made stale (spec §5: metadata refreshes after DDL run from Querybara).
  * PostgreSQL: DDL changes the connected database. MySQL/MariaDB: DDL changes the database in use
  * at that point of the script (after any USE) and every loaded database it names as a qualifier.
  * CREATE/ALTER/DROP DATABASE (or MySQL SCHEMA) changes the list of databases.

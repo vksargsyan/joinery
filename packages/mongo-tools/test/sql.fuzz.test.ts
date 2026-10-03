@@ -18,7 +18,7 @@ import {
  * data that serialises as canonical Extended JSON and to mongosh text that parses back to it.
  */
 
-const RUNS = Number(process.env['JOINERY_FUZZ_RUNS'] ?? 300);
+const RUNS = Number(process.env['QUERYBARA_FUZZ_RUNS'] ?? 300);
 
 function checkTranslation(sql: string, translation: SqlTranslation): void {
   const data = translation.kind === 'find' ? translation.query : translation.pipeline;

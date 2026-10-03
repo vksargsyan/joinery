@@ -1,4 +1,4 @@
-import { JoineryError, toErrorData, type Session } from '@joinery/core';
+import { QuerybaraError, toErrorData, type Session } from '@querybara/core';
 import { BSON, Binary, Long, type Document } from 'bson';
 
 import type { BackupObject, Manifest } from '../archive/manifest';
@@ -84,7 +84,7 @@ function record(key: DumpedKeyRecord): Uint8Array {
 function fromRecord(doc: Document): DumpedKeyRecord {
   const bytes = (value: unknown): Uint8Array => {
     if (value instanceof Binary) return value.value();
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The backup holds a damaged key',
     });
@@ -102,10 +102,10 @@ function fromRecord(doc: Document): DumpedKeyRecord {
 
 export async function backupRedis(options: RedisBackupOptions): Promise<BackupSummary> {
   const { session, signal } = options;
-  if (options.format !== 'jbak') {
-    throw new JoineryError({
+  if (options.format !== 'qbak') {
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
-      message: 'Redis backups use the Joinery archive format (.jbak)',
+      message: 'Redis backups use the Querybara archive format (.qbak)',
     });
   }
   const pattern = options.pattern === undefined || options.pattern === '' ? '*' : options.pattern;
@@ -131,7 +131,7 @@ export async function backupRedis(options: RedisBackupOptions): Promise<BackupSu
   let archive: ArchiveWriter | undefined;
   let manifest: Manifest | undefined;
   let status: TransferStatus = 'completed';
-  let error: JoineryError | undefined;
+  let error: QuerybaraError | undefined;
   let vanished = 0;
   try {
     progress(true);
@@ -187,7 +187,7 @@ export async function backupRedis(options: RedisBackupOptions): Promise<BackupSu
     };
     manifest = await archive.finish({
       createdAt: new Date().toISOString(),
-      producer: options.producer ?? 'Joinery',
+      producer: options.producer ?? 'Querybara',
       engine: 'redis',
       serverVersion: session.serverVersion,
       database,
@@ -203,14 +203,14 @@ export async function backupRedis(options: RedisBackupOptions): Promise<BackupSu
     });
   } catch (caught) {
     status = isCancel(caught, signal) ? 'cancelled' : 'failed';
-    error = caught instanceof JoineryError ? caught : new JoineryError(toErrorData(caught));
+    error = caught instanceof QuerybaraError ? caught : new QuerybaraError(toErrorData(caught));
     if (archive) await archive.abort(caught);
     else await options.output.abort(caught).catch(() => undefined);
   }
   progress(true);
   return {
     status,
-    format: 'jbak',
+    format: 'qbak',
     objects: status === 'completed' ? 1 : 0,
     dataObjects: status === 'completed' ? 1 : 0,
     rows: keys,
@@ -233,7 +233,7 @@ async function* keyRecords(source: AsyncIterable<Uint8Array>): AsyncGenerator<Du
     while (buffer.length - at >= 4) {
       const size = buffer.readInt32LE(at);
       if (size < 5) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'The backup holds a damaged key',
         });
@@ -245,7 +245,10 @@ async function* keyRecords(source: AsyncIterable<Uint8Array>): AsyncGenerator<Du
     buffer = buffer.subarray(at);
   }
   if (buffer.length > 0) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The backup ends inside a key' });
+    throw new QuerybaraError({
+      code: 'VALIDATION_FAILED',
+      message: 'The backup ends inside a key',
+    });
   }
 }
 
@@ -280,14 +283,14 @@ async function existingOf(
 function keysObject(archive: ArchiveReader): BackupObject {
   const manifest = archive.manifest;
   if (manifest.engine !== 'redis') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `This is a ${manifest.engine} backup; it cannot be restored into Redis`,
     });
   }
   const object = manifest.objects.find((o) => o.kind === 'keys' && o.data !== undefined);
   if (!object?.data) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The backup holds no keys' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The backup holds no keys' });
   }
   return object;
 }
@@ -409,7 +412,7 @@ export async function restoreRedisArchive(options: RedisRestoreOptions): Promise
   };
 
   let status: TransferStatus = 'completed';
-  let fatal: JoineryError | undefined;
+  let fatal: QuerybaraError | undefined;
   try {
     const object = keysObject(archive);
     if (replace) {
@@ -454,7 +457,7 @@ export async function restoreRedisArchive(options: RedisRestoreOptions): Promise
     else if (isCancel(error, signal)) status = 'cancelled';
     else {
       status = 'failed';
-      fatal = error instanceof JoineryError ? error : new JoineryError(toErrorData(error));
+      fatal = error instanceof QuerybaraError ? error : new QuerybaraError(toErrorData(error));
       log('error', fatal.message);
     }
   }

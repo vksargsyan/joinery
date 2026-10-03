@@ -1,5 +1,10 @@
-import { JoineryError, type ColumnMeta, type ExecOptions, type ResultChunk } from '@joinery/core';
-import { formatReply, splitCommands, utf8Text, type RedisReply } from '@joinery/redis-tools';
+import {
+  QuerybaraError,
+  type ColumnMeta,
+  type ExecOptions,
+  type ResultChunk,
+} from '@querybara/core';
+import { formatReply, splitCommands, utf8Text, type RedisReply } from '@querybara/redis-tools';
 
 import { mapRedisError, type RedisErrorContext } from './errors';
 
@@ -12,8 +17,8 @@ import { mapRedisError, type RedisErrorContext } from './errors';
 const TIMEOUT_LAST = new Set(['blpop', 'brpop', 'brpoplpush', 'blmove', 'bzpopmin', 'bzpopmax']);
 const TIMEOUT_FIRST = new Set(['blmpop', 'bzmpop']);
 
-function refuse(message: string, hint: string): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message, hint });
+function refuse(message: string, hint: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message, hint });
 }
 
 function isZero(text: string | undefined): boolean {
@@ -60,7 +65,7 @@ export function assertAllowed(words: readonly string[]): void {
     case 'hello':
       if (words[1] !== undefined && words[1] !== '2') {
         throw refuse(
-          'Joinery sessions speak RESP2',
+          'Querybara sessions speak RESP2',
           'Run HELLO without a protocol version, or HELLO 2',
         );
       }
@@ -69,7 +74,7 @@ export function assertAllowed(words: readonly string[]): void {
       if (sub === 'reply') {
         throw refuse(
           'CLIENT REPLY would desynchronise the session',
-          'Replies cannot be turned off in Joinery',
+          'Replies cannot be turned off in Querybara',
         );
       }
       return;
@@ -128,7 +133,7 @@ const NODE_COLUMN: ColumnMeta = { name: 'node', nativeType: 'redis-node', kind: 
 /**
  * Executes command text: one command per line (line breaks inside quotes belong to the
  * argument), each as its own result set with a `reply` column (plus `node` in Cluster mode).
- * An error reply stops the run and is thrown as a JoineryError.
+ * An error reply stops the run and is thrown as a QuerybaraError.
  */
 export async function* executeText(
   text: string,
@@ -142,7 +147,7 @@ export async function* executeText(
   for (const args of commands) assertAllowed(args.map(utf8Text));
   let rowCount = 0;
   for (const [index, args] of commands.entries()) {
-    if (opts.signal?.aborted) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+    if (opts.signal?.aborted) throw new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
     const name = utf8Text(args[0]!).toUpperCase();
     const { reply, node } = await run(args, index);
     if (reply.type === 'error') {

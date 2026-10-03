@@ -1,4 +1,4 @@
-import { GRIDFS_READ_LIMIT } from '@joinery/ipc';
+import { GRIDFS_READ_LIMIT } from '@querybara/ipc';
 import {
   BSONRegExp,
   formatShellInline,
@@ -7,7 +7,7 @@ import {
   toEjson,
   type GridFsBucketRef,
   type GridFsFileInfo,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

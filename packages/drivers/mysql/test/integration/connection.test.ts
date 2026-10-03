@@ -1,4 +1,4 @@
-import type { ConnectionCheckResult, ResolvedProfile } from '@joinery/core';
+import type { ConnectionCheckResult, ResolvedProfile } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { checkConnection, createMysqlAdapter } from '../../src';
@@ -17,10 +17,14 @@ function withPassword(resolved: ResolvedProfile, password: string): ResolvedProf
 describe.skipIf(TARGETS.length === 0).each(SUITES)('%s connection', (engine, url) => {
   const t = target(engine, url);
   const socket =
-    process.env[engine === 'mysql' ? 'JOINERY_TEST_MYSQL_SOCKET' : 'JOINERY_TEST_MARIADB_SOCKET'];
+    process.env[
+      engine === 'mysql' ? 'QUERYBARA_TEST_MYSQL_SOCKET' : 'QUERYBARA_TEST_MARIADB_SOCKET'
+    ];
   /** CA of the test server's certificate, issued for DNS:localhost only. */
   const tlsCa =
-    process.env[engine === 'mysql' ? 'JOINERY_TEST_MYSQL_TLS_CA' : 'JOINERY_TEST_MARIADB_TLS_CA'];
+    process.env[
+      engine === 'mysql' ? 'QUERYBARA_TEST_MYSQL_TLS_CA' : 'QUERYBARA_TEST_MARIADB_TLS_CA'
+    ];
 
   it('maps a wrong password to AUTH_FAILED without echoing it', async () => {
     const error = await createMysqlAdapter({ engine })

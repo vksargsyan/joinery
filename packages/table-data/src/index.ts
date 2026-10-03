@@ -1,5 +1,5 @@
 /**
- * @joinery/table-data — the engine behind browsing and editing table data (spec §7).
+ * @querybara/table-data — the engine behind browsing and editing table data (spec §7).
  *
  * Pure logic and SQL generation over the core Session contract, for PostgreSQL, MySQL and
  * MariaDB: row identity, the filter model, keyset/offset page queries, counts and estimates,

@@ -1,5 +1,5 @@
-import { JoineryError, atLeast, type BrowseNode, type BrowseNodeKind } from '@joinery/core';
-import { num, opt, str, type Row } from '@joinery/driver-sql-base';
+import { QuerybaraError, atLeast, type BrowseNode, type BrowseNodeKind } from '@querybara/core';
+import { num, opt, str, type Row } from '@querybara/driver-sql-base';
 
 import type { QueryFn } from './introspect';
 
@@ -136,8 +136,8 @@ export async function browseMysql(
   return [];
 }
 
-function notFound(path: readonly string[]): JoineryError {
-  return new JoineryError({
+function notFound(path: readonly string[]): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_FOUND',
     message: `Nothing to browse at ${path.join(' / ')}`,
   });

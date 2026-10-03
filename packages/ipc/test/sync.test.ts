@@ -1,11 +1,11 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 import {
   compareSchemas,
   type OperationKind,
   type RenameObjectKind,
   type SyncObjectKind,
   type WarningCode,
-} from '@joinery/sync';
+} from '@querybara/sync';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {

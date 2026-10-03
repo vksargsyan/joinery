@@ -1,13 +1,13 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   type CellValue,
   type ResultChunk,
   type SqlDialect,
-} from '@joinery/core';
-import type { RpcStream, StoredProfile } from '@joinery/ipc';
-import { bindParameters, safetyPolicyFor } from '@joinery/sql-tools';
+} from '@querybara/core';
+import type { RpcStream, StoredProfile } from '@querybara/ipc';
+import { bindParameters, safetyPolicyFor } from '@querybara/sql-tools';
 
 import { errorInfo, errorMessage } from '../lib/errors';
 import { mainApi, type HostClient } from '../lib/main-client';
@@ -42,7 +42,7 @@ const CANCEL_GRACE_MS = 5_000;
 
 function dialectOf(profile: StoredProfile): SqlDialect {
   if (!isSqlEngine(profile.engine)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'Only SQL connections have query tabs',
     });
@@ -55,7 +55,7 @@ export async function ensureSession(
   tabId: string,
 ): Promise<{ host: HostClient; sessionId: string }> {
   const tab = getTab(tabId);
-  if (!tab) throw new JoineryError({ code: 'NOT_FOUND', message: 'The tab was closed' });
+  if (!tab) throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The tab was closed' });
   const connection = await connect(tab.profileId);
   const runtime = runtimeOf(tabId);
   if (
@@ -67,7 +67,7 @@ export async function ensureSession(
     return { host: runtime.host, sessionId: runtime.sessionId };
   }
   const host = connection.host;
-  if (!host) throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
+  if (!host) throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
   const { sessionId } = await host.openSession(
     tab.database === undefined ? {} : { database: tab.database },
   );
@@ -523,7 +523,7 @@ export async function fetchMore(tabId: string, all: boolean): Promise<void> {
     const cancelled = new Promise<never>((_resolve, reject) => {
       controller.signal.addEventListener(
         'abort',
-        () => reject(new JoineryError({ code: 'CANCELLED', message: 'Cancelled' })),
+        () => reject(new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' })),
         { once: true },
       );
     });

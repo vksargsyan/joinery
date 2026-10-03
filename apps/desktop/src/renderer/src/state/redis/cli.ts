@@ -10,7 +10,7 @@ import {
   type CommandDoc,
   type CommandSuggestion,
   type RedisReply,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * The Redis CLI panel's line model (spec §10): history with ↑/↓ and the unsent draft kept,

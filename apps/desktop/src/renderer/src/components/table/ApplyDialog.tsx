@@ -1,4 +1,4 @@
-import type { ChangePlan } from '@joinery/table-data';
+import type { ChangePlan } from '@querybara/table-data';
 import { useState } from 'react';
 
 import { useProfiles } from '../../state/data';

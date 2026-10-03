@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { checkServerIdentity, type ConnectionOptions, type PeerCertificate } from 'node:tls';
 
-import { JoineryError, type ResolvedProfile, type TlsMode } from '@joinery/core';
+import { QuerybaraError, type ResolvedProfile, type TlsMode } from '@querybara/core';
 
 import type { NetworkTarget } from './endpoint';
 
@@ -29,11 +29,11 @@ function readTlsFile(readFile: FileReader, path: string, what: string): Buffer {
     return readFile(path);
   } catch (error) {
     const reason = error instanceof Error && 'code' in error ? String(error.code) : 'unreadable';
-    throw new JoineryError(
+    throw new QuerybaraError(
       {
         code: 'TLS_FAILED',
         message: `Cannot read the ${what} file "${path}" (${reason})`,
-        hint: 'Check the file path in the profile TLS settings and that Joinery can read it',
+        hint: 'Check the file path in the profile TLS settings and that Querybara can read it',
       },
       { cause: error },
     );
@@ -68,7 +68,7 @@ export function buildTlsSettings(
   if (tls.keyPassphrase) {
     const passphrase = resolved.secrets[tls.keyPassphrase.id];
     if (passphrase === undefined) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'TLS_FAILED',
         message: 'The passphrase for the TLS client key was not provided',
         hint: 'Enter the key passphrase, or save it in the profile',

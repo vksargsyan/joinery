@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   CONFIG_SECRET_MASK,
   configErrorParameter,
@@ -6,7 +6,7 @@ import {
   versionAtLeast,
   type ConfigChange,
   type ConfigNodeValues,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import type { Redis, RedisOptions } from 'ioredis';
 
 import { addressOf, connectClient, type Arg } from './client';
@@ -82,7 +82,7 @@ export interface ConfigContext extends RedisContext {
 interface Endpoint {
   readonly address: string;
   readonly role: 'primary' | 'replica';
-  /** Runs a command on the node; failures are JoineryErrors. */
+  /** Runs a command on the node; failures are QuerybaraErrors. */
   run(args: readonly Arg[]): Promise<unknown>;
 }
 
@@ -94,7 +94,7 @@ export function supportsMultiSet(ctx: RedisContext): boolean {
 function splitAddress(address: string): [string, string] {
   const match = /^\[?(.*?)\]?:(\d+)$/.exec(address);
   if (!match) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `"${address}" is not a host:port address`,
     });
@@ -102,8 +102,8 @@ function splitAddress(address: string): [string, string] {
   return [match[1]!, match[2]!];
 }
 
-function noSuchNode(address: string, known: readonly string[]): JoineryError {
-  return new JoineryError({
+function noSuchNode(address: string, known: readonly string[]): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_FOUND',
     message: `No node ${address} in this connection`,
     hint: `Known nodes: ${known.join(', ')}`,
@@ -139,7 +139,7 @@ async function sentinelReplica(ctx: ConfigContext, address: string): Promise<End
   await connectClient(replica, ctx.conn.context('connect'));
   if (!listed) {
     replica.disconnect();
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: `The Sentinels do not list ${address} as an available replica`,
       hint: 'Refresh the node list: the replica may be down or have been promoted',
@@ -204,10 +204,10 @@ async function withEndpoints<T>(
  * The error for a refused CONFIG command, when the refusal is about CONFIG itself (an ACL
  * user without it, or a server that renamed or disabled it) rather than one parameter.
  */
-function unavailable(error: unknown, subcommand: string): JoineryError | undefined {
+function unavailable(error: unknown, subcommand: string): QuerybaraError | undefined {
   if (!isServerError(error)) return undefined;
   if (error.engineCode === 'NOPERM') {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'NOT_SUPPORTED',
         engineCode: 'NOPERM',
@@ -223,7 +223,7 @@ function unavailable(error: unknown, subcommand: string): JoineryError | undefin
     configErrorParameter(error.message) === undefined &&
     /unknown (sub)?command|not allowed|disabled/i.test(error.message)
   ) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'NOT_SUPPORTED',
         ...(error.engineCode !== undefined ? { engineCode: error.engineCode } : {}),
@@ -356,10 +356,10 @@ export async function configApply(
   for (const change of changes) {
     const name = change.name.trim().toLowerCase();
     if (name === '' || /\s/.test(name)) {
-      throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Enter a parameter name' });
+      throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Enter a parameter name' });
     }
     if (seen.has(name)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `${change.name} is changed twice`,
       });

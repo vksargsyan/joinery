@@ -1,4 +1,4 @@
-import { JoineryError, type MonitorSnapshot, type ServerAction } from '@joinery/core';
+import { QuerybaraError, type MonitorSnapshot, type ServerAction } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -136,7 +136,7 @@ describe('server tools contract', () => {
     serve(ports.server, contract, {
       serverTools: {
         info: () => {
-          throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+          throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
         },
         monitor: () => ({ at: 1, uptimeSeconds: 5, tiles: [], sections: [], notices: [] }),
         sessions: () => ({ sessions: [], detailColumns: [], notices: [], truncated: false }),
@@ -181,7 +181,7 @@ describe('server tools contract', () => {
         run: ({ action, confirmed }) => {
           seen.push({ action, confirmed });
           if (confirmed !== true) {
-            throw new JoineryError({ code: 'CONFIRMATION_REQUIRED', message: 'confirm it' });
+            throw new QuerybaraError({ code: 'CONFIRMATION_REQUIRED', message: 'confirm it' });
           }
           return { statements: ['SELECT 1'], messages: [], table: null, durationMs: 1 };
         },

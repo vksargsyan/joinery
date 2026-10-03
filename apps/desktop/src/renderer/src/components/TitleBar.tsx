@@ -72,7 +72,7 @@ export function TitleBar(props: {
           >
             <Icon name="search" className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate" data-testid="window-title">
-              {props.title ?? 'Joinery'}
+              {props.title ?? 'Querybara'}
             </span>
           </button>
         )}

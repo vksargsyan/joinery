@@ -1,4 +1,4 @@
-import type { ToolCell, ValueUnit } from '@joinery/core';
+import type { ToolCell, ValueUnit } from '@querybara/core';
 
 import { formatCount } from '../../lib/format';
 import { formatUptime } from '../redis/dashboard';

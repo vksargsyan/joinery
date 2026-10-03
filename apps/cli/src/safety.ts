@@ -1,4 +1,4 @@
-import type { ConfirmationReason, SafetyDecision } from '@joinery/sql-tools';
+import type { ConfirmationReason, SafetyDecision } from '@querybara/sql-tools';
 
 import type { Prompter } from './context';
 import { CliError } from './errors';

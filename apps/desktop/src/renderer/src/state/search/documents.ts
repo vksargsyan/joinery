@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { RpcStream } from '@joinery/ipc';
+import { QuerybaraError } from '@querybara/core';
+import type { RpcStream } from '@querybara/ipc';
 import {
   bulkDeleteLines,
   bulkUpdateLines,
@@ -19,7 +19,7 @@ import {
   type SearchBulkItem,
   type SearchHit,
   type SearchPage,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorInfo, errorMessage } from '../../lib/errors';
 import { formatCount } from '../../lib/format';
@@ -475,7 +475,7 @@ export class DocumentsView extends SearchView<DocumentsState> {
             confirmLabel: 'Save',
           });
           if (confirmed === undefined) {
-            throw new JoineryError({ code: 'CANCELLED', message: 'Not saved' });
+            throw new QuerybaraError({ code: 'CANCELLED', message: 'Not saved' });
           }
           return this.call((host, sessionId) =>
             host.search.documents.index({
@@ -658,7 +658,7 @@ export class DocumentsView extends SearchView<DocumentsState> {
           );
         } catch (error) {
           if (errorInfo(error).code === 'CONFLICT') {
-            throw new JoineryError({
+            throw new QuerybaraError({
               code: 'CONFLICT',
               message: `${target.id} changed since it was read, so it was not deleted`,
               hint: 'Search again to see the current version',

@@ -1,4 +1,4 @@
-import { engineIdSchema } from '@joinery/core';
+import { engineIdSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { idSchema } from './common';
@@ -10,7 +10,7 @@ import { idSchema } from './common';
  *
  * An archive passphrase travels with the job to the job runner, which derives the keys and
  * drops it; job records, logs and the history never hold it. The literal lists mirror
- * @joinery/backup, which this package cannot import (it uses Node.js); the desktop tests check
+ * @querybara/backup, which this package cannot import (it uses Node.js); the desktop tests check
  * they match.
  */
 
@@ -18,8 +18,8 @@ const filePathSchema = z.string().min(1).max(4096);
 const countSchema = z.number().int().nonnegative();
 const jsonScalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
-/** `jbak` is Joinery's archive; `custom` is pg_dump's (native tools only). */
-export const BACKUP_FILE_FORMATS = ['sql', 'sql-gz', 'jbak', 'custom'] as const;
+/** `qbak` is Querybara's archive; `custom` is pg_dump's (native tools only). */
+export const BACKUP_FILE_FORMATS = ['sql', 'sql-gz', 'qbak', 'custom'] as const;
 export const backupFileFormatSchema = z.enum(BACKUP_FILE_FORMATS);
 export type BackupFileFormat = z.infer<typeof backupFileFormatSchema>;
 
@@ -48,8 +48,8 @@ export const BACKUP_OBJECT_KIND_NAMES = [
 export const backupObjectKindSchema = z.enum(BACKUP_OBJECT_KIND_NAMES);
 export type BackupObjectKindName = z.infer<typeof backupObjectKindSchema>;
 
-/** Joinery's own format, or pg_dump / mysqldump when installed. */
-export const backupMethodSchema = z.enum(['joinery', 'native']);
+/** Querybara's own format, or pg_dump / mysqldump when installed. */
+export const backupMethodSchema = z.enum(['querybara', 'native']);
 export type BackupMethod = z.infer<typeof backupMethodSchema>;
 
 /** An archive passphrase: used by the job runner to derive keys, never stored or logged. */

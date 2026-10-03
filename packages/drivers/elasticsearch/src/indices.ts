@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   booleanAt,
   member,
@@ -11,7 +11,7 @@ import {
   type SearchDataStreamInfo,
   type SearchHealthStatus,
   type SearchIndexSummary,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { indexList, queryString, segment, type SearchContext } from './context';
 import type {
@@ -33,7 +33,7 @@ export function assertJsonObject(text: string, what: string): void {
   try {
     node = parseJsonTree(text);
   } catch (error) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The ${what} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
       ...(error instanceof Error && 'offset' in error && typeof error.offset === 'number'
@@ -42,7 +42,7 @@ export function assertJsonObject(text: string, what: string): void {
     });
   }
   if (node.type !== 'object') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The ${what} must be a JSON object`,
     });

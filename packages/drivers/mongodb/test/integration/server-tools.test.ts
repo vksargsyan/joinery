@@ -1,4 +1,4 @@
-import { newId } from '@joinery/core';
+import { newId } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createMongoServerTools, type MongoSession } from '../../src';
@@ -34,7 +34,7 @@ describe.skipIf(!MONGO_URL)('MongoDB server tools', () => {
     expect(info).toMatchObject({ engine: 'mongodb', product: 'MongoDB', access: [] });
     expect(info.version).toMatch(/^8\./);
     expect(info.databases).toContain(DB);
-    expect(info.user).toBe('joinery@admin');
+    expect(info.user).toBe('querybara@admin');
     expect(info.sessionActions).toEqual([expect.objectContaining({ operation: 'cancel' })]);
     await expect(createMongoServerTools(session).accounts()).rejects.toMatchObject({
       code: 'NOT_SUPPORTED',

@@ -1,4 +1,4 @@
-import type { DriverAdapter, EngineId } from '@joinery/core';
+import type { DriverAdapter, EngineId } from '@querybara/core';
 
 /**
  * Everything the CLI touches in the outside world, injected so commands run the same in the

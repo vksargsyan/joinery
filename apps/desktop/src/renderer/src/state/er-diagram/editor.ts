@@ -1,4 +1,4 @@
-import { isSqlEngine, type SchemaSnapshot } from '@joinery/core';
+import { isSqlEngine, type SchemaSnapshot } from '@querybara/core';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

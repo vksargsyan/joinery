@@ -1,10 +1,10 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   toEjson,
   type CollectionInfo,
   type IndexInfo,
   type SchemaAnalysis,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -218,7 +218,7 @@ describe('mongo schemas', () => {
       },
       deleteMany: ({ dryRun, confirmed }) => {
         if (!dryRun && !confirmed) {
-          throw new JoineryError({ code: 'CONFIRMATION_REQUIRED', message: 'confirm' });
+          throw new QuerybaraError({ code: 'CONFIRMATION_REQUIRED', message: 'confirm' });
         }
         return { dryRun: dryRun ?? false, matchedCount: 4, modifiedCount: 0, deletedCount: 0 };
       },

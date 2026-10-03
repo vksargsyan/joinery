@@ -6,7 +6,7 @@ import {
   stringAt,
   type SearchTable,
   type SearchTaskStatus,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { SearchSession } from '../../src';

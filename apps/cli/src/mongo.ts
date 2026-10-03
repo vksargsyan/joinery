@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { ENGINES, JoineryError, isSqlEngine, type EngineId } from '@joinery/core';
+import { ENGINES, QuerybaraError, isSqlEngine, type EngineId } from '@querybara/core';
 import {
   EJSON,
   commandSafety,
@@ -11,8 +11,8 @@ import {
   toEjson,
   type BsonDocument,
   type CommandSafety,
-} from '@joinery/mongo-tools';
-import { connectThroughTransport, needsTransport, type TransportSession } from '@joinery/tunnel';
+} from '@querybara/mongo-tools';
+import { connectThroughTransport, needsTransport, type TransportSession } from '@querybara/tunnel';
 
 import { cancellable, closeQuietly, missingPasswordHint } from './connect';
 import { CliError, EXIT, formatError, type ExitCode } from './errors';
@@ -22,7 +22,7 @@ import { excerpt } from './safety';
 import { findProfile, isConnectionUri, resolvedProfile, withPassword, type Target } from './target';
 
 /**
- * MongoDB in joinery-cli (spec §9): `joinery query <target> -e '<command document>'` runs
+ * MongoDB in querybara-cli (spec §9): `querybara query <target> -e '<command document>'` runs
  * command documents such as `{ find: "orders", filter: { total: { $gt: 100 } } }` (Extended JSON
  * or shell syntax; an array of them runs in order) through the session's `execute`, and prints
  * the documents as relaxed Extended JSON; `--format json` prints canonical Extended JSON (an
@@ -163,7 +163,7 @@ async function openMongo(
     try {
       return { ...(await open(target)), target };
     } catch (error) {
-      const refused = error instanceof JoineryError && error.code === 'AUTH_FAILED';
+      const refused = error instanceof QuerybaraError && error.code === 'AUTH_FAILED';
       if (!refused || target.passwordKnown) throw error;
       if (!runtime.ctx.prompter.interactive) {
         throw new CliError(error.message, {
@@ -183,7 +183,7 @@ async function openMongo(
   }
 }
 
-/** `joinery query` on a MongoDB target (see the module comment). */
+/** `querybara query` on a MongoDB target (see the module comment). */
 export async function mongoQueryCommand(
   runtime: Runtime,
   spec: string,
@@ -260,7 +260,7 @@ export async function mongoQueryCommand(
           `${prefix}${status?.command ?? Object.keys(command)[0]}: ${plural(documents, 'document')}${limit}${affected} · ${time}`,
         );
       } catch (error) {
-        if (!(error instanceof JoineryError)) throw error;
+        if (!(error instanceof QuerybaraError)) throw error;
         failures += 1;
         reporter.error(formatError(error, { verbose: reporter.verbose }));
         if (!options.continueOnError) break;
@@ -281,7 +281,7 @@ export function sqlOnlyError(target: Target): CliError | undefined {
     `"${target.label}" is a ${ENGINES[engine].displayName} connection; this command works with PostgreSQL, MySQL and MariaDB`,
     {
       code: 'NOT_SUPPORTED',
-      hint: 'Use "joinery test" and "joinery query" with this connection',
+      hint: 'Use "querybara test" and "querybara query" with this connection',
     },
   );
 }

@@ -1,4 +1,4 @@
-import { tableDefSchema, type TableDef } from '@joinery/core';
+import { tableDefSchema, type TableDef } from '@querybara/core';
 import {
   ChangeSet,
   DEFAULT,
@@ -6,7 +6,7 @@ import {
   condition,
   describeColumns,
   type ColumnInfo,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -12,14 +12,14 @@ import { connect, query, scratchDatabase } from './db';
  * list, the join proposed from the foreign key; columns ticked, a criterion and a sort; the SQL
  * written live; run into the result grid; the SQL edited and the builder following; SQL with a
  * CTE opening read-only with a note naming it, still running as written; and a SQL tab's
- * statement opened in a builder. Screenshots go to JOINERY_E2E_SHOTS when it is set.
+ * statement opened in a builder. Screenshots go to QUERYBARA_E2E_SHOTS when it is set.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Builder';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 

@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type ColumnKind, type ColumnMeta } from '@joinery/core';
+import { QuerybaraError, type CellValue, type ColumnKind, type ColumnMeta } from '@querybara/core';
 
 import type { Sink } from './io';
 import { columnName } from './xlsx-read';
@@ -206,7 +206,7 @@ function cellXml(
     default:
       if (value instanceof Uint8Array)
         return textXml(ref, binaryText(value, options.binary ?? 'hex'));
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: 'A large value was only previewed; fetch it in full before exporting',
       });
@@ -284,7 +284,7 @@ export class XlsxSheetWriter {
 
   begin(columns: readonly ColumnMeta[]): void {
     if (columns.length > XLSX_MAX_COLUMNS) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `${columns.length} columns do not fit in an Excel worksheet (at most ${XLSX_MAX_COLUMNS})`,
       });

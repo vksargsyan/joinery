@@ -1,5 +1,5 @@
-import type { CellValue, ColumnKind, ColumnMeta } from '@joinery/core';
-import { parseInteger } from '@joinery/driver-sql-base';
+import type { CellValue, ColumnKind, ColumnMeta } from '@querybara/core';
+import { parseInteger } from '@querybara/driver-sql-base';
 import type { CustomTypesConfig, FieldDef } from 'pg';
 
 /**

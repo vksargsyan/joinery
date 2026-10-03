@@ -1,5 +1,5 @@
-import { newId, requiresWriteConfirmation, type ResultChunk } from '@joinery/core';
-import type { RpcStream } from '@joinery/ipc';
+import { newId, requiresWriteConfirmation, type ResultChunk } from '@querybara/core';
+import type { RpcStream } from '@querybara/ipc';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

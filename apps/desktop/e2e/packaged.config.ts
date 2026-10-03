@@ -5,7 +5,7 @@ import { defineConfig } from '@playwright/test';
 
 /**
  * The smoke test of a packaged build (electron-builder output), kept apart from the e2e suite,
- * which drives `out/` through Playwright's Electron launcher. JOINERY_PACKAGED_APP names the
+ * which drives `out/` through Playwright's Electron launcher. QUERYBARA_PACKAGED_APP names the
  * packaged executable; without it the test is skipped.
  */
 export default defineConfig({
@@ -15,6 +15,6 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   workers: 1,
   retries: 0,
-  outputDir: process.env['JOINERY_E2E_OUTPUT'] ?? join(tmpdir(), 'joinery-packaged-results'),
+  outputDir: process.env['QUERYBARA_E2E_OUTPUT'] ?? join(tmpdir(), 'querybara-packaged-results'),
   reporter: [['list']],
 });

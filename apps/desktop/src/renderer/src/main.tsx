@@ -20,7 +20,7 @@ async function start(): Promise<void> {
   } catch (error) {
     root.render(
       <p role="alert" style={{ padding: 16 }}>
-        Joinery could not start: {errorMessage(error)}
+        Querybara could not start: {errorMessage(error)}
       </p>,
     );
     return;

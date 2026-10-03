@@ -24,7 +24,7 @@ const PG_HOST = 'pg.larchwood.example';
 const PG_PORT = '55432';
 const SCRATCH_DB = 'larchwood_analytics';
 const PASSPHRASE = 'larchwood backup 2026';
-const BACKUP_FILE = join(FILES, 'larchwood-2026-10-02.jbak');
+const BACKUP_FILE = join(FILES, 'larchwood-2026-10-02.qbak');
 const PRICE_LIST = join(FILES, 'products-price-list-2026-autumn.csv');
 const PAGE_VIEWS = join(FILES, 'page-views-2026-09.csv');
 /** The application names of the synthetic load, stopped in afterAll. */
@@ -341,7 +341,7 @@ test('backup', async () => {
   const wizard = page.getByRole('dialog', { name: 'Back up' });
   await expect(wizard.getByRole('checkbox', { name: /^Everything/ })).toBeChecked();
   await wizard.getByRole('button', { name: 'Next' }).click();
-  await expect(wizard.getByLabel('Format')).toHaveValue('jbak');
+  await expect(wizard.getByLabel('Format')).toHaveValue('qbak');
   await wizard.getByRole('checkbox', { name: /Encrypt with a passphrase/ }).check();
   await wizard.getByLabel('Passphrase', { exact: true }).fill(PASSPHRASE);
   await wizard.getByLabel('Passphrase again').fill(PASSPHRASE);

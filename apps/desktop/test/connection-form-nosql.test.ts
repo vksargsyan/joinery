@@ -3,9 +3,9 @@ import {
   newId,
   type ConnectionProfile,
   type ConnectionProfileInput,
-} from '@joinery/core';
-import { parsedConnectionUriSchema, safeProfileSchema } from '@joinery/ipc';
-import { parseConnectionUri } from '@joinery/storage';
+} from '@querybara/core';
+import { parsedConnectionUriSchema, safeProfileSchema } from '@querybara/ipc';
+import { parseConnectionUri } from '@querybara/storage';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -584,7 +584,7 @@ describe('Redis profile ↔ form', () => {
       endpoint: { kind: 'host', host: '10.0.0.7', port: 6379 },
       auth: { method: 'none' },
       proxy: { kind: 'socks5', host: 'proxy', port: 1080, password: ref() },
-      options: { initSql: [], applicationName: 'Joinery' },
+      options: { initSql: [], applicationName: 'Querybara' },
     },
   };
   for (const [name, input] of Object.entries(cases)) {

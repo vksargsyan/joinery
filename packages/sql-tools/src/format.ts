@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 import {
   formatDialect,
   mariadb,
@@ -50,7 +50,7 @@ export function formatSql(text: string, dialect: SqlDialect, options?: SqlFormat
     logicalOperatorNewline: options?.logicalOperatorNewline ?? 'before',
     expressionWidth: options?.expressionWidth ?? 50,
     linesBetweenQueries: 0,
-    // Joinery's placeholders (spec §6), so sql-formatter keeps `:name` and `$1` intact.
+    // Querybara's placeholders (spec §6), so sql-formatter keeps `:name` and `$1` intact.
     paramTypes:
       dialect === 'postgres'
         ? { numbered: ['$'], named: [':'] }

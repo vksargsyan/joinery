@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { InvalidArgumentError } from 'commander';
 import { describe, expect, it } from 'vitest';
 
@@ -21,7 +21,7 @@ describe('help and version', () => {
     for (const command of ['test', 'query', 'compare', 'data-compare', 'ddl', 'profiles']) {
       expect(result.stdout).toContain(`${command} `);
     }
-    expect(result.stdout).toContain('JOINERY_PASSWORD_<NAME>');
+    expect(result.stdout).toContain('QUERYBARA_PASSWORD_<NAME>');
     expect(result.stdout).toContain('130 interrupted');
   });
 
@@ -138,7 +138,7 @@ describe('exit codes', () => {
       'postgres',
       session,
       () =>
-        new JoineryError({
+        new QuerybaraError({
           code: 'CONNECTION_FAILED',
           message: 'Connection refused',
           hint: 'Is the server running?',
@@ -158,7 +158,7 @@ describe('exit codes', () => {
     const failing = new FakeAdapter(
       'postgres',
       session,
-      () => new JoineryError({ code: 'AUTH_FAILED', message: 'bad password', hint: 'Check it' }),
+      () => new QuerybaraError({ code: 'AUTH_FAILED', message: 'bad password', hint: 'Check it' }),
     );
     const failed = await run(['test', 'postgres://u:pw@h/db'], { adapter: failing, session });
     expect(failed.code).toBe(1);
@@ -171,7 +171,7 @@ describe('exit codes', () => {
     const session = new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 }));
     const adapter = new FakeAdapter('postgres', session, (resolved) =>
       Object.keys(resolved.secrets).length === 0
-        ? new JoineryError({ code: 'AUTH_FAILED', message: 'password required' })
+        ? new QuerybaraError({ code: 'AUTH_FAILED', message: 'password required' })
         : undefined,
     );
     const prompter = new ScriptedPrompter(true, { secret: ['pw'] });

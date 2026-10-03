@@ -1,4 +1,4 @@
-import { missedRunPolicySchema, scheduleRuleSchema } from '@joinery/core';
+import { missedRunPolicySchema, scheduleRuleSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { backupJobSchema, backupPassphraseSchema } from './backup';
@@ -7,7 +7,7 @@ import { exportJobSchema, runSqlFileJobSchema } from './jobs';
 
 /**
  * Scheduled jobs (spec: scheduler and automation): backups, SQL files, exports and saved
- * comparisons that main runs on a schedule while Joinery is open. A schedule's task is the job
+ * comparisons that main runs on a schedule while Querybara is open. A schedule's task is the job
  * as the wizard built it, minus its output path: each run writes a new file named from the
  * schedule's template, and older ones can be pruned. Nothing here carries a secret: a backup's
  * passphrase goes to the local store's secret store when the schedule is saved.

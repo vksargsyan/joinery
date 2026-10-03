@@ -6,7 +6,7 @@ import {
   type CriteriaOperator,
   type QueryExpr,
   type QueryModel,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 
 import { entryOf, type BuilderCatalog } from './catalog';
 

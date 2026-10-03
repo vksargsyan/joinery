@@ -2,12 +2,12 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   requiresWriteConfirmation,
   type ConnectionProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   columnMappingSchema,
   isSyncJobKind,
@@ -21,8 +21,8 @@ import {
   type SyncJobKind,
   type TransferProfile,
   type mainContract,
-} from '@joinery/ipc';
-import type { Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import type { Store } from '@querybara/storage';
 import { z } from 'zod';
 
 import {
@@ -91,8 +91,8 @@ export class FileGrants {
   }
 }
 
-function notPicked(path: string): JoineryError {
-  return new JoineryError({
+function notPicked(path: string): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `${basename(path)} was not chosen in a file dialog`,
     hint: 'Choose the file again.',
@@ -173,14 +173,14 @@ export function checkJobSafety(spec: JobSpec, profile: ConnectionProfile): void 
   const production = profile.presentation.environment === 'production';
   if (spec.kind === 'import') {
     if (profile.presentation.readOnly) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'READ_ONLY',
         message: `"${profile.name}" is read-only, so nothing can be imported into it`,
       });
     }
     const destructive = spec.mode === 'replace' || spec.mode === 'delete';
     if ((confirmWrites || destructive) && spec.confirmed !== true) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'CONFIRMATION_REQUIRED',
         message: destructive
           ? `The ${spec.mode} import ${spec.mode === 'replace' ? 'empties the table first' : 'deletes rows'} and needs confirmation`
@@ -189,7 +189,7 @@ export function checkJobSafety(spec: JobSpec, profile: ConnectionProfile): void 
     }
   }
   if (spec.kind === 'run-sql-file' && confirmWrites && spec.confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `Running a SQL file on ${production ? 'a production connection' : `"${profile.name}"`} needs confirmation`,
     });
@@ -215,8 +215,8 @@ function checkPaths(spec: JobSpec, grants: FileGrants): void {
   }
 }
 
-function jobsUnavailable(): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
+function jobsUnavailable(): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
 }
 
 /** Handlers of the `jobs` and `transfer` namespaces for one window. */
@@ -237,11 +237,11 @@ export function jobHandlers(
         if (job.kind === 'transfer') return startTransferJob(store, jobs, job, secrets ?? {});
         const profile = store.profiles.get(job.profileId);
         if (!profile) {
-          throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+          throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
         }
         // Backups and restores cover MongoDB and Redis too.
         if (!isSqlEngine(profile.engine) && job.kind !== 'backup' && job.kind !== 'restore') {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'NOT_SUPPORTED',
             message: 'Import and export work with SQL connections for now',
           });
@@ -327,7 +327,7 @@ export function fileDialogHandlers(
     readFile: async ({ path }) => {
       grants.checkRead(path);
       if ((await stat(path)).size > READ_FILE_LIMIT) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'The file is larger than 64 MB',
         });

@@ -1,5 +1,5 @@
-import { quoteString } from '@joinery/sql-tools';
-import type { ResolvedProfile } from '@joinery/core';
+import { quoteString } from '@querybara/sql-tools';
+import type { ResolvedProfile } from '@querybara/core';
 import {
   buildTlsSettings,
   describeTarget,
@@ -7,7 +7,7 @@ import {
   resolveEndpoint,
   type FileReader,
   type TlsSettings,
-} from '@joinery/driver-sql-base';
+} from '@querybara/driver-sql-base';
 import type { ClientConfig } from 'pg';
 
 import { pgTypeParsers } from './types';

@@ -1,4 +1,9 @@
-import { JoineryError, MASKED_SECRET, type GrantObjectRef, type ServerAction } from '@joinery/core';
+import {
+  QuerybaraError,
+  MASKED_SECRET,
+  type GrantObjectRef,
+  type ServerAction,
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -54,7 +59,7 @@ describe('PostgreSQL server tool statements', () => {
     expect(sessionStatement('terminate', '17').sql).toBe(
       'SELECT pg_catalog.pg_terminate_backend(17)',
     );
-    expect(() => sessionStatement('cancel', '1; DROP TABLE x')).toThrow(JoineryError);
+    expect(() => sessionStatement('cancel', '1; DROP TABLE x')).toThrow(QuerybaraError);
   });
 
   it('builds VACUUM and ANALYZE for several tables, quoting every name', () => {
@@ -323,7 +328,7 @@ describe('PostgreSQL server tool statements', () => {
       '(a',
       'a = $1',
     ]) {
-      expect(() => checkExpression(bad, 'USING')).toThrow(JoineryError);
+      expect(() => checkExpression(bad, 'USING')).toThrow(QuerybaraError);
     }
     expect(() => policyStatement({ ...base, command: 'INSERT' })).toThrow(/only a WITH CHECK/);
     expect(() => policyStatement({ ...base, command: 'SELECT', using: undefined })).toThrow();
@@ -694,7 +699,7 @@ describe('PostgreSQL server tool readers', () => {
 
 describe('server tool errors', () => {
   it('masks a password an error message repeats', () => {
-    const error = new JoineryError({
+    const error = new QuerybaraError({
       code: 'SQL_ERROR',
       message: "near 'hunter2'",
       detail: 'hunter2 again',
@@ -705,13 +710,13 @@ describe('server tool errors', () => {
       secrets: ["'hunter2'", 'hunter2'],
     });
     expect(JSON.stringify(masked)).not.toContain('hunter2');
-    expect((masked as JoineryError).message).toBe(`near ${MASKED_SECRET}`);
+    expect((masked as QuerybaraError).message).toBe(`near ${MASKED_SECRET}`);
   });
 
   it('adds a hint to errors of the given codes', () => {
-    const denied = new JoineryError({ code: 'SQL_ERROR', message: 'denied', sqlState: '42501' });
-    expect((withHint(denied, ['42501'], 'Ask for it') as JoineryError).hint).toBe('Ask for it');
-    const other = new JoineryError({
+    const denied = new QuerybaraError({ code: 'SQL_ERROR', message: 'denied', sqlState: '42501' });
+    expect((withHint(denied, ['42501'], 'Ask for it') as QuerybaraError).hint).toBe('Ask for it');
+    const other = new QuerybaraError({
       code: 'SQL_ERROR',
       message: 'x',
       sqlState: '42P01',

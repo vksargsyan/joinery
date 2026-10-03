@@ -11,13 +11,14 @@ import { Resvg } from '@resvg/resvg-js';
  * Generates every app icon from the one source, `build/icon.svg` (spec §20: installers for every
  * target): the Windows `.ico`, the Linux PNG set under `build/icons/` (which also gives the window
  * and dock icon at run time) and a 1024 px `build/icon.png`, all the artwork free-standing; and
- * for macOS the artwork on a Tenmoku tile, twice: `build/icon.icns` for macOS 15 and earlier, and
+ * for macOS the artwork on a cream tile, twice: `build/icon.icns` for macOS 15 and earlier, and
  * the Icon Composer package `build/icon.icon/` compiled into `build/Assets.car` for macOS 26 and
  * later, which shrink an icon from an `.icns` alone into a grey tile of their own. The outputs
- * are committed, so packaging needs no renderer and no Xcode; run this again after changing the
- * SVG, on a Mac with Xcode 26 or later so that Assets.car is compiled too:
+ * are committed, so packaging needs no renderer, except Assets.car: only Xcode 26's actool
+ * compiles it, on macOS 26, so it is compiled for each macOS package (the packaging workflow's
+ * mac-icon job runs this). Run this again after changing the SVG:
  *
- *   pnpm --filter @joinery/desktop icons
+ *   pnpm --filter @querybara/desktop icons
  *
  * Rendering uses resvg (MPL-2.0, build time only); the ICO and ICNS containers are written here,
  * the asset catalog by Xcode's actool.
@@ -59,10 +60,10 @@ export const MAC_ARTWORK_SCALE = 824 / 1024;
 export const MAC_ARTWORK_SHARE = 0.7;
 
 /**
- * The macOS tile, top to bottom: Kiln's Tenmoku grounds (raised, deep), in both appearances; the
- * ivory top of the artwork would fade into Bisque.
+ * The macOS tile, top to bottom: the cream the artwork was drawn on, a shade deeper at the foot,
+ * in both appearances. The capybara's dark outline would sink into a dark tile.
  */
-export const MAC_TILE = ['#24201c', '#110f0e'] as const;
+export const MAC_TILE = ['#fffdf8', '#f1ebdf'] as const;
 
 /** The radius of the tile on Apple's grid: macOS 15 and earlier draw the tile as it is. */
 const MAC_TILE_RADIUS = 185;
@@ -168,7 +169,7 @@ function layerSvg(svg: string, frame: Frame): string {
   return canvas(placed(svg, frame, 0, 1024));
 }
 
-/** The framed artwork on the Tenmoku tile, on Apple's icon grid: the macOS 15 icon. */
+/** The framed artwork on the cream tile, on Apple's icon grid: the macOS 15 icon. */
 function macTileSvg(svg: string, frame: Frame): string {
   const inner = Math.round(1024 * MAC_ARTWORK_SCALE);
   const offset = (1024 - inner) / 2;
@@ -403,7 +404,7 @@ export async function compileAssetCatalog(options: {
 }): Promise<string | undefined> {
   const version = await actoolVersion();
   if (version === undefined) return undefined;
-  const work = await mkdtemp(join(tmpdir(), 'joinery-actool-'));
+  const work = await mkdtemp(join(tmpdir(), 'querybara-actool-'));
   try {
     // actool names the icon after the package.
     const icon = join(work, `${ASSET_ICON_NAME}.icon`);
@@ -453,7 +454,7 @@ if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(
   else {
     console.warn(
       `build/${ASSET_CATALOG} was not compiled: it needs macOS with Xcode 26 or later. ` +
-        'Run this again on a Mac before committing, or the macOS 26 icon stays the old one.',
+        'Run this on a Mac with Xcode 26 before packaging for macOS.',
     );
   }
 }

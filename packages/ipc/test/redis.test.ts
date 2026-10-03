@@ -1,4 +1,4 @@
-import type { CommandCatalog, RedisReply } from '@joinery/redis-tools';
+import type { CommandCatalog, RedisReply } from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

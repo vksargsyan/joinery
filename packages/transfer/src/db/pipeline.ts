@@ -1,4 +1,4 @@
-import { JoineryError, type Session } from '@joinery/core';
+import { QuerybaraError, type Session } from '@querybara/core';
 
 import type { RowError, TransferStatus } from '../types';
 import type {
@@ -403,7 +403,7 @@ export async function runExecution(run: RunExecutionOptions): Promise<DbTransfer
 /** Throws the plan's problems before anything runs. */
 export function assertRunnable(plan: TransferPlan): void {
   if (plan.problems.length === 0) return;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message:
       plan.problems.length === 1

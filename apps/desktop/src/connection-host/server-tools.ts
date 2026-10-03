@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   type ConnectionProfile,
   type ServerTools,
   type Session,
-} from '@joinery/core';
-import type { HandlersOf, serverToolsHostContractShape } from '@joinery/ipc';
+} from '@querybara/core';
+import type { HandlersOf, serverToolsHostContractShape } from '@querybara/ipc';
 
 import { checkServerAction } from '../shared/server-tools-safety';
 
@@ -34,13 +34,13 @@ export async function serverToolsFor(session: Session): Promise<ServerTools> {
   if (known) return known;
   let tools: ServerTools;
   if (session.engine === 'postgres') {
-    tools = (await import('@joinery/driver-postgres')).createPostgresServerTools(session);
+    tools = (await import('@querybara/driver-postgres')).createPostgresServerTools(session);
   } else if (isSqlEngine(session.engine)) {
-    tools = (await import('@joinery/driver-mysql')).createMysqlServerTools(session);
+    tools = (await import('@querybara/driver-mysql')).createMysqlServerTools(session);
   } else if (session.engine === 'mongodb') {
-    tools = (await import('@joinery/driver-mongodb')).createMongoServerTools(session);
+    tools = (await import('@querybara/driver-mongodb')).createMongoServerTools(session);
   } else {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message:
         session.engine === 'redis'

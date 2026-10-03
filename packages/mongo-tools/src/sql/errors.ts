@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { locationAt } from '../shell/errors';
 
@@ -17,7 +17,7 @@ export type SqlTranslationErrorCode = 'VALIDATION_FAILED' | 'NOT_SUPPORTED' | 'I
  * before `offset`); `position` carries `offset` across processes. The message ends with
  * "(line L, column C)"; `reason` is the message without it.
  */
-export class SqlTranslationError extends JoineryError {
+export class SqlTranslationError extends QuerybaraError {
   override readonly code: SqlTranslationErrorCode;
   readonly offset: number;
   readonly end: number;

@@ -1,5 +1,5 @@
-import type { Environment, EngineId } from '@joinery/core';
-import type { Folder, StoredProfile } from '@joinery/ipc';
+import type { Environment, EngineId } from '@querybara/core';
+import type { Folder, StoredProfile } from '@querybara/ipc';
 import { create } from 'zustand';
 
 /**

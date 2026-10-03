@@ -1,15 +1,15 @@
 import { MessageChannel } from 'node:worker_threads';
 
-import type { ResolvedProfile } from '@joinery/core';
-import { redisProfileFromUrl } from '@joinery/driver-redis';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
+import type { ResolvedProfile } from '@querybara/core';
+import { redisProfileFromUrl } from '@querybara/driver-redis';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
 import {
   MemoryKnownHosts,
   TransportManager,
   checkConnectionThroughTransport,
   connectThroughTransport,
   knownHostsVerifier,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -22,8 +22,8 @@ import { startSshServer, type TestSshServer } from '../ssh-server';
  * tunnel, and a host whose Redis sessions go through the tunnel, a Cluster's every node included.
  */
 
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
 
 let ssh: TestSshServer;
 const channels: MessageChannel[] = [];

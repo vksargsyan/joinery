@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts the Elasticsearch server the integration and end-to-end tests use: security on (user
-# elastic, password joinery-es, plain HTTP) on port 9200, a single node with a snapshot
+# elastic, password querybara-es, plain HTTP) on port 9200, a single node with a snapshot
 # directory (path.repo) and the disk watermarks off, as a plain container on the host network
 # like the NoSQL servers.
 #
@@ -22,14 +22,14 @@ wait_for() {
 sudo sysctl -w vm.max_map_count=262144
 
 es_settings=(
-  -e cluster.name=joinery-es
+  -e cluster.name=querybara-es
   -e node.name=es1
   -e discovery.type=single-node
   -e network.host=127.0.0.1
   -e http.port=9200
   -e transport.port=9300
   -e path.repo=/tmp/snapshots
-  -e ELASTIC_PASSWORD=joinery-es
+  -e ELASTIC_PASSWORD=querybara-es
   -e xpack.security.enabled=true
   -e xpack.security.http.ssl.enabled=false
   -e xpack.security.transport.ssl.enabled=false
@@ -43,6 +43,6 @@ if [ "$es_major" -ge 8 ]; then es_settings+=(-e xpack.security.enrollment.enable
 docker run -d --name elasticsearch --network host "${es_settings[@]}" \
   "docker.elastic.co/elasticsearch/elasticsearch:$es_tag"
 
-wait_for curl -fsS -u elastic:joinery-es \
+wait_for curl -fsS -u elastic:querybara-es \
   'http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=1s'
 echo "Elasticsearch $es_tag is ready"

@@ -1,6 +1,6 @@
-import { atLeast } from '@joinery/core';
-import type { TableDef } from '@joinery/core';
-import { diagnose } from '@joinery/sql-tools';
+import { atLeast } from '@querybara/core';
+import type { TableDef } from '@querybara/core';
+import { diagnose } from '@querybara/sql-tools';
 
 import { canonicalCharset, canonicalCollation } from '../normalize';
 import { isFullyParenthesized, referencedNames } from '../sql-text';
@@ -665,7 +665,7 @@ export function validateTable(
 /**
  * Parses the table's expressions — checks, generated columns, expression defaults, index
  * expressions and predicates, the partition key — with the SQL editor's parser (`diagnose`
- * from @joinery/sql-tools) and reports syntax errors. Asynchronous because the parser loads
+ * from @querybara/sql-tools) and reports syntax errors. Asynchronous because the parser loads
  * on first use; the UI runs it after typing pauses, next to the synchronous `validateTable`.
  */
 export async function diagnoseTable(

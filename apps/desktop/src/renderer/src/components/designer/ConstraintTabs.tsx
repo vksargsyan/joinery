@@ -6,8 +6,8 @@ import type {
   KeyDef,
   ReferentialAction,
   TriggerDef,
-} from '@joinery/core';
-import type { ValidationIssue } from '@joinery/sync';
+} from '@querybara/core';
+import type { ValidationIssue } from '@querybara/sync';
 import type { ReactNode } from 'react';
 
 import {

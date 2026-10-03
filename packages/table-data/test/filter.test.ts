@@ -1,4 +1,4 @@
-import type { CellValue, SqlDialect } from '@joinery/core';
+import type { CellValue, SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

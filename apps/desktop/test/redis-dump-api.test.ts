@@ -1,4 +1,4 @@
-import type { RdbReport } from '@joinery/ipc';
+import type { RdbReport } from '@querybara/ipc';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { JobManager, RunnerRequestOptions } from '../src/main/jobs';

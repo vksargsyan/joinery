@@ -1,11 +1,11 @@
 {
-  "name": "@joinery/cli",
+  "name": "@querybara/cli",
   "version": "0.1.0",
   "private": true,
-  "description": "joinery-cli: headless connection tests, queries, structure compare and data compare.",
+  "description": "querybara-cli: headless connection tests, queries, structure compare and data compare.",
   "type": "module",
   "bin": {
-    "joinery": "./dist/joinery.mjs"
+    "querybara": "./dist/querybara.mjs"
   },
   "files": [
     "dist"
@@ -30,21 +30,21 @@
     "ssh2": "^1.17.0"
   },
   "devDependencies": {
-    "@joinery/backup": "workspace:*",
-    "@joinery/core": "workspace:*",
-    "@joinery/driver-elasticsearch": "workspace:*",
-    "@joinery/driver-mongodb": "workspace:*",
-    "@joinery/driver-mysql": "workspace:*",
-    "@joinery/driver-postgres": "workspace:*",
-    "@joinery/driver-redis": "workspace:*",
-    "@joinery/mongo-tools": "workspace:*",
-    "@joinery/redis-tools": "workspace:*",
-    "@joinery/search-tools": "workspace:*",
-    "@joinery/sql-tools": "workspace:*",
-    "@joinery/storage": "workspace:*",
-    "@joinery/sync": "workspace:*",
-    "@joinery/transfer": "workspace:*",
-    "@joinery/tunnel": "workspace:*",
+    "@querybara/backup": "workspace:*",
+    "@querybara/core": "workspace:*",
+    "@querybara/driver-elasticsearch": "workspace:*",
+    "@querybara/driver-mongodb": "workspace:*",
+    "@querybara/driver-mysql": "workspace:*",
+    "@querybara/driver-postgres": "workspace:*",
+    "@querybara/driver-redis": "workspace:*",
+    "@querybara/mongo-tools": "workspace:*",
+    "@querybara/redis-tools": "workspace:*",
+    "@querybara/search-tools": "workspace:*",
+    "@querybara/sql-tools": "workspace:*",
+    "@querybara/storage": "workspace:*",
+    "@querybara/sync": "workspace:*",
+    "@querybara/transfer": "workspace:*",
+    "@querybara/tunnel": "workspace:*",
     "@types/node": "catalog:",
     "@types/ssh2": "^1.15.6",
     "commander": "^15.0.0",

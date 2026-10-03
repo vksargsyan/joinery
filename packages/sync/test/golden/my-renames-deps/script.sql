@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb renames_deps_dev
 -- Target: mariadb renames_deps_prod
 -- Operations: 9 (1 destructive)

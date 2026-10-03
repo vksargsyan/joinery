@@ -1,4 +1,4 @@
-import { JoineryError, type ErrorCode } from '@joinery/core';
+import { QuerybaraError, type ErrorCode } from '@querybara/core';
 
 /**
  * Exit codes. Compare commands follow diff(1): 0 no differences, 1 differences, 2 trouble.
@@ -18,9 +18,9 @@ export type ExitCode = (typeof EXIT)[keyof typeof EXIT];
 
 /**
  * An error raised by the CLI itself (bad arguments, missing profile, refused confirmation).
- * It carries a JoineryError code so it prints like driver errors, with an optional hint.
+ * It carries a QuerybaraError code so it prints like driver errors, with an optional hint.
  */
-export class CliError extends JoineryError {
+export class CliError extends QuerybaraError {
   constructor(message: string, options: { code?: ErrorCode; hint?: string; cause?: unknown } = {}) {
     super(
       {
@@ -72,7 +72,7 @@ export function formatError(
   options: { verbose?: boolean; statement?: StatementContext } = {},
 ): string[] {
   const lines: string[] = [];
-  if (error instanceof JoineryError) {
+  if (error instanceof QuerybaraError) {
     lines.push(`error: ${error.message}`);
     if (error.detail) lines.push(...indentBlock('detail', error.detail));
     if (error.hint) lines.push(...indentBlock('hint', error.hint));
@@ -95,7 +95,7 @@ export function formatError(
         ? ` (${statement.source ? `${statement.source}:` : 'line '}${statement.line}${statement.column !== undefined ? `:${statement.column}` : ''})`
         : '';
     lines.push(`  at statement ${statement.index}${where}`);
-    const position = error instanceof JoineryError ? error.position : undefined;
+    const position = error instanceof QuerybaraError ? error.position : undefined;
     lines.push(...caretLines(statement.text, position));
   }
   if (options.verbose && error instanceof Error && error.stack && !(error instanceof CliError)) {

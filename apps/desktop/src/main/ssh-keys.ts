@@ -2,9 +2,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import type { PrivateKeyInfo } from '@joinery/ipc';
-import { expandHome, importPrivateKey } from '@joinery/tunnel';
+import { QuerybaraError } from '@querybara/core';
+import type { PrivateKeyInfo } from '@querybara/ipc';
+import { expandHome, importPrivateKey } from '@querybara/tunnel';
 
 /**
  * SSH private keys picked in the connection dialog (spec §4). Main reads and checks the file, so
@@ -38,12 +38,12 @@ export async function inspectPrivateKey(
 }
 
 async function readKeyFile(file: string, shown: string): Promise<string> {
-  const unreadable = (reason: string, cause?: unknown): JoineryError =>
-    new JoineryError(
+  const unreadable = (reason: string, cause?: unknown): QuerybaraError =>
+    new QuerybaraError(
       {
         code: 'VALIDATION_FAILED',
         message: `Cannot read the key file "${shown}" (${reason})`,
-        hint: 'Choose the private key file (not the .pub file) and check that Joinery can read it',
+        hint: 'Choose the private key file (not the .pub file) and check that Querybara can read it',
       },
       cause === undefined ? undefined : { cause },
     );
@@ -53,7 +53,7 @@ async function readKeyFile(file: string, shown: string): Promise<string> {
     if (info.size > MAX_KEY_FILE_BYTES) throw unreadable('too large for a private key');
     return await readFile(file, 'utf8');
   } catch (error) {
-    if (error instanceof JoineryError) throw error;
+    if (error instanceof QuerybaraError) throw error;
     const code = error instanceof Error && 'code' in error ? String(error.code) : 'unreadable';
     throw unreadable(code, error);
   }
@@ -75,11 +75,11 @@ async function saveConverted(
     await rename(temp, target);
   } catch (error) {
     await rm(temp, { force: true });
-    throw new JoineryError(
+    throw new QuerybaraError(
       {
         code: 'INTERNAL',
         message: 'The converted PuTTY key could not be saved',
-        hint: `Check that Joinery can write to ${dir}`,
+        hint: `Check that Querybara can write to ${dir}`,
       },
       { cause: error },
     );

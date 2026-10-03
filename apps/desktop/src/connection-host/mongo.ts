@@ -1,6 +1,6 @@
-import { JoineryError, type ConnectionProfile, type Session } from '@joinery/core';
-import type { MongoSession, isMongoSession } from '@joinery/driver-mongodb';
-import type { HandlersOf, mongoHostContractShape } from '@joinery/ipc';
+import { QuerybaraError, type ConnectionProfile, type Session } from '@querybara/core';
+import type { MongoSession, isMongoSession } from '@querybara/driver-mongodb';
+import type { HandlersOf, mongoHostContractShape } from '@querybara/ipc';
 
 import { checkMongoWrite, pipelineWrites, type WriteRequest } from '../shared/mongo-writes';
 
@@ -33,13 +33,13 @@ let isMongo: Promise<typeof isMongoSession> | undefined;
  */
 export async function asMongoSession(session: Session): Promise<MongoSession> {
   if (session.engine !== 'mongodb') throw notMongo();
-  isMongo ??= import('@joinery/driver-mongodb').then((driver) => driver.isMongoSession);
+  isMongo ??= import('@querybara/driver-mongodb').then((driver) => driver.isMongoSession);
   if (!(await isMongo)(session)) throw notMongo();
   return session;
 }
 
-function notMongo(): JoineryError {
-  return new JoineryError({
+function notMongo(): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: 'MongoDB services need a MongoDB connection',
   });

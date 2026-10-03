@@ -1,14 +1,14 @@
-# The Joinery backup archive (.jbak), version 1
+# The Querybara backup archive (.qbak), version 1
 
-A `.jbak` file is what Joinery's backups write by default (spec §14): the desktop app's Backup
-wizard, `joinery backup` and the `@joinery/backup` package all produce it. It holds one entry
+A `.qbak` file is what Querybara's backups write by default (spec §14): the desktop app's Backup
+wizard, `querybara backup` and the `@querybara/backup` package all produce it. It holds one entry
 per object (DDL, rows, documents, keys) and a manifest describing them, so a restore can pick
 objects without reading the rest. An archive can be encrypted with a passphrase; then every
 byte after the header is authenticated and any change is detected.
 
 The reference implementation is `packages/backup/src/archive/` (`format.ts`, `crypto.ts`,
 `writer.ts`, `reader.ts`, `manifest.ts`). This page is the contract: a reader written from it
-must open every archive Joinery writes.
+must open every archive Querybara writes.
 
 ## Layout
 
@@ -19,14 +19,14 @@ header    magic | u16 version | u16 flags | u32 n | n bytes of JSON | [32-byte M
 entry 0   entry header | frame | frame | ... (the last frame has the LAST bit)
 entry 1   ...
 manifest  an entry with index 0xFFFFFFFF, holding the manifest JSON
-trailer   "JBAKEND\0" | u64 manifest offset | u64 manifest length | u32 0 | u32 CRC-32
+trailer   "QBAKEND\0" | u64 manifest offset | u64 manifest length | u32 0 | u32 CRC-32
 ```
 
 ### Header
 
 | Bytes | Field                                                                  |
 | ----- | ---------------------------------------------------------------------- |
-| 0-7   | Magic `4A 42 41 4B 0D 0A 1A 0A` ("JBAK\r\n", Ctrl-Z, "\n")             |
+| 0-7   | Magic `51 42 41 4B 0D 0A 1A 0A` ("QBAK\r\n", Ctrl-Z, "\n")             |
 | 8-9   | Format version: `1`                                                    |
 | 10-11 | Flags: `0x1` encrypted, `0x2` compressed; other bits are 0             |
 | 12-15 | `n`, the length of the header JSON (at most 64 KiB)                    |
@@ -45,7 +45,7 @@ An entry is a 16-byte entry header followed by frames:
 
 | Bytes | Field                                                                 |
 | ----- | --------------------------------------------------------------------- |
-| 0-3   | `4A 45 4E 54` ("JENT")                                                |
+| 0-3   | `51 45 4E 54` ("QENT")                                                |
 | 4-7   | The entry's index (0, 1, 2... in file order; `0xFFFFFFFF` = manifest) |
 | 8-15  | Nonce prefix: 8 random bytes (encrypted), zeros (plain)               |
 
@@ -66,7 +66,7 @@ of the content (each entry compressed on its own), otherwise the content itself.
 
 The passphrase (Unicode NFC) and the header salt go through scrypt with the header's cost to 64
 bytes: the first 32 are the AES-256-GCM key, the last 32 the HMAC key. The header MAC tells a
-wrong passphrase apart from a damaged file before any entry is read. Joinery writes
+wrong passphrase apart from a damaged file before any entry is read. Querybara writes
 `log2N 17, r 8, p 1`. The passphrase is not stored anywhere.
 
 Frames follow the STREAM construction. Frame `i` (counting from 0 in each entry) is sealed
@@ -88,10 +88,10 @@ compressed and encrypted like the others, and holds UTF-8 JSON:
 
 ```json
 {
-  "format": "joinery-backup",
+  "format": "querybara-backup",
   "formatVersion": 1,
   "createdAt": "2026-09-29T12:00:00.000Z",
-  "producer": "Joinery",
+  "producer": "Querybara",
   "engine": "postgres",
   "serverVersion": "16.4",
   "database": "shop",

@@ -6,7 +6,7 @@ import type {
   ServerToolsInfo,
   ToolColumn,
   ToolTable,
-} from '@joinery/core';
+} from '@querybara/core';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { errorMessage } from '../../lib/errors';

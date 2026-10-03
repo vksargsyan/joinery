@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { BASE_CAPABILITIES, toColumnChunk } from '@joinery/core';
+import { BASE_CAPABILITIES, toColumnChunk } from '@querybara/core';
 import type {
   BrowseNode,
   Capabilities,
@@ -11,7 +11,7 @@ import type {
   ResultChunk,
   SchemaSnapshot,
   Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { compareKeys } from '../src';
 

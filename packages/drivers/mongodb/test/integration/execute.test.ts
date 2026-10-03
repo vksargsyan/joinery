@@ -1,4 +1,4 @@
-import { EJSON, parseShell, toEjson } from '@joinery/mongo-tools';
+import { EJSON, parseShell, toEjson } from '@querybara/mongo-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { MongoSession } from '../../src';

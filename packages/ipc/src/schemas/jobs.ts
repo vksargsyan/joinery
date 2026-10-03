@@ -1,4 +1,4 @@
-import { SQL_ENGINE_IDS, errorDataSchema } from '@joinery/core';
+import { SQL_ENGINE_IDS, errorDataSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { openFileInputSchema } from './app';
@@ -13,7 +13,7 @@ import { transferJobSchema } from './transfer-db';
  * progress, logs and history) as they cross between the renderer and main.
  *
  * File paths are absolute paths the user picked in a native dialog; main only lets a job read
- * or write a path its window's dialogs returned. The literal lists mirror @joinery/transfer,
+ * or write a path its window's dialogs returned. The literal lists mirror @querybara/transfer,
  * which this package cannot import (it uses Node.js streams); the desktop tests check they
  * match.
  */

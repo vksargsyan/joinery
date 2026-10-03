@@ -4,8 +4,8 @@ import type { Socket } from 'node:net';
 import type { TLSSocket } from 'node:tls';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
 
-import { JoineryError } from '@joinery/core';
-import { errorProp } from '@joinery/driver-sql-base';
+import { QuerybaraError } from '@querybara/core';
+import { errorProp } from '@querybara/driver-sql-base';
 
 import type { SearchClientPlan, SearchNodeTarget } from './config';
 
@@ -159,7 +159,7 @@ export class SearchHttpClient {
   /** Sends a request with failover (see the class comment). */
   async request(req: HttpRequest): Promise<HttpResponse> {
     if (this.#closed) {
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The session is closed' });
     }
     const idempotent = req.method === 'GET' || req.method === 'HEAD';
     const order = this.#order();
@@ -204,7 +204,7 @@ export class SearchHttpClient {
         Host: node.hostHeader,
         Accept: 'application/json, text/plain',
         'Accept-Encoding': 'gzip, deflate, br',
-        'User-Agent': `Joinery (${this.plan.applicationName})`,
+        'User-Agent': `Querybara (${this.plan.applicationName})`,
       };
       if (this.plan.authorization !== undefined) headers['Authorization'] = this.plan.authorization;
       if (req.opaqueId !== undefined) headers['X-Opaque-Id'] = req.opaqueId;

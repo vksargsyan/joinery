@@ -1,14 +1,14 @@
 import { mkdir } from 'node:fs/promises';
 
-import { ENGINES, JoineryError, isSqlEngine, type ConnectionProfile } from '@joinery/core';
+import { ENGINES, QuerybaraError, isSqlEngine, type ConnectionProfile } from '@querybara/core';
 import {
   scheduleTaskSchema,
   type JobInfo,
   type JobSpec,
   type ScheduleOutput,
   type ScheduleTask,
-} from '@joinery/ipc';
-import type { ScheduleRecord, Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import type { ScheduleRecord, Store } from '@querybara/storage';
 
 import type { JobManager } from './jobs';
 import { checkJobSafety, describeJob, notificationFor } from './jobs-api';
@@ -46,7 +46,7 @@ function failed(message: string, jobId: string | null = null): TaskOutcome {
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof JoineryError) {
+  if (error instanceof QuerybaraError) {
     return error.hint ? `${error.message}. ${error.hint}` : error.message;
   }
   return error instanceof Error ? error.message : String(error);
@@ -57,8 +57,8 @@ function resolveSaved(store: Store, profile: ConnectionProfile) {
   try {
     return resolveProfile(store, profile, {}, { requireAll: true });
   } catch (error) {
-    if (error instanceof JoineryError && error.code === 'AUTH_FAILED') {
-      throw new JoineryError({
+    if (error instanceof QuerybaraError && error.code === 'AUTH_FAILED') {
+      throw new QuerybaraError({
         code: 'AUTH_FAILED',
         message: `The password of ${profile.name} is not saved, and a scheduled run cannot ask for it`,
         hint: 'Save it in the connection settings ("Save" as the password storage).',
@@ -74,7 +74,9 @@ export async function executeSchedule(
 ): Promise<TaskOutcome> {
   const parsed = scheduleTaskSchema.safeParse(schedule.task);
   if (!parsed.success) {
-    return failed('The schedule cannot be read by this version of Joinery; edit and save it again');
+    return failed(
+      'The schedule cannot be read by this version of Querybara; edit and save it again',
+    );
   }
   try {
     return parsed.data.kind === 'comparison'

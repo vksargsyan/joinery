@@ -3,7 +3,7 @@ import {
   tableDefSchema,
   type ColumnKind,
   type SqlDialect,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { canSort, columnFromMeta, describeColumns, kindForDataType, parseEnumLabels } from '../src';

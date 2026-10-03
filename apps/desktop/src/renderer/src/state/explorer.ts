@@ -1,5 +1,5 @@
-import type { BrowseNode, BrowseNodeKind, SqlDialect } from '@joinery/core';
-import { quoteQualified } from '@joinery/sql-tools';
+import type { BrowseNode, BrowseNodeKind, SqlDialect } from '@querybara/core';
+import { quoteQualified } from '@querybara/sql-tools';
 import { create } from 'zustand';
 
 import { errorMessage } from '../lib/errors';

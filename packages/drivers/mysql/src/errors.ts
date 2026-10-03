@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { errorMessage, errorProp, mapNetworkError, tlsHint } from '@joinery/driver-sql-base';
+import { QuerybaraError } from '@querybara/core';
+import { errorMessage, errorProp, mapNetworkError, tlsHint } from '@querybara/driver-sql-base';
 
 import { syntaxErrorPosition } from './dialect';
 
@@ -25,11 +25,11 @@ const LOST_CODES = new Set([
 ]);
 
 /**
- * Maps anything mysql2 throws to a JoineryError: server errors by errno (with SQLSTATE and the
+ * Maps anything mysql2 throws to a QuerybaraError: server errors by errno (with SQLSTATE and the
  * syntax error position), then network and TLS failures, then mysql2's own protocol errors.
  */
-export function mapMysqlError(error: unknown, context: MysqlErrorContext): JoineryError {
-  if (error instanceof JoineryError) return error;
+export function mapMysqlError(error: unknown, context: MysqlErrorContext): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   const cause = { cause: error };
   const errno = Number(errorProp(error, 'errno'));
   const code = errorProp(error, 'code');
@@ -43,7 +43,7 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
       ...(sqlState !== undefined && sqlState !== '' ? { sqlState } : {}),
     };
     if (AUTH_ERRNOS.has(errno) || (errno === 1044 && context.connecting)) {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           ...base,
           code: 'AUTH_FAILED',
@@ -58,13 +58,13 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
       );
     }
     if (errno === 1049 && context.connecting) {
-      return new JoineryError(
+      return new QuerybaraError(
         { ...base, code: 'NOT_FOUND', hint: 'Check the default database in the profile' },
         cause,
       );
     }
     if (errno === 1317) {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           ...base,
           code: 'CANCELLED',
@@ -74,24 +74,24 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
       );
     }
     if (TIMEOUT_ERRNOS.has(errno)) {
-      return new JoineryError(
+      return new QuerybaraError(
         { ...base, code: 'TIMEOUT', hint: 'The statement ran longer than the query timeout' },
         cause,
       );
     }
     if (errno === 1040 || errno === 1129 || LOST_ERRNOS.has(errno)) {
-      return new JoineryError({ ...base, code: 'CONNECTION_FAILED' }, cause);
+      return new QuerybaraError({ ...base, code: 'CONNECTION_FAILED' }, cause);
     }
     const position =
       context.statement !== undefined ? syntaxErrorPosition(message, context.statement) : undefined;
-    return new JoineryError(
+    return new QuerybaraError(
       { ...base, code: 'SQL_ERROR', ...(position !== undefined ? { position } : {}) },
       cause,
     );
   }
 
   if (code === 'HANDSHAKE_NO_SSL_SUPPORT') {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TLS_FAILED',
         message: `The server at ${context.where} does not support TLS`,
@@ -102,7 +102,7 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
     );
   }
   if (code === 'HANDSHAKE_SSL_ERROR') {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TLS_FAILED',
         message: `TLS negotiation with ${context.where} failed: ${message}`,
@@ -113,7 +113,7 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
     );
   }
   if (code === 'PROTOCOL_SEQUENCE_TIMEOUT' || (code === 'ETIMEDOUT' && context.connecting)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TIMEOUT',
         message: context.connecting ? `Timed out connecting to ${context.where}` : message,
@@ -124,7 +124,7 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
     );
   }
   if ((code !== undefined && LOST_CODES.has(code)) || LOST_ERRNOS.has(errno)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: context.connecting
@@ -140,7 +140,7 @@ export function mapMysqlError(error: unknown, context: MysqlErrorContext): Joine
   }
   const network = mapNetworkError(error, context.where);
   if (network) return network;
-  return new JoineryError(
+  return new QuerybaraError(
     { code: context.connecting ? 'CONNECTION_FAILED' : 'INTERNAL', message },
     cause,
   );

@@ -1,10 +1,10 @@
-import type { CellValue, ErrorData, SqlDialect } from '@joinery/core';
+import type { CellValue, ErrorData, SqlDialect } from '@querybara/core';
 import {
   analyzeStatement,
   decideSafety,
   type ConfirmationReason,
   type SafetyPolicy,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 import {
   planChanges,
   rowKeyAt,
@@ -15,7 +15,7 @@ import {
   type RowIdentity,
   type RowKey,
   type TableRef,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 
 import type { LoadedRows } from './grid-model';
 

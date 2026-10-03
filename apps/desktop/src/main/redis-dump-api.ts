@@ -1,10 +1,10 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   rdbAnalyzeProgressSchema,
   rdbReportSchema,
   type HandlersOf,
   type mainContract,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 
 import type { JobManager } from './jobs';
 import type { FileGrants } from './jobs-api';
@@ -23,7 +23,7 @@ export function redisDumpHandlers(
     analyze: async (input, { signal, progress }) => {
       grants.checkRead(input.path);
       if (!services.jobs) {
-        throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
+        throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
       }
       const result = await services.jobs.request(
         { kind: 'rdb-analyze', input },

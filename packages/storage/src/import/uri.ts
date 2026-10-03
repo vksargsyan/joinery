@@ -1,13 +1,13 @@
 import {
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   connectionOptionsSchema,
   connectionProfileSchema,
   newId,
   type ConnectionProfileInput,
   type EngineId,
   type TlsMode,
-} from '@joinery/core';
+} from '@querybara/core';
 import { z } from 'zod';
 
 import { defineHiddenSecret } from '../internal/redact';
@@ -36,7 +36,7 @@ export interface ParsedConnectionUri {
   readonly password?: string;
   /**
    * Query parameters that were dropped: secret-bearing ones always, and for engines without a
-   * `uri` endpoint (Elasticsearch) every one Joinery could not map.
+   * `uri` endpoint (Elasticsearch) every one Querybara could not map.
    */
   readonly ignoredParams: readonly string[];
 }
@@ -49,7 +49,7 @@ export interface ParsedConnectionUri {
  *
  * TLS settings stated by the URI (sslmode, ssl-mode, ssl, tls, rediss://, https://) are mapped
  * to the profile's TLS mode. mongodb+srv:// implies TLS (verify-full), as in MongoDB drivers;
- * otherwise, when the URI says nothing, the profile keeps Joinery's default (TLS off). Error
+ * otherwise, when the URI says nothing, the profile keeps Querybara's default (TLS off). Error
  * messages never quote the URI, which may contain a password.
  */
 export function parseConnectionUri(
@@ -78,7 +78,7 @@ export function parseConnectionUri(
     updatedAt: EPOCH,
   });
   if (!check.success) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The connection URI does not describe a usable connection',
       detail: z.prettifyError(check.error),
@@ -133,8 +133,8 @@ interface UriParts {
   readonly params: readonly (readonly [string, string])[];
 }
 
-function invalid(reason: string): JoineryError {
-  return new JoineryError({
+function invalid(reason: string): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `Invalid connection URI: ${reason}`,
   });

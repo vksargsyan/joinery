@@ -6,7 +6,7 @@
 ## Context
 
 Parquet is how analytics tools exchange tables: DuckDB, Spark, pandas, Polars, BigQuery,
-Snowflake and every data lake read and write it. Joinery's import and export ([ADR 0012](0012-excel-xml-zip-formats.md))
+Snowflake and every data lake read and write it. Querybara's import and export ([ADR 0012](0012-excel-xml-zip-formats.md))
 had no columnar format, so data headed there went through CSV and lost its types.
 
 A Parquet file is column chunks in row groups, described by a footer at the end of the file in
@@ -43,7 +43,7 @@ The candidates:
 ## Decision
 
 **Parquet is read and written with hyparquet 1.31.1 and hyparquet-writer 0.16.10, in
-`@joinery/transfer`'s `parquet.ts`.**
+`@querybara/transfer`'s `parquet.ts`.**
 
 The libraries own the file format. `parquet.ts` owns four things:
 
@@ -98,7 +98,7 @@ In the product:
 
 - The export wizard, the CLI (`--format parquet`, `--codec`) and scheduled exports write
   Parquet.
-- The import wizard and `joinery import` read it, and detect it by extension (`.parquet`,
+- The import wizard and `querybara import` read it, and detect it by extension (`.parquet`,
   `.parq`, `.pq`) or by its `PAR1` magic.
 - One table goes in each file: several tables export one file per table, or a ZIP.
 - Output is never gzip-wrapped, since Parquet compresses its own pages. The CLI refuses
@@ -106,7 +106,7 @@ In the product:
 
 ## Consequences
 
-- This is the first third-party dependency in `@joinery/transfer`, a deliberate exception to
+- This is the first third-party dependency in `@querybara/transfer`, a deliberate exception to
   ADR 0012's stance. The format is too large to own, and both libraries are small, MIT-licensed
   and free of other dependencies. They are bundled into the job runner and the CLI like
   everything else, and the licence report lists them. hyparquet-writer pins an exact hyparquet

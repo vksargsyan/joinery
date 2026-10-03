@@ -1,11 +1,11 @@
-import { catchUp, nextRun } from '@joinery/core';
-import type { ScheduleRecord, ScheduleRepository, ScheduleRun } from '@joinery/storage';
+import { catchUp, nextRun } from '@querybara/core';
+import type { ScheduleRecord, ScheduleRepository, ScheduleRun } from '@querybara/storage';
 
 /**
  * The scheduler (spec: scheduler and automation): runs each enabled schedule when it is due,
- * while Joinery is open. It keeps `nextRunAt` on every schedule, wakes at the soonest one (and at
+ * while Querybara is open. It keeps `nextRunAt` on every schedule, wakes at the soonest one (and at
  * least every minute, so a sleep or a clock change is noticed), and runs what is due through the
- * task executor. A run missed by more than a couple of minutes (Joinery closed, the computer
+ * task executor. A run missed by more than a couple of minutes (Querybara closed, the computer
  * asleep) is caught up once or skipped, as the schedule says; a schedule still running when it
  * is due again skips that run. Every run, skipped ones included, is recorded. Timers and the
  * clock are injected, so the tests drive it.
@@ -67,7 +67,7 @@ export class Scheduler {
     return this.#running.has(scheduleId);
   }
 
-  /** Enabled schedules exist: Joinery should stay open in the background to run them. */
+  /** Enabled schedules exist: Querybara should stay open in the background to run them. */
   hasEnabled(): boolean {
     return this.#options.store.list().some((schedule) => schedule.enabled);
   }
@@ -76,7 +76,7 @@ export class Scheduler {
   start(): void {
     if (this.#started) return;
     this.#started = true;
-    this.#options.store.abandonRunning('Joinery closed while the run was going');
+    this.#options.store.abandonRunning('Querybara closed while the run was going');
     this.reconcile();
     this.#tick();
   }
@@ -163,7 +163,7 @@ export class Scheduler {
       this.#record(
         schedule,
         'catch-up',
-        `Missed ${count === 1 ? 'a run' : `${count} runs`} while Joinery was closed or the computer asleep`,
+        `Missed ${count === 1 ? 'a run' : `${count} runs`} while Querybara was closed or the computer asleep`,
       );
       return;
     }

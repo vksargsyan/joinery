@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
-import { fileSink } from '@joinery/transfer';
+import type { Session } from '@querybara/core';
+import { fileSink } from '@querybara/transfer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -21,7 +21,7 @@ import { ScratchDatabases, query, rowsText, run, sqlServer, tempDir } from './he
  * composites, domains, serial and identity columns, a partitioned table, a self-referencing
  * foreign key, views, a materialised view, a trigger that would change rows if it fired during
  * the load) and tricky values is backed up in each format, restored into fresh databases, and
- * compared with the structure and data compare of @joinery/sync: zero differences.
+ * compared with the structure and data compare of @querybara/sync: zero differences.
  */
 
 const server = sqlServer('postgres');
@@ -59,7 +59,7 @@ describe.skipIf(!server)('PostgreSQL backup and restore', () => {
   }
 
   it('round-trips an encrypted archive into a fresh database', async () => {
-    const path = await backup('jbak', 'full.jbak', {
+    const path = await backup('qbak', 'full.qbak', {
       encryption: { passphrase: 'correct horse battery staple', cost: FAST },
     });
     const archive = await ArchiveReader.open(path, { passphrase: 'correct horse battery staple' });
@@ -103,7 +103,7 @@ describe.skipIf(!server)('PostgreSQL backup and restore', () => {
   }
 
   it('restores selected tables with what they need, and nothing else', async () => {
-    const path = await backup('jbak', 'selective.jbak');
+    const path = await backup('qbak', 'selective.qbak');
     const archive = await ArchiveReader.open(path);
     const target = await dbs.connect(await dbs.create('selected'));
     const select = ['table:bk.orders:create'];
@@ -127,7 +127,7 @@ describe.skipIf(!server)('PostgreSQL backup and restore', () => {
   });
 
   it('asks before dropping existing objects, then replaces them', async () => {
-    const path = await backup('jbak', 'replace.jbak');
+    const path = await backup('qbak', 'replace.qbak');
     const target = await dbs.connect(await dbs.create('replace'));
     const archive = await ArchiveReader.open(path);
     expect((await restoreSqlArchive({ session: target, archive })).status).toBe('completed');

@@ -1,5 +1,5 @@
-import { newId } from '@joinery/core';
-import type { RdbAnalyzeProgress, RdbReport } from '@joinery/ipc';
+import { newId } from '@querybara/core';
+import type { RdbAnalyzeProgress, RdbReport } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { currentDock } from '../../components/dock';

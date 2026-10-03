@@ -1,13 +1,13 @@
 import { isIP } from 'node:net';
 
-import { ENGINES, JoineryError, type HostPort, type ResolvedProfile } from '@joinery/core';
+import { ENGINES, QuerybaraError, type HostPort, type ResolvedProfile } from '@querybara/core';
 import {
   assertSupportedNetwork,
   buildTlsSettings,
   type FileReader,
   type TlsSettings,
-} from '@joinery/driver-sql-base';
-import { nodeRouteOf, tunnelReach } from '@joinery/tunnel';
+} from '@querybara/driver-sql-base';
+import { nodeRouteOf, tunnelReach } from '@querybara/tunnel';
 import type { AuthMechanism, MongoClientOptions } from 'mongodb';
 
 /** Everything needed to open a MongoClient for a profile. */
@@ -48,9 +48,9 @@ export interface MongoUriParts {
   readonly query: string;
 }
 
-function invalidUri(reason: string): JoineryError {
+function invalidUri(reason: string): QuerybaraError {
   // The URI itself is never quoted: it may hold a password.
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `The MongoDB connection string is not valid: ${reason}`,
     hint: 'Use the form mongodb://host:port/database?options or mongodb+srv://cluster.example.net',
@@ -162,7 +162,7 @@ export function buildMongoClientPlan(
 ): MongoClientPlan {
   const { profile } = resolved;
   if (profile.engine !== 'mongodb') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The MongoDB adapter cannot open a ${ENGINES[profile.engine].displayName} profile`,
     });
@@ -172,7 +172,7 @@ export function buildMongoClientPlan(
   const reach = resolved.endpointOverride ? tunnelReach(profile) : undefined;
   const route = reach?.kind === 'nodes' ? nodeRouteOf(resolved) : undefined;
   if (reach?.kind === 'nodes' && !route) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message:
         'This profile reaches several MongoDB servers through its tunnel, but only one forwarded host was given',
@@ -211,7 +211,7 @@ export function buildMongoClientPlan(
       if (uriParts.password !== undefined) secrets.push(uriParts.password);
       break;
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `MongoDB does not accept a "${endpoint.kind}" endpoint`,
         hint: 'Use a host, a host list, an SRV name or a mongodb:// connection string',
@@ -344,7 +344,7 @@ export function authOptions(
       if (auth.password) {
         password = resolved.secrets[auth.password.id];
         if (password === undefined) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'AUTH_FAILED',
             message: 'The password for this connection was not provided',
             hint: 'Enter the password, or save it in the profile',
@@ -357,7 +357,7 @@ export function authOptions(
       const mechanism =
         requested === undefined || requested === '' ? undefined : PASSWORD_MECHANISMS[requested];
       if (requested && mechanism === undefined) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_SUPPORTED',
           message: `The authentication mechanism "${auth.mechanism}" is not supported`,
           hint: 'Use SCRAM-SHA-256, SCRAM-SHA-1, or PLAIN for LDAP',
@@ -373,7 +373,7 @@ export function authOptions(
     }
     case 'clientCertificate': {
       if (tls.mode === 'disable' || !tls.certPath) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'X.509 authentication needs TLS with a client certificate',
           hint: 'Turn TLS on and set the client certificate (and key) file',
@@ -388,7 +388,7 @@ export function authOptions(
     }
     case 'apiKey':
     case 'bearer':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `"${auth.method}" authentication does not apply to MongoDB`,
         hint: 'Use password (SCRAM or LDAP) or X.509 authentication',

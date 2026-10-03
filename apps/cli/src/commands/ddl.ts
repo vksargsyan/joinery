@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import type { IntrospectScope } from '@joinery/core';
-import { renderSnapshotDdl } from '@joinery/sync';
+import type { IntrospectScope } from '@querybara/core';
+import { renderSnapshotDdl } from '@querybara/sync';
 
 import { closeQuietly } from '../connect';
 import { EXIT, type ExitCode } from '../errors';
@@ -17,7 +17,7 @@ export interface DdlOptions extends TargetOverrides {
 }
 
 /**
- * `joinery ddl <target>`: the schema as a DDL script (introspect + renderSnapshotDdl), in
+ * `querybara ddl <target>`: the schema as a DDL script (introspect + renderSnapshotDdl), in
  * dependency order, ready to create the objects in an empty database.
  */
 export async function ddlCommand(

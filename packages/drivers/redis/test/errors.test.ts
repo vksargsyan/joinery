@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { mapRedisError, type RedisErrorContext } from '../src';
@@ -136,7 +136,7 @@ describe('mapRedisError', () => {
     const abort = new Error('aborted');
     abort.name = 'AbortError';
     expect(mapRedisError(abort, commandCtx).code).toBe('CANCELLED');
-    const existing = new JoineryError({ code: 'NOT_FOUND', message: 'x' });
+    const existing = new QuerybaraError({ code: 'NOT_FOUND', message: 'x' });
     expect(mapRedisError(existing, commandCtx)).toBe(existing);
   });
 

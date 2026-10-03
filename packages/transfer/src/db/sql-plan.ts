@@ -9,8 +9,8 @@ import {
   type SchemaSnapshot,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 import {
   parseType,
   renderForeignKey,
@@ -20,7 +20,7 @@ import {
   renderTableStatements,
   renderType,
   renderUnique,
-} from '@joinery/sync';
+} from '@querybara/sync';
 
 import type { ColumnMapping } from '../mapping';
 import { qualifiedTable } from '../statements';
@@ -46,7 +46,7 @@ import { sqlCellAdapter, type CellAdapter } from './values';
 /**
  * Planning a SQL → SQL transfer (spec §12): each source table becomes a target table built
  * with the engine pair's type mapping and the user's overrides, or an existing table filled by
- * matching column names. The DDL comes from @joinery/sync's renderers, so a created table reads
+ * matching column names. The DDL comes from @querybara/sync's renderers, so a created table reads
  * back exactly as the table designer would have made it. Keys, indexes and foreign keys that
  * slow a load down are split off to run after the data: on PostgreSQL the primary key too; on
  * MySQL and MariaDB the primary key stays in CREATE TABLE, since InnoDB clusters rows by it and
@@ -298,7 +298,7 @@ function buildTable(
     const target = columnNames.claim(override?.target?.trim() || column.name);
     const skipped = override?.skip === true;
     if (!isSafeDataType(targetType)) {
-      problems.push(`"${targetType}" is not a column type Joinery can use (${column.name})`);
+      problems.push(`"${targetType}" is not a column type Querybara can use (${column.name})`);
     }
     if (override?.target !== undefined && fitIdentifier(override.target, to) !== override.target) {
       warnings.push(`Column name ${override.target} was cut to ${target}`);

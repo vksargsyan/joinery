@@ -9,7 +9,7 @@ import { languageClient } from './language';
 import { monaco } from './monaco';
 
 /**
- * Joinery's SQL language service in Monaco (spec §6): a completion provider and a signature help
+ * Querybara's SQL language service in Monaco (spec §6): a completion provider and a signature help
  * provider per dialect's language (pgsql; mysql for MySQL and MariaDB). Each request is for the
  * query tab that owns the model, so two tabs on different connections complete from their own
  * catalogs, in their own session context. The work happens in the language worker; Monaco's

@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/mongo-tools",
+  "name": "@querybara/mongo-tools",
   "version": "0.0.0",
   "private": true,
   "description": "MongoDB shell-literal parser and formatter, Extended JSON helpers, find() text, schema analysis and document table views; pure TypeScript for the renderer and the driver.",
@@ -13,7 +13,7 @@
     "test:integration": "vitest run test/integration --passWithNoTests"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
+    "@querybara/core": "workspace:*",
     "bson": "^7.3.3"
   },
   "devDependencies": {

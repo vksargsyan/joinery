@@ -1,4 +1,4 @@
-import type { ScheduleRule } from '@joinery/core';
+import type { ScheduleRule } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { MIGRATIONS, RUNS_KEPT } from '../src';
@@ -190,10 +190,10 @@ describe('schedules', () => {
       rule: daily,
     });
     const run = store.schedules.startRun({ scheduleId: schedule.id, trigger: 'schedule' });
-    expect(store.schedules.abandonRunning('Joinery closed during the run')).toBe(1);
+    expect(store.schedules.abandonRunning('Querybara closed during the run')).toBe(1);
     expect(store.schedules.getRun(run.id)).toMatchObject({
       status: 'failed',
-      message: 'Joinery closed during the run',
+      message: 'Querybara closed during the run',
     });
     expect(store.schedules.get(schedule.id)?.lastStatus).toBe('failed');
     expect(store.schedules.abandonRunning('again')).toBe(0);

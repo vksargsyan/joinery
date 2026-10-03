@@ -5,7 +5,7 @@
 
 ## Context
 
-Joinery's theme was a set of neutral blue-grey tokens (`bg`, `panel`, `panel-2`, `hover`,
+Querybara's theme was a set of neutral blue-grey tokens (`bg`, `panel`, `panel-2`, `hover`,
 `border`, `fg`, `muted`, `accent` and three status colours) that components used through
 Tailwind. Monaco and the Glide data grids, which draw on a canvas, carried their own hex values.
 The app is to follow **Kiln**, a design system first made as a warm editor theme fired from

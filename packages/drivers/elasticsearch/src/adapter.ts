@@ -4,7 +4,7 @@ import type {
   DriverAdapter,
   ResolvedProfile,
   Session,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import { checkSearchConnection, type SearchCheckDeps } from './check';
 import { ElasticSearchSession, searchCoreCapabilities } from './session';
@@ -27,7 +27,7 @@ export class SearchAdapter implements DriverAdapter {
 
   /**
    * Test Connection, with injectable network primitives and `runSshStep` for profiles with an
-   * SSH tunnel or proxy (@joinery/tunnel's `runSshStep` bound to a TransportManager).
+   * SSH tunnel or proxy (@querybara/tunnel's `runSshStep` bound to a TransportManager).
    */
   checkConnection(
     resolved: ResolvedProfile,

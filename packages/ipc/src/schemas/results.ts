@@ -8,11 +8,11 @@ import {
   type LargeValueHandle,
   type QueryParams,
   type ResultChunk,
-} from '@joinery/core';
+} from '@querybara/core';
 import { z } from 'zod';
 
 /**
- * Zod schemas for the result types in @joinery/core (results.ts). Each schema is annotated with
+ * Zod schemas for the result types in @querybara/core (results.ts). Each schema is annotated with
  * the core type as both its input and output, which checks at compile time that the schema
  * produces the core type, and lets handlers return core values (readonly arrays included).
  */

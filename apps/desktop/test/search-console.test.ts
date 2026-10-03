@@ -1,5 +1,5 @@
-import type { BrowseNode } from '@joinery/core';
-import type { SearchResponse } from '@joinery/search-tools';
+import type { BrowseNode } from '@querybara/core';
+import type { SearchResponse } from '@querybara/search-tools';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -24,7 +24,7 @@ import {
   searchText,
 } from '../src/renderer/src/state/search/explorer';
 import { profileInput } from './helpers';
-import { connectionProfileSchema } from '@joinery/core';
+import { connectionProfileSchema } from '@querybara/core';
 
 /** The console's run flow, response views and the explorer's objects (spec §11). */
 

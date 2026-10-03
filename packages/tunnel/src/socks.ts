@@ -2,10 +2,10 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
 import type { Duplex } from 'node:stream';
 
-import type { HostPort, JoineryError } from '@joinery/core';
+import type { HostPort, QuerybaraError } from '@querybara/core';
 
 import {
-  asJoineryError,
+  asQuerybaraError,
   listenOnLoopback,
   splice,
   type Route,
@@ -110,7 +110,7 @@ function digest(value: Buffer): Buffer {
 }
 
 /** The SOCKS5 reply code for a failure to open the destination. */
-function replyCodeFor(error: JoineryError): number {
+function replyCodeFor(error: QuerybaraError): number {
   switch (error.engineCode) {
     case 'FORWARD_PROHIBITED':
     case 'PROXY_REFUSED':
@@ -144,7 +144,7 @@ export class LocalSocksServer {
     private readonly route: Route,
     readonly endpoint: SocksEndpoint,
     private readonly handshakeTimeoutMs: number,
-    private readonly report: (error: JoineryError) => void,
+    private readonly report: (error: QuerybaraError) => void,
   ) {
     this.userDigest = digest(Buffer.from(endpoint.user));
     this.passwordDigest = digest(Buffer.from(endpoint.password));
@@ -157,14 +157,14 @@ export class LocalSocksServer {
    */
   static async listen(
     route: Route,
-    options: { handshakeTimeoutMs: number; report: (error: JoineryError) => void },
+    options: { handshakeTimeoutMs: number; report: (error: QuerybaraError) => void },
   ): Promise<LocalSocksServer> {
     const server = createServer({ pauseOnConnect: true });
     const port = await listenOnLoopback(server);
     const endpoint: SocksEndpoint = {
       host: '127.0.0.1',
       port,
-      user: `joinery-${randomBytes(6).toString('hex')}`,
+      user: `querybara-${randomBytes(6).toString('hex')}`,
       password: randomBytes(24).toString('base64url'),
     };
     return new LocalSocksServer(
@@ -295,7 +295,7 @@ export class LocalSocksServer {
         socket.resume();
       },
       (error: unknown) => {
-        const failure = asJoineryError(error);
+        const failure = asQuerybaraError(error);
         if (!socket.destroyed) {
           this.refuse(socket, undefined, reply(replyCodeFor(failure)));
           const timer = setTimeout(() => socket.destroy(), this.handshakeTimeoutMs);

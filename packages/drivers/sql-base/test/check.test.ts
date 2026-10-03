@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   type ConnectionCheckResult,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { checkConnection, type CheckConnectionDeps } from '../src';
@@ -114,7 +114,11 @@ describe('checkConnection', () => {
     const tlsFailure = await run(
       resolved(),
       adapter(async () => {
-        throw new JoineryError({ code: 'TLS_FAILED', message: 'self-signed', hint: 'set the CA' });
+        throw new QuerybaraError({
+          code: 'TLS_FAILED',
+          message: 'self-signed',
+          hint: 'set the CA',
+        });
       }),
     );
     expect(tlsFailure.find((r) => r.status === 'failed')).toMatchObject({
@@ -125,7 +129,10 @@ describe('checkConnection', () => {
     const authFailure = await run(
       resolved(),
       adapter(async () => {
-        throw new JoineryError({ code: 'AUTH_FAILED', message: 'password authentication failed' });
+        throw new QuerybaraError({
+          code: 'AUTH_FAILED',
+          message: 'password authentication failed',
+        });
       }),
     );
     expect(statuses(authFailure).slice(3, 5)).toEqual(['tls:ok', 'auth:failed']);
@@ -178,7 +185,7 @@ describe('checkConnection', () => {
 
   it('reports a failing ping and still closes the session', async () => {
     const session = fakeSession(async () => {
-      throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'gone' });
+      throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'gone' });
     });
     const results = await run(
       resolved(),
@@ -334,7 +341,10 @@ describe('checkConnection through a tunnel (runSshStep)', () => {
     const results = await run(
       resolved({ ssh }),
       adapter(async () => {
-        throw new JoineryError({ code: 'AUTH_FAILED', message: 'password authentication failed' });
+        throw new QuerybaraError({
+          code: 'AUTH_FAILED',
+          message: 'password authentication failed',
+        });
       }),
       { ...okDeps, runSshStep },
     );

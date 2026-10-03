@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { utf8Text } from './bytes';
 
@@ -192,9 +192,9 @@ function token(
   return { bytes, text: utf8Text(bytes), start, end, quoted, lineStart };
 }
 
-function invalid(line: string, result: TokenizeResult): JoineryError {
+function invalid(line: string, result: TokenizeResult): QuerybaraError {
   const position = result.error?.position ?? line.length;
-  return new JoineryError({
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `Invalid argument(s): ${result.error?.message ?? 'unterminated quote'}`,
     hint: 'Close every quote, and put a space after a closing quote',

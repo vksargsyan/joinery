@@ -1,4 +1,4 @@
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -10,10 +10,10 @@ import { connect, query, scratchDatabase } from './db';
  * user records there replaces the default.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Palette';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 

@@ -1,10 +1,10 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   codePointOffsetToIndex,
   errorMessage,
   errorProp,
   mapNetworkError,
-} from '@joinery/driver-sql-base';
+} from '@querybara/driver-sql-base';
 
 /** What was happening when a pg error occurred, for picking the right code and position. */
 export interface PgErrorContext {
@@ -39,11 +39,11 @@ function sqlState(error: unknown): string | undefined {
 }
 
 /**
- * Maps anything pg throws to a JoineryError: server errors by SQLSTATE (with detail, hint and
+ * Maps anything pg throws to a QuerybaraError: server errors by SQLSTATE (with detail, hint and
  * a 0-based position), then network and TLS failures, then pg's own client errors.
  */
-export function mapPgError(error: unknown, context: PgErrorContext): JoineryError {
-  if (error instanceof JoineryError) return error;
+export function mapPgError(error: unknown, context: PgErrorContext): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   const cause = { cause: error };
   const message = errorMessage(error);
   const state = sqlState(error);
@@ -57,7 +57,7 @@ export function mapPgError(error: unknown, context: PgErrorContext): JoineryErro
       ...(errorProp(error, 'hint') !== undefined ? { hint: errorProp(error, 'hint')! } : {}),
     };
     if (AUTH_STATES.has(state)) {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           ...base,
           code: 'AUTH_FAILED',
@@ -71,39 +71,42 @@ export function mapPgError(error: unknown, context: PgErrorContext): JoineryErro
       );
     }
     if (state === '3D000' && context.connecting) {
-      return new JoineryError(
+      return new QuerybaraError(
         { ...base, code: 'NOT_FOUND', hint: 'Check the default database in the profile' },
         cause,
       );
     }
     if (state === '57014') {
       if (context.cancelRequested) {
-        return new JoineryError({ ...base, code: 'CANCELLED', message: 'Query cancelled' }, cause);
+        return new QuerybaraError(
+          { ...base, code: 'CANCELLED', message: 'Query cancelled' },
+          cause,
+        );
       }
       if (/statement timeout/i.test(message)) {
-        return new JoineryError(
+        return new QuerybaraError(
           { ...base, code: 'TIMEOUT', hint: 'The statement ran longer than the query timeout' },
           cause,
         );
       }
-      return new JoineryError({ ...base, code: 'CANCELLED' }, cause);
+      return new QuerybaraError({ ...base, code: 'CANCELLED' }, cause);
     }
     if (CONNECTION_STATES.has(state)) {
-      return new JoineryError({ ...base, code: 'CONNECTION_FAILED' }, cause);
+      return new QuerybaraError({ ...base, code: 'CONNECTION_FAILED' }, cause);
     }
     const position = Number(errorProp(error, 'position'));
     const withPosition =
       Number.isInteger(position) && position > 0 && context.statement !== undefined
         ? { position: codePointOffsetToIndex(context.statement, position - 1) }
         : {};
-    return new JoineryError({ ...base, ...withPosition, code: 'SQL_ERROR' }, cause);
+    return new QuerybaraError({ ...base, ...withPosition, code: 'SQL_ERROR' }, cause);
   }
 
   const network = mapNetworkError(error, context.where);
   if (network) return network;
 
   if (/timeout/i.test(message)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TIMEOUT',
         message: context.connecting ? `Timed out connecting to ${context.where}` : message,
@@ -113,7 +116,7 @@ export function mapPgError(error: unknown, context: PgErrorContext): JoineryErro
     );
   }
   if (/password must be a string/i.test(message)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'AUTH_FAILED',
         message: 'The server asked for a password, but none was provided',
@@ -123,13 +126,13 @@ export function mapPgError(error: unknown, context: PgErrorContext): JoineryErro
     );
   }
   if (/SASL|SCRAM/.test(message)) {
-    return new JoineryError(
+    return new QuerybaraError(
       { code: 'AUTH_FAILED', message, hint: 'Check the user name and password' },
       cause,
     );
   }
   if (/terminated|not queryable|Connection terminated|ended/i.test(message)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: context.connecting
@@ -142,7 +145,7 @@ export function mapPgError(error: unknown, context: PgErrorContext): JoineryErro
       cause,
     );
   }
-  return new JoineryError(
+  return new QuerybaraError(
     { code: context.connecting ? 'CONNECTION_FAILED' : 'INTERNAL', message },
     cause,
   );

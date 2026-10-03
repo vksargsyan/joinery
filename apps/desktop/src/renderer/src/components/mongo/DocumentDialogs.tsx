@@ -1,4 +1,4 @@
-import { formatShellInline, fromEjson } from '@joinery/mongo-tools';
+import { formatShellInline, fromEjson } from '@querybara/mongo-tools';
 
 import { formatCount } from '../../lib/format';
 import { useCollectionState, type CollectionView } from '../../state/mongo/collection-view';

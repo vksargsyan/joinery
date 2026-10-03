@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 /**
  * The sandboxed renderer imports this package, so its sources may import only the `bson`
- * package (browser-safe), @joinery/core and each other: no Node built-ins, no `mongodb`.
+ * package (browser-safe), @querybara/core and each other: no Node built-ins, no `mongodb`.
  */
 
 const SRC = fileURLToPath(new URL('../src', import.meta.url));
@@ -19,12 +19,12 @@ function sources(dir: string): string[] {
 }
 
 describe('renderer safety', () => {
-  it('imports nothing but bson, @joinery/core and its own modules', () => {
+  it('imports nothing but bson, @querybara/core and its own modules', () => {
     const imports = sources(SRC).flatMap((file) =>
       [...readFileSync(file, 'utf8').matchAll(/from '([^']+)'/g)].map((m) => m[1]!),
     );
     const external = [...new Set(imports.filter((spec) => !spec.startsWith('.')))].sort();
-    expect(external).toEqual(['@joinery/core', 'bson']);
+    expect(external).toEqual(['@querybara/core', 'bson']);
   });
 
   it('never evaluates text', () => {

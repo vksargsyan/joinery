@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
 
-import type { ConnectionCheckResult } from '@joinery/core';
+import type { ConnectionCheckResult } from '@querybara/core';
 import {
   createClient,
   fromNodePort,
@@ -14,9 +14,9 @@ import {
   type HostKeyPromptEvent,
   type MainContract,
   type PortLike,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer } from '@joinery/storage';
-import { MemoryKnownHosts, importPrivateKey } from '@joinery/tunnel';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer } from '@querybara/storage';
+import { MemoryKnownHosts, importPrivateKey } from '@querybara/tunnel';
 import ssh2 from 'ssh2';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-ssh-main-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-ssh-main-'));
   cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
 }
@@ -66,7 +66,7 @@ function toPpk(opensshKey: string, passphrase?: string): string {
   const publicBlob = parsed.getPublicSSH();
   let privateBlob = wire(Buffer.from(jwk.d ?? '', 'base64url'));
   const encryption = passphrase ? 'aes256-cbc' : 'none';
-  const comment = 'joinery-test-key';
+  const comment = 'querybara-test-key';
   if (passphrase) {
     const padding = (16 - (privateBlob.length % 16)) % 16;
     privateBlob = Buffer.concat([privateBlob, randomBytes(padding)]);
@@ -173,7 +173,7 @@ describe('private keys picked in the connection dialog', () => {
       locked: false,
       keyType: 'ssh-ed25519',
       fingerprintSha256: fingerprintOf(key),
-      comment: 'joinery-test-key',
+      comment: 'querybara-test-key',
       converted: true,
     });
     expect(info.keyPath.startsWith(keysDir)).toBe(true);
@@ -273,7 +273,7 @@ function setup(keysDir?: string) {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'host-end', remote: 'renderer-end' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',

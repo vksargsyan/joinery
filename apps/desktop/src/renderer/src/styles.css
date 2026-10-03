@@ -272,7 +272,7 @@ progress {
 }
 
 /* Dockview as Kiln's editor tabs: chrome strip, the active tab opens onto the working surface. */
-.joinery-dock {
+.querybara-dock {
   --dv-group-view-background-color: var(--bg);
   --dv-tabs-and-actions-container-background-color: var(--panel);
   --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
@@ -291,12 +291,12 @@ progress {
 }
 
 /* The active tab's rust top hairline (dimmed in a group without focus). */
-.joinery-dock .dv-tab {
+.querybara-dock .dv-tab {
   position: relative;
   border-right: 1px solid var(--border);
 }
 
-.joinery-dock .dv-tab.dv-active-tab::before {
+.querybara-dock .dv-tab.dv-active-tab::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
@@ -304,11 +304,11 @@ progress {
   background: color-mix(in srgb, var(--k-rust) 40%, transparent);
 }
 
-.joinery-dock .dv-active-group .dv-tab.dv-active-tab::before {
+.querybara-dock .dv-active-group .dv-tab.dv-active-tab::before {
   background: var(--k-rust);
 }
 
-.joinery-dock .dv-tab:not(.dv-active-tab):hover {
+.querybara-dock .dv-tab:not(.dv-active-tab):hover {
   background: var(--k-bg-raised);
   color: var(--muted);
 }
@@ -322,7 +322,7 @@ progress {
 }
 
 /* An editor's suggestions and hovers (createEditor in lib/monaco.ts): above the dock panels. */
-.monaco-editor.joinery-editor-overflow {
+.monaco-editor.querybara-editor-overflow {
   position: fixed;
   top: 0;
   left: 0;
@@ -332,7 +332,7 @@ progress {
 }
 
 /* The Elasticsearch console's request at the cursor (ConsoleEditor): a rust wash, as selections are. */
-.monaco-editor .joinery-console-request {
+.monaco-editor .querybara-console-request {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 

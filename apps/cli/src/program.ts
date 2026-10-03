@@ -1,11 +1,11 @@
-import type { Environment, SecretPolicy, TlsMode } from '@joinery/core';
-import type { RenameRule, RowAction } from '@joinery/sync';
+import type { Environment, SecretPolicy, TlsMode } from '@querybara/core';
+import type { RenameRule, RowAction } from '@querybara/sync';
 import {
   DB_TABLE_MODES,
   type DbTableMode,
   type FieldShape,
   type ParquetCompression,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 import { Command, CommanderError, Option } from 'commander';
 
 import packageJson from '../package.json' with { type: 'json' };
@@ -97,12 +97,12 @@ Targets:
   Every <target>, <source> and <profile> argument is a saved profile (name or id) or a
   connection URI: postgres://user:pass@host:5432/db, mysql://user@host/db, mariadb://...
   URI passwords are used for that run only and never stored. Otherwise the password comes
-  from the profile's saved secret, JOINERY_PASSWORD_<PROFILE> or JOINERY_PASSWORD, or a
+  from the profile's saved secret, QUERYBARA_PASSWORD_<PROFILE> or QUERYBARA_PASSWORD, or a
   hidden prompt. TLS is off unless the URI says otherwise (?sslmode=..., rediss://,
   https://, mongodb+srv://) or --tls is given.
 
   An http:// or https:// URL is an Elasticsearch node: https://elastic@es.example.com:9200. It logs in with the URL's user and password, or
-  with the API key in JOINERY_API_KEY; the scheme decides TLS (--tls sets the https mode).
+  with the API key in QUERYBARA_API_KEY; the scheme decides TLS (--tls sets the https mode).
 
 SSH tunnels and proxies:
   A saved profile connects through its own SSH tunnel and proxy. A URI target takes them
@@ -117,17 +117,17 @@ SSH tunnels and proxies:
   SRV records are still looked up on this computer.
 
 Environment:
-  JOINERY_STORE              local store file (default: the desktop app's joinery.db)
-  JOINERY_PASSWORD           password for targets without one
-  JOINERY_PASSWORD_<NAME>    password for one profile (name upper-cased, other chars as _)
-  JOINERY_SSH_PASSWORD       SSH password for --ssh hops and profiles that ask for it
-  JOINERY_SSH_KEY_PASSPHRASE passphrase of an encrypted SSH key
-  JOINERY_PROXY_PASSWORD     proxy password (a --proxy URL may carry it too)
-  JOINERY_API_KEY            Elasticsearch API key (URL targets and profiles)
-  JOINERY_BEARER_TOKEN       bearer token for profiles that log in with one
-  JOINERY_PASSPHRASE         seals passwords the CLI saves (the OS keychain is app-only)
-  JOINERY_EXPORT_PASSPHRASE  passphrase for profiles export/import files
-  JOINERY_BACKUP_PASSPHRASE  passphrase of encrypted backups (backup --encrypt, restore)
+  QUERYBARA_STORE              local store file (default: the desktop app's querybara.db)
+  QUERYBARA_PASSWORD           password for targets without one
+  QUERYBARA_PASSWORD_<NAME>    password for one profile (name upper-cased, other chars as _)
+  QUERYBARA_SSH_PASSWORD       SSH password for --ssh hops and profiles that ask for it
+  QUERYBARA_SSH_KEY_PASSPHRASE passphrase of an encrypted SSH key
+  QUERYBARA_PROXY_PASSWORD     proxy password (a --proxy URL may carry it too)
+  QUERYBARA_API_KEY            Elasticsearch API key (URL targets and profiles)
+  QUERYBARA_BEARER_TOKEN       bearer token for profiles that log in with one
+  QUERYBARA_PASSPHRASE         seals passwords the CLI saves (the OS keychain is app-only)
+  QUERYBARA_EXPORT_PASSPHRASE  passphrase for profiles export/import files
+  QUERYBARA_BACKUP_PASSPHRASE  passphrase of encrypted backups (backup --encrypt, restore)
   NO_COLOR                   turn colours off
 
 Exit codes:
@@ -168,7 +168,7 @@ export async function runCli(argv: readonly string[], ctx: CliContext): Promise<
     homedir: ctx.homedir,
     cwd: ctx.cwd,
   });
-  reporter.debug(`joinery ${VERSION}; store ${location.path} (${location.source})`);
+  reporter.debug(`querybara ${VERSION}; store ${location.path} (${location.source})`);
   const interrupts = new Interrupts(reporter);
   interrupts.listen(ctx.signals);
   const stdout = new Sink(ctx.stdout);
@@ -300,15 +300,15 @@ function yesOption(what: string): Option {
 
 /** The commander program. `schedule` receives the job the parsed command asked for. */
 export function buildProgram(ctx: CliContext, schedule: (job: Job) => void): Command {
-  const program = new Command('joinery')
+  const program = new Command('querybara')
     .description(
-      "Test connections, run SQL, and compare or sync the structure and data of databases.\nThe Joinery desktop engine on the command line; shares the app's saved connections.",
+      "Test connections, run SQL, and compare or sync the structure and data of databases.\nThe Querybara desktop engine on the command line; shares the app's saved connections.",
     )
     .version(VERSION, '-V, --version', 'print the version')
     .helpOption('-h, --help', 'show help for a command')
     .option(
       '--store <path>',
-      'local store file (env JOINERY_STORE; default: the desktop app store)',
+      'local store file (env QUERYBARA_STORE; default: the desktop app store)',
     )
     .option('-v, --verbose', 'debug output on stderr (never includes secrets)')
     .option('-q, --quiet', 'only results, warnings and errors')
@@ -331,7 +331,7 @@ export function buildProgram(ctx: CliContext, schedule: (job: Job) => void): Com
     .option('--json', 'print the steps as JSON')
     .addHelpText(
       'after',
-      '\nExit code 0 when every step passes, 1 when one fails (with a fix hint), 2 on errors.\n\nExamples:\n  joinery test prod-db\n  joinery test "postgres://app@db.internal:5432/app?sslmode=verify-full"\n  joinery test "postgres://app@10.0.3.7/app" --ssh ops@bastion.example.com --ssh-agent\n  joinery test "https://elastic@es.internal:9200"',
+      '\nExit code 0 when every step passes, 1 when one fails (with a fix hint), 2 on errors.\n\nExamples:\n  querybara test prod-db\n  querybara test "postgres://app@db.internal:5432/app?sslmode=verify-full"\n  querybara test "postgres://app@10.0.3.7/app" --ssh ops@bastion.example.com --ssh-agent\n  querybara test "https://elastic@es.internal:9200"',
     )
     .action((target: string, options: { tls?: TlsMode; json?: boolean } & TunnelCliOptions) => {
       schedule((runtime) =>
@@ -390,24 +390,24 @@ Safety: UPDATE/DELETE without WHERE, DROP and TRUNCATE ask for confirmation (or 
 Placeholders are bound only when --param is given. Ctrl+C cancels the running statement.
 
 Examples:
-  joinery query prod -e "select * from users where id = :id" --param id=42
-  joinery query "postgres://app@localhost/app" -f migrate.sql --continue --error-log errors.log
-  joinery query dev -f dump.sql --yes --quiet
-  cat report.sql | joinery query dev --format csv > report.csv
-  joinery query "mysql://app@db.internal/app" --ssh ops@jump:22 --ssh ops@bastion --ssh-key ~/.ssh/id_ed25519 -e "select 1"
+  querybara query prod -e "select * from users where id = :id" --param id=42
+  querybara query "postgres://app@localhost/app" -f migrate.sql --continue --error-log errors.log
+  querybara query dev -f dump.sql --yes --quiet
+  cat report.sql | querybara query dev --format csv > report.csv
+  querybara query "mysql://app@db.internal/app" --ssh ops@jump:22 --ssh ops@bastion --ssh-key ~/.ssh/id_ed25519 -e "select 1"
 
 Redis targets (redis://, rediss:// or a Redis profile) run redis-cli command lines, one per
 line, and print redis-cli's output (--format json or jsonl: the replies as JSON); DEL, FLUSHDB
 and other destructive commands ask for confirmation (or need --yes):
-  joinery query "redis://localhost:6379/0" -e 'SET greeting "hello world"'
+  querybara query "redis://localhost:6379/0" -e 'SET greeting "hello world"'
 
 Elasticsearch targets (http://, https:// or a saved profile) run Kibana console
 requests: a method and path per request, then its JSON body (NDJSON lines for _bulk); each
 response body prints as JSON with numbers exactly as sent (--format json or jsonl: objects with
 the request, status and body). Deleting or closing indices, delete by query and other
 destructive requests ask for confirmation (or need --yes); an error status fails the request:
-  joinery query "http://elastic@localhost:9200" -e 'GET _cluster/health'
-  joinery query search-prod -f requests.txt --format jsonl`,
+  querybara query "http://elastic@localhost:9200" -e 'GET _cluster/health'
+  querybara query search-prod -f requests.txt --format jsonl`,
     )
     .action((target: string, options: QueryCliOptions) => {
       schedule((runtime) => queryCommand(runtime, target, queryOptions(options)));
@@ -458,9 +458,9 @@ MariaDB DDL is not transactional, so --apply warns and needs --yes. After applyi
 sides are compared again and the command fails unless no differences remain.
 
 Examples:
-  joinery compare staging prod --out deploy.sql --html report.html
-  joinery compare dev "postgres://app@localhost/app_test" --schema public --json
-  joinery compare model-db test-db --include-destructive --apply --yes`,
+  querybara compare staging prod --out deploy.sql --html report.html
+  querybara compare dev "postgres://app@localhost/app_test" --schema public --json
+  querybara compare model-db test-db --include-destructive --apply --yes`,
     )
     .action((source: string, target: string, options: CompareCliOptions) => {
       schedule((runtime) =>
@@ -526,9 +526,9 @@ merged. Exit codes: 0 no differences (for the selected actions), 1 differences f
 remaining after --apply, 2 error.
 
 Examples:
-  joinery data-compare prod staging --table public.plans
-  joinery data-compare prod staging --table plans --actions insert,update --out sync.sql
-  joinery data-compare seed test --table countries --apply --yes`,
+  querybara data-compare prod staging --table public.plans
+  querybara data-compare prod staging --table plans --actions insert,update --out sync.sql
+  querybara data-compare seed test --table countries --apply --yes`,
     )
     .action((source: string, target: string, options: DataCompareCliOptions) => {
       schedule((runtime) =>
@@ -683,13 +683,13 @@ Safety: read-only targets refuse; production and "confirm writes" profiles, and 
 replace (empties the table first) and delete modes, need --yes or a confirmation.
 
 Examples:
-  joinery import dev --table public.people --file people.csv
-  joinery import dev --table people --file export.json.gz --mode upsert --key id
-  joinery import dev --table staging.raw --file data.tsv --create --on-error skip
-  joinery import dev --table sales --file q3.xlsx --sheet "July" --header-row 3
-  joinery import dev --table orders --file orders.xml --row-path /export/table/row
-  joinery import dev --table events --file events.parquet --create
-  cat rows.csv | joinery import "mysql://app@db/shop" --table orders --file - --map "Order No=id"`,
+  querybara import dev --table public.people --file people.csv
+  querybara import dev --table people --file export.json.gz --mode upsert --key id
+  querybara import dev --table staging.raw --file data.tsv --create --on-error skip
+  querybara import dev --table sales --file q3.xlsx --sheet "July" --header-row 3
+  querybara import dev --table orders --file orders.xml --row-path /export/table/row
+  querybara import dev --table events --file events.parquet --create
+  cat rows.csv | querybara import "mysql://app@db/shop" --table orders --file - --map "Order No=id"`,
     )
     .action((target: string, options: ImportCliOptions) => {
       schedule((runtime) => importDataCommand(runtime, target, importOptions(options)));
@@ -779,13 +779,13 @@ into one file (a SQL file with foreign keys last, a JSON object keyed by table n
 worksheet or section per table). A failed or cancelled export removes the partial file.
 
 Examples:
-  joinery export prod --table public.orders --format csv --out orders.csv
-  joinery export prod --table orders --table items --format sql-ddl --one-file --out shop.sql --gzip
-  joinery export prod --table orders --table items --format jsonl --out exports/
-  joinery export prod --table orders --table items --format xlsx --one-file --out shop.xlsx
-  joinery export prod --table orders --table items --format csv --zip --out shop.zip
-  joinery export prod --table events --format parquet --codec zstd --out events.parquet
-  joinery export dev --query "select id, email from users where active" --format json --out - | jq .`,
+  querybara export prod --table public.orders --format csv --out orders.csv
+  querybara export prod --table orders --table items --format sql-ddl --one-file --out shop.sql --gzip
+  querybara export prod --table orders --table items --format jsonl --out exports/
+  querybara export prod --table orders --table items --format xlsx --one-file --out shop.xlsx
+  querybara export prod --table orders --table items --format csv --zip --out shop.zip
+  querybara export prod --table events --format parquet --codec zstd --out events.parquet
+  querybara export dev --query "select id, email from users where active" --format json --out - | jq .`,
     )
     .action((target: string, options: ExportCliOptions) => {
       schedule((runtime) => exportDataCommand(runtime, target, exportOptions(options)));
@@ -809,7 +809,7 @@ Examples:
       `
 The file streams through the statement splitter (DELIMITER, dollar quoting and comments are
 handled), so multi-gigabyte dumps run in flat memory; result rows are discarded (use
-\`joinery query -f\` to see them). Statements run as the file says, its own BEGIN/COMMIT
+\`querybara query -f\` to see them). Statements run as the file says, its own BEGIN/COMMIT
 included.
 
 Exit codes: 0 every statement ran, 1 some failed with --continue, 2 stopped at a failure,
@@ -817,8 +817,8 @@ Exit codes: 0 every statement ran, 1 some failed with --continue, 2 stopped at a
 write need --yes or a confirmation; read-only targets refuse writes.
 
 Examples:
-  joinery run-file dev migrate.sql
-  joinery run-file "postgres://app@localhost/app" dump.sql.gz --continue --error-log errors.log`,
+  querybara run-file dev migrate.sql
+  querybara run-file "postgres://app@localhost/app" dump.sql.gz --continue --error-log errors.log`,
     )
     .action((target: string, file: string, options: RunFileCliOptions) => {
       schedule((runtime) =>
@@ -914,11 +914,11 @@ interrupted. Safety: read-only targets refuse; drop-create, truncate, --replace,
 and "confirm writes" profiles need --yes or a confirmation.
 
 Examples:
-  joinery transfer pg-dev "mysql://app@localhost/shop" --table orders --table customers
-  joinery transfer pg-dev my-dev --all --mode drop-create --yes
-  joinery transfer my-dev mongo-dev --table orders --embed orders:items:items_ibfk_1:lines
-  joinery transfer mongo-dev pg-dev --table events --shape events.tags=json --dry-run
-  joinery transfer redis-a redis-b --pattern "session:*" --replace`,
+  querybara transfer pg-dev "mysql://app@localhost/shop" --table orders --table customers
+  querybara transfer pg-dev my-dev --all --mode drop-create --yes
+  querybara transfer my-dev mongo-dev --table orders --embed orders:items:items_ibfk_1:lines
+  querybara transfer mongo-dev pg-dev --table events --shape events.tags=json --dry-run
+  querybara transfer redis-a redis-b --pattern "session:*" --replace`,
     )
     .action((source: string, target: string, options: TransferCliOptions) => {
       schedule((runtime) => transferDbCommand(runtime, source, target, transferDbOptions(options)));
@@ -963,7 +963,7 @@ Examples:
       .addOption(
         new Option(
           '--password-policy <policy>',
-          'save (sealed with JOINERY_PASSPHRASE), session or ask. Default: save a password in the URI when JOINERY_PASSPHRASE is set, else ask',
+          'save (sealed with QUERYBARA_PASSPHRASE), session or ask. Default: save a password in the URI when QUERYBARA_PASSPHRASE is set, else ask',
         ).choices(['save', 'session', 'ask']),
       )
       .option('--read-only', 'lock the profile read-only: writes are refused')
@@ -990,7 +990,7 @@ Examples:
   )
     .addHelpText(
       'after',
-      '\nExamples:\n  JOINERY_PASSPHRASE=... joinery profiles add prod "postgres://app:secret@db:5432/app" --environment production\n  joinery profiles add dev "mysql://root@127.0.0.1/app" --folder Local',
+      '\nExamples:\n  QUERYBARA_PASSPHRASE=... querybara profiles add prod "postgres://app:secret@db:5432/app" --environment production\n  querybara profiles add dev "mysql://root@127.0.0.1/app" --folder Local',
     )
     .action((name: string, uri: string, options: AddCliOptions) => {
       schedule((runtime) => addProfile(runtime, uri, addProfileOptions({ ...options, name })));
@@ -1026,7 +1026,7 @@ Examples:
       collect(String),
     )
     .option('--include-secrets', 'include the saved secrets that are readable here')
-    .addHelpText('after', '\nThe passphrase comes from JOINERY_EXPORT_PASSPHRASE or a prompt.')
+    .addHelpText('after', '\nThe passphrase comes from QUERYBARA_EXPORT_PASSPHRASE or a prompt.')
     .action((file: string, options: { profile?: string[]; includeSecrets?: boolean }) => {
       schedule((runtime) =>
         exportCommand(runtime, file, {
@@ -1041,7 +1041,7 @@ Examples:
     .description('import profiles from a passphrase-encrypted export file')
     .argument('<file>', 'file to read')
     .option('--replace', 'replace profiles that already exist (same id)')
-    .addHelpText('after', '\nThe passphrase comes from JOINERY_EXPORT_PASSPHRASE or a prompt.')
+    .addHelpText('after', '\nThe passphrase comes from QUERYBARA_EXPORT_PASSPHRASE or a prompt.')
     .action((file: string, options: { replace?: boolean }) => {
       schedule((runtime) => importCommand(runtime, file, { replace: options.replace === true }));
     });

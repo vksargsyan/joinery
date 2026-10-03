@@ -2,12 +2,12 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * Builds a resolved Redis profile from a URL such as `redis://user:pass@127.0.0.1:6379/0`, with
  * the password moved into the secrets map the way the connection host does it. For tests and
- * tooling (JOINERY_TEST_REDIS_*). `rediss://` turns TLS on (`?tls=<mode>` picks the mode,
+ * tooling (QUERYBARA_TEST_REDIS_*). `rediss://` turns TLS on (`?tls=<mode>` picks the mode,
  * verify-full by default); `redis://` has TLS off.
  */
 export function redisProfileFromUrl(

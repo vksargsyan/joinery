@@ -1,4 +1,4 @@
-import type { ActionResult, ServerSetting, SettingScope } from '@joinery/core';
+import type { ActionResult, ServerSetting, SettingScope } from '@querybara/core';
 import { useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

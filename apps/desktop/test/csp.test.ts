@@ -77,7 +77,9 @@ describe('Content Security Policy (spec §18)', () => {
 
   it('is written into index.html by the build', () => {
     const html = readFileSync(join(import.meta.dirname, '../src/renderer/index.html'), 'utf8');
-    expect(html).toContain('<meta http-equiv="Content-Security-Policy" content="%JOINERY_CSP%" />');
+    expect(html).toContain(
+      '<meta http-equiv="Content-Security-Policy" content="%QUERYBARA_CSP%" />',
+    );
     expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/);
     expect(html).not.toMatch(/https?:\/\//);
   });

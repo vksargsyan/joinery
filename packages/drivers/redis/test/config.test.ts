@@ -2,11 +2,11 @@ import { checkServerIdentity, type PeerCertificate } from 'node:tls';
 
 import {
   connectionProfileSchema,
-  JoineryError,
+  QuerybaraError,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { FileReader } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { FileReader } from '@querybara/driver-sql-base';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -42,11 +42,11 @@ function profile(
   };
 }
 
-function thrown(fn: () => unknown): JoineryError {
+function thrown(fn: () => unknown): QuerybaraError {
   try {
     fn();
   } catch (error) {
-    if (error instanceof JoineryError) return error;
+    if (error instanceof QuerybaraError) return error;
     throw error;
   }
   throw new Error('Expected an error');
@@ -96,7 +96,7 @@ describe('buildRedisConnectionPlan', () => {
           connectTimeoutMs: 5000,
           queryTimeoutMs: 30000,
           defaultDatabase: '3',
-          applicationName: 'My Joinery app',
+          applicationName: 'My Querybara app',
           keepAlive: false,
         },
       }),
@@ -110,7 +110,7 @@ describe('buildRedisConnectionPlan', () => {
       connectTimeoutMs: 5000,
       commandTimeoutMs: 30000,
       keepAlive: false,
-      connectionName: 'My-Joinery-app',
+      connectionName: 'My-Querybara-app',
       where: 'cache.example.com:6380',
       tunnelled: false,
     });
@@ -365,9 +365,9 @@ describe('buildRedisConnectionPlan', () => {
 
 describe('helpers', () => {
   it('sanitises connection names', () => {
-    expect(connectionNameFor('Joinery')).toBe('Joinery');
+    expect(connectionNameFor('Querybara')).toBe('Querybara');
     expect(connectionNameFor(' My app\n2 ')).toBe('My-app-2');
-    expect(connectionNameFor('  ')).toBe('Joinery');
+    expect(connectionNameFor('  ')).toBe('Querybara');
   });
 
   it('builds test profiles from URLs', () => {

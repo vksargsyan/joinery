@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   atLeast,
   schemaSnapshotSchema,
   type CheckDef,
@@ -18,9 +18,9 @@ import {
   type TableDef,
   type TriggerDef,
   type ViewDef,
-} from '@joinery/core';
-import { byName, num, opt, str, type Row } from '@joinery/driver-sql-base';
-import { quoteQualified } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { byName, num, opt, str, type Row } from '@querybara/driver-sql-base';
+import { quoteQualified } from '@querybara/sql-tools';
 
 import {
   normaliseColumnDefault,
@@ -31,7 +31,7 @@ import {
 
 /**
  * MySQL / MariaDB introspection into a SchemaSnapshot, following the producer conventions in
- * @joinery/core schema.ts: one schema named after the database; COLUMN_TYPE as the data type;
+ * @querybara/core schema.ts: one schema named after the database; COLUMN_TYPE as the data type;
  * defaults normalised to DEFAULT expression text (see normaliseColumnDefault); column charset
  * and collation only when they differ from the table's; unique keys as unique indexes;
  * routines, triggers and events from SHOW CREATE with the DEFINER clause stripped; and no
@@ -112,7 +112,7 @@ export async function introspectMysql(
     [db],
   );
   if (!schemaRow) {
-    throw new JoineryError({ code: 'NOT_FOUND', message: `Database "${db}" does not exist` });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: `Database "${db}" does not exist` });
   }
 
   // MariaDB 10.10+ lists UCA 14.0 collations without a character set (uca1400_ai_ci for
@@ -443,7 +443,7 @@ async function exactBinaryDefaults(
     .map((c, i) => `HEX(DEFAULT(t.${quoteQualified([c.name], 'mariadb')})) AS d${i}`)
     .join(', ');
   const [row] = await query(
-    `SELECT ${list} FROM (SELECT 1) AS joinery_one LEFT JOIN ${quoteQualified([db, table], 'mariadb')} AS t ON FALSE`,
+    `SELECT ${list} FROM (SELECT 1) AS querybara_one LEFT JOIN ${quoteQualified([db, table], 'mariadb')} AS t ON FALSE`,
   );
   if (!row) return columns;
   const exact = new Map(

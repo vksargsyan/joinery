@@ -6,8 +6,8 @@ import {
   type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
 } from 'dockview-react';
-import { newId } from '@joinery/core';
-import type { FilterGroup } from '@joinery/table-data';
+import { newId } from '@querybara/core';
+import type { FilterGroup } from '@querybara/table-data';
 import { useEffect } from 'react';
 
 import {
@@ -306,7 +306,7 @@ function RestoredMarker({ id }: { readonly id: string }) {
   if (!restored) return null;
   const when = new Date(restored.savedAt).toLocaleTimeString();
   const why = restored.afterCrash
-    ? `Restored after Joinery closed unexpectedly (autosaved at ${when})`
+    ? `Restored after Querybara closed unexpectedly (autosaved at ${when})`
     : `Restored from the last session (autosaved at ${when})`;
   return (
     <button
@@ -491,7 +491,7 @@ export function Dock(props: { readonly theme: 'dark' | 'light' }) {
   useEffect(() => () => void (dockApi = undefined), []);
   return (
     <DockviewReact
-      className={cx('joinery-dock h-full')}
+      className={cx('querybara-dock h-full')}
       theme={props.theme === 'dark' ? themeDark : themeLight}
       components={{
         query: QueryPanelHost,

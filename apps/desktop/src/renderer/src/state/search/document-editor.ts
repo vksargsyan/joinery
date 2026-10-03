@@ -1,4 +1,4 @@
-import type { ErrorData } from '@joinery/core';
+import type { ErrorData } from '@querybara/core';
 import {
   JsonSyntaxError,
   formatJson,
@@ -7,7 +7,7 @@ import {
   numberAt,
   parseJsonTree,
   type SearchWriteResult,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorInfo } from '../../lib/errors';
 

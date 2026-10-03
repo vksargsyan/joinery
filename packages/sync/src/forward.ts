@@ -1,4 +1,4 @@
-import type { SchemaSnapshot } from '@joinery/core';
+import type { SchemaSnapshot } from '@querybara/core';
 
 import { diffSchemas } from './diff/index';
 import type { CompareOptions } from './options';

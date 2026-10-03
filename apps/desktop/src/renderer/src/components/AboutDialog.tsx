@@ -40,7 +40,7 @@ function About() {
       onOpenChange={(open) => {
         if (!open) openAbout(false);
       }}
-      title="About Joinery"
+      title="About Querybara"
       width="w-[640px]"
       footer={
         <Button variant="primary" onClick={() => openAbout(false)}>
@@ -51,7 +51,7 @@ function About() {
       <div className="flex items-center gap-4">
         <img src={iconUrl} alt="" className="h-14 w-14 shrink-0" draggable={false} />
         <div className="min-w-0">
-          <p className="text-base font-semibold">Joinery</p>
+          <p className="text-base font-semibold">Querybara</p>
           <p className="text-[13px]" data-testid="about-version">
             Version {info.data?.version ?? '…'}
           </p>
@@ -214,7 +214,7 @@ function LicencesSection() {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-muted">
-        Joinery includes the {report.data.length} open-source packages below, each under its own
+        Querybara includes the {report.data.length} open-source packages below, each under its own
         licence. The Electron runtime carries the licences of Chromium and Node.js in
         LICENSES.chromium.html next to the application.
       </p>

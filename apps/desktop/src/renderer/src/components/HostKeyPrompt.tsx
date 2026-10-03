@@ -1,4 +1,4 @@
-import type { HostKeyAnswer, HostKeyPrompt } from '@joinery/ipc';
+import type { HostKeyAnswer, HostKeyPrompt } from '@querybara/ipc';
 import { useEffect, useState } from 'react';
 
 import { mainApi } from '../lib/main-client';
@@ -6,7 +6,7 @@ import { Button, Icon, Modal } from './ui';
 
 /**
  * SSH host key questions (spec §4). A connection host opening a tunnel asks main, and main asks
- * here: for a server Joinery has not seen, Trust once / Trust and remember / Cancel; for a server
+ * here: for a server Querybara has not seen, Trust once / Trust and remember / Cancel; for a server
  * whose key changed, a blocking warning whose only way forward, after checking with the server's
  * administrator, is removing the remembered key (main then asks about the new key). Closing a
  * dialog cancels, and main cancels a question nobody answers in time.
@@ -110,7 +110,7 @@ function UnknownKey(props: {
     >
       <div className="flex flex-col gap-3 text-[13px]" data-testid="host-key-prompt">
         <p>
-          Joinery has not seen the SSH server <strong>{endpoint(prompt)}</strong> before (while{' '}
+          Querybara has not seen the SSH server <strong>{endpoint(prompt)}</strong> before (while{' '}
           {purpose(prompt)}). Connect only if this fingerprint is the one the server’s administrator
           gives you.
         </p>
@@ -123,8 +123,8 @@ function UnknownKey(props: {
           />
         </div>
         <p className="text-xs text-muted">
-          Trust once connects this time only. Trust and remember keeps the key in Joinery’s known
-          hosts (shared with joinery-cli), so later connections check it without asking.
+          Trust once connects this time only. Trust and remember keeps the key in Querybara’s known
+          hosts (shared with querybara-cli), so later connections check it without asking.
         </p>
       </div>
     </Modal>
@@ -168,9 +168,9 @@ function ChangedKey(props: {
           <Icon name="warning" className="mt-0.5" />
           <p>
             The SSH server <strong>{endpoint(prompt)}</strong> presented a different host key from
-            the one Joinery remembered (while {purpose(prompt)}). Someone could be intercepting this
-            connection (a man-in-the-middle attack), or the server was reinstalled. Joinery did not
-            connect.
+            the one Querybara remembered (while {purpose(prompt)}). Someone could be intercepting
+            this connection (a man-in-the-middle attack), or the server was reinstalled. Querybara
+            did not connect.
           </p>
         </div>
         <div className="flex flex-col gap-2 rounded border border-border bg-panel-2 p-3">
@@ -191,7 +191,7 @@ function ChangedKey(props: {
         </div>
         <p>
           Ask the server’s administrator whether its host key changed. Only if they confirm it,
-          remove the remembered key; Joinery then asks whether to trust the new one.
+          remove the remembered key; Querybara then asks whether to trust the new one.
         </p>
         <label className="flex items-center gap-2 text-[13px]">
           <input

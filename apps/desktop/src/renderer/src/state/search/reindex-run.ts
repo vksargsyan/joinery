@@ -1,4 +1,4 @@
-import type { ReindexPlan, ReindexStep, SearchTaskStatus } from '@joinery/search-tools';
+import type { ReindexPlan, ReindexStep, SearchTaskStatus } from '@querybara/search-tools';
 
 import { errorInfo, errorMessage } from '../../lib/errors';
 

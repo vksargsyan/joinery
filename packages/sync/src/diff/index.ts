@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { SchemaSnapshot, SqlDialect } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
+import type { SchemaSnapshot, SqlDialect } from '@querybara/core';
 
 import type { SchemaDiff, SyncWarning } from '../model';
 import { contextFor } from '../normalize';
@@ -42,7 +42,7 @@ const MYSQL_FAMILY = new Set(['mysql', 'mariadb']);
 
 function dialectOf(engine: string): SqlDialect {
   if (engine === 'postgres' || engine === 'mysql' || engine === 'mariadb') return engine;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Structure sync does not support ${engine}`,
     hint: 'Structure sync compares MySQL, MariaDB and PostgreSQL databases.',
@@ -93,7 +93,7 @@ export function diffSchemas(
   const dialect = dialectOf(target.engine);
   const pg = dialect === 'postgres';
   if ((sourceDialect === 'postgres') !== pg) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `Cannot sync structure from ${source.engine} to ${target.engine}`,
       hint: 'Move data between engine families with data transfer instead.',

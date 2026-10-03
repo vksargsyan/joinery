@@ -1,10 +1,10 @@
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   type ConnectionCheckResult,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { checkConnection, type MongoCheckDeps } from '../src';
@@ -175,7 +175,7 @@ describe('MongoDB Test Connection', () => {
     const results = await run(resolved(), {
       connect: () =>
         Promise.reject(
-          new JoineryError({
+          new QuerybaraError({
             code: 'AUTH_FAILED',
             message: 'Authentication failed for hunter2',
             hint: 'Check the user name and password',
@@ -191,7 +191,7 @@ describe('MongoDB Test Connection', () => {
   });
 
   it('diagnoses a replica set name mismatch and unreachable advertised members', async () => {
-    const selection = new JoineryError({
+    const selection = new QuerybaraError({
       code: 'CONNECTION_FAILED',
       message: 'No member answered',
     });
@@ -301,7 +301,7 @@ describe('MongoDB Test Connection', () => {
     const handshakes: { host: string; port: number; servername?: string }[] = [];
     const connected: ResolvedProfile[] = [];
     const nodes = {
-      socks5: { host: '127.0.0.1', port: 41000, user: 'joinery-x', password: 'route-secret' },
+      socks5: { host: '127.0.0.1', port: 41000, user: 'querybara-x', password: 'route-secret' },
       forward: async (target: { host: string; port: number }) => {
         forwarded.push(`${target.host}:${target.port}`);
         return { host: '127.0.0.1', port: 42000 };

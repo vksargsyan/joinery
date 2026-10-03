@@ -1,5 +1,5 @@
-import type { BulkDeleteProgress, BulkDeleteResult } from '@joinery/driver-redis';
-import { parseDisplayBytes } from '@joinery/redis-tools';
+import type { BulkDeleteProgress, BulkDeleteResult } from '@querybara/driver-redis';
+import { parseDisplayBytes } from '@querybara/redis-tools';
 
 /**
  * Bulk delete by pattern (spec §10): a dry run counts the matching keys first (SCAN only), the

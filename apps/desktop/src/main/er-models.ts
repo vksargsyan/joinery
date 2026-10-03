@@ -1,10 +1,10 @@
-import { erModelDocumentSchema, type HandlersOf, type mainContract } from '@joinery/ipc';
-import type { Store } from '@joinery/storage';
+import { erModelDocumentSchema, type HandlersOf, type mainContract } from '@querybara/ipc';
+import type { Store } from '@querybara/storage';
 
 /**
  * The main contract's ER model drafts (spec §8): unapplied model changes kept in the local
  * store per connection, database and schema. A stored model this build cannot read (written by
- * a newer Joinery) is reported as no draft rather than failing the diagram, and is left in
+ * a newer Querybara) is reported as no draft rather than failing the diagram, and is left in
  * place.
  */
 

@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { isFatal, mapMysqlError } from '../src/errors';
@@ -76,8 +76,8 @@ describe('mapMysqlError', () => {
     expect(mapMysqlError(new Error('odd'), { where }).code).toBe('INTERNAL');
   });
 
-  it('passes JoineryErrors through and reports fatality', () => {
-    const original = new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+  it('passes QuerybaraErrors through and reports fatality', () => {
+    const original = new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
     expect(mapMysqlError(original, { where })).toBe(original);
     expect(isFatal(Object.assign(new Error('x'), { fatal: true }))).toBe(true);
     expect(isFatal(new Error('x'))).toBe(false);

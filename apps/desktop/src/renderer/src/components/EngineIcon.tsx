@@ -1,4 +1,4 @@
-import { ENGINES, type EngineId } from '@joinery/core';
+import { ENGINES, type EngineId } from '@querybara/core';
 import type { ReactNode } from 'react';
 
 import { cx } from './ui';

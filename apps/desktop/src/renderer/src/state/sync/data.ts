@@ -10,7 +10,7 @@ import type {
   DataTableSettings,
   JobInfo,
   SavedComparisonSave,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorMessage } from '../../lib/errors';

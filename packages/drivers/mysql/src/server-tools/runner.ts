@@ -1,13 +1,13 @@
 import {
-  JoineryError,
+  QuerybaraError,
   MASKED_SECRET,
   newId,
   rowAt,
   type CellValue,
   type ServerNotice,
   type Session,
-} from '@joinery/core';
-import type { Row } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { Row } from '@querybara/driver-sql-base';
 
 /**
  * Runs the server tools' statements through the Session contract, so they queue behind (and
@@ -97,14 +97,14 @@ export class SqlRunner {
 
 /** The error with every secret of `stmt` replaced by the mask. */
 export function maskError(error: unknown, stmt: ToolStatement): unknown {
-  if (!(error instanceof JoineryError) || stmt.secrets.length === 0) return error;
+  if (!(error instanceof QuerybaraError) || stmt.secrets.length === 0) return error;
   const clean = (text: string): string =>
     stmt.secrets.reduce(
       (out, secret) => (secret === '' ? out : out.replaceAll(secret, MASKED_SECRET)),
       text,
     );
   const data = error.toJSON();
-  return new JoineryError({
+  return new QuerybaraError({
     ...data,
     message: clean(data.message),
     ...(data.detail !== undefined ? { detail: clean(data.detail) } : {}),
@@ -119,12 +119,12 @@ export function withHint(
   hint: string,
   message?: string,
 ): unknown {
-  if (!(error instanceof JoineryError)) return error;
+  if (!(error instanceof QuerybaraError)) return error;
   const matches = [error.sqlState, error.engineCode].some(
     (code) => code !== undefined && codes.includes(code),
   );
   if (!matches) return error;
-  return new JoineryError({
+  return new QuerybaraError({
     ...error.toJSON(),
     ...(message !== undefined ? { message } : {}),
     hint,

@@ -1,5 +1,5 @@
-import type { BrowseNode } from '@joinery/core';
-import { collectionReference, quoteShellString } from '@joinery/mongo-tools';
+import type { BrowseNode } from '@querybara/core';
+import { collectionReference, quoteShellString } from '@querybara/mongo-tools';
 
 import { loadChildren } from '../explorer';
 import { SessionLane } from '../session-lane';

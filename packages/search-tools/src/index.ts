@@ -1,5 +1,5 @@
 /**
- * @joinery/search-tools — what the Elasticsearch module (spec §11) needs on both
+ * @querybara/search-tools — what the Elasticsearch module (spec §11) needs on both
  * sides of the process boundary: the Kibana console parser and formatter, lossless JSON text
  * helpers, the request safety classifier behind the write rules, the wire types, the capability
  * flags, reply readers, and autocomplete from the open Elasticsearch API specification. No Node

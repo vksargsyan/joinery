@@ -16,8 +16,8 @@ import {
   type SecretRef,
   type SshAuth,
   type SshTunnel,
-} from '@joinery/core';
-import { uriCarriesSecret, type ParsedConnectionUriResult } from '@joinery/ipc';
+} from '@querybara/core';
+import { uriCarriesSecret, type ParsedConnectionUriResult } from '@querybara/ipc';
 import { z } from 'zod';
 
 import { READ_PREFERENCES, passwordFromUri, uriHosts, uriScheme } from './connection-uri';
@@ -191,7 +191,7 @@ export function tunnelLimitation(engine: DialogEngine): string | undefined {
     return 'Through an SSH tunnel or a proxy, Sentinel and Cluster reach every node through it, by the address the node announces as the SSH server or proxy sees it.';
   }
   if (engine === 'elasticsearch') {
-    return 'Through an SSH tunnel or a proxy, Joinery reaches one node: list a single URL (or use a Cloud ID). It does not discover other nodes through a tunnel.';
+    return 'Through an SSH tunnel or a proxy, Querybara reaches one node: list a single URL (or use a Cloud ID). It does not discover other nodes through a tunnel.';
   }
   return undefined;
 }
@@ -246,7 +246,7 @@ export const connectionFormSchema = z
     color: z.union([z.literal(''), z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a #rrggbb colour')]),
     folderId: z.string(),
     sshEnabled: z.boolean(),
-    /** Jump hosts in the order Joinery connects to them, then the SSH server. */
+    /** Jump hosts in the order Querybara connects to them, then the SSH server. */
     sshHops: z.array(sshHopFormSchema).max(MAX_SSH_HOPS),
     /** Seconds between keep-alive messages; 0 turns them off. */
     sshKeepAlive: z.string().trim(),
@@ -498,7 +498,7 @@ function searchIssues(form: ConnectionFormValues, issue: IssueAt): void {
     if ((form.sshEnabled || form.proxyKind !== 'none') && form.urls.length > 1) {
       issue(
         ['urls'],
-        'Only one node URL can go through an SSH tunnel or a proxy: Joinery reaches that one node through it',
+        'Only one node URL can go through an SSH tunnel or a proxy: Querybara reaches that one node through it',
       );
     }
   } else if (form.endpointKind === 'cloudId') {
@@ -523,8 +523,8 @@ function searchIssues(form: ConnectionFormValues, issue: IssueAt): void {
     issue(
       ['passwordMode'],
       form.authMethod === 'apiKey'
-        ? 'Choose how Joinery keeps the API key'
-        : 'Choose how Joinery keeps the token',
+        ? 'Choose how Querybara keeps the API key'
+        : 'Choose how Querybara keeps the token',
     );
   }
 }

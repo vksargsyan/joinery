@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   ShellParseError,
   formatFindText,
@@ -8,7 +8,7 @@ import {
   parseShellDocument,
   type BsonDocument,
   type QueryModel,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 /**
  * The collection view's query bar (spec §9): filter, projection, sort, skip and limit typed in
@@ -42,12 +42,13 @@ export const EMPTY_FIELDS: QueryFields = {
   limit: '',
 };
 
-/** The issue of a thrown parse error (a ShellParseError or any JoineryError). */
+/** The issue of a thrown parse error (a ShellParseError or any QuerybaraError). */
 export function issueOf(text: string, error: unknown): TextIssue {
   if (error instanceof ShellParseError) {
     return { message: error.reason, offset: error.offset, line: error.line, column: error.column };
   }
-  const offset = error instanceof JoineryError && error.position !== undefined ? error.position : 0;
+  const offset =
+    error instanceof QuerybaraError && error.position !== undefined ? error.position : 0;
   const { line, column } = locationAt(text, offset);
   const message = error instanceof Error ? error.message : String(error);
   return { message, offset, line, column };
@@ -66,7 +67,7 @@ function countField(field: QueryField, text: string): number | undefined {
   if (trimmed === '') return undefined;
   if (!/^\d+$/.test(trimmed)) {
     const at = text.search(/[^\s\d]|\S\s+\S/);
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `${field === 'skip' ? 'Skip' : 'Limit'} must be a whole number`,
       position: Math.max(0, at),
@@ -74,7 +75,7 @@ function countField(field: QueryField, text: string): number | undefined {
   }
   const n = Number(trimmed);
   if (!Number.isSafeInteger(n)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `${field === 'skip' ? 'Skip' : 'Limit'} is too large`,
       position: text.indexOf(trimmed),

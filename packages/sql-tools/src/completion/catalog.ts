@@ -5,7 +5,7 @@ import type {
   SequenceDef,
   SqlDialect,
   TypeDef,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import type { Ident } from './names';
 

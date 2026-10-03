@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/sql-tools",
+  "name": "@querybara/sql-tools",
   "version": "0.0.0",
   "private": true,
   "description": "SQL statement splitter, parameters, safety checks, formatter, diagnostics, autocomplete and dialect rules.",
@@ -12,7 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
+    "@querybara/core": "workspace:*",
     "dt-sql-parser": "^4.5.1",
     "sql-formatter": "^15.9.0"
   },

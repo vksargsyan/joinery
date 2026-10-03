@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb helpdesk_dev
 -- Target: mariadb helpdesk
 -- Operations: 7 (1 destructive)

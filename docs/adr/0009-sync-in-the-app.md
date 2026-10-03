@@ -5,9 +5,9 @@
 
 ## Context
 
-`@joinery/sync` compares schema snapshots into tickable operations, generates dependency-ordered
+`@querybara/sync` compares schema snapshots into tickable operations, generates dependency-ordered
 scripts and HTML reports, and compares table data with server-side range checksums over two
-Sessions; joinery-cli runs it as `compare` and `data-compare`. The desktop app needs the same
+Sessions; querybara-cli runs it as `compare` and `data-compare`. The desktop app needs the same
 (spec §13): pick two connections, review and tick operations, see both definitions side by
 side, preview the script, apply it with progress and stop-on-error, re-compare, page through
 row differences, apply data changes, export scripts and reports, save comparisons.
@@ -47,7 +47,7 @@ folder; the runner writes row differences as display-text pages (the first 10,00
 action) and every sync statement, per action, as JSON lines. Main pages rows out of it for the
 grid; the runner reads the statements back to apply them or write the script, so a large diff
 never sits in memory and the counts and scripts always cover every row. Tables pair by name and
-need a primary or unique NOT NULL key on both sides (`pairDataTables`, added to `@joinery/sync`,
+need a primary or unique NOT NULL key on both sides (`pairDataTables`, added to `@querybara/sync`,
 reports why others are skipped). Applying runs one transaction per table and pass: deletes,
 child tables first, then updates and inserts, parents first (`dataSyncOrder`), stopping at the
 first error; the panel then compares again.

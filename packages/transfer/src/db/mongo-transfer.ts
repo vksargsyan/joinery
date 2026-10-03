@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   newId,
   tableDefSchema,
   type CellValue,
@@ -8,7 +8,7 @@ import {
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   ObjectId,
   fromEjson,
@@ -17,14 +17,14 @@ import {
   type BsonDocument,
   type BsonValue,
   type Namespace,
-} from '@joinery/mongo-tools';
-import { quoteIdent } from '@joinery/sql-tools';
+} from '@querybara/mongo-tools';
+import { quoteIdent } from '@querybara/sql-tools';
 import {
   parseType,
   renderForeignKey,
   renderPrimaryKey,
   renderTableStatements,
-} from '@joinery/sync';
+} from '@querybara/sync';
 
 import { importRows } from '../import';
 import { runStatement } from '../session';
@@ -79,7 +79,7 @@ async function collectionExists(session: MongoTransferSession, ns: Namespace): P
     await session.collectionInfo(ns);
     return true;
   } catch (error) {
-    if (error instanceof JoineryError && error.code === 'NOT_FOUND') return false;
+    if (error instanceof QuerybaraError && error.code === 'NOT_FOUND') return false;
     throw error;
   }
 }
@@ -441,7 +441,7 @@ export async function sqlToMongoExecution(
       const requested = override?.dataType?.trim();
       const type = requested !== undefined && requested !== '' ? requested : defaultType;
       if (!isMongoFieldType(type))
-        tableProblems.push(`${column.name}: "${type}" is not a BSON type Joinery writes`);
+        tableProblems.push(`${column.name}: "${type}" is not a BSON type Querybara writes`);
       const isId = column.name === idColumn;
       const fieldName = isId
         ? '_id'
@@ -856,7 +856,7 @@ export async function mongoToSqlExecution(
       for (const column of flat.columns) {
         if (!isSafeDataType(column.dataType))
           tableProblems.push(
-            `"${column.dataType}" is not a column type Joinery can use (${column.name})`,
+            `"${column.dataType}" is not a column type Querybara can use (${column.name})`,
           );
       }
       const intoExisting = existing !== undefined && (mode === 'truncate' || mode === 'append');

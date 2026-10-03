@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   type CellValue,
   type SchemaSnapshot,
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -178,7 +178,7 @@ const BROWSE_CASES: BrowseCase[] = [
 const servers = configuredServers();
 
 if (servers.length === 0) {
-  describe.skip('table data on real servers (set JOINERY_TEST_*_URL)', () => {
+  describe.skip('table data on real servers (set QUERYBARA_TEST_*_URL)', () => {
     it('needs a server', () => undefined);
   });
 }
@@ -463,9 +463,9 @@ for (const server of servers) {
       const changes = ChangeSet.empty().edit(a!, 'name', 'mine').edit(b!, 'name', 'mine');
       const plan = planChanges(changes, { dialect, table: ref('items'), columns, identity });
       const error = await applyChanges(session, plan).catch((e: unknown) => e);
-      expect(error).toBeInstanceOf(JoineryError);
-      expect((error as JoineryError).code).toBe('CONFLICT');
-      expect((error as JoineryError).message).toContain("region = 'ap', id = 6");
+      expect(error).toBeInstanceOf(QuerybaraError);
+      expect((error as QuerybaraError).code).toBe('CONFLICT');
+      expect((error as QuerybaraError).message).toContain("region = 'ap', id = 6");
       expect(session.inTransaction).toBe(false);
       const names = await query(
         session,

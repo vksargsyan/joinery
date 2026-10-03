@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 import * as monaco from 'monaco-editor/editor';
 import 'monaco-editor/features/register.all';
 import 'monaco-editor/languages/definitions/mysql/register';
@@ -112,8 +112,8 @@ function kilnTheme(p: KilnPalette, base: 'vs' | 'vs-dark'): monaco.editor.IStand
   };
 }
 
-monaco.editor.defineTheme('joinery-dark', kilnTheme(TENMOKU, 'vs-dark'));
-monaco.editor.defineTheme('joinery-light', kilnTheme(BISQUE, 'vs'));
+monaco.editor.defineTheme('querybara-dark', kilnTheme(TENMOKU, 'vs-dark'));
+monaco.editor.defineTheme('querybara-light', kilnTheme(BISQUE, 'vs'));
 
 /**
  * Kiln's code setting for every editor: Rec Mono Duotone (the cursive italic marks comments)
@@ -146,7 +146,7 @@ export function createEditor(
   }
   const layer = document.createElement('div');
   // `monaco-editor` scopes the widgets' styles and the theme's colour variables.
-  layer.className = 'monaco-editor joinery-editor-overflow';
+  layer.className = 'monaco-editor querybara-editor-overflow';
   document.body.append(layer);
   const editor = monaco.editor.create(element, {
     ...options,

@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -40,7 +40,7 @@ const job: JobInfo = {
 function serveJobs(handlers: Partial<HandlersOf<typeof mainContract>['jobs']>) {
   const ports = portPair();
   const notUsed = (): never => {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'not used' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'not used' });
   };
   const all = Object.fromEntries(
     [...mainContract.methods.keys()].map((path) => [path, notUsed]),

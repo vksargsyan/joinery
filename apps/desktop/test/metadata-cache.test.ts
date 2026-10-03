@@ -1,5 +1,5 @@
-import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
-import { analyzeStatement, splitStatements } from '@joinery/sql-tools';
+import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@querybara/core';
+import { analyzeStatement, splitStatements } from '@querybara/sql-tools';
 import { describe, expect, it } from 'vitest';
 
 import {

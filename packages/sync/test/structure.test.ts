@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { schemaSnapshotSchema } from '@joinery/core';
-import type { SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema } from '@querybara/core';
+import type { SchemaSnapshot } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

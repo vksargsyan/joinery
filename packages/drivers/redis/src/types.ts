@@ -1,4 +1,4 @@
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import type {
   AclLogEntry,
   AclUser,
@@ -18,7 +18,7 @@ import type {
   SearchKeyType,
   SearchResult,
   SlowlogEntry,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 import type {
   ConfigApplyResult,
@@ -52,7 +52,7 @@ export interface RedisServerInfo {
   readonly version: string;
   /** redis_version as reported (Valkey keeps a Redis-compatible number there). */
   readonly redisVersion: string;
-  /** How Joinery reaches the server. */
+  /** How Querybara reaches the server. */
   readonly topology: RedisTopology;
   /** Role of the node the session talks to (the first primary in Cluster mode). */
   readonly role: 'master' | 'replica' | 'unknown';

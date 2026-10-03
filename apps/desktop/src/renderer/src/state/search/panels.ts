@@ -1,4 +1,4 @@
-import { newId } from '@joinery/core';
+import { newId } from '@querybara/core';
 
 import { panelWithKey, registerPanel } from '../panels';
 import { AdminView, type AdminTab } from './admin';

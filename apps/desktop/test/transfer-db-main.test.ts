@@ -1,6 +1,6 @@
 import { MessageChannel } from 'node:worker_threads';
 
-import type { ConnectionProfileInput } from '@joinery/core';
+import type { ConnectionProfileInput } from '@querybara/core';
 import {
   createClient,
   fromNodePort,
@@ -12,8 +12,8 @@ import {
   type TransferInspection,
   type TransferJob,
   type TransferPlanInfo,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createMainHandlers } from '../src/main/api';
@@ -128,7 +128,7 @@ function setup() {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'l', remote: 'r' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',

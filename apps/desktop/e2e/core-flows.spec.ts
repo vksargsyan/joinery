@@ -8,10 +8,10 @@ import { launchApp, openNewConnection, type LaunchedApp } from './app';
  * and the production frame.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Postgres';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -122,7 +122,7 @@ test('shows a crashed connection host and reconnects', async () => {
     const host = app
       .getAppMetrics()
       .find(
-        (metric) => metric.type === 'Utility' && metric.name?.startsWith('Joinery connection:'),
+        (metric) => metric.type === 'Utility' && metric.name?.startsWith('Querybara connection:'),
       );
     if (!host) return false;
     process.kill(host.pid, 'SIGKILL');

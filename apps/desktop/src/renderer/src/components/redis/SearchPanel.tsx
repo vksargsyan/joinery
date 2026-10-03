@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   commandLine,
   definitionOf,
@@ -10,7 +10,7 @@ import {
   type SearchFieldType,
   type SearchIndexInfo,
   type SearchKeyType,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { destructive, WRITE } from '../../../../shared/redis-safety';
@@ -108,7 +108,7 @@ export function SearchPanel({ panelId, target }: ToolProps) {
         current !== undefined && list.includes(current) ? current : list[0],
       );
     } catch (e) {
-      if (e instanceof JoineryError && e.code === 'NOT_SUPPORTED') {
+      if (e instanceof QuerybaraError && e.code === 'NOT_SUPPORTED') {
         setUnsupported(e.message);
         setIndexes([]);
       } else setError(errorMessage(e));
@@ -350,7 +350,7 @@ function NoIndexes({ onCreate }: { readonly onCreate: () => void }) {
         <h2 className="mt-3 text-sm font-semibold text-fg">No search indexes yet</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted">
           An index covers the hashes or JSON documents under a key prefix, so you can query them by
-          text, tags, numbers, places and vectors. Joinery can suggest its fields from your keys.
+          text, tags, numbers, places and vectors. Querybara can suggest its fields from your keys.
         </p>
         <Button variant="primary" className="mt-4" onClick={onCreate}>
           <Icon name="plus" className="h-3.5 w-3.5" />
@@ -1214,7 +1214,7 @@ function CreateIndexDialog(props: {
           {hint && <p className="text-xs text-muted">{hint}</p>}
           {draft.fields.length === 0 ? (
             <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted">
-              Add fields one by one, or let Joinery suggest them from the keys under the prefix.
+              Add fields one by one, or let Querybara suggest them from the keys under the prefix.
             </p>
           ) : (
             <div className="max-h-80 overflow-auto rounded-md border border-border">

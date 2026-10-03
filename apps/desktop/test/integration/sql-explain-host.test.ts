@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { MessageChannel } from 'node:worker_threads';
 
-import { newId, rowAt, type ResolvedProfile, type Session } from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import { connectionHostContract, createClient, fromNodePort, type Client } from '@joinery/ipc';
+import { newId, rowAt, type ResolvedProfile, type Session } from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import { connectionHostContract, createClient, fromNodePort, type Client } from '@querybara/ipc';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../../src/connection-host/host';
@@ -16,8 +16,8 @@ import { ConnectionHost } from '../../src/connection-host/host';
  * and refused on a read-only profile before anything runs.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const MYSQL_URL = process.env['JOINERY_TEST_MYSQL_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const MYSQL_URL = process.env['QUERYBARA_TEST_MYSQL_URL'];
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 
@@ -63,7 +63,7 @@ async function scalar(session: Session, sql: string): Promise<unknown> {
 }
 
 describe.skipIf(!PG_URL)('explainPlan on PostgreSQL', () => {
-  const table = `joinery_explain_${randomBytes(4).toString('hex')}`;
+  const table = `querybara_explain_${randomBytes(4).toString('hex')}`;
   let direct: Session;
 
   beforeAll(async () => {

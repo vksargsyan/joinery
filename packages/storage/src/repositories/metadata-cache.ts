@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 import type { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';

@@ -6,7 +6,7 @@ import { defineConfig } from '@playwright/test';
 /**
  * End-to-end tests drive the built Electron app (spec §20) through Playwright's Electron
  * support. They need a display (run under xvfb-run on Linux CI) and a PostgreSQL server named by
- * JOINERY_TEST_POSTGRES_URL; without it every test is skipped.
+ * QUERYBARA_TEST_POSTGRES_URL; without it every test is skipped.
  */
 export default defineConfig({
   testDir: '.',
@@ -16,6 +16,6 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  outputDir: process.env['JOINERY_E2E_OUTPUT'] ?? join(tmpdir(), 'joinery-e2e-results'),
+  outputDir: process.env['QUERYBARA_E2E_OUTPUT'] ?? join(tmpdir(), 'querybara-e2e-results'),
   reporter: [['list']],
 });

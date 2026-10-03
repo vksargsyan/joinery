@@ -8,8 +8,8 @@ import {
   type AppSettings,
   type Server,
   type WindowMenuCommand,
-} from '@joinery/ipc';
-import { openStore, type ScheduleRecord, type ScheduleRun, type Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import { openStore, type ScheduleRecord, type ScheduleRun, type Store } from '@querybara/storage';
 import {
   BrowserWindow,
   Menu,
@@ -47,6 +47,12 @@ import { executeSchedule } from './schedule-tasks';
 import { Scheduler, type TaskOutcome } from './scheduler';
 import { ScheduleEvents } from './schedules-api';
 import { menuTemplate } from './menu';
+import {
+  KNOWN_HOSTS_FILE,
+  SSH_KEYS_DIR,
+  STORE_FILE,
+  migratePreviousInstall,
+} from './previous-install';
 import { effectiveTheme, titleBarOverlay, windowChrome } from './window-chrome';
 import { QuitGuard } from './quit-guard';
 import { createSafeStorageSealer } from './sealer';
@@ -68,10 +74,10 @@ import { utilityHostFactory } from './utility-host';
  * renderer, and supervision of connection hosts. Drivers never load here.
  */
 
-declare const __JOINERY_DEV_SCRIPT_HASHES__: readonly string[];
+declare const __QUERYBARA_DEV_SCRIPT_HASHES__: readonly string[];
 
 // Lets tests and portable setups keep their data elsewhere; must happen before the app is ready.
-const userDataDir = process.env['JOINERY_USER_DATA_DIR'];
+const userDataDir = process.env['QUERYBARA_USER_DATA_DIR'];
 if (userDataDir) app.setPath('userData', userDataDir);
 
 // Every renderer is sandboxed. The one exception is Chromium's own --no-sandbox switch, which
@@ -105,13 +111,21 @@ app.on('web-contents-created', (_event, contents) => {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  // First launch after the rename: bring over a 0.1.0 install's data (ADR 0033). It runs before
+  // the app is ready, so Chromium reads a copied Local State. Not with a userData of its own.
+  if (!userDataDir) {
+    migratePreviousInstall({
+      appDataDir: app.getPath('appData'),
+      userDataDir: app.getPath('userData'),
+    });
+  }
   app.on('second-instance', () => {
     const [window] = BrowserWindow.getAllWindows();
     if (window) {
       if (window.isMinimized()) window.restore();
       window.focus();
     } else if (app.isReady()) {
-      // Running without a window (macOS): opening Joinery again opens one.
+      // Running without a window (macOS): opening Querybara again opens one.
       createMainWindow();
     }
   });
@@ -137,7 +151,7 @@ function start(): void {
   if (devServerUrl) {
     const csp = buildContentSecurityPolicy({
       devServerOrigin: devServerUrl,
-      scriptHashes: __JOINERY_DEV_SCRIPT_HASHES__,
+      scriptHashes: __QUERYBARA_DEV_SCRIPT_HASHES__,
       header: true,
     });
     session.defaultSession.webRequest.onHeadersReceived(
@@ -160,12 +174,12 @@ function start(): void {
 
   let openedStore: Store;
   try {
-    openedStore = openStore(join(app.getPath('userData'), 'joinery.db'), {
+    openedStore = openStore(join(app.getPath('userData'), STORE_FILE), {
       sealer: createSafeStorageSealer(safeStorage),
     });
   } catch (error) {
     dialog.showErrorBox(
-      'Joinery cannot open its data',
+      'Querybara cannot open its data',
       `The local store in ${app.getPath('userData')} could not be opened: ${
         error instanceof Error ? error.message : String(error)
       }`,
@@ -177,9 +191,9 @@ function start(): void {
   // Read before this run marks itself as running: editor restore says whether the last one crashed.
   const previousRun = openedStore.autosave.startRun().ended;
   const spawnHost = utilityHostFactory(join(__dirname, 'connection-host.cjs'));
-  // SSH host keys the user trusted and remembered; joinery-cli reads the same file by default.
+  // SSH host keys the user trusted and remembered; querybara-cli reads the same file by default.
   const hostKeys = new HostKeyBroker({
-    store: knownHostsFile(join(app.getPath('userData'), 'known_hosts')),
+    store: knownHostsFile(join(app.getPath('userData'), KNOWN_HOSTS_FILE)),
   });
   const connections = new ConnectionSupervisor<MessagePortMain>({ spawn: spawnHost, hostKeys });
   supervisor = connections;
@@ -268,7 +282,7 @@ function start(): void {
     }),
     openExternal,
     hostKeys,
-    keysDir: join(app.getPath('userData'), 'ssh-keys'),
+    keysDir: join(app.getPath('userData'), SSH_KEYS_DIR),
     jobs: jobManager,
     sync,
     scheduler,
@@ -306,7 +320,7 @@ function start(): void {
   if (!app.isPackaged) app.dock?.setIcon(windowIcon);
   createMainWindow();
   void updater.start();
-  // Schedules run while Joinery is open; a sleep or a clock change is checked at once.
+  // Schedules run while Querybara is open; a sleep or a clock change is checked at once.
   scheduler.start();
   powerMonitor.on('resume', () => scheduler?.wake());
   powerMonitor.on('unlock-screen', () => scheduler?.wake());
@@ -481,7 +495,7 @@ function createMainWindow(): void {
     minWidth: 960,
     minHeight: 600,
     show: false,
-    title: 'Joinery',
+    title: 'Querybara',
     ...windowChrome(
       process.platform,
       effectiveTheme(themeSetting, nativeTheme.shouldUseDarkColors),

@@ -1,4 +1,4 @@
-import { formatCell, isDefault, isLargeValue, type EditValue } from '@joinery/table-data';
+import { formatCell, isDefault, isLargeValue, type EditValue } from '@querybara/table-data';
 import { useEffect, useMemo, useState } from 'react';
 
 import { formatCount } from '../../lib/format';

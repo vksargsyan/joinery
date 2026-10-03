@@ -35,7 +35,7 @@ the main contract; the page never talks to the runner directly, since job traffi
 not result rows.
 
 **The wizards' quick requests run in the runner too.** Preview, column auto-match and the
-new-table plan need `@joinery/transfer`, which reads files with `node:fs` and cannot be bundled
+new-table plan need `@querybara/transfer`, which reads files with `node:fs` and cannot be bundled
 into the sandboxed renderer. Main forwards them as `request` messages and checks each `response`
 against the method's result schema before returning it.
 
@@ -64,7 +64,7 @@ of messages.
 - Cancel is prompt: it aborts the job's signal, the transfer stops at the next batch, and an
   import rolls back its transaction.
 - Job history (the last 50 jobs) and saved wizard settings are settings entries in the local
-  store for now. A jobs table in `@joinery/storage` is the place for them once the scheduler
+  store for now. A jobs table in `@querybara/storage` is the place for them once the scheduler
   needs queries over past runs.
 - Host key trust lives in one place, with one prompt, whichever process opened the tunnel. The
   CLI checks the same known_hosts file itself.

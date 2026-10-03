@@ -2,7 +2,7 @@ import { Menubar } from 'radix-ui';
 
 import { mainApi } from '../lib/main-client';
 import { openAbout } from '../state/updates';
-import type { WindowMenuCommand } from '@joinery/ipc';
+import type { WindowMenuCommand } from '@querybara/ipc';
 
 import { bindingLabel } from '../lib/keys';
 import { useBindingOf } from '../state/keybindings';
@@ -44,7 +44,7 @@ function MenuShortcut(props: {
 export function WindowMenuBar(props: { readonly platform: string }) {
   const menus = windowMenus({
     platform: props.platform,
-    appName: 'Joinery',
+    appName: 'Querybara',
     development: import.meta.env.DEV,
   });
   return (

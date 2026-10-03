@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb index_kinds_dev
 -- Target: mariadb index_kinds_prod
 -- Operations: 6

@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import { QuerybaraError } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { mainApi } from '../../lib/main-client';
@@ -66,7 +66,7 @@ export function transferDbApi(): TransferDbApi {
       const profile = await profileById(profileId);
       const answer = await askSecrets(profile?.name ?? 'the connection', status.missing);
       if (answer === null) {
-        throw new JoineryError({ code: 'CANCELLED', message: 'The password was not given' });
+        throw new QuerybaraError({ code: 'CANCELLED', message: 'The password was not given' });
       }
       typed = answer;
     }

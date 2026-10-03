@@ -5,8 +5,8 @@ import {
   newId,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../src/connection-host/adapters';

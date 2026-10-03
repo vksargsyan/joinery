@@ -1,11 +1,12 @@
-# 0032. The app icon: a joined cylinder, and an Icon Composer icon for macOS 26
+# 0032. The app icon: a database cylinder, and an Icon Composer icon for macOS 26
 
-- Status: Accepted
+- Status: Superseded in part by [0033](0033-querybara-name-and-icon.md) (the artwork and the macOS
+  tile)
 - Date: 2026-10-01
 
 ## Context
 
-The icon was a dovetail joint in amber and navy. Those colours were not Kiln's, and the mark did
+The icon before this one was in amber and navy. Those colours were not Kiln's, and the mark did
 not say "database".
 
 macOS 26 and later draw an app's icon from an asset catalog (`Assets.car`, compiled from an Icon
@@ -19,8 +20,8 @@ Xcode 26's actool on the packaging machine, and it then replaces the `.icns` wit
 
 **The artwork** (`apps/desktop/build/icon.svg`):
 
-- A database cylinder built from joined parts: three rust bands and a tall face locked under an
-  ivory top, with the joints drawing a J.
+- A database cylinder: three rust bands and a tall face under an
+  ivory top. (Replaced by the capybara in 0033.)
 - It has a transparent ground. Windows, Linux and the About dialog show it free-standing, at the
   size the SVG gives it.
 
@@ -46,7 +47,7 @@ Xcode 26's actool on the packaging machine, and it then replaces the `.icns` wit
 - On macOS 26 and later the icon fills the system's tile in the Dock, Finder and Launchpad, with
   the system's shadow. Tinted mode tints it as it does every app.
 - Changing the SVG means regenerating on a Mac with Xcode 26:
-  `pnpm --filter @joinery/desktop icons`. Elsewhere the generator says that `Assets.car` was not
+  `pnpm --filter @querybara/desktop icons`. Elsewhere the generator says that `Assets.car` was not
   compiled.
 - The unit test cannot tell a stale `Assets.car` from a fresh one: actool's output is not
   reproducible byte for byte.

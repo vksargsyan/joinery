@@ -14,7 +14,7 @@ import {
   ObjectId,
   Timestamp,
 } from 'bson';
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /**
  * The BSON value model shared by the renderer and the driver. Values are what
@@ -252,7 +252,7 @@ export function fromEjson(text: string, what = 'value'): BsonValue {
   try {
     return EJSON.parse(text, { relaxed: false }) as BsonValue;
   } catch (error) {
-    throw new JoineryError(
+    throw new QuerybaraError(
       {
         code: 'VALIDATION_FAILED',
         message: `The ${what} is not valid Extended JSON: ${error instanceof Error ? error.message : String(error)}`,

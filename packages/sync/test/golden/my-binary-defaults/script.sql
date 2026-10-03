@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb binary_defaults_dev
 -- Target: mariadb binary_defaults_prod
 -- Operations: 3

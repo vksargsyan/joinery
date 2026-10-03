@@ -1,11 +1,11 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   formatShellInline,
   fromEjson,
   toEjson,
   type ChangeEvent,
   type GridFsFileInfo,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as MainClient from '../src/renderer/src/lib/main-client';
@@ -147,7 +147,7 @@ function watchHost(topology = 'replicaSet') {
         if (topology === 'standalone') {
           // eslint-disable-next-line require-yield
           return (async function* () {
-            throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'standalone' });
+            throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'standalone' });
           })();
         }
         return (async function* () {

@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import { isTrivia, tokenize, type Token } from '../lexer';
 

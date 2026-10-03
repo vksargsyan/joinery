@@ -13,7 +13,7 @@ import { load } from 'js-yaml';
  * (`out/renderer/third-party.json`, scripts/third-party.ts) says which of them the app ships:
  * those are `required`, the build tools `excluded`. Run after `electron-vite build`:
  *
- *   pnpm --filter @joinery/desktop sbom [--out dist/joinery-<version>.cdx.json]
+ *   pnpm --filter @querybara/desktop sbom [--out dist/querybara-<version>.cdx.json]
  *
  * SOURCE_DATE_EPOCH, when set, fixes the timestamp (reproducible builds).
  */
@@ -303,7 +303,7 @@ export function buildSbom(input: SbomInput): Record<string, unknown> {
         components: [
           {
             type: 'application',
-            name: 'joinery-sbom',
+            name: 'querybara-sbom',
             version: input.app.version,
             description:
               'apps/desktop/scripts/sbom.ts: pnpm lockfile and the build’s licence report',
@@ -386,7 +386,7 @@ function main(): void {
     app: {
       name: appPackage.productName,
       version: appPackage.version,
-      repository: 'https://github.com/vksargsyan/joinery',
+      repository: 'https://github.com/vksargsyan/querybara',
     },
     workspace: (path) => {
       const pkg = JSON.parse(readFileSync(join(repoRoot, path, 'package.json'), 'utf8')) as {
@@ -407,7 +407,7 @@ function main(): void {
     timestamp: epoch === undefined ? new Date() : new Date(Number(epoch) * 1000),
     serialNumber: `urn:uuid:${randomUUID()}`,
   });
-  const out = values.out ?? join(appDir, 'dist', `joinery-${appPackage.version}.cdx.json`);
+  const out = values.out ?? join(appDir, 'dist', `querybara-${appPackage.version}.cdx.json`);
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, `${JSON.stringify(bom, null, 2)}\n`);
   const components = bom['components'] as { scope: string }[];

@@ -1,5 +1,5 @@
-import type { PlanNode } from '@joinery/core';
-import type { MongoExplainResult } from '@joinery/ipc';
+import type { PlanNode } from '@querybara/core';
+import type { MongoExplainResult } from '@querybara/ipc';
 
 import { formatCount } from '../../lib/format';
 import type { ExplainState } from '../../state/mongo/collection-view';

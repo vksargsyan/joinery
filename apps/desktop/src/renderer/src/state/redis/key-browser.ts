@@ -1,5 +1,5 @@
-import type { KeyInfo } from '@joinery/driver-redis';
-import type { RedisScanPage } from '@joinery/ipc';
+import type { KeyInfo } from '@querybara/driver-redis';
+import type { RedisScanPage } from '@querybara/ipc';
 import {
   NamespaceTree,
   bytesKey,
@@ -8,7 +8,7 @@ import {
   parseDisplayBytes,
   splitKey,
   utf8Bytes,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * The key browser (spec §10): a SCAN-based listing (never KEYS) paged by the connection host's

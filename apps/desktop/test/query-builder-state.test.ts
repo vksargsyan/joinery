@@ -1,5 +1,5 @@
-import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
-import { emptyQueryModel, parseQuery, type QueryModel } from '@joinery/sql-tools';
+import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@querybara/core';
+import { emptyQueryModel, parseQuery, type QueryModel } from '@querybara/sql-tools';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 

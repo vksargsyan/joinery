@@ -6,12 +6,12 @@ import {
   splitCommands,
   utf8Bytes,
   type RedisReply,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { describe, expect, it } from 'vitest';
 
 import { commandLine, redisCommandSafety } from '../src/redis';
 
-/** joinery query on Redis targets: command classification and the command lines it runs. */
+/** querybara query on Redis targets: command classification and the command lines it runs. */
 
 function info(name: string, flags: string[], categories: string[]): RedisReply {
   const words = (values: string[]): RedisReply => array(values.map((v) => bulk(v)));
@@ -40,7 +40,7 @@ const catalog = buildCommandCatalog({
 
 const words = (line: string): string[] => line.split(' ');
 
-describe('Redis commands in joinery query', () => {
+describe('Redis commands in querybara query', () => {
   it('classifies reads, writes and destructive commands', () => {
     expect(redisCommandSafety(words('GET k'), catalog)).toEqual({
       name: 'GET',

@@ -1,4 +1,4 @@
-import { isSqlEngine, newId } from '@joinery/core';
+import { isSqlEngine, newId } from '@querybara/core';
 import { create } from 'zustand';
 
 import { currentDock } from '../../components/dock';

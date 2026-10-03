@@ -1,5 +1,5 @@
-import { isSqlEngine } from '@joinery/core';
-import type { BackupFileFormat, BackupMethod } from '@joinery/ipc';
+import { isSqlEngine } from '@querybara/core';
+import type { BackupFileFormat, BackupMethod } from '@querybara/ipc';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
@@ -435,7 +435,7 @@ function OptionsStep(props: {
   const { target, options, update } = props;
   const sql = isSqlEngine(target.engine);
   const native = sql && options.method === 'native';
-  const archive = options.format === 'jbak' && !native;
+  const archive = options.format === 'qbak' && !native;
   return (
     <div className="flex flex-col gap-3 text-xs">
       {sql && (
@@ -445,7 +445,7 @@ function OptionsStep(props: {
           value={options.method}
           onChange={(method) => update({ method })}
           options={[
-            { value: 'joinery', label: 'Joinery (built in, no tools needed)' },
+            { value: 'querybara', label: 'Querybara (built in, no tools needed)' },
             {
               value: 'native',
               label: props.dumpTool
@@ -562,7 +562,7 @@ function OptionsStep(props: {
                 onChange={(event) => update({ passphraseAgain: event.target.value })}
               />
               <p className="col-span-2 text-muted">
-                Joinery does not keep the passphrase: without it the backup cannot be restored.
+                Querybara does not keep the passphrase: without it the backup cannot be restored.
               </p>
             </div>
           )}

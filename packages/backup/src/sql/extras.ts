@@ -1,5 +1,5 @@
-import type { CellValue, Session, SqlDialect } from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+import type { CellValue, Session, SqlDialect } from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 import { queryRows, text } from '../util';
 import { literal } from './data';

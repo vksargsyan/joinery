@@ -6,7 +6,7 @@
 ## Context
 
 Spec §8's ER modelling has a second half after the viewer (ADR 0015): forward engineering.
-People add tables, columns, keys and relationships on the diagram, and Joinery writes the SQL
+People add tables, columns, keys and relationships on the diagram, and Querybara writes the SQL
 that makes the database match, both for a new design (an empty schema) and for changes to an
 existing one. The script has to be right in the ways the table designer and structure sync
 already are: dependency order, renames that stay renames, destructive steps flagged, the
@@ -15,7 +15,7 @@ engine's quirks (PostgreSQL identities and one transaction, MySQL's `CHANGE COLU
 write in the app goes through.
 
 Two ways to build it were weighed. The first was a model of its own (entities, attributes,
-relationships) with a generator to DDL. That generator would repeat what `@joinery/sync`
+relationships) with a generator to DDL. That generator would repeat what `@querybara/sync`
 already does, and it would need its own diff to produce ALTERs against a live database. The
 second was editing a `SchemaSnapshot` in place and handing the edited snapshot to the structure
 compare as the desired state, against the live snapshot it started from.

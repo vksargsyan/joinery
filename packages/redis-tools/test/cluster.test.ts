@@ -17,7 +17,7 @@ describe('keySlot', () => {
     expect(keySlot('{user1000}.following')).toBe(3443);
     expect(keySlot('{user1000}.followers')).toBe(3443);
     expect(keySlot('a{}b')).toBe(13694);
-    expect(keySlot('joinery:it:x')).toBe(13155);
+    expect(keySlot('querybara:it:x')).toBe(3380);
     expect(keySlot(Uint8Array.of(0xff, 0x00))).toBeLessThan(16384);
   });
 });

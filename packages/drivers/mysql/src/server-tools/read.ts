@@ -11,14 +11,14 @@ import type {
   SettingScope,
   ToolCell,
   TopQuery,
-} from '@joinery/core';
-import type { Row } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { Row } from '@querybara/driver-sql-base';
 
 import type { Flavor } from './statements';
 
 /**
  * MySQL and MariaDB server tools: SHOW output, information_schema and performance_schema rows
- * turned into the engine-neutral shapes of @joinery/core. Pure, so they are tested with fixture
+ * turned into the engine-neutral shapes of @querybara/core. Pure, so they are tested with fixture
  * rows. Column names differ in case and wording between the two (Id/ID, Seconds_Behind_Source
  * and Seconds_Behind_Master), so rows are read through `pick`.
  */

@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 
-import { ENGINES, JoineryError } from '@joinery/core';
-import type { JobRowError, JobSummary, StructureScript } from '@joinery/ipc';
+import { ENGINES, QuerybaraError } from '@querybara/core';
+import type { JobRowError, JobSummary, StructureScript } from '@querybara/ipc';
 import {
   compareSchemas,
   generateScript,
@@ -9,7 +9,7 @@ import {
   summarizeDiff,
   type SchemaDiff,
   type SyncOperation,
-} from '@joinery/sync';
+} from '@querybara/sync';
 
 import type { StructureApplyJob, StructureCompareJob } from '../shared/sync-jobs';
 import {
@@ -107,7 +107,7 @@ export async function runStructureCompare(
   const sourceDialect = sqlDialect(source);
   const targetDialect = sqlDialect(target);
   if (family(sourceDialect) !== family(targetDialect)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `Cannot compare the structure of ${ENGINES[source.engine].displayName} with ${ENGINES[target.engine].displayName}`,
       hint: 'Structure sync pairs PostgreSQL with PostgreSQL and MySQL or MariaDB with MySQL or MariaDB.',
@@ -164,7 +164,7 @@ export async function runStructureApply(
   const chosen = withSelection(job.diff, job.selected);
   const script = generateScript(chosen);
   if (sha256(script.text) !== job.scriptSha256) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The script is not the one that was reviewed',
       hint: 'Review the script again, then apply it.',
@@ -172,7 +172,7 @@ export async function runStructureApply(
   }
   const statements = script.statements;
   if (statements.length === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'No selected operation has statements to run',
     });

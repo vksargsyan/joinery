@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /** Reads a string or number property from an unknown thrown value. */
 export function errorProp(error: unknown, key: string): string | undefined {
@@ -58,15 +58,15 @@ export function tlsHint(codeOrMessage: string): string {
 
 /**
  * Maps Node network and TLS errors (DNS, refused, unreachable, reset, timeout, certificate) to
- * JoineryErrors with a fix hint. Returns undefined for anything else, so drivers can fall back
+ * QuerybaraErrors with a fix hint. Returns undefined for anything else, so drivers can fall back
  * to their own mapping. `where` names the endpoint ("db.example.com:5432"); never pass secrets.
  */
-export function mapNetworkError(error: unknown, where: string): JoineryError | undefined {
+export function mapNetworkError(error: unknown, where: string): QuerybaraError | undefined {
   const code = errorProp(error, 'code');
   if (code === undefined) {
     const message = errorMessage(error);
     if (/certificate|ssl|tls/i.test(message) && !/password/i.test(message)) {
-      return new JoineryError(
+      return new QuerybaraError(
         {
           code: 'TLS_FAILED',
           message: `TLS negotiation with ${where} failed: ${message}`,
@@ -79,7 +79,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
   }
   const cause = { cause: error };
   if (DNS_CODES.has(code)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `Could not resolve the host name of ${where}`,
@@ -90,7 +90,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
     );
   }
   if (code === 'ECONNREFUSED') {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `Connection to ${where} was refused`,
@@ -101,7 +101,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
     );
   }
   if (UNREACHABLE_CODES.has(code)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `${where} is unreachable from this computer`,
@@ -112,7 +112,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
     );
   }
   if (code === 'ENOENT' || code === 'EACCES' || code === 'ENOTSOCK') {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `Cannot open the socket ${where} (${code})`,
@@ -123,7 +123,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
     );
   }
   if (code === 'ETIMEDOUT' || code === 'ESOCKETTIMEDOUT') {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TIMEOUT',
         message: `Timed out connecting to ${where}`,
@@ -134,7 +134,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
     );
   }
   if (RESET_CODES.has(code)) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `The connection to ${where} was closed unexpectedly`,
@@ -145,7 +145,7 @@ export function mapNetworkError(error: unknown, where: string): JoineryError | u
     );
   }
   if (TLS_CODES.has(code) || code.startsWith('ERR_SSL_') || code.startsWith('ERR_TLS_')) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'TLS_FAILED',
         message: `TLS negotiation with ${where} failed: ${errorMessage(error)}`,

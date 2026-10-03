@@ -1,5 +1,5 @@
-import { newId } from '@joinery/core';
-import { utf8Text, type CommandSuggestion } from '@joinery/redis-tools';
+import { newId } from '@querybara/core';
+import { utf8Text, type CommandSuggestion } from '@querybara/redis-tools';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import { errorInfo, errorMessage } from '../../lib/errors';

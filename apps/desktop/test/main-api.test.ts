@@ -1,6 +1,6 @@
 import { MessageChannel } from 'node:worker_threads';
 
-import { type ConnectionCheckResult } from '@joinery/core';
+import { type ConnectionCheckResult } from '@querybara/core';
 import {
   createClient,
   fromNodePort,
@@ -9,8 +9,8 @@ import {
   type Client,
   type MainContract,
   type PortLike,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createMainHandlers } from '../src/main/api';
@@ -81,7 +81,7 @@ function setup(options: { canSave?: boolean } = {}) {
         return { local: `host-end-${channels}`, remote: `renderer-end-${channels}` };
       },
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',
@@ -325,7 +325,7 @@ describe('main contract handlers', () => {
 
   it('opens only https links externally', async () => {
     const { main } = setup();
-    await expect(main.app.openExternal({ url: 'https://joinery.dev' })).resolves.toBeUndefined();
+    await expect(main.app.openExternal({ url: 'https://querybara.dev' })).resolves.toBeUndefined();
     await expect(main.app.openExternal({ url: 'file:///etc/passwd' })).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
     });

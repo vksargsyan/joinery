@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue, type QueryParams, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type CellValue, type QueryParams, type SqlDialect } from '@querybara/core';
 import {
   analyzeStatement,
   decideSafety,
@@ -12,7 +12,7 @@ import {
   type SafetyPolicy,
   type SqlStatement,
   type StatementAnalysis,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 
 /**
  * Turns an editor action (Run all, Run statement at cursor, Run selection; spec §6) into the
@@ -120,7 +120,7 @@ export function buildRunPlan(request: RunRequest): RunPlan {
       problem ??= {
         message: error instanceof Error ? error.message : String(error),
         position:
-          error instanceof JoineryError && error.position !== undefined
+          error instanceof QuerybaraError && error.position !== undefined
             ? offset + statement.start + error.position
             : undefined,
       };

@@ -1,4 +1,4 @@
-import type { TlsMode } from '@joinery/core';
+import type { TlsMode } from '@querybara/core';
 import { Option, type Command } from 'commander';
 
 import type { ExitCode } from '../errors';
@@ -131,12 +131,14 @@ export function addBackupCommands<T>(
 ): void {
   program
     .command('backup')
-    .description('back up a database to a Joinery archive (.jbak), SQL, or with pg_dump/mysqldump')
+    .description(
+      'back up a database to a Querybara archive (.qbak), SQL, or with pg_dump/mysqldump',
+    )
     .argument('<target>', 'profile name or id, or connection URI')
     .requiredOption('--out <file>', 'the backup file to write')
     .addOption(
-      new Option('--format <format>', 'file format (default: from --out, else jbak)').choices([
-        'jbak',
+      new Option('--format <format>', 'file format (default: from --out, else qbak)').choices([
+        'qbak',
         'sql',
         'sql-gz',
         'custom',
@@ -185,7 +187,7 @@ export function addBackupCommands<T>(
     .addHelpText(
       'after',
       `
-The Joinery archive holds one file per object and a manifest, so a restore can pick objects;
+The Querybara archive holds one file per object and a manifest, so a restore can pick objects;
 with --encrypt it is sealed with AES-256-GCM under a key derived from the passphrase (scrypt),
 and any change to the file is detected. The passphrase is never read from the command line:
 set ${PASSPHRASE_ENV} (or --passphrase-env) or type it when asked. SQL databases are read in
@@ -193,11 +195,11 @@ one consistent snapshot (MySQL and MariaDB: InnoDB tables); MongoDB keeps collec
 and indexes; Redis keeps each key's TTL.
 
 Examples:
-  joinery backup prod --out shop.jbak --encrypt
-  joinery backup prod --out shop.sql.gz --schema public --exclude-data public.audit_log
-  joinery backup prod --out shop.dump --native
-  joinery backup "mongodb://app@localhost/app" --out app.jbak
-  joinery backup "redis://localhost/2" --out sessions.jbak --pattern "session:*"`,
+  querybara backup prod --out shop.qbak --encrypt
+  querybara backup prod --out shop.sql.gz --schema public --exclude-data public.audit_log
+  querybara backup prod --out shop.dump --native
+  querybara backup "mongodb://app@localhost/app" --out app.qbak
+  querybara backup "redis://localhost/2" --out sessions.qbak --pattern "session:*"`,
     )
     .action((target: string, options: BackupCliOptions & T) => {
       schedule((runtime) =>
@@ -210,7 +212,7 @@ Examples:
 
   program
     .command('restore')
-    .description('restore a backup (.jbak, .sql, .sql.gz or a pg_dump archive) into a database')
+    .description('restore a backup (.qbak, .sql, .sql.gz or a pg_dump archive) into a database')
     .argument('<target>', 'profile name or id, or connection URI')
     .argument('<file>', 'the backup file')
     .option('--list', 'print the objects in the archive and exit; nothing connects')
@@ -250,10 +252,10 @@ Exit codes: 0 restored, 1 restored but statements failed (--continue), 2 failed,
 interrupted.
 
 Examples:
-  joinery restore dev shop.jbak --list
-  joinery restore dev shop.jbak --database shop_copy --create-database
-  joinery restore dev shop.jbak --select public.orders --dry-run
-  joinery restore dev shop.sql.gz --native --continue --error-log restore-errors.log`,
+  querybara restore dev shop.qbak --list
+  querybara restore dev shop.qbak --database shop_copy --create-database
+  querybara restore dev shop.qbak --select public.orders --dry-run
+  querybara restore dev shop.sql.gz --native --continue --error-log restore-errors.log`,
     )
     .action((target: string, file: string, options: RestoreCliOptions & T) => {
       schedule((runtime) =>

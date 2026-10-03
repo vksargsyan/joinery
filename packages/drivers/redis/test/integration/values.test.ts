@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RedisSession } from '../../src';
@@ -296,7 +296,7 @@ describe.skipIf(!REDIS_URL)('value types (standalone)', () => {
     const created = await session
       .jsonSet(`${p}doc`, '$', '{"name":"a","tags":[1,2]}')
       .catch((e: unknown) => e);
-    if (created instanceof JoineryError) {
+    if (created instanceof QuerybaraError) {
       expect(created.code).toBe('NOT_SUPPORTED');
       expect(created.message).toMatch(/RedisJSON/);
       const read = await session.jsonGet(`${p}doc`).catch((e: unknown) => e);
@@ -335,11 +335,11 @@ describe.skipIf(!REDIS_URL)('value types (standalone)', () => {
     const conflict = await session
       .createKey(`${p}new:hash`, { type: 'string', value: 'x' })
       .catch((e: unknown) => e);
-    expect((conflict as JoineryError).code).toBe('CONFLICT');
+    expect((conflict as QuerybaraError).code).toBe('CONFLICT');
     const empty = await session
       .createKey(`${p}new:empty`, { type: 'list', items: [] })
       .catch((e: unknown) => e);
-    expect((empty as JoineryError).code).toBe('VALIDATION_FAILED');
+    expect((empty as QuerybaraError).code).toBe('VALIDATION_FAILED');
   });
 
   it('reports wrong-type access as a server error', async () => {

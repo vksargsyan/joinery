@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 
-import type { PlanNode } from '@joinery/core';
+import type { PlanNode } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { normalisePgPlan } from '../src';

@@ -1,6 +1,6 @@
 import '@xyflow/react/dist/style.css';
 
-import { referenceName, type QueryTable } from '@joinery/sql-tools';
+import { referenceName, type QueryTable } from '@querybara/sql-tools';
 import {
   Background,
   ConnectionMode,
@@ -36,7 +36,7 @@ import { useBuilder, useBuilderSelector, useReadOnly } from './parts';
  */
 
 /** The drag payload of a table dragged from the list: `{ schema, name }` as JSON. */
-export const TABLE_DRAG_TYPE = 'application/x-joinery-builder-table';
+export const TABLE_DRAG_TYPE = 'application/x-querybara-builder-table';
 
 type TableNodeType = Node<{ readonly tableId: string }, 'table'>;
 

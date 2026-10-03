@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 
-import { newId, rowAt, type CellValue, type Session } from '@joinery/core';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
+import { newId, rowAt, type CellValue, type Session } from '@querybara/core';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -15,22 +15,22 @@ import { connect, query, scratchDatabase } from './db';
  * converted value and the foreign key are then checked on the target server directly.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const MY_URL = process.env['JOINERY_TEST_MYSQL_URL'] ?? process.env['JOINERY_TEST_MARIADB_URL'];
-const MY_ENGINE = process.env['JOINERY_TEST_MYSQL_URL'] ? 'mysql' : 'mariadb';
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const MY_URL = process.env['QUERYBARA_TEST_MYSQL_URL'] ?? process.env['QUERYBARA_TEST_MARIADB_URL'];
+const MY_ENGINE = process.env['QUERYBARA_TEST_MYSQL_URL'] ? 'mysql' : 'mariadb';
 const MY_LABEL = MY_ENGINE === 'mysql' ? 'MySQL' : 'MariaDB';
 const PG_NAME = 'E2E PG source';
 const MY_NAME = `E2E ${MY_LABEL} target`;
 const ORDERS = 1000;
 
-test.skip(!PG_URL || !MY_URL, 'Set JOINERY_TEST_POSTGRES_URL and a MySQL or MariaDB URL');
+test.skip(!PG_URL || !MY_URL, 'Set QUERYBARA_TEST_POSTGRES_URL and a MySQL or MariaDB URL');
 
 test.describe.configure({ mode: 'serial' });
 
 let launched: LaunchedApp | undefined;
 let page: Page;
 let source: Awaited<ReturnType<typeof scratchDatabase>> | undefined;
-const target = `joinery_e2e_${randomBytes(4).toString('hex')}`;
+const target = `querybara_e2e_${randomBytes(4).toString('hex')}`;
 let targetUrl = '';
 
 function mysql(database?: string): Promise<Session> {

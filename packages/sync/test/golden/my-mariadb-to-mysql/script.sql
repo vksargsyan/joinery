@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb iot
 -- Target: mysql iot
 -- Operations: 2

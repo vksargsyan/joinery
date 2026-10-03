@@ -1,6 +1,6 @@
 import { posix, win32 } from 'node:path';
 
-import { updateChannelSchema, type UpdateChannel, type UpdatesOffReason } from '@joinery/ipc';
+import { updateChannelSchema, type UpdateChannel, type UpdatesOffReason } from '@querybara/ipc';
 import { z } from 'zod';
 
 /**
@@ -11,10 +11,10 @@ import { z } from 'zod';
  */
 
 /** Where releases are published (electron-builder.yml `publish`). */
-export const RELEASES_PAGE = 'https://github.com/vksargsyan/joinery/releases';
+export const RELEASES_PAGE = 'https://github.com/vksargsyan/querybara/releases';
 
 /** Setting this to 1 (or true, yes, on) turns updates off for everyone on the machine. */
-export const DISABLE_UPDATES_ENV = 'JOINERY_DISABLE_UPDATES';
+export const DISABLE_UPDATES_ENV = 'QUERYBARA_DISABLE_UPDATES';
 
 /** What an administrator decided, merged from every source that exists. */
 export interface UpdatePolicy {
@@ -67,7 +67,7 @@ export function parsePolicyFile(text: string, source: string): PolicyLayer {
 }
 
 /**
- * `reg query HKLM\SOFTWARE\Policies\Joinery` output (Group Policy, Intune): a `DisableUpdates`
+ * `reg query HKLM\SOFTWARE\Policies\Querybara` output (Group Policy, Intune): a `DisableUpdates`
  * REG_DWORD (1 turns updates off) and an `UpdateChannel` REG_SZ (`stable` or `beta`).
  */
 export function parseRegistryPolicy(output: string, source: string): PolicyLayer {
@@ -88,7 +88,7 @@ export function parseRegistryPolicy(output: string, source: string): PolicyLayer
 }
 
 /**
- * macOS managed preferences for `dev.joinery.desktop` (a configuration profile from an MDM),
+ * macOS managed preferences for `com.querybara.desktop` (a configuration profile from an MDM),
  * converted to JSON: `DisableUpdates` (boolean) and `UpdateChannel` (string).
  */
 export function parseManagedPreferences(value: unknown, source: string): PolicyLayer {
@@ -137,18 +137,18 @@ export function policyLocations(
 ): PolicyLocations {
   if (platform === 'win32') {
     return {
-      registryKey: 'HKLM\\SOFTWARE\\Policies\\Joinery',
+      registryKey: 'HKLM\\SOFTWARE\\Policies\\Querybara',
       // By full path: the PATH of the process does not pick the tool.
       regExe: win32.join(env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'reg.exe'),
     };
   }
   if (platform === 'darwin') {
     return {
-      file: '/Library/Application Support/Joinery/policy.json',
-      managedPreferences: '/Library/Managed Preferences/dev.joinery.desktop.plist',
+      file: '/Library/Application Support/Querybara/policy.json',
+      managedPreferences: '/Library/Managed Preferences/com.querybara.desktop.plist',
     };
   }
-  return { file: posix.join('/etc', 'joinery', 'policy.json') };
+  return { file: posix.join('/etc', 'querybara', 'policy.json') };
 }
 
 /** File and process access for reading the policy; undefined means "not there". */

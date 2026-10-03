@@ -1,6 +1,6 @@
-import type { CellValue } from '@joinery/core';
-import type { TableDesign } from '@joinery/sync';
-import { formatCell } from '@joinery/table-data';
+import type { CellValue } from '@querybara/core';
+import type { TableDesign } from '@querybara/sync';
+import { formatCell } from '@querybara/table-data';
 import { useEffect, useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

@@ -22,7 +22,7 @@ point in time, composable templates and cloning.
 reader stops; `translateSql`; `esql`), index administration (`resizeIndex`, `startReindex`),
 tasks (`getTask`, `listTasks`, `cancelTask`), allocation (`shards`, `allocationExplain`,
 `diskAllocation`), named resources (`listResources`, `putResource`, `deleteResource`),
-`simulatePipeline` and snapshots. Every reply is read by `@joinery/search-tools`
+`simulatePipeline` and snapshots. Every reply is read by `@querybara/search-tools`
 (`parseTableReply`, `parseTaskReply`, `parseAllocationExplain`, `parseDiskAllocation`,
 `parseResources`, `parseSnapshots`, `parseSimulation`), so the tests feed them recorded
 replies and the renderer can use them too. The connection host contract adds matching

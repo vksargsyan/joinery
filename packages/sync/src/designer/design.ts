@@ -1,4 +1,4 @@
-import type { TableDef } from '@joinery/core';
+import type { TableDef } from '@querybara/core';
 
 import { diffSchemas } from '../diff/index';
 import type { SchemaDiff, SyncOperation, SyncWarning } from '../model';

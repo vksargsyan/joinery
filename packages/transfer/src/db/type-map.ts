@@ -1,5 +1,5 @@
-import { atLeast, type SqlDialect, type TypeDef } from '@joinery/core';
-import { formatType, parseType, type ParsedType } from '@joinery/sync';
+import { atLeast, type SqlDialect, type TypeDef } from '@querybara/core';
+import { formatType, parseType, type ParsedType } from '@querybara/sync';
 
 /**
  * The type mapping table per engine pair (spec §12): which target column type each source

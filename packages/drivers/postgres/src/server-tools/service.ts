@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   type AccessDetails,
   type AccessOverview,
   type AccountRef,
@@ -22,9 +22,9 @@ import {
   type TopQueries,
   type TopQueryOptions,
   type TopQueryOrder,
-} from '@joinery/core';
-import type { Row } from '@joinery/driver-sql-base';
-import { quoteIdent } from '@joinery/sql-tools';
+} from '@querybara/core';
+import type { Row } from '@querybara/driver-sql-base';
+import { quoteIdent } from '@querybara/sql-tools';
 
 import {
   PG_SESSION_DETAIL_COLUMNS,
@@ -216,8 +216,8 @@ const MAINTENANCE: readonly MaintenanceOperationInfo[] = [
   },
 ];
 
-function notSupported(message: string): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message });
+function notSupported(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message });
 }
 
 const PRIVILEGE_HINT = 'Ask a superuser for the privilege, or use a role that has it';
@@ -477,7 +477,7 @@ export class PostgresServerTools implements ServerTools {
     try {
       rows = await this.#runner.rows(sql, [limit]);
     } catch (error) {
-      if (error instanceof JoineryError && error.sqlState === '55000') {
+      if (error instanceof QuerybaraError && error.sqlState === '55000') {
         return {
           ...base,
           unavailable: {
@@ -537,7 +537,7 @@ export class PostgresServerTools implements ServerTools {
     const schemas = await this.#schemas();
     if (schema !== undefined) {
       if (!schemas.includes(schema)) {
-        throw new JoineryError({ code: 'NOT_FOUND', message: `There is no schema "${schema}"` });
+        throw new QuerybaraError({ code: 'NOT_FOUND', message: `There is no schema "${schema}"` });
       }
       return { schema, schemas };
     }
@@ -551,7 +551,10 @@ export class PostgresServerTools implements ServerTools {
       [grantee.name],
     );
     if (!role) {
-      throw new JoineryError({ code: 'NOT_FOUND', message: `There is no role "${grantee.name}"` });
+      throw new QuerybaraError({
+        code: 'NOT_FOUND',
+        message: `There is no role "${grantee.name}"`,
+      });
     }
     const oid = numberOf(role['oid']);
     const { schema, schemas } = await this.#pickSchema(scope);
@@ -807,7 +810,7 @@ export class PostgresServerTools implements ServerTools {
     switch (action.kind) {
       case 'session':
         if (pidOf(action.id) === facts.pid) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: "This is the server tools' own session",
           });
@@ -843,7 +846,7 @@ export class PostgresServerTools implements ServerTools {
           [action.object.schema ?? '', action.object.name ?? '', action.object.signature ?? ''],
         );
         if (!found) {
-          throw new JoineryError({ code: 'NOT_FOUND', message: 'The function was not found' });
+          throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The function was not found' });
         }
         return [grantStatement(action, facts.versionNum, textOrNull(found['fn']) ?? undefined)];
       }

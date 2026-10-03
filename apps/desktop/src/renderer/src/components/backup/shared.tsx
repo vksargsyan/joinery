@@ -1,4 +1,4 @@
-import type { JobInfo } from '@joinery/ipc';
+import type { JobInfo } from '@querybara/ipc';
 import { useMemo, type ReactNode } from 'react';
 
 import { formatCount, formatDuration } from '../../lib/format';

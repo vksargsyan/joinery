@@ -1,10 +1,10 @@
 import {
   CHECK_OPERATIONS,
-  JoineryError,
+  QuerybaraError,
   requiresWriteConfirmation,
   type ConnectionProfile,
   type ServerAction,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * The write rules of the server tools (spec §4, §15), shared by the connection host (which
@@ -186,10 +186,10 @@ export function checkServerAction(
 ): void {
   const decision = decideServerAction(profile, action);
   if (decision.action === 'refuse') {
-    throw new JoineryError({ code: 'READ_ONLY', message: decision.reason });
+    throw new QuerybaraError({ code: 'READ_ONLY', message: decision.reason });
   }
   if (decision.action === 'confirm' && confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `${serverActionRule(action).what} needs confirmation`,
       hint: 'Preview the action and confirm it',

@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   cancelledError,
   type ExecOptions,
   type ResultChunk,
   type Session,
-} from '@joinery/core';
-import type { ConfigTarget, RedisSession, RedisTopologyView } from '@joinery/driver-redis';
-import type { HandlersOf, redisHostContractShape } from '@joinery/ipc';
+} from '@querybara/core';
+import type { ConfigTarget, RedisSession, RedisTopologyView } from '@querybara/driver-redis';
+import type { HandlersOf, redisHostContractShape } from '@querybara/ipc';
 import {
   keySlot,
   lookupCommand,
@@ -16,7 +16,7 @@ import {
   type CommandCatalog,
   type CommandDoc,
   type RedisBytes,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 import {
   CONFIG_RESETSTAT,
@@ -56,8 +56,8 @@ export function isRedisSession(session: Session): session is RedisSession {
   return session.engine === 'redis';
 }
 
-function notRedis(): JoineryError {
-  return new JoineryError({
+function notRedis(): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: 'Redis services are only available on Redis connections',
   });
@@ -71,15 +71,15 @@ export function checkRedisOperation(
 ): void {
   const decision = decideRedisSafety(operation, policy);
   if (decision.action === 'refuse') {
-    throw new JoineryError({ code: 'READ_ONLY', message: decision.reason });
+    throw new QuerybaraError({ code: 'READ_ONLY', message: decision.reason });
   }
   if (decision.action === 'confirm' && confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: decision.destructive
         ? `This operation ${decision.reason}, so it needs confirmation`
         : `${decision.reason}, so this one needs confirmation`,
-      hint: 'Confirm it in Joinery first',
+      hint: 'Confirm it in Querybara first',
     });
   }
 }
@@ -99,10 +99,10 @@ export async function* executeRedisGuarded(
   for (const args of splitCommands(text)) {
     const decision = decideRedisSafety(classifyRedisCommand(args.map(utf8Text), catalog), policy);
     if (decision.action === 'refuse') {
-      throw new JoineryError({ code: 'READ_ONLY', message: decision.reason });
+      throw new QuerybaraError({ code: 'READ_ONLY', message: decision.reason });
     }
     if (decision.action === 'confirm') {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'CONFIRMATION_REQUIRED',
         message: `${utf8Text(args[0]!).toUpperCase()} needs confirmation`,
         hint: 'Run it from the Redis CLI, which asks first',
@@ -216,7 +216,7 @@ export function redisHandlers(deps: RedisHostDeps): HandlersOf<typeof redisHostC
       const bytes = args.map(toBytes);
       const words = bytes.map(utf8Text);
       // Loaded with the adapter already: a Redis session exists only once the driver has.
-      const { assertAllowed } = await import('@joinery/driver-redis');
+      const { assertAllowed } = await import('@querybara/driver-redis');
       assertAllowed(words);
       const catalog = await catalogOf(session);
       guard(classifyRedisCommand(words, catalog), confirmed);

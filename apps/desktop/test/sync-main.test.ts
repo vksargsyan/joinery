@@ -7,7 +7,7 @@ import {
   schemaSnapshotSchema,
   type ConnectionProfileInput,
   type SchemaSnapshot,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   createClient,
   fromNodePort,
@@ -19,9 +19,9 @@ import {
   type MainContract,
   type PortLike,
   type SyncSideInfo,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
-import { compareSchemas, summarizeDiff } from '@joinery/sync';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
+import { compareSchemas, summarizeDiff } from '@querybara/sync';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { defaultSelection, structureScript } from '../src/job-runner/sync-structure';
@@ -227,7 +227,7 @@ function setup(dialogs: { save?: string } = {}) {
   const store = openStore(':memory:', { sealer });
   const runner = new SyncRunner();
   const jobs = new JobManager({ spawn: () => runner });
-  const spoolRoot = mkdtempSync(join(tmpdir(), 'joinery-sync-main-'));
+  const spoolRoot = mkdtempSync(join(tmpdir(), 'querybara-sync-main-'));
   temp.push(spoolRoot);
   const sync = new SyncService({ jobs, spoolRoot });
   const hosts = fakeHosts();
@@ -238,7 +238,7 @@ function setup(dialogs: { save?: string } = {}) {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'l', remote: 'r' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',

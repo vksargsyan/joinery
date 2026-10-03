@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import {
   DEFAULT_SCRYPT_COST,
@@ -11,7 +11,7 @@ import {
 
 /**
  * Seals secret values before they reach the database (spec §4, §18). The desktop app
- * implements it with Electron safeStorage (Keychain, DPAPI, libsecret); joinery-cli on a
+ * implements it with Electron safeStorage (Keychain, DPAPI, libsecret); querybara-cli on a
  * headless machine without a keychain uses `createPassphraseSealer`.
  */
 export interface SecretSealer {
@@ -33,12 +33,12 @@ export interface PassphraseSealerOptions {
   readonly cost?: ScryptCost;
 }
 
-const SEALED_MAGIC = 'JNS1';
+const SEALED_MAGIC = 'QBS1';
 export const PASSPHRASE_SEALER_ID = 'passphrase-v1';
 
 /**
  * A sealer keyed by a passphrase: AES-256-GCM with a scrypt-derived key and a fresh random salt
- * and nonce per value, in a versioned format. For joinery-cli on machines without a keychain.
+ * and nonce per value, in a versioned format. For querybara-cli on machines without a keychain.
  * The passphrase stays in a private field and never shows in JSON, inspect or errors.
  */
 export function createPassphraseSealer(
@@ -68,7 +68,10 @@ class PassphraseSealer implements SecretSealer {
 
   seal(plaintext: string): Uint8Array {
     if (typeof plaintext !== 'string') {
-      throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Only strings can be sealed' });
+      throw new QuerybaraError({
+        code: 'VALIDATION_FAILED',
+        message: 'Only strings can be sealed',
+      });
     }
     return encryptEnvelope(SEALED_MAGIC, encoder.encode(plaintext), this.#keys, this.#cost);
   }
@@ -78,7 +81,7 @@ class PassphraseSealer implements SecretSealer {
     try {
       return decoder.decode(plaintext);
     } catch {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The sealed secret is damaged',
       });

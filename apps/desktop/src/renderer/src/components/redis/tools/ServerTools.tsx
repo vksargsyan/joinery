@@ -1,11 +1,11 @@
-import type { BigKeyReport, MonitorEvent, RedisTopologyView } from '@joinery/driver-redis';
+import type { BigKeyReport, MonitorEvent, RedisTopologyView } from '@querybara/driver-redis';
 import {
   CLUSTER_SLOTS,
   displayBytes,
   utf8Bytes,
   type AclUser,
   type LatencySample,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { errorMessage } from '../../../lib/errors';
@@ -475,7 +475,7 @@ export function MonitorPanel({ panelId, target }: ToolProps) {
         </Button>
       </Toolbar>
       <Notice kind="warning">
-        MONITOR streams every command the server runs to Joinery. It can cut a busy server’s
+        MONITOR streams every command the server runs to Querybara. It can cut a busy server’s
         throughput by half or more: run it briefly, and not on production servers under load.
       </Notice>
       {error && <Notice kind="error">{error}</Notice>}

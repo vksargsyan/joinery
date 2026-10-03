@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 

@@ -12,7 +12,7 @@ import {
   type RoleSpec,
   type UpdateUserSpec,
   type UserInfo,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

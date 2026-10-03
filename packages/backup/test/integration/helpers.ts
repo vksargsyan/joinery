@@ -11,29 +11,29 @@ import {
   type ResolvedProfile,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   isMongoSession,
   mongodbAdapter,
   parseHostList,
   splitMongoUri,
   type MongoSession,
-} from '@joinery/driver-mongodb';
-import { createMysqlAdapter } from '@joinery/driver-mysql';
+} from '@querybara/driver-mongodb';
+import { createMysqlAdapter } from '@querybara/driver-mysql';
 import {
   isRedisSession,
   redisAdapter,
   redisProfileFromUrl,
   type RedisSession,
-} from '@joinery/driver-redis';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import { quoteIdent } from '@joinery/sql-tools';
-import { compareSchemas, compareTableData, type TablePair } from '@joinery/sync';
+} from '@querybara/driver-redis';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import { quoteIdent } from '@querybara/sql-tools';
+import { compareSchemas, compareTableData, type TablePair } from '@querybara/sync';
 import { expect } from 'vitest';
 
 /**
- * Real-server plumbing for the backup round trips: configured servers (JOINERY_TEST_*_URL),
+ * Real-server plumbing for the backup round trips: configured servers (QUERYBARA_TEST_*_URL),
  * scratch databases that are always dropped, and the structure and data compares that prove a
  * restored database matches its source.
  */
@@ -48,9 +48,9 @@ export interface SqlServer {
 }
 
 const ENV: readonly (readonly [SqlServerEngine, string])[] = [
-  ['postgres', 'JOINERY_TEST_POSTGRES_URL'],
-  ['mysql', 'JOINERY_TEST_MYSQL_URL'],
-  ['mariadb', 'JOINERY_TEST_MARIADB_URL'],
+  ['postgres', 'QUERYBARA_TEST_POSTGRES_URL'],
+  ['mysql', 'QUERYBARA_TEST_MYSQL_URL'],
+  ['mariadb', 'QUERYBARA_TEST_MARIADB_URL'],
 ];
 
 export function sqlServer(engine: SqlServerEngine): SqlServer | undefined {
@@ -213,7 +213,7 @@ export async function connectRedis(url: string, cluster?: string): Promise<Redis
 }
 
 export function tempDir(label: string): { path: string; remove(): void } {
-  const path = mkdtempSync(join(tmpdir(), `joinery-backup-${label}-`));
+  const path = mkdtempSync(join(tmpdir(), `querybara-backup-${label}-`));
   return { path, remove: () => rmSync(path, { recursive: true, force: true }) };
 }
 

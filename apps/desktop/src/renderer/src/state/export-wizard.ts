@@ -1,10 +1,10 @@
-import type { CellValue, SqlDialect } from '@joinery/core';
+import type { CellValue, SqlDialect } from '@querybara/core';
 import type {
   ExportJob,
   ExportSettings,
   PARQUET_COMPRESSIONS,
   TransferExportFormat,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorMessage } from '../lib/errors';

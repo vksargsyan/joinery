@@ -33,27 +33,27 @@ mongosh() { docker exec mongo mongosh --quiet --port 27018 "$@"; }
 wait_for mongosh --eval 'db.runCommand({ ping: 1 }).ok'
 mongosh --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27018' }] })"
 wait_for sh -c "docker exec mongo mongosh --quiet --port 27018 --eval 'db.hello().isWritablePrimary' | grep -q true"
-mongosh admin --eval "db.createUser({ user: 'joinery', pwd: 'joinery', roles: ['root'] })"
+mongosh admin --eval "db.createUser({ user: 'querybara', pwd: 'querybara', roles: ['root'] })"
 
 # Redis: standalone with a password and a restricted ACL user, plus a replica for Sentinel.
 docker run -d --name redis --network host "$redis_image" "$server" --port 63790 \
-  --bind 127.0.0.1 --requirepass joinery --masterauth joinery \
+  --bind 127.0.0.1 --requirepass querybara --masterauth querybara \
   --user app on '>app-secret' '~app:*' '&*' '+@all' '-@dangerous'
 docker run -d --name redis-replica --network host "$redis_image" "$server" --port 63792 \
-  --bind 127.0.0.1 --requirepass joinery --masterauth joinery --replicaof 127.0.0.1 63790
-wait_for docker exec redis "$cli" -p 63790 -a joinery --no-auth-warning ping
+  --bind 127.0.0.1 --requirepass querybara --masterauth querybara --replicaof 127.0.0.1 63790
+wait_for docker exec redis "$cli" -p 63790 -a querybara --no-auth-warning ping
 docker run -d --name redis-sentinel --network host --entrypoint sh "$redis_image" -c \
-  "printf 'port 26380\nbind 127.0.0.1\nsentinel monitor joinery-master 127.0.0.1 63790 1\nsentinel auth-pass joinery-master joinery\n' >/tmp/sentinel.conf && exec $server /tmp/sentinel.conf --sentinel"
+  "printf 'port 26380\nbind 127.0.0.1\nsentinel monitor querybara-master 127.0.0.1 63790 1\nsentinel auth-pass querybara-master querybara\n' >/tmp/sentinel.conf && exec $server /tmp/sentinel.conf --sentinel"
 for port in 7100 7101 7102; do
   docker run -d --name "redis-c$port" --network host "$redis_image" "$server" --port "$port" \
     --bind 127.0.0.1 --cluster-enabled yes --cluster-config-file "nodes-$port.conf" \
-    --requirepass joinery --masterauth joinery
+    --requirepass querybara --masterauth querybara
 done
 for port in 7100 7101 7102; do
-  wait_for docker exec "redis-c$port" "$cli" -p "$port" -a joinery --no-auth-warning ping
+  wait_for docker exec "redis-c$port" "$cli" -p "$port" -a querybara --no-auth-warning ping
 done
-docker exec redis-c7100 "$cli" -a joinery --no-auth-warning --cluster create \
+docker exec redis-c7100 "$cli" -a querybara --no-auth-warning --cluster create \
   127.0.0.1:7100 127.0.0.1:7101 127.0.0.1:7102 --cluster-replicas 0 --cluster-yes
-wait_for sh -c "docker exec redis-c7100 $cli -p 7100 -a joinery --no-auth-warning cluster info | grep -q 'cluster_state:ok'"
-wait_for sh -c "docker exec redis-sentinel $cli -p 26380 sentinel get-master-addr-by-name joinery-master | grep -q 63790"
+wait_for sh -c "docker exec redis-c7100 $cli -p 7100 -a querybara --no-auth-warning cluster info | grep -q 'cluster_state:ok'"
+wait_for sh -c "docker exec redis-sentinel $cli -p 26380 sentinel get-master-addr-by-name querybara-master | grep -q 63790"
 echo "MongoDB $mongo_tag and $redis_image are ready"

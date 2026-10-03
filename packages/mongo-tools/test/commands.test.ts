@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { commandSafety, parseShellDocument } from '../src';
 
-/** The command classifier the desktop console and joinery-cli share (spec §4, §6). */
+/** The command classifier the desktop console and querybara-cli share (spec §4, §6). */
 
 const safety = (text: string) => commandSafety(parseShellDocument(text));
 

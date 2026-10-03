@@ -3,8 +3,8 @@ import {
   type BrowseNode,
   type BrowseNodeKind,
   type SchemaSnapshot,
-} from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+} from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { useConnections } from './connections';
@@ -101,7 +101,7 @@ interface QuickOpenState {
   readonly recent: readonly string[];
 }
 
-const RECENT_KEY = 'joinery.recentObjects';
+const RECENT_KEY = 'querybara.recentObjects';
 
 function readRecent(): string[] {
   try {

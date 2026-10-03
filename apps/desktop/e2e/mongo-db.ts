@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 
-import { connectionProfileSchema } from '@joinery/core';
-import { isMongoSession, mongodbAdapter, type MongoSession } from '@joinery/driver-mongodb';
-import { parseConnectionUri } from '@joinery/storage';
+import { connectionProfileSchema } from '@querybara/core';
+import { isMongoSession, mongodbAdapter, type MongoSession } from '@querybara/driver-mongodb';
+import { parseConnectionUri } from '@querybara/storage';
 
 /**
  * Direct MongoDB access for the end-to-end tests: a scratch database per suite (always dropped)
@@ -41,6 +41,6 @@ export function scratchMongoDatabase(session: MongoSession): {
   readonly name: string;
   drop(): Promise<void>;
 } {
-  const name = `joinery_e2e_${randomBytes(4).toString('hex')}`;
+  const name = `querybara_e2e_${randomBytes(4).toString('hex')}`;
   return { name, drop: () => session.dropDatabase(name) };
 }

@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { STATUS_CODES } from 'node:http';
 import { resolve } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import { isSearchSession, type SearchSession } from '@joinery/driver-elasticsearch';
+import { QuerybaraError } from '@querybara/core';
+import { isSearchSession, type SearchSession } from '@querybara/driver-elasticsearch';
 import {
   classifyRequest,
   compactJson,
@@ -14,8 +14,8 @@ import {
   type RequestSafety,
   type SearchRequest,
   type SearchResponse,
-} from '@joinery/search-tools';
-import { connectThroughTransport, needsTransport, type TransportSession } from '@joinery/tunnel';
+} from '@querybara/search-tools';
+import { connectThroughTransport, needsTransport, type TransportSession } from '@querybara/tunnel';
 
 import type { QueryOptions } from './commands/query';
 import { cancellable, closeQuietly, missingPasswordHint } from './connect';
@@ -31,7 +31,7 @@ import {
 } from './target';
 
 /**
- * Elasticsearch in joinery-cli (spec §11): `joinery query <target> -e 'GET
+ * Elasticsearch in querybara-cli (spec §11): `querybara query <target> -e 'GET
  * _cluster/health'` runs Kibana console text (a request line, then an optional JSON body, or
  * NDJSON lines for _bulk and _msearch; several requests run in order) and prints each response
  * body, pretty-printed with numbers exactly as the server sent them; the status and timing go
@@ -227,7 +227,7 @@ async function connectSearch(
     try {
       return { ...(await open(target)), target };
     } catch (error) {
-      const refused = error instanceof JoineryError && error.code === 'AUTH_FAILED';
+      const refused = error instanceof QuerybaraError && error.code === 'AUTH_FAILED';
       if (!refused || target.passwordKnown) throw error;
       if (!runtime.ctx.prompter.interactive) {
         throw new CliError(error.message, {
@@ -258,7 +258,7 @@ function responseError(planned: PlannedSearchRequest, response: SearchResponse):
   });
 }
 
-/** `joinery query` on an Elasticsearch target (see the module comment). */
+/** `querybara query` on an Elasticsearch target (see the module comment). */
 export async function searchQueryCommand(
   runtime: Runtime,
   spec: string,
@@ -321,7 +321,7 @@ export async function searchQueryCommand(
         );
         if (response.status >= 400) throw responseError(planned, response);
       } catch (error) {
-        if (!(error instanceof JoineryError)) throw error;
+        if (!(error instanceof QuerybaraError)) throw error;
         failures += 1;
         reporter.error(formatError(error, { verbose: reporter.verbose }));
         if (!options.continueOnError) break;

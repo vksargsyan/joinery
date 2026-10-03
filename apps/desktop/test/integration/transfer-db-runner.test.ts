@@ -7,11 +7,11 @@ import {
   type ResolvedProfile,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import { redisProfileFromUrl } from '@joinery/driver-redis';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
-import type { TransferInspection, TransferJob, TransferPlanInfo } from '@joinery/ipc';
-import { quoteIdent } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { redisProfileFromUrl } from '@querybara/driver-redis';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
+import type { TransferInspection, TransferJob, TransferPlanInfo } from '@querybara/ipc';
+import { quoteIdent } from '@querybara/sql-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { loadAdapter } from '../../src/connection-host/adapters';
@@ -25,10 +25,10 @@ import type { MainToRunner, RunnerToMain } from '../../src/shared/job-protocol';
  * before anything is written.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const MY_URL = process.env['JOINERY_TEST_MYSQL_URL'] ?? process.env['JOINERY_TEST_MARIADB_URL'];
-const MY_ENGINE: SqlDialect = process.env['JOINERY_TEST_MYSQL_URL'] ? 'mysql' : 'mariadb';
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const MY_URL = process.env['QUERYBARA_TEST_MYSQL_URL'] ?? process.env['QUERYBARA_TEST_MARIADB_URL'];
+const MY_ENGINE: SqlDialect = process.env['QUERYBARA_TEST_MYSQL_URL'] ? 'mysql' : 'mariadb';
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
 
 async function rows(session: Session, sql: string): Promise<CellValue[][]> {
   const out: CellValue[][] = [];
@@ -73,8 +73,8 @@ function setup() {
 }
 
 describe.skipIf(!PG_URL || !MY_URL)('transfer jobs', () => {
-  const pgDb = `joinery_tdb_${randomBytes(4).toString('hex')}`;
-  const myDb = `joinery_tdb_${randomBytes(4).toString('hex')}`;
+  const pgDb = `querybara_tdb_${randomBytes(4).toString('hex')}`;
+  const myDb = `querybara_tdb_${randomBytes(4).toString('hex')}`;
   const pg = (overrides: Parameters<typeof resolvedProfileFromUrl>[1] = {}): ResolvedProfile =>
     resolvedProfileFromUrl(PG_URL!, overrides);
   const my = (overrides: Parameters<typeof resolvedProfileFromUrl>[1] = {}): ResolvedProfile =>

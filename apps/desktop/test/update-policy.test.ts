@@ -28,7 +28,11 @@ import {
  * of them keeps the updater off. No network and no Electron.
  */
 
-const FEED: UpdateFeed = { owner: 'vksargsyan', repo: 'joinery', publisherNames: ['Joinery Ltd'] };
+const FEED: UpdateFeed = {
+  owner: 'vksargsyan',
+  repo: 'querybara',
+  publisherNames: ['Querybara Ltd'],
+};
 
 describe('the policy switch', () => {
   it('takes the environment variable only as a way to turn updates off', () => {
@@ -44,8 +48,8 @@ describe('the policy switch', () => {
   });
 
   it('reads a policy file, and a file it cannot read turns updates off', () => {
-    expect(parsePolicyFile('{"disableUpdates": true}', '/etc/joinery/policy.json')).toEqual({
-      source: '/etc/joinery/policy.json',
+    expect(parsePolicyFile('{"disableUpdates": true}', '/etc/querybara/policy.json')).toEqual({
+      source: '/etc/querybara/policy.json',
       disabled: true,
     });
     expect(parsePolicyFile('{"updateChannel": "stable", "future": 1}', 'p')).toEqual({
@@ -64,7 +68,7 @@ describe('the policy switch', () => {
   it('reads the Group Policy registry values', () => {
     const output = [
       '',
-      'HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Joinery',
+      'HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Querybara',
       '    DisableUpdates    REG_DWORD    0x1',
       '    UpdateChannel    REG_SZ    Beta',
       '',
@@ -110,14 +114,14 @@ describe('the policy switch', () => {
   });
 
   it('knows each platform’s machine-wide locations', () => {
-    expect(policyLocations('linux', {})).toEqual({ file: '/etc/joinery/policy.json' });
+    expect(policyLocations('linux', {})).toEqual({ file: '/etc/querybara/policy.json' });
     expect(policyLocations('darwin', {})).toEqual({
-      file: '/Library/Application Support/Joinery/policy.json',
-      managedPreferences: '/Library/Managed Preferences/dev.joinery.desktop.plist',
+      file: '/Library/Application Support/Querybara/policy.json',
+      managedPreferences: '/Library/Managed Preferences/com.querybara.desktop.plist',
     });
     // No policy file on Windows: standard users can create folders in %ProgramData%.
     expect(policyLocations('win32', { SystemRoot: 'D:\\WINDOWS' })).toEqual({
-      registryKey: 'HKLM\\SOFTWARE\\Policies\\Joinery',
+      registryKey: 'HKLM\\SOFTWARE\\Policies\\Querybara',
       regExe: 'D:\\WINDOWS\\System32\\reg.exe',
     });
   });
@@ -143,18 +147,18 @@ describe('the policy switch', () => {
       platform: 'win32',
       env: { SystemRoot: 'C:\\Windows', [DISABLE_UPDATES_ENV]: '1' },
       readers: readers(
-        { 'C:\\ProgramData\\Joinery\\policy.json': '{"updateChannel":"beta"}' },
+        { 'C:\\ProgramData\\Querybara\\policy.json': '{"updateChannel":"beta"}' },
         { [regExe]: '    UpdateChannel    REG_SZ    stable\n' },
       ),
     });
     expect(windows).toEqual({
       disabled: true,
       channel: 'stable',
-      sources: ['HKLM\\SOFTWARE\\Policies\\Joinery', DISABLE_UPDATES_ENV],
+      sources: ['HKLM\\SOFTWARE\\Policies\\Querybara', DISABLE_UPDATES_ENV],
     });
-    expect(calls).toEqual([`run ${regExe} query HKLM\\SOFTWARE\\Policies\\Joinery`]);
+    expect(calls).toEqual([`run ${regExe} query HKLM\\SOFTWARE\\Policies\\Querybara`]);
 
-    const plist = '/Library/Managed Preferences/dev.joinery.desktop.plist';
+    const plist = '/Library/Managed Preferences/com.querybara.desktop.plist';
     const mac = await readUpdatePolicy({
       platform: 'darwin',
       env: {},
@@ -183,25 +187,25 @@ describe('the installation', () => {
   }) =>
     detectInstallKind({
       platform: input.platform,
-      execPath: input.execPath ?? '/opt/Joinery/joinery',
-      resourcesPath: '/opt/Joinery/resources',
+      execPath: input.execPath ?? '/opt/Querybara/querybara',
+      resourcesPath: '/opt/Querybara/resources',
       env: input.env ?? {},
       exists: (path) => path in (input.files ?? {}),
       readText: (path) => input.files?.[path],
     });
 
   it('tells the NSIS install from the MSI and the zip by its uninstaller', () => {
-    const execPath = 'C:\\Users\\a\\AppData\\Local\\Programs\\joinery\\joinery.exe';
+    const execPath = 'C:\\Users\\a\\AppData\\Local\\Programs\\querybara\\querybara.exe';
     expect(
       detect({
         platform: 'win32',
         execPath,
-        files: { 'C:\\Users\\a\\AppData\\Local\\Programs\\joinery\\Uninstall joinery.exe': '' },
+        files: { 'C:\\Users\\a\\AppData\\Local\\Programs\\querybara\\Uninstall querybara.exe': '' },
       }),
     ).toBe('nsis');
-    expect(detect({ platform: 'win32', execPath: 'C:\\Program Files\\Joinery\\joinery.exe' })).toBe(
-      'windows-other',
-    );
+    expect(
+      detect({ platform: 'win32', execPath: 'C:\\Program Files\\Querybara\\querybara.exe' }),
+    ).toBe('windows-other');
   });
 
   it('finds AppImages by their runtime and packages by their marker', () => {
@@ -209,18 +213,18 @@ describe('the installation', () => {
     expect(
       detect({
         platform: 'linux',
-        env: { APPIMAGE: '/home/a/Joinery.AppImage' },
-        files: { '/opt/Joinery/resources/package-type': 'rpm' },
+        env: { APPIMAGE: '/home/a/Querybara.AppImage' },
+        files: { '/opt/Querybara/resources/package-type': 'rpm' },
       }),
     ).toBe('appimage');
     expect(
-      detect({ platform: 'linux', files: { '/opt/Joinery/resources/package-type': 'deb\n' } }),
+      detect({ platform: 'linux', files: { '/opt/Querybara/resources/package-type': 'deb\n' } }),
     ).toBe('deb');
     expect(
-      detect({ platform: 'linux', files: { '/opt/Joinery/resources/package-type': 'rpm' } }),
+      detect({ platform: 'linux', files: { '/opt/Querybara/resources/package-type': 'rpm' } }),
     ).toBe('rpm');
     expect(
-      detect({ platform: 'linux', files: { '/opt/Joinery/resources/package-type': 'pacman' } }),
+      detect({ platform: 'linux', files: { '/opt/Querybara/resources/package-type': 'pacman' } }),
     ).toBe('linux-other');
     expect(detect({ platform: 'linux' })).toBe('linux-other');
   });
@@ -239,9 +243,9 @@ describe('the feed and whether updates run', () => {
     expect(
       parseUpdateFeed({
         owner: 'vksargsyan',
-        repo: 'joinery',
+        repo: 'querybara',
         provider: 'github',
-        publisherName: ['Joinery Ltd'],
+        publisherName: ['Querybara Ltd'],
         updaterCacheDirName: 'x',
       }),
     ).toEqual(FEED);
@@ -322,7 +326,7 @@ describe('channels and URLs', () => {
 
   it('lets the updater session reach GitHub over https only', () => {
     for (const url of [
-      'https://github.com/vksargsyan/joinery/releases.atom',
+      'https://github.com/vksargsyan/querybara/releases.atom',
       'https://api.github.com/repos/x/y/releases/latest',
       'https://objects.githubusercontent.com/github-production-release-asset/1',
       'https://release-assets.githubusercontent.com/x',
@@ -343,7 +347,7 @@ describe('channels and URLs', () => {
 
   it('links a version’s release notes', () => {
     expect(releaseNotesUrl(FEED, '1.2.0-beta.1')).toBe(
-      'https://github.com/vksargsyan/joinery/releases/tag/v1.2.0-beta.1',
+      'https://github.com/vksargsyan/querybara/releases/tag/v1.2.0-beta.1',
     );
   });
 });

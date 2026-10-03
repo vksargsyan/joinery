@@ -1,4 +1,4 @@
-import { formatShellInline, fromEjson, stageInfo } from '@joinery/mongo-tools';
+import { formatShellInline, fromEjson, stageInfo } from '@querybara/mongo-tools';
 import { useState, type DragEvent, type KeyboardEvent } from 'react';
 
 import { formatCount } from '../../lib/format';
@@ -25,7 +25,7 @@ export interface StageActions {
   readonly preview?: (index: number) => void;
 }
 
-const DRAG_TYPE = 'application/x-joinery-stage';
+const DRAG_TYPE = 'application/x-querybara-stage';
 
 /** Editor height for a body: its lines, between 3 and 14. */
 function editorHeight(body: string): number {

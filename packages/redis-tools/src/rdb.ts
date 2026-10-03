@@ -1,4 +1,4 @@
-import { cancelledError } from '@joinery/core';
+import { cancelledError } from '@querybara/core';
 
 /**
  * A streaming reader of Redis and Valkey RDB snapshot files (dump.rdb), for analysing a dump
@@ -774,7 +774,7 @@ class RdbParser {
         return this.#listpackWithTtls(true);
       default:
         return this.#fail(
-          `Value type ${rdbType} is not one Joinery reads (RDB version ${this.version})`,
+          `Value type ${rdbType} is not one Querybara reads (RDB version ${this.version})`,
         );
     }
   }
@@ -886,7 +886,7 @@ class RdbParser {
       this.version > 81
     ) {
       this.#fail(
-        `RDB version ${this.version} is newer than Joinery reads (up to 13, and Valkey's 80 and 81)`,
+        `RDB version ${this.version} is newer than Querybara reads (up to 13, and Valkey's 80 and 81)`,
       );
     }
     this.#handlers.onHeader?.(this.version);
@@ -990,7 +990,7 @@ class RdbParser {
       const info =
         this.version >= VALKEY_FIRST_VERSION && opcode >= 22 ? VALKEY_TYPES[opcode] : TYPES[opcode];
       if (info === undefined && opcode !== 6) {
-        this.#fail(`Value type ${opcode} is not one Joinery reads (RDB version ${this.version})`);
+        this.#fail(`Value type ${opcode} is not one Querybara reads (RDB version ${this.version})`);
       }
       const name = await this.#string(KEY_KEEP);
       const value = await this.#value(opcode);

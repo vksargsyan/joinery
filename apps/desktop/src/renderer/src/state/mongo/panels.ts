@@ -1,5 +1,5 @@
-import { newId } from '@joinery/core';
-import type { WatchScope } from '@joinery/mongo-tools';
+import { newId } from '@querybara/core';
+import type { WatchScope } from '@querybara/mongo-tools';
 
 import { panelWithKey, registerPanel } from '../panels';
 import { AggregationEditor, type AggregationTarget } from './aggregation';

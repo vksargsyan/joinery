@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { ConnectionCheckResult, ConnectionProfileInput, ResolvedProfile } from '@joinery/core';
+import type {
+  ConnectionCheckResult,
+  ConnectionProfileInput,
+  ResolvedProfile,
+} from '@querybara/core';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { checkConnection, isMongoSession, mongodbAdapter, type MongoSession } from '../../src';
@@ -154,7 +158,7 @@ describe.skipIf(!MONGO_URL)('MongoDB connection (replica set)', () => {
 });
 
 describe.skipIf(!STANDALONE_URL)('MongoDB connection (7.0 standalone, TLS, X.509)', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'joinery-mongo-it-'));
+  const dir = mkdtempSync(join(tmpdir(), 'querybara-mongo-it-'));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
   const tls = (
@@ -271,7 +275,7 @@ describe.skipIf(!STANDALONE_URL)('MongoDB connection (7.0 standalone, TLS, X.509
       let reply = '';
       for await (const chunk of status)
         if (chunk.type === 'rows') reply = chunk.data[0]![0] as string;
-      expect(reply).toContain('OU=clients,O=Joinery,CN=joinery-x509');
+      expect(reply).toContain('OU=clients,O=Querybara,CN=querybara-x509');
     } finally {
       await session.close();
     }
@@ -322,15 +326,15 @@ describe.skipIf(!STANDALONE_URL)('MongoDB connection (7.0 standalone, TLS, X.509
 
 /** A self-signed CA that did not sign the test server's certificate. */
 const BOGUS_CA = `-----BEGIN CERTIFICATE-----
-MIIBsTCCAVegAwIBAgIUP2mXz0e9Gm+Uc9kfrsNcWv4bVi0wCgYIKoZIzj0EAwIw
-LjEsMCoGA1UEAwwjSm9pbmVyeSB0ZXN0IENBIHRoYXQgc2lnbmVkIG5vdGhpbmcw
-HhcNMjYwOTI5MTA1MjQ4WhcNNDYwOTI0MTA1MjQ4WjAuMSwwKgYDVQQDDCNKb2lu
-ZXJ5IHRlc3QgQ0EgdGhhdCBzaWduZWQgbm90aGluZzBZMBMGByqGSM49AgEGCCqG
-SM49AwEHA0IABC3iBAtKXGAj35gVlZvq9P5VWU5i2Ju3AF9ezXVng+rV/K2E9nre
-poUYPPg41GYryHgM/3wE3Rd2/+ychSAV82ejUzBRMB0GA1UdDgQWBBSS2IWXf3TN
-mG9fp/kaNuG6zo8RyzAfBgNVHSMEGDAWgBSS2IWXf3TNmG9fp/kaNuG6zo8RyzAP
-BgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCIBoV5x0ySEfzRW/8XtMC
-KWFw142SUkmPf2D4beafRgqVAiEAgl/kP+nA8SwyY8EoS41tZEEbr1BdIHbSKVbW
-VrzPJRs=
+MIIBtDCCAVugAwIBAgIUZocReY5XZ/dm+rlJIobWcKVYxogwCgYIKoZIzj0EAwIw
+MDEuMCwGA1UEAwwlUXVlcnliYXJhIHRlc3QgQ0EgdGhhdCBzaWduZWQgbm90aGlu
+ZzAeFw0yNjEwMDMxMzE2MzZaFw00NjA5MjgxMzE2MzZaMDAxLjAsBgNVBAMMJVF1
+ZXJ5YmFyYSB0ZXN0IENBIHRoYXQgc2lnbmVkIG5vdGhpbmcwWTATBgcqhkjOPQIB
+BggqhkjOPQMBBwNCAASTZ4+XvZtlkBfUZmMnyongLktr6PcFd9jLKmihSGsL21tl
+8xuig9G2BPZDaiuuilnzv6LOyogW2dpESRobsuzAo1MwUTAdBgNVHQ4EFgQUUEYm
+dq8PKAGnuBmR3rF2pEwrdrwwHwYDVR0jBBgwFoAUUEYmdq8PKAGnuBmR3rF2pEwr
+drwwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBEAiAb7kcmcIOuVbni
+hzZUc45hhYjpJlnPguAIHVrRQR8U+AIgbyRixCMNyYwzOnEeAR2MNapsJYdnx3Kx
+LnGtdBPcVLg=
 -----END CERTIFICATE-----
 `;

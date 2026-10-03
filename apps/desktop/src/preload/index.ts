@@ -5,17 +5,17 @@ import {
   PORT_CHANNEL,
   isPortPayload,
   toPortMessage,
-  type JoineryBridge,
+  type QuerybaraBridge,
 } from '../shared/bridge';
 
 /**
  * Preload (spec §3, §18): sandboxed, context-isolated, bundled to one CommonJS file. It exposes
- * `window.joinery` and forwards MessagePorts from main into the page. Ports cannot cross
+ * `window.querybara` and forwards MessagePorts from main into the page. Ports cannot cross
  * contextBridge, so each one is re-posted to the page's own window with a fixed message shape
  * (ADR 0004); the page checks source, origin and shape before using it.
  */
 
-const bridge: JoineryBridge = {
+const bridge: QuerybaraBridge = {
   platform: process.platform,
   versions: {
     electron: process.versions['electron'] ?? '',
@@ -25,7 +25,7 @@ const bridge: JoineryBridge = {
   requestMainPort: () => ipcRenderer.send(HELLO_CHANNEL),
 };
 
-contextBridge.exposeInMainWorld('joinery', bridge);
+contextBridge.exposeInMainWorld('querybara', bridge);
 
 ipcRenderer.on(PORT_CHANNEL, (event, payload: unknown) => {
   const [port, ...extra] = event.ports;

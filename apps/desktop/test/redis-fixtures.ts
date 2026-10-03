@@ -5,7 +5,7 @@ import {
   integer,
   type CommandCatalog,
   type RedisReply,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * A small command catalog built the way the driver builds it (COMMAND DOCS + COMMAND INFO

@@ -17,7 +17,7 @@ import {
   type JsonNode,
   type SearchRequest,
   type SearchResponse,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import {
   decideSearchRequest,

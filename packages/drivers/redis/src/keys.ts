@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import { bytesKey, keySlot, toBytes, utf8Bytes, type RedisBytes } from '@joinery/redis-tools';
+import { QuerybaraError } from '@querybara/core';
+import { bytesKey, keySlot, toBytes, utf8Bytes, type RedisBytes } from '@querybara/redis-tools';
 import type { Redis } from 'ioredis';
 
 import { addressOf, type Arg } from './client';
@@ -67,7 +67,7 @@ export async function scan(ctx: RedisContext, options: ScanOptions = {}): Promis
     for (const part of cursor.split(',')) {
       const at = part.lastIndexOf('@');
       if (at <= 0) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'The cluster scan cursor is not valid',
           hint: 'Start the scan again from cursor "0"',
@@ -152,8 +152,8 @@ export function kindOf(type: string): RedisKeyKind {
 }
 
 /** True for an error the server answered with (as opposed to a closed connection or CONFLICT). */
-export function isServerError(error: unknown): error is JoineryError {
-  return error instanceof JoineryError && error.code === 'SQL_ERROR';
+export function isServerError(error: unknown): error is QuerybaraError {
+  return error instanceof QuerybaraError && error.code === 'SQL_ERROR';
 }
 
 /** The value, or null when the server refused the command (NOPERM, unknown command...). */
@@ -290,7 +290,7 @@ export async function rename(
       return onlyIfNew ? asNumber(reply) === 1 : true;
     } catch (error) {
       if (isServerError(error) && /no such key/i.test(error.message)) {
-        throw new JoineryError(
+        throw new QuerybaraError(
           { code: 'NOT_FOUND', message: 'The key does not exist' },
           { cause: error },
         );
@@ -299,7 +299,7 @@ export async function rename(
     }
   }
   if ((await exists(ctx, [src])) === 0) {
-    throw new JoineryError({ code: 'NOT_FOUND', message: 'The key does not exist' });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The key does not exist' });
   }
   const moved = await dumpRestore(ctx, src, dst, !onlyIfNew, undefined);
   if (moved) await ctx.call(['unlink', src]);
@@ -322,7 +322,7 @@ async function dumpRestore(
     });
     return restored === 1;
   } catch (error) {
-    if (error instanceof JoineryError && error.engineCode === 'BUSYKEY') return false;
+    if (error instanceof QuerybaraError && error.engineCode === 'BUSYKEY') return false;
     throw error;
   }
 }
@@ -341,7 +341,7 @@ export async function copy(
   const src = toBytes(source);
   const dst = toBytes(destination);
   if (options.db !== undefined && ctx.conn.isCluster && options.db !== 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'A cluster has only database 0',
     });
@@ -353,7 +353,7 @@ export async function copy(
     try {
       return { copied: asNumber(await ctx.call(args)) === 1, method: 'copy' };
     } catch (error) {
-      if (!(error instanceof JoineryError) || !/unknown command|NOPERM/i.test(error.message))
+      if (!(error instanceof QuerybaraError) || !/unknown command|NOPERM/i.test(error.message))
         throw error;
     }
   }
@@ -442,7 +442,7 @@ export async function bulkDelete(
     try {
       deleted += await deleteKeys(ctx, batch);
     } catch (error) {
-      if (!(error instanceof JoineryError) || error.engineCode !== 'NOPERM') throw error;
+      if (!(error instanceof QuerybaraError) || error.engineCode !== 'NOPERM') throw error;
       // Some keys are outside the user's key patterns: delete the rest one by one.
       for (const key of batch) {
         try {
@@ -488,5 +488,5 @@ export async function bulkDelete(
 
 /** A tombstone for removing a list element by index (unlikely to collide with real data). */
 export function tombstone(): Uint8Array {
-  return utf8Bytes(`__joinery_removed__:${globalThis.crypto.randomUUID()}`);
+  return utf8Bytes(`__querybara_removed__:${globalThis.crypto.randomUUID()}`);
 }

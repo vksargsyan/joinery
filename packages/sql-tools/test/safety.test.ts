@@ -1,4 +1,4 @@
-import { connectionProfileSchema, type SqlDialect } from '@joinery/core';
+import { connectionProfileSchema, type SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

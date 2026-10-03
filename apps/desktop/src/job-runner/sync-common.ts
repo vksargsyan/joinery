@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   requiresWriteConfirmation,
@@ -10,8 +10,8 @@ import {
   type SchemaObjectKind,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import type { JobProgress, SyncSideInfo } from '@joinery/ipc';
+} from '@querybara/core';
+import type { JobProgress, SyncSideInfo } from '@querybara/ipc';
 
 import type { JobSide, SyncJobResult } from '../shared/sync-jobs';
 import type { JobOutcome } from './tasks';
@@ -40,7 +40,7 @@ export interface SyncJobOutcome extends JobOutcome {
 
 export function sqlDialect(session: Session): SqlDialect {
   if (isSqlEngine(session.engine)) return session.engine;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Sync works with MySQL, MariaDB and PostgreSQL, not ${session.engine}`,
   });
@@ -54,7 +54,7 @@ export function family(dialect: SqlDialect): 'postgres' | 'mysql' {
 /** Both sessions of a compare; an apply job has no source. */
 export function bothSides(context: SyncJobContext): { source: Session; target: Session } {
   if (!context.source || !context.sourceProfile) {
-    throw new JoineryError({ code: 'INTERNAL', message: 'The source connection is missing' });
+    throw new QuerybaraError({ code: 'INTERNAL', message: 'The source connection is missing' });
   }
   return { source: context.source, target: context.target };
 }
@@ -96,25 +96,25 @@ export function sideInfo(
  */
 export function checkTargetWrite(profile: ConnectionProfile, confirmed: boolean): void {
   if (profile.presentation.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: `"${profile.name}" is read-only, so nothing was applied`,
     });
   }
   if (requiresWriteConfirmation(profile) && !confirmed) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `Applying to ${profile.presentation.environment === 'production' ? 'a production connection' : `"${profile.name}"`} needs confirmation`,
     });
   }
 }
 
-export function cancelledError(): JoineryError {
-  return new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+export function cancelledError(): QuerybaraError {
+  return new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
 }
 
 export function isCancelled(error: unknown, signal: AbortSignal): boolean {
-  return signal.aborted || (error instanceof JoineryError && error.code === 'CANCELLED');
+  return signal.aborted || (error instanceof QuerybaraError && error.code === 'CANCELLED');
 }
 
 /** Runs one statement to completion; returns the rows it affected, when the server said. */

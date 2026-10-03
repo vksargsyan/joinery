@@ -1,4 +1,4 @@
-import type { RunStatus, ScheduleKind } from '@joinery/ipc';
+import type { RunStatus, ScheduleKind } from '@querybara/ipc';
 
 import { cx } from '../ui';
 

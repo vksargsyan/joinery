@@ -1,4 +1,4 @@
-import type { ColumnDef, SqlEngineId } from '@joinery/core';
+import type { ColumnDef, SqlEngineId } from '@querybara/core';
 import {
   findType,
   formatType,
@@ -8,7 +8,7 @@ import {
   type TypeCatalogEntry,
   type TypeCategory,
   type ValidationIssue,
-} from '@joinery/sync';
+} from '@querybara/sync';
 import { useMemo } from 'react';
 
 import {

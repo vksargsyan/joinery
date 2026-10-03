@@ -37,7 +37,7 @@ export function JsonEditor(props: {
     const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
-      theme: latest.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
+      theme: latest.current.theme === 'dark' ? 'querybara-dark' : 'querybara-light',
       automaticLayout: true,
       fontSize: 13,
       minimap: { enabled: false },
@@ -57,7 +57,7 @@ export function JsonEditor(props: {
       latest.current.onChange?.(model.getValue()),
     );
     editor.addAction({
-      id: 'joinery.search.json.run',
+      id: 'querybara.search.json.run',
       label: 'Run',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => latest.current.onRun?.(),
@@ -71,7 +71,7 @@ export function JsonEditor(props: {
   }, []);
 
   useEffect(() => {
-    monaco.editor.setTheme(props.theme === 'dark' ? 'joinery-dark' : 'joinery-light');
+    monaco.editor.setTheme(props.theme === 'dark' ? 'querybara-dark' : 'querybara-light');
   }, [props.theme]);
 
   useEffect(() => {
@@ -84,12 +84,12 @@ export function JsonEditor(props: {
     const model = editorRef.current?.getModel();
     if (!model) return;
     if (!issue) {
-      monaco.editor.setModelMarkers(model, 'joinery-json', []);
+      monaco.editor.setModelMarkers(model, 'querybara-json', []);
       return;
     }
     const start = model.getPositionAt(issue.offset);
     const end = model.getPositionAt(Math.min(issue.offset + 1, model.getValueLength()));
-    monaco.editor.setModelMarkers(model, 'joinery-json', [
+    monaco.editor.setModelMarkers(model, 'querybara-json', [
       {
         severity: monaco.MarkerSeverity.Error,
         message: issue.message,

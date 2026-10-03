@@ -8,7 +8,7 @@ import {
   type SearchIndexDefinition,
   type SearchIndexInfo,
   type SearchKeyType,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * The Search indexes tool's logic (RediSearch, FT.*), apart from React: a new index being

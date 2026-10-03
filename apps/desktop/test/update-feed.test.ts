@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { UpdateChannel } from '@joinery/ipc';
+import type { UpdateChannel } from '@querybara/ipc';
 import { NsisUpdater } from 'electron-updater';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -20,7 +20,7 @@ import { configureChannel } from '../src/main/updates';
  */
 
 const OWNER = 'vksargsyan';
-const REPO = 'joinery';
+const REPO = 'querybara';
 
 interface Release {
   readonly version: string;
@@ -37,7 +37,7 @@ function fakeGitHub(releases: readonly Release[]) {
   <entry>
     <id>tag:github.com,2008:Repository/1/v${version}</id>
     <link rel="alternate" type="text/html" href="https://github.com/${OWNER}/${REPO}/releases/tag/v${version}"/>
-    <title>Joinery ${version}</title>
+    <title>Querybara ${version}</title>
     <content type="html">Notes for ${version}</content>
   </entry>`,
   );
@@ -48,7 +48,7 @@ function fakeGitHub(releases: readonly Release[]) {
 </feed>`;
   const latestStable = releases.find((release) => !release.prerelease);
   const metadata = (release: Release): string => {
-    const installer = `Joinery-Setup-${release.version}.exe`;
+    const installer = `Querybara-Setup-${release.version}.exe`;
     const text = [
       `version: ${release.version}`,
       'files:',
@@ -93,7 +93,7 @@ function stagingId(fraction: number): string {
   return `12345678-1234-4123-8123-1234${tail}`;
 }
 
-const scratch = mkdtempSync(join(tmpdir(), 'joinery-update-feed-'));
+const scratch = mkdtempSync(join(tmpdir(), 'querybara-update-feed-'));
 let installs = 0;
 
 afterAll(() => {
@@ -113,7 +113,7 @@ async function check(options: {
   const github = fakeGitHub(options.releases);
   const app = {
     version: options.version,
-    name: 'Joinery',
+    name: 'Querybara',
     isPackaged: true,
     appUpdateConfigPath: join(userData, 'app-update.yml'),
     userDataPath: userData,

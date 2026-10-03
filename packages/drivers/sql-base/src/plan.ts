@@ -1,4 +1,4 @@
-import type { PlanNode } from '@joinery/core';
+import type { PlanNode } from '@querybara/core';
 
 /** A mutable plan node while a driver builds the tree. */
 export type PlanDetail = Record<string, string | number | boolean | null>;

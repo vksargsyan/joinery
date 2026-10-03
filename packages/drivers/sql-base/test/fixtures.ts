@@ -2,7 +2,7 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 
 const now = '2026-09-29T10:00:00.000Z';
 

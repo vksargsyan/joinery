@@ -1,12 +1,12 @@
 import {
   connectionProfileSchema,
-  JoineryError,
+  QuerybaraError,
   type ConnectionCheckResult,
   type ConnectionProfileInput,
   type DriverAdapter,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { CheckConnectionDeps } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { CheckConnectionDeps } from '@querybara/driver-sql-base';
 import { describe, expect, it } from 'vitest';
 
 import { checkRedisConnection } from '../src';
@@ -30,7 +30,7 @@ function profile(input: Partial<ConnectionProfileInput>): ResolvedProfile {
   };
 }
 
-function fakeAdapter(outcome: 'ok' | JoineryError): DriverAdapter {
+function fakeAdapter(outcome: 'ok' | QuerybaraError): DriverAdapter {
   const session = {
     engine: 'redis',
     server: { flavor: 'valkey', version: '8.0.1', topology: 'cluster', role: 'master' },
@@ -134,7 +134,7 @@ describe('checkRedisConnection', () => {
   it('tells TLS failures from auth failures', async () => {
     const tls = profile({ tls: { mode: 'verify-full' } });
     const reachable = deps(['cache.example.com:6379']);
-    const tlsFailure = new JoineryError({
+    const tlsFailure = new QuerybaraError({
       code: 'TLS_FAILED',
       message: 'bad cert',
       hint: 'set the CA',
@@ -144,7 +144,11 @@ describe('checkRedisConnection', () => {
       step: 'tls',
       hint: 'set the CA',
     });
-    const authFailure = new JoineryError({ code: 'AUTH_FAILED', message: 'no', hint: 'password' });
+    const authFailure = new QuerybaraError({
+      code: 'AUTH_FAILED',
+      message: 'no',
+      hint: 'password',
+    });
     steps = await collect(checkRedisConnection(tls, fakeAdapter(authFailure), reachable));
     expect(steps.map((s) => [s.step, s.status]).slice(3, 5)).toEqual([
       ['tls', 'ok'],

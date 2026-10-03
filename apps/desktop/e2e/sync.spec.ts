@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -17,10 +17,10 @@ import { connect, query, scratchDatabase } from './db';
  * applies them after the confirmation, and compares clean.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Sync';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -32,7 +32,7 @@ let direct: Session | undefined;
 let work = '';
 
 test.beforeAll(async () => {
-  work = mkdtempSync(join(tmpdir(), 'joinery-e2e-sync-'));
+  work = mkdtempSync(join(tmpdir(), 'querybara-e2e-sync-'));
   source = await scratchDatabase(PG_URL!);
   target = await scratchDatabase(PG_URL!);
   const setup = await connect(PG_URL!, source.name);

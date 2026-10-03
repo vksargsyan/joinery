@@ -9,7 +9,7 @@ import {
   type ResolvedProfile,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import { InvalidArgumentError } from 'commander';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -26,7 +26,7 @@ import { transferDbOptions } from '../src/program';
 import { FakeSession, ScriptedPrompter, column, run, tempDir, type FakeResult } from './helpers';
 
 /**
- * `joinery transfer` in-process against fake sessions: the flag parsers, the options and the
+ * `querybara transfer` in-process against fake sessions: the flag parsers, the options and the
  * spec they build, the plan printed by --dry-run (text and JSON), the checks made before
  * connecting (engine pair, what to transfer, read-only targets), the confirmations of
  * destructive plans, and a whole PostgreSQL → MySQL run with its summary and exit code.
@@ -273,7 +273,7 @@ describe('options and spec', () => {
   });
 });
 
-describe('joinery transfer', () => {
+describe('querybara transfer', () => {
   let dir = '';
   let cleanup: () => void = () => undefined;
 
@@ -362,7 +362,7 @@ describe('joinery transfer', () => {
     expect(badMode.code).toBe(2);
     expect(badMode.stderr).toContain('Allowed choices are create, drop-create, truncate, append');
 
-    const store = ['--store', join(dir, 'joinery.db')];
+    const store = ['--store', join(dir, 'querybara.db')];
     const added = await run([...store, 'profiles', 'add', 'Locked', MY, '--read-only'], {
       adapter,
       cwd: dir,
@@ -371,7 +371,7 @@ describe('joinery transfer', () => {
     const locked = await run([...store, 'transfer', PG, 'Locked', '--table', 'people'], {
       adapter,
       cwd: dir,
-      env: { JOINERY_PASSWORD: 'pw' },
+      env: { QUERYBARA_PASSWORD: 'pw' },
     });
     expect(locked.code).toBe(2);
     expect(locked.stderr).toContain('"Locked" is read-only; nothing can be transferred into it');

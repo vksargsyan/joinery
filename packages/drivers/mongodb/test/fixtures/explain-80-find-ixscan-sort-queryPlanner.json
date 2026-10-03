@@ -1,7 +1,7 @@
 {
   "explainVersion": "1",
   "queryPlanner": {
-    "namespace": "joinery_explain_probe.orders",
+    "namespace": "querybara_explain_probe.orders",
     "parsedQuery": {
       "$and": [
         {
@@ -78,7 +78,7 @@
       "amount": 1
     },
     "limit": 5,
-    "$db": "joinery_explain_probe"
+    "$db": "querybara_explain_probe"
   },
   "ok": 1
 }

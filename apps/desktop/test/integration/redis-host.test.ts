@@ -5,10 +5,10 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import { createRedisAdapter, redisProfileFromUrl } from '@joinery/driver-redis';
-import { connectionHostContract, createClient, fromNodePort, type Client } from '@joinery/ipc';
-import { keySlot, utf8Text } from '@joinery/redis-tools';
+} from '@querybara/core';
+import { createRedisAdapter, redisProfileFromUrl } from '@querybara/driver-redis';
+import { connectionHostContract, createClient, fromNodePort, type Client } from '@querybara/ipc';
+import { keySlot, utf8Text } from '@querybara/redis-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../../src/connection-host/host';
@@ -20,8 +20,8 @@ import { ConnectionHost } from '../../src/connection-host/host';
  * that is deleted afterwards.
  */
 
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
-const REDIS_CLUSTER = process.env['JOINERY_TEST_REDIS_CLUSTER'];
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
+const REDIS_CLUSTER = process.env['QUERYBARA_TEST_REDIS_CLUSTER'];
 
 type HostClient = Client<(typeof connectionHostContract)['shape']>;
 
@@ -68,7 +68,7 @@ function clusterProfile(): ResolvedProfile {
   return { profile: connectionProfileSchema.parse(input), secrets: password ? { password } : {} };
 }
 
-const prefix = `joinery:e2h:${randomBytes(5).toString('hex')}:`;
+const prefix = `querybara:e2h:${randomBytes(5).toString('hex')}:`;
 
 describe.skipIf(!REDIS_URL)('redis host services on a standalone server', () => {
   let client: HostClient;
@@ -274,7 +274,7 @@ describe.skipIf(!REDIS_URL)('redis host services on a standalone server', () => 
     const info = await client.redis.info({ sessionId });
     expect(info['server']?.['redis_version']).toBeDefined();
     const clients = await client.redis.clients.list({ sessionId });
-    expect(clients.some((c) => c.name.startsWith('Joinery'))).toBe(true);
+    expect(clients.some((c) => c.name.startsWith('Querybara'))).toBe(true);
     expect(Array.isArray(await client.redis.slowlog.get({ sessionId, count: 5 }))).toBe(true);
     expect(Array.isArray(await client.redis.latency.latest({ sessionId }))).toBe(true);
     const topology = await client.redis.topology({ sessionId });

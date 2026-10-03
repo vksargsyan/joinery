@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@querybara/core';
 import type { z } from 'zod';
 
 /** Hand-written snapshots of a small shop, per dialect, for the completion tests. */

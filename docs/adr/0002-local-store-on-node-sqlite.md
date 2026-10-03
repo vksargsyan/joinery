@@ -6,7 +6,7 @@
 ## Context
 
 The spec (§19) names better-sqlite3 for the local store: fast, embedded and synchronous. The
-store is opened by the Electron main process and by joinery-cli (headless jobs), and its tests
+store is opened by the Electron main process and by querybara-cli (headless jobs), and its tests
 run under plain Node.js in Vitest.
 
 better-sqlite3 is a native module. Its binary is built for one ABI at a time, so the same
@@ -18,7 +18,7 @@ near-identical `prepare / run / get / all / exec` API. Electron's bundled Node.j
 
 ## Decision
 
-`@joinery/storage` talks to SQLite through a small `SqliteDatabase` interface, implemented on
+`@querybara/storage` talks to SQLite through a small `SqliteDatabase` interface, implemented on
 `node:sqlite`. Nothing outside the storage package touches the SQLite API.
 
 ## Consequences

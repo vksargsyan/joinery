@@ -1,4 +1,4 @@
-import { JoineryError, type CellValue } from '@joinery/core';
+import { QuerybaraError, type CellValue } from '@querybara/core';
 import {
   buildBrowseQuery,
   pageAfter,
@@ -8,7 +8,7 @@ import {
   type BrowsePage,
   type BrowseQuery,
   type RowKey,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 
 import type { LoadedRows } from './grid-model';
 
@@ -214,7 +214,8 @@ export class PagingController {
       this.#error = undefined;
     } catch (error) {
       if (generation !== this.#generation) return;
-      this.#error = error instanceof JoineryError && error.code === 'CANCELLED' ? undefined : error;
+      this.#error =
+        error instanceof QuerybaraError && error.code === 'CANCELLED' ? undefined : error;
     } finally {
       if (generation === this.#generation) {
         this.#loading = false;

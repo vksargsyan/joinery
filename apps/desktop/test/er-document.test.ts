@@ -1,4 +1,4 @@
-import type { SchemaSnapshot } from '@joinery/core';
+import type { SchemaSnapshot } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -65,7 +65,7 @@ describe('ER model documents', () => {
       savedAt: '2026-09-30T10:00:00.000Z',
     });
     expect(file).toMatchObject({
-      format: 'joinery.er-model',
+      format: 'querybara.er-model',
       version: 1,
       engine: 'postgres',
       database: 'shop',
@@ -112,21 +112,21 @@ describe('ER model documents', () => {
       }),
     );
     expect(text.endsWith('}\n')).toBe(true);
-    expect(text).toContain('\n  "format": "joinery.er-model",');
+    expect(text).toContain('\n  "format": "querybara.er-model",');
     const parsed = parseModelFile(text);
     expect(parsed.ok).toBe(true);
 
     expect(parseModelFile('not json')).toEqual({
       ok: false,
-      message: 'The file is not a Joinery ER model (it is not JSON)',
+      message: 'The file is not a Querybara ER model (it is not JSON)',
     });
     expect(parseModelFile('{"tables": []}')).toEqual({
       ok: false,
-      message: 'The file is not a Joinery ER model',
+      message: 'The file is not a Querybara ER model',
     });
-    expect(parseModelFile('{"format": "joinery.er-model", "version": 2}')).toEqual({
+    expect(parseModelFile('{"format": "querybara.er-model", "version": 2}')).toEqual({
       ok: false,
-      message: 'The model was saved by a newer Joinery; update Joinery to open it',
+      message: 'The model was saved by a newer Querybara; update Querybara to open it',
     });
     const damaged = JSON.parse(text) as { model: { schemas: unknown[] } };
     damaged.model.schemas = [];

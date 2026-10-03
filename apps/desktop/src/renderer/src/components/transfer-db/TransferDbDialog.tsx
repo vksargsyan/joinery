@@ -1,4 +1,4 @@
-import { ENGINES } from '@joinery/core';
+import { ENGINES } from '@querybara/core';
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 

@@ -1,7 +1,7 @@
 import type { Socket } from 'node:net';
 import type { ConnectionOptions } from 'node:tls';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { Cluster, Command, Redis, type ClusterOptions, type RedisOptions } from 'ioredis';
 
 import type { RedisConnectionPlan } from './config';
@@ -80,7 +80,7 @@ export class RedisConnection {
     return this.routing ? this.routing.sentinelTls() : this.plan.tlsOptions;
   }
 
-  /** Opens and authenticates the connection; maps failures to JoineryErrors with hints. */
+  /** Opens and authenticates the connection; maps failures to QuerybaraErrors with hints. */
   static async open(plan: RedisConnectionPlan): Promise<RedisConnection> {
     const routing = plan.nodeRoute ? await NodeRouting.open(plan, plan.nodeRoute) : undefined;
     const routed: RedisConnectionPlan = routing
@@ -140,7 +140,7 @@ export class RedisConnection {
     const all = [...this.primaries(), ...this.replicas()];
     const found = all.find((n) => addressOf(n) === address);
     if (!found) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: `No node ${address} in this ${this.isCluster ? 'cluster' : 'connection'}`,
         hint: `Known nodes: ${all.map(addressOf).join(', ')}`,
@@ -177,7 +177,7 @@ export class RedisConnection {
    */
   async rawOn(args: readonly Arg[], node?: Redis): Promise<{ value: unknown; node?: Redis }> {
     if (args.length === 0)
-      throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'No command' });
+      throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'No command' });
     const name = commandName(args[0]);
     const rest = args.slice(1).map(toIoArg);
     const target = node ?? this.client;
@@ -218,7 +218,7 @@ export class RedisConnection {
     }
   }
 
-  /** Runs a command and maps a failure to a JoineryError. */
+  /** Runs a command and maps a failure to a QuerybaraError. */
   async call(args: readonly Arg[], node?: Redis): Promise<unknown> {
     try {
       return await this.raw(args, node);
@@ -236,7 +236,7 @@ export class RedisConnection {
     commands: readonly (readonly Arg[])[],
   ): Promise<{ error: unknown; value: unknown }[]> {
     if (this.client instanceof Cluster) {
-      throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'Not available in Cluster mode' });
+      throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Not available in Cluster mode' });
     }
     const pipeline = this.client.pipeline();
     for (const [name, ...rest] of commands) pipeline.callBuffer(String(name), ...rest.map(toIoArg));
@@ -351,7 +351,7 @@ function commonOptions(plan: RedisConnectionPlan): RedisOptions {
     keepAlive: 30_000,
     noDelay: true,
     connectionName: plan.connectionName,
-    clientInfoTag: 'joinery',
+    clientInfoTag: 'querybara',
     ...(plan.user !== undefined ? { username: plan.user } : {}),
     ...(plan.password !== undefined ? { password: plan.password } : {}),
     ...(plan.tlsOptions ? { tls: plan.tlsOptions } : {}),

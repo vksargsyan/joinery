@@ -1,5 +1,5 @@
-import { JoineryError, newId, toErrorData, type Session } from '@joinery/core';
-import type { DocumentPage, FindQuery, InsertManyResult, Namespace } from '@joinery/mongo-tools';
+import { QuerybaraError, newId, toErrorData, type Session } from '@querybara/core';
+import type { DocumentPage, FindQuery, InsertManyResult, Namespace } from '@querybara/mongo-tools';
 import { BSON, EJSON, type Document } from 'bson';
 
 import type { BackupObject, Manifest } from '../archive/manifest';
@@ -114,10 +114,10 @@ async function listCollections(session: Session, signal?: AbortSignal): Promise<
 
 export async function backupMongo(options: MongoBackupOptions): Promise<BackupSummary> {
   const { session, signal } = options;
-  if (options.format !== 'jbak') {
-    throw new JoineryError({
+  if (options.format !== 'qbak') {
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
-      message: 'MongoDB backups use the Joinery archive format (.jbak)',
+      message: 'MongoDB backups use the Querybara archive format (.qbak)',
     });
   }
   const format = options.documentFormat ?? 'bson';
@@ -146,7 +146,7 @@ export async function backupMongo(options: MongoBackupOptions): Promise<BackupSu
   let archive: ArchiveWriter | undefined;
   let manifest: Manifest | undefined;
   let status: TransferStatus = 'completed';
-  let error: JoineryError | undefined;
+  let error: QuerybaraError | undefined;
   let dataCount = 0;
   const database = session.currentDatabase;
   try {
@@ -257,7 +257,7 @@ export async function backupMongo(options: MongoBackupOptions): Promise<BackupSu
     current = undefined;
     manifest = await archive.finish({
       createdAt: new Date().toISOString(),
-      producer: options.producer ?? 'Joinery',
+      producer: options.producer ?? 'Querybara',
       engine: 'mongodb',
       serverVersion: session.serverVersion,
       database,
@@ -272,14 +272,14 @@ export async function backupMongo(options: MongoBackupOptions): Promise<BackupSu
     });
   } catch (caught) {
     status = isCancel(caught, signal) ? 'cancelled' : 'failed';
-    error = caught instanceof JoineryError ? caught : new JoineryError(toErrorData(caught));
+    error = caught instanceof QuerybaraError ? caught : new QuerybaraError(toErrorData(caught));
     if (archive) await archive.abort(caught);
     else await options.output.abort(caught).catch(() => undefined);
   }
   progress(true);
   return {
     status,
-    format: 'jbak',
+    format: 'qbak',
     objects: done,
     dataObjects: dataCount,
     rows,
@@ -315,7 +315,7 @@ export async function planMongoRestore(
 ): Promise<MongoRestorePlan> {
   const { session, archive } = options;
   if (archive.manifest.engine !== 'mongodb') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `This is a ${archive.manifest.engine} backup; it cannot be restored into MongoDB`,
     });
@@ -369,7 +369,7 @@ async function* bsonDocuments(source: AsyncIterable<Uint8Array>): AsyncGenerator
     while (buffer.length - at >= 4) {
       const size = buffer.readInt32LE(at);
       if (size < 5)
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'The backup holds a damaged BSON document',
         });
@@ -385,7 +385,7 @@ async function* bsonDocuments(source: AsyncIterable<Uint8Array>): AsyncGenerator
     buffer = buffer.subarray(at);
   }
   if (buffer.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The backup ends inside a BSON document',
     });
@@ -460,7 +460,7 @@ export async function restoreMongoArchive(options: MongoRestoreOptions): Promise
   };
 
   let status: TransferStatus = 'completed';
-  let fatal: JoineryError | undefined;
+  let fatal: QuerybaraError | undefined;
   const database = session.currentDatabase;
   try {
     const plan = await planMongoRestore(options);
@@ -564,7 +564,7 @@ export async function restoreMongoArchive(options: MongoRestoreOptions): Promise
     else if (isCancel(error, signal)) status = 'cancelled';
     else {
       status = 'failed';
-      fatal = error instanceof JoineryError ? error : new JoineryError(toErrorData(error));
+      fatal = error instanceof QuerybaraError ? error : new QuerybaraError(toErrorData(error));
       log('error', fatal.message);
     }
   }

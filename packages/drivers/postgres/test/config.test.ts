@@ -2,8 +2,8 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { FileReader } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { FileReader } from '@querybara/driver-sql-base';
 import { describe, expect, it } from 'vitest';
 
 import { buildPgConnectionPlan } from '../src';
@@ -46,7 +46,7 @@ describe('buildPgConnectionPlan', () => {
           timeZone: "Europe/O'Brien",
           initSql: ['SET work_mem = 65536'],
           defaultDatabase: 'sales',
-          applicationName: 'Joinery test',
+          applicationName: 'Querybara test',
           keepAlive: false,
         },
         tls: { mode: 'disable' },
@@ -62,7 +62,7 @@ describe('buildPgConnectionPlan', () => {
       connectionTimeoutMillis: 5000,
       statement_timeout: 30000,
       client_encoding: 'UTF8',
-      application_name: 'Joinery test',
+      application_name: 'Querybara test',
       keepAlive: false,
       ssl: false,
     });
@@ -81,7 +81,7 @@ describe('buildPgConnectionPlan', () => {
     );
     expect(plan.setup).toEqual([]);
     expect(plan.config.statement_timeout).toBeUndefined();
-    expect(plan.config.application_name).toBe('Joinery (control)');
+    expect(plan.config.application_name).toBe('Querybara (control)');
   });
 
   it('connects to Unix sockets given as a directory or a socket file', () => {

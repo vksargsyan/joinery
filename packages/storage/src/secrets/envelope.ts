@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /**
  * Passphrase encryption shared by the passphrase sealer and the profile export file:
@@ -65,7 +65,7 @@ export class PassphraseKeys {
 
   constructor(passphrase: string) {
     if (typeof passphrase !== 'string' || passphrase.length === 0) {
-      throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The passphrase is empty' });
+      throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The passphrase is empty' });
     }
     // The same passphrase typed on another OS or keyboard layout must give the same key.
     this.#passphrase = passphrase.normalize('NFC');
@@ -144,14 +144,17 @@ export function decryptEnvelope(
 ): Uint8Array {
   const bytes = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
   if (bytes.length < HEADER_LENGTH + TAG_LENGTH || !hasMagic(magic, bytes)) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: `This is not a Joinery ${what}` });
+    throw new QuerybaraError({
+      code: 'VALIDATION_FAILED',
+      message: `This is not a Querybara ${what}`,
+    });
   }
   const version = bytes.readUInt8(4);
   if (version !== FORMAT_VERSION) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
-      message: `This ${what} uses format version ${version}, which this version of Joinery cannot read`,
-      hint: 'Update Joinery and try again.',
+      message: `This ${what} uses format version ${version}, which this version of Querybara cannot read`,
+      hint: 'Update Querybara and try again.',
     });
   }
   const cost: ScryptCost = {
@@ -160,7 +163,7 @@ export function decryptEnvelope(
     p: bytes.readUInt8(8),
   };
   if (bytes.readUInt8(5) !== KDF_SCRYPT || !checkCost(cost)) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: `The ${what} is damaged` });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: `The ${what} is damaged` });
   }
   const header = bytes.subarray(0, HEADER_LENGTH);
   const salt = bytes.subarray(9, 9 + SALT_LENGTH);
@@ -175,7 +178,7 @@ export function decryptEnvelope(
     decipher.setAuthTag(tag);
     return new Uint8Array(Buffer.concat([decipher.update(ciphertext), decipher.final()]));
   } catch {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'AUTH_FAILED',
       message: `Could not decrypt the ${what}: the passphrase is wrong or the data was modified`,
     });

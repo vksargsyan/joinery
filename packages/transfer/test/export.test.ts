@@ -1,4 +1,4 @@
-import type { CellValue, ColumnKind, ColumnMeta } from '@joinery/core';
+import type { CellValue, ColumnKind, ColumnMeta } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

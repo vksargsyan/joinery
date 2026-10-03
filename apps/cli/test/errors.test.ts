@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CliError, EXIT, InterruptedError, caretLines, formatError } from '../src/errors';
@@ -10,7 +10,7 @@ import { FakeSignals, MemoryStream, ScriptedPrompter } from './helpers';
 
 describe('formatError', () => {
   it('prints message, detail, hint, SQLSTATE, engine code and 1-based position', () => {
-    const error = new JoineryError({
+    const error = new QuerybaraError({
       code: 'SQL_ERROR',
       message: 'syntax error at or near "form"',
       detail: 'line one\nline two',
@@ -29,7 +29,7 @@ describe('formatError', () => {
   });
 
   it('points at the error position inside the statement', () => {
-    const error = new JoineryError({ code: 'SQL_ERROR', message: 'bad', position: 22 });
+    const error = new QuerybaraError({ code: 'SQL_ERROR', message: 'bad', position: 22 });
     const lines = formatError(error, {
       statement: {
         index: 3,

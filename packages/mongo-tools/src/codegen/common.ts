@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import type {
   Binary,
   BSONRegExp,
@@ -105,7 +105,7 @@ export function classify(value: BsonValue): Classified {
   if (Array.isArray(value)) return { type: 'array', items: value };
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'An invalid date cannot be exported',
       });

@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/core",
+  "name": "@querybara/core",
   "version": "0.0.0",
   "private": true,
   "description": "Domain types, schema snapshot, capability flags and the driver adapter contract.",

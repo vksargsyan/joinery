@@ -1,4 +1,4 @@
-import type { ExplainResult, SqlDialect } from '@joinery/core';
+import type { ExplainResult, SqlDialect } from '@querybara/core';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';

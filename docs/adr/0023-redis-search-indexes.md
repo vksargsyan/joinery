@@ -8,7 +8,7 @@
 The Redis Query Engine (RediSearch) indexes hashes and JSON documents under key prefixes and
 queries them by text, tags, numeric ranges, places and vectors. Redis 8 bundles it, as Redis
 Stack did, and Valkey has valkey-search, which speaks a subset of the same FT.* commands. Before
-this, Joinery reached it only through the CLI: FT.INFO printed as a flat list of more than 100
+this, Querybara reached it only through the CLI: FT.INFO printed as a flat list of more than 100
 lines, and FT.CREATE had to be written by hand.
 
 The replies are RESP2 arrays whose shapes vary:
@@ -22,7 +22,7 @@ The replies are RESP2 arrays whose shapes vary:
 ## Decision
 
 _*FT.* commands are engine services of the Redis driver (ADR 0007), read and built by pure code
-in `@joinery/redis-tools`, and shown in a Search indexes tool._*
+in `@querybara/redis-tools`, and shown in a Search indexes tool._*
 
 - **`redis-tools/search.ts`** reads replies and builds commands:
   - `parseSearchInfo` reads FT.INFO into an index's definition, fields (options and flags kept

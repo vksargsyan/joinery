@@ -7,11 +7,11 @@
 
 The spec (§19) lays out a pnpm workspace with Turborepo: `apps/desktop`, `apps/cli`,
 `apps/cloud` and domain packages under `packages/`. Domain packages must run unchanged in the
-Electron utility processes, in joinery-cli and in tests, and must never import Electron.
+Electron utility processes, in querybara-cli and in tests, and must never import Electron.
 
 ## Decision
 
-- Internal packages (`@joinery/*`) are **source-only**: `exports` points at `src/index.ts`. They
+- Internal packages (`@querybara/*`) are **source-only**: `exports` points at `src/index.ts`. They
   are compiled by whoever consumes them — Vite/electron-vite for the desktop app, the CLI's
   bundler, and Vitest in tests. There is no per-package build step or `dist/` to keep in sync.
 - TypeScript runs in `noEmit` mode per package (`pnpm typecheck`), with one strict base config

@@ -1,5 +1,5 @@
-import { newId } from '@joinery/core';
-import { operatorsFor, type FilterOperator } from '@joinery/table-data';
+import { newId } from '@querybara/core';
+import { operatorsFor, type FilterOperator } from '@querybara/table-data';
 import type { KeyboardEvent } from 'react';
 
 import {

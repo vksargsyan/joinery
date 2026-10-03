@@ -20,7 +20,7 @@ hashes with per-field expiry. A dump can be many gigabytes.
 
 ## Decision
 
-**A streaming RDB reader in `@joinery/redis-tools` (`rdb.ts`, `rdb-analysis.ts`), run by the
+**A streaming RDB reader in `@querybara/redis-tools` (`rdb.ts`, `rdb-analysis.ts`), run by the
 job runner, shown in a Dump analysis panel.**
 
 - **The reader** is pure TypeScript and browser-safe, like the rest of redis-tools:

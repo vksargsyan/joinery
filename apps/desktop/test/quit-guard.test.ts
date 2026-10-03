@@ -47,12 +47,12 @@ function setup(schedules: GuardedSchedule[], platform: NodeJS.Platform = 'win32'
 describe('quitQuestion', () => {
   it('names the schedule and its next run, in local time', () => {
     const question = quitQuestion([schedule('Nightly backup')], 'darwin', NOW)!;
-    expect(question.message).toBe('Quit Joinery? Schedules don’t run while it’s closed.');
+    expect(question.message).toBe('Quit Querybara? Schedules don’t run while it’s closed.');
     expect(question.detail).toBe(
       'The schedule “Nightly backup” is on; its next run is tomorrow at 02:00.\n\n' +
-        'Runs missed while Joinery is closed are caught up, or skipped, as each schedule says, when it opens again.',
+        'Runs missed while Querybara is closed are caught up, or skipped, as each schedule says, when it opens again.',
     );
-    expect(question.buttons).toEqual(['Quit Joinery', 'Cancel']);
+    expect(question.buttons).toEqual(['Quit Querybara', 'Cancel']);
     expect(question.checkboxLabel).toBe('Don’t ask again');
   });
 
@@ -69,12 +69,12 @@ describe('quitQuestion', () => {
       'linux',
       NOW,
     )!;
-    expect(question.message).toBe('Close Joinery? Schedules don’t run while it’s closed.');
+    expect(question.message).toBe('Close Querybara? Schedules don’t run while it’s closed.');
     expect(question.detail.split('\n\n').slice(0, 2)).toEqual([
       '2 schedules are on; the next, “Hourly check”, is due today at 15:00.',
       '“Hourly check” is running now and will be stopped.',
     ]);
-    expect(question.buttons).toEqual(['Close Joinery', 'Cancel']);
+    expect(question.buttons).toEqual(['Close Querybara', 'Cancel']);
   });
 
   it('asks nothing when no schedule is on', () => {

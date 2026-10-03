@@ -1,13 +1,13 @@
-import { engineIdSchema } from '@joinery/core';
+import { engineIdSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { idSchema } from './common';
 
 /**
  * Schemas for data transfer between databases (spec §12): the transfer job the wizard, the
- * scheduler and joinery-cli run, the wizard's inspection of a connection (databases, schemas,
+ * scheduler and querybara-cli run, the wizard's inspection of a connection (databases, schemas,
  * tables or collections), and the plan it shows in its mapping and review steps. They mirror
- * @joinery/transfer's `DbTransferSpec` and `TransferPlan`, which this package cannot import;
+ * @querybara/transfer's `DbTransferSpec` and `TransferPlan`, which this package cannot import;
  * the desktop tests check they match.
  *
  * Column types typed in the wizard reach DDL: they must look like a type (see

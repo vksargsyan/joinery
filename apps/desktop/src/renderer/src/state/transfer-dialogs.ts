@@ -3,8 +3,8 @@ import {
   requiresWriteConfirmation,
   type CellValue,
   type SqlDialect,
-} from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+} from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import type { ExportSource } from './export-wizard';

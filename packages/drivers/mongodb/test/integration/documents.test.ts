@@ -4,7 +4,7 @@ import {
   toEjson,
   toFindQuery,
   toJsonSchema,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { MongoSession } from '../../src';

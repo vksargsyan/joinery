@@ -14,22 +14,24 @@ import {
 import { tempDir } from './helpers';
 
 describe('default store location', () => {
-  it('matches Electron userData for "Joinery" on each platform', () => {
-    expect(defaultDataDir('linux', {}, '/home/ada')).toBe('/home/ada/.config/Joinery');
-    expect(defaultDataDir('linux', { XDG_CONFIG_HOME: '/xdg' }, '/home/ada')).toBe('/xdg/Joinery');
-    expect(defaultDataDir('freebsd', {}, '/home/ada')).toBe('/home/ada/.config/Joinery');
+  it('matches Electron userData for "Querybara" on each platform', () => {
+    expect(defaultDataDir('linux', {}, '/home/ada')).toBe('/home/ada/.config/Querybara');
+    expect(defaultDataDir('linux', { XDG_CONFIG_HOME: '/xdg' }, '/home/ada')).toBe(
+      '/xdg/Querybara',
+    );
+    expect(defaultDataDir('freebsd', {}, '/home/ada')).toBe('/home/ada/.config/Querybara');
     expect(defaultDataDir('darwin', {}, '/Users/ada')).toBe(
-      '/Users/ada/Library/Application Support/Joinery',
+      '/Users/ada/Library/Application Support/Querybara',
     );
     expect(
       defaultDataDir('win32', { APPDATA: 'C:\\Users\\ada\\AppData\\Roaming' }, 'C:\\Users\\ada'),
-    ).toBe('C:\\Users\\ada\\AppData\\Roaming\\Joinery');
+    ).toBe('C:\\Users\\ada\\AppData\\Roaming\\Querybara');
     expect(defaultDataDir('win32', {}, 'C:\\Users\\ada')).toBe(
-      'C:\\Users\\ada\\AppData\\Roaming\\Joinery',
+      'C:\\Users\\ada\\AppData\\Roaming\\Querybara',
     );
   });
 
-  it('puts the desktop store file joinery.db there', () => {
+  it('puts the desktop store file querybara.db there', () => {
     const location = resolveStorePath({
       env: {},
       platform: 'darwin',
@@ -37,29 +39,29 @@ describe('default store location', () => {
       cwd: '/',
     });
     expect(location).toEqual({
-      path: '/Users/ada/Library/Application Support/Joinery/joinery.db',
+      path: '/Users/ada/Library/Application Support/Querybara/querybara.db',
       source: 'default',
     });
-    expect(STORE_FILE_NAME).toBe('joinery.db');
+    expect(STORE_FILE_NAME).toBe('querybara.db');
   });
 });
 
 describe('store path precedence', () => {
   const base = { platform: 'linux' as const, homedir: '/home/ada', cwd: '/work' };
 
-  it('prefers --store, then JOINERY_STORE, then JOINERY_USER_DATA_DIR', () => {
-    const env = { JOINERY_STORE: '/env/store.db', JOINERY_USER_DATA_DIR: '/data' };
+  it('prefers --store, then QUERYBARA_STORE, then QUERYBARA_USER_DATA_DIR', () => {
+    const env = { QUERYBARA_STORE: '/env/store.db', QUERYBARA_USER_DATA_DIR: '/data' };
     expect(resolveStorePath({ ...base, env, flag: 'my.db' })).toEqual({
       path: '/work/my.db',
       source: '--store',
     });
     expect(resolveStorePath({ ...base, env })).toEqual({
       path: '/env/store.db',
-      source: 'JOINERY_STORE',
+      source: 'QUERYBARA_STORE',
     });
-    expect(resolveStorePath({ ...base, env: { JOINERY_USER_DATA_DIR: 'rel' } })).toEqual({
-      path: '/work/rel/joinery.db',
-      source: 'JOINERY_USER_DATA_DIR',
+    expect(resolveStorePath({ ...base, env: { QUERYBARA_USER_DATA_DIR: 'rel' } })).toEqual({
+      path: '/work/rel/querybara.db',
+      source: 'QUERYBARA_USER_DATA_DIR',
     });
   });
 
@@ -68,17 +70,17 @@ describe('store path precedence', () => {
       platform: 'win32',
       homedir: 'C:\\Users\\ada',
       cwd: 'C:\\work',
-      env: { JOINERY_STORE: 'stores\\a.db' },
+      env: { QUERYBARA_STORE: 'stores\\a.db' },
     });
     expect(location.path).toBe('C:\\work\\stores\\a.db');
   });
 
-  it('treats an existing directory as the folder holding joinery.db', () => {
+  it('treats an existing directory as the folder holding querybara.db', () => {
     const { dir, cleanup } = tempDir();
     try {
       mkdirSync(join(dir, 'data'));
       const location = resolveStorePath({ ...base, cwd: dir, env: {}, flag: 'data' });
-      expect(location.path).toBe(join(dir, 'data', 'joinery.db'));
+      expect(location.path).toBe(join(dir, 'data', 'querybara.db'));
     } finally {
       cleanup();
     }
@@ -92,7 +94,7 @@ describe('StoreHandle', () => {
   it('does not create a store for reads, and creates it for writes', () => {
     const { dir, cleanup } = tempDir();
     cleanups.push(cleanup);
-    const handle = new StoreHandle({ path: join(dir, 'joinery.db'), source: '--store' }, {});
+    const handle = new StoreHandle({ path: join(dir, 'querybara.db'), source: '--store' }, {});
     expect(handle.open({ create: false })).toBeUndefined();
     expect(handle.exists).toBe(false);
     const store = handle.require();
@@ -101,11 +103,11 @@ describe('StoreHandle', () => {
     handle.close();
   });
 
-  it('seals with JOINERY_PASSPHRASE and cannot save without it', () => {
-    expect(cliSealer({ JOINERY_PASSPHRASE: 'pp' }).isAvailable()).toBe(true);
+  it('seals with QUERYBARA_PASSPHRASE and cannot save without it', () => {
+    expect(cliSealer({ QUERYBARA_PASSPHRASE: 'pp' }).isAvailable()).toBe(true);
     const none = cliSealer({});
     expect(none.id).toBe(UNAVAILABLE_SEALER_ID);
     expect(none.isAvailable()).toBe(false);
-    expect(() => none.seal('x')).toThrow(/JOINERY_PASSPHRASE/);
+    expect(() => none.seal('x')).toThrow(/QUERYBARA_PASSPHRASE/);
   });
 });

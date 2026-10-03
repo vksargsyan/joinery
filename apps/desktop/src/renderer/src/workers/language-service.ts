@@ -1,4 +1,4 @@
-import type { SchemaSnapshot, SqlDialect, SqlEngineId, TableDef } from '@joinery/core';
+import type { SchemaSnapshot, SqlDialect, SqlEngineId, TableDef } from '@querybara/core';
 import {
   buildCatalog,
   complete,
@@ -9,8 +9,8 @@ import {
   type SignatureHelp,
   type SqlDiagnostic,
   type SqlSnippet,
-} from '@joinery/sql-tools';
-import type { ValidationIssue } from '@joinery/sync';
+} from '@querybara/sql-tools';
+import type { ValidationIssue } from '@querybara/sync';
 
 /**
  * The editor's language service (spec §6), run in a Web Worker so parsing never blocks typing:
@@ -286,7 +286,7 @@ export class LanguageService {
           this.#runAsync(
             task.id,
             // The designer's validation code loads only in the worker that checks designs.
-            import('@joinery/sync').then(({ diagnoseTable }) =>
+            import('@querybara/sync').then(({ diagnoseTable }) =>
               diagnoseTable(task.table, { engine: task.engine, schema: task.schema }),
             ),
             [],

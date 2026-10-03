@@ -1,4 +1,4 @@
-import type { CellValue, ColumnKind, LargeValueHandle } from '@joinery/core';
+import type { CellValue, ColumnKind, LargeValueHandle } from '@querybara/core';
 
 /**
  * Value canonicalisation for data compare (spec §13, "Cross-engine data compare canonicalises

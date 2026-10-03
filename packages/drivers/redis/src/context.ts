@@ -15,7 +15,7 @@ export interface RedisContext {
   readonly database: number;
   /**
    * Runs a command for a service: keyed commands are routed by slot in Cluster mode, keyless
-   * ones go to `node` (default: the first primary). Errors are mapped to JoineryErrors.
+   * ones go to `node` (default: the first primary). Errors are mapped to QuerybaraErrors.
    */
   call(args: readonly Arg[], node?: Redis): Promise<unknown>;
   /**

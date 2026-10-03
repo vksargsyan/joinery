@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import { CsvParser, type CsvDialect, type CsvField, type CsvParseOptions } from './csv';
 import { openInput, peekSource, type ByteSource } from './io';
@@ -242,7 +242,7 @@ export async function* readRows(
       rowPath = detectRowPaths(head.join(''), ended)[0]?.path;
       if (rowPath === undefined) {
         await iterator.return?.();
-        throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The XML has no elements' });
+        throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The XML has no elements' });
       }
       text = {
         async *[Symbol.asyncIterator]() {
@@ -279,7 +279,7 @@ export async function* readRows(
     return;
   }
 
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `Cannot read rows from the "${String(options.format)}" format`,
     hint: 'SQL files are run with runSqlFile',

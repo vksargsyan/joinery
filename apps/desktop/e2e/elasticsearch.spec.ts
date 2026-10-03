@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import type { SearchSession } from '@joinery/driver-elasticsearch';
+import type { SearchSession } from '@querybara/driver-elasticsearch';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
 import { connectSearch, e2eIndex, indexExists } from './search';
@@ -12,14 +12,17 @@ import { connectSearch, e2eIndex, indexExists } from './search';
  * pasted URL, create an index from the console, index and search documents (a 64-bit number
  * comes back exactly), autocomplete, a destructive request that asks first, and the index in
  * the explorer with its health. Indices are named for the run and deleted afterwards. With
- * JOINERY_E2E_SHOTS set, screenshots are saved there.
+ * QUERYBARA_E2E_SHOTS set, screenshots are saved there.
  */
 
-const ES_URL = process.env['JOINERY_TEST_ELASTICSEARCH_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const ES_URL = process.env['QUERYBARA_TEST_ELASTICSEARCH_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Elasticsearch';
 
-test.skip(!ES_URL, 'Set JOINERY_TEST_ELASTICSEARCH_URL to run the Elasticsearch end-to-end tests');
+test.skip(
+  !ES_URL,
+  'Set QUERYBARA_TEST_ELASTICSEARCH_URL to run the Elasticsearch end-to-end tests',
+);
 
 test.describe.configure({ mode: 'serial' });
 
@@ -160,7 +163,7 @@ test('completes endpoints and index names in the console', async () => {
   const suggestions = page.locator('.monaco-editor .suggest-widget').filter({ visible: true });
   await expect(suggestions).toContainText('indices');
   await page.keyboard.press('Escape');
-  await replaceText('GET /joinery-e2e');
+  await replaceText('GET /querybara-e2e');
   await page.keyboard.press('ControlOrMeta+Space');
   await expect(suggestions).toContainText(index);
   await page.keyboard.press('Escape');
@@ -168,7 +171,7 @@ test('completes endpoints and index names in the console', async () => {
 
 test('marks the request at the cursor with a wash that keeps its text readable', async () => {
   await replaceText('GET _cat/indices');
-  const request = consolePanel().locator('.joinery-console-request');
+  const request = consolePanel().locator('.querybara-console-request');
   await expect(request).toHaveCount(1);
   const background = await request.evaluate((element) => getComputedStyle(element).backgroundColor);
   // `color(srgb r g b / a)` or `rgba(r, g, b, a)`: a translucent wash, never the solid accent.

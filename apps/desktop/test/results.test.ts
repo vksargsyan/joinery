@@ -1,4 +1,4 @@
-import { toColumnChunk, type ColumnMeta, type ResultChunk } from '@joinery/core';
+import { toColumnChunk, type ColumnMeta, type ResultChunk } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

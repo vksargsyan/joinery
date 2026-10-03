@@ -1,4 +1,4 @@
-import { backupInspectInputSchema, restoreJobSchema } from '@joinery/ipc';
+import { backupInspectInputSchema, restoreJobSchema } from '@querybara/ipc';
 import { z } from 'zod';
 
 import { resolvedProfileSchema } from './host-protocol';

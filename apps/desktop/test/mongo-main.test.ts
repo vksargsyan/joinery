@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
-import { openStore, type SecretSealer } from '@joinery/storage';
+import { connectionProfileSchema, type ConnectionProfileInput } from '@querybara/core';
+import { openStore, type SecretSealer } from '@querybara/storage';
 import { describe, expect, it, vi } from 'vitest';
 
 import { FileGrants } from '../src/main/jobs-api';
@@ -246,7 +246,7 @@ describe('saved pipelines and exported text in main', () => {
 
   it('writes exported text only where the save dialog pointed', async () => {
     const { grants, handlers } = handlersWithProfile();
-    const dir = mkdtempSync(join(tmpdir(), 'joinery-mongo-'));
+    const dir = mkdtempSync(join(tmpdir(), 'querybara-mongo-'));
     try {
       const path = join(dir, 'orders.schema.json');
       await expect(handlers.writeText({ path, text: '{}' }, context())).rejects.toMatchObject({

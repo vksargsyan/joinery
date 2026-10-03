@@ -25,7 +25,7 @@ const devScriptHashes = [
 /** Writes the CSP meta tag into index.html: the strict policy in builds, plus HMR in dev. */
 function contentSecurityPolicy(): Plugin {
   return {
-    name: 'joinery:csp',
+    name: 'querybara:csp',
     transformIndexHtml: {
       order: 'pre',
       handler(html, context) {
@@ -37,8 +37,8 @@ function contentSecurityPolicy(): Plugin {
                 devServerOrigin: address ?? 'http://localhost:5173',
                 scriptHashes: devScriptHashes,
               });
-        if (!html.includes('%JOINERY_CSP%')) throw new Error('index.html lost its CSP meta tag');
-        return html.replace('%JOINERY_CSP%', policy);
+        if (!html.includes('%QUERYBARA_CSP%')) throw new Error('index.html lost its CSP meta tag');
+        return html.replace('%QUERYBARA_CSP%', policy);
       },
     },
   };
@@ -52,7 +52,7 @@ function contentSecurityPolicy(): Plugin {
  */
 const notices = thirdPartyNotices({
   root,
-  productName: 'Joinery',
+  productName: 'Querybara',
   extra: [
     { name: 'electron', shippedIn: 'runtime' },
     { name: 'tailwindcss', shippedIn: 'renderer' },
@@ -91,7 +91,7 @@ export default defineConfig({
   main: {
     plugins: [notices.collect('main')],
     define: {
-      __JOINERY_DEV_SCRIPT_HASHES__: JSON.stringify(devScriptHashes),
+      __QUERYBARA_DEV_SCRIPT_HASHES__: JSON.stringify(devScriptHashes),
     },
     build: {
       rollupOptions: {

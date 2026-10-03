@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { connectionProfileSchema } from '@joinery/core';
-import { createPassphraseSealer, openStore } from '@joinery/storage';
+import { connectionProfileSchema } from '@querybara/core';
+import { createPassphraseSealer, openStore } from '@querybara/storage';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startSshServer, type TestSshServer } from '../ssh-server';
@@ -16,14 +16,14 @@ import { startSshServer, type TestSshServer } from '../ssh-server';
  * directly and through an SSH tunnel; `query` running redis-cli command lines with redis-cli
  * output (JSON with --format json); the write rules; commands that would take over the
  * connection refused; and the SQL-only commands refusing a Redis target. Gated on
- * JOINERY_TEST_REDIS_URL; keys live under a random prefix, deleted afterwards.
+ * QUERYBARA_TEST_REDIS_URL; keys live under a random prefix, deleted afterwards.
  */
 
-const BIN = fileURLToPath(new URL('../../dist/joinery.mjs', import.meta.url));
-const REDIS_URL = process.env['JOINERY_TEST_REDIS_URL'];
+const BIN = fileURLToPath(new URL('../../dist/querybara.mjs', import.meta.url));
+const REDIS_URL = process.env['QUERYBARA_TEST_REDIS_URL'];
 /** "host:port/masterName" of the test Sentinel (local only). */
-const SENTINEL = process.env['JOINERY_TEST_REDIS_SENTINEL'];
-const PREFIX = `joinery:cli:${randomBytes(4).toString('hex')}:`;
+const SENTINEL = process.env['QUERYBARA_TEST_REDIS_SENTINEL'];
+const PREFIX = `querybara:cli:${randomBytes(4).toString('hex')}:`;
 const SSH_USER = 'tunnel';
 const SSH_PASSWORD = 'it-Redis-Bastion-7e2';
 const PASSPHRASE = 'it-redis-store';
@@ -38,13 +38,13 @@ interface Result {
   readonly stderr: string;
 }
 
-function joinery(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
+function querybara(args: readonly string[], env: Record<string, string> = {}): Promise<Result> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [BIN, ...args], {
       env: {
         PATH: process.env['PATH'] ?? '',
         HOME: workDir,
-        JOINERY_STORE: storePath,
+        QUERYBARA_STORE: storePath,
         NO_COLOR: '1',
         ...env,
       },
@@ -67,15 +67,15 @@ function joinery(args: readonly string[], env: Record<string, string> = {}): Pro
 }
 
 const query = (commands: string, ...extra: string[]) =>
-  joinery(['query', REDIS_URL!, ...extra, '-e', commands]);
+  querybara(['query', REDIS_URL!, ...extra, '-e', commands]);
 
 beforeAll(async () => {
   if (!REDIS_URL) return;
   if (!existsSync(BIN)) {
-    throw new Error(`${BIN} is missing: run "pnpm --filter @joinery/cli build" first`);
+    throw new Error(`${BIN} is missing: run "pnpm --filter @querybara/cli build" first`);
   }
-  workDir = mkdtempSync(join(tmpdir(), 'joinery-cli-redis-'));
-  storePath = join(workDir, 'joinery.db');
+  workDir = mkdtempSync(join(tmpdir(), 'querybara-cli-redis-'));
+  storePath = join(workDir, 'querybara.db');
   ssh = await startSshServer({ user: SSH_USER, password: SSH_PASSWORD });
 });
 
@@ -88,22 +88,22 @@ afterAll(async () => {
   if (workDir) rmSync(workDir, { recursive: true, force: true });
 });
 
-describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
+describe.skipIf(!REDIS_URL)('querybara-cli with Redis', () => {
   it('tests a Redis URI step by step', async () => {
-    const result = await joinery(['test', REDIS_URL!]);
+    const result = await querybara(['test', REDIS_URL!]);
     expect(result.code, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toMatch(/✓ Auth/);
     expect(result.stdout).toMatch(/✓ Version\s+(Redis|Valkey) \d+\.\d+/);
     expect(result.stdout).toContain('Connection OK.');
     expect(result.stdout + result.stderr).not.toContain(new URL(REDIS_URL!).password);
-    const json = await joinery(['test', REDIS_URL!, '--json']);
+    const json = await querybara(['test', REDIS_URL!, '--json']);
     expect(JSON.parse(json.stdout)).toMatchObject({ engine: 'redis', ok: true });
   });
 
   it('tests and queries through an SSH tunnel', async () => {
     const hop = ['--ssh', `${SSH_USER}@127.0.0.1:${ssh!.port}`, '--ssh-accept-new'];
-    const env = { JOINERY_SSH_PASSWORD: SSH_PASSWORD };
-    const tested = await joinery(['test', REDIS_URL!, ...hop], env);
+    const env = { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD };
+    const tested = await querybara(['test', REDIS_URL!, ...hop], env);
     expect(tested.code, tested.stdout + tested.stderr).toBe(0);
     expect(tested.stdout).toMatch(
       new RegExp(`✓ SSH\\s+SSH ${SSH_USER}@127\\.0\\.0\\.1:${ssh!.port} → `),
@@ -111,7 +111,7 @@ describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
     expect(tested.stdout).toMatch(/✓ Ping/);
     expect(tested.stdout + tested.stderr).not.toContain(SSH_PASSWORD);
     const forwards = ssh!.stats.forwards;
-    const pinged = await joinery(['query', REDIS_URL!, ...hop, '-e', 'PING'], env);
+    const pinged = await querybara(['query', REDIS_URL!, ...hop, '-e', 'PING'], env);
     expect(pinged.code, pinged.stderr).toBe(0);
     expect(pinged.stdout).toBe('PONG\n');
     expect(ssh!.stats.forwards).toBeGreaterThan(forwards);
@@ -122,13 +122,13 @@ describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
     const password = new URL(REDIS_URL!).password;
     const uri = `redis+sentinel://default:${password}@${address}/${master}`;
     const hop = ['--ssh', `${SSH_USER}@127.0.0.1:${ssh!.port}`, '--ssh-accept-new'];
-    const env = { JOINERY_SSH_PASSWORD: SSH_PASSWORD };
-    const tested = await joinery(['test', uri, ...hop], env);
+    const env = { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD };
+    const tested = await querybara(['test', uri, ...hop], env);
     expect(tested.code, tested.stdout + tested.stderr).toBe(0);
     expect(tested.stdout).toMatch(/✓ SSH\s+SSH .*every server through the tunnel/);
     expect(tested.stdout).toMatch(/through Sentinel, master/);
     const forwards = ssh!.stats.forwards;
-    const pinged = await joinery(['query', uri, ...hop, '-e', 'PING'], env);
+    const pinged = await querybara(['query', uri, ...hop, '-e', 'PING'], env);
     expect(pinged.code, pinged.stderr).toBe(0);
     expect(pinged.stdout).toBe('PONG\n');
     expect(ssh!.stats.forwards).toBeGreaterThan(forwards);
@@ -170,7 +170,7 @@ describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
 
     const file = join(workDir, 'commands.redis');
     writeFileSync(file, `GET ${PREFIX}str\nSTRLEN ${PREFIX}str\n`);
-    const fromFile = await joinery(['query', REDIS_URL!, '-f', file]);
+    const fromFile = await querybara(['query', REDIS_URL!, '-f', file]);
     expect(fromFile.stdout).toBe('"hello world"\n(integer) 11\n');
   });
 
@@ -237,17 +237,17 @@ describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
     } finally {
       store.close();
     }
-    const env = { JOINERY_PASSPHRASE: PASSPHRASE };
-    const tested = await joinery(['test', 'cache-redis'], env);
+    const env = { QUERYBARA_PASSPHRASE: PASSPHRASE };
+    const tested = await querybara(['test', 'cache-redis'], env);
     expect(tested.code, tested.stdout + tested.stderr).toBe(0);
-    const read = await joinery(['query', 'cache-redis', '-e', 'PING'], env);
+    const read = await querybara(['query', 'cache-redis', '-e', 'PING'], env);
     expect(read.stdout).toBe('PONG\n');
     // Production: every write asks, so without a terminal it needs --yes.
-    const write = await joinery(['query', 'cache-redis', '-e', `SET ${PREFIX}prod 1`], env);
+    const write = await querybara(['query', 'cache-redis', '-e', `SET ${PREFIX}prod 1`], env);
     expect(write.code).toBe(2);
     expect(write.stderr).toContain('production connection');
     // --database picks another logical database for the run.
-    const other = await joinery(
+    const other = await querybara(
       ['query', 'cache-redis', '--database', '1', '--format', 'json', '-e', 'CLIENT INFO'],
       env,
     );
@@ -260,7 +260,7 @@ describe.skipIf(!REDIS_URL)('joinery-cli with Redis', () => {
       ['run-file', REDIS_URL!, join(workDir, 'commands.redis')],
     ];
     for (const args of sqlOnly) {
-      const refused = await joinery(args, env);
+      const refused = await querybara(args, env);
       expect(refused.code, `${args[0]}: ${refused.stderr}`).toBe(2);
       expect(refused.stderr, args[0]).toContain(
         'is a Redis connection; this command works with PostgreSQL, MySQL and MariaDB',

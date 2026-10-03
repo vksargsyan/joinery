@@ -1,4 +1,4 @@
-import { newId } from '@joinery/core';
+import { newId } from '@querybara/core';
 
 import { currentDock } from '../components/dock';
 import { panelWithKey, registerPanel, unregisterPanel } from './panels';

@@ -1,4 +1,4 @@
-import { JoineryError, type ResolvedProfile } from '@joinery/core';
+import { QuerybaraError, type ResolvedProfile } from '@querybara/core';
 
 import type { ResolvedEndpoint } from './endpoint';
 
@@ -32,7 +32,7 @@ export function resolveCredentials(
       if (auth.password) {
         password = resolved.secrets[auth.password.id];
         if (password === undefined) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'AUTH_FAILED',
             message: 'The password for this connection was not provided',
             hint: 'Enter the password, or save it in the profile',
@@ -49,14 +49,14 @@ export function resolveCredentials(
     }
     case 'clientCertificate': {
       if (tls.mode === 'disable' || !tls.certPath || !tls.keyPath) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'Client certificate authentication needs TLS with a certificate and key file',
           hint: 'Turn TLS on and set the client certificate and key paths',
         });
       }
       if (endpoint.target.kind === 'socket') {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'Client certificate authentication needs a TCP endpoint, not a Unix socket',
         });
@@ -66,7 +66,7 @@ export function resolveCredentials(
     }
     case 'apiKey':
     case 'bearer':
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `"${auth.method}" authentication does not apply to SQL servers`,
         hint: 'Use password or client certificate authentication',

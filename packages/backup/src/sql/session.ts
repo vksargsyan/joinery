@@ -1,5 +1,5 @@
-import { JoineryError, type Session, type SqlDialect, type TableDef } from '@joinery/core';
-import { quoteIdent, quoteQualified } from '@joinery/sql-tools';
+import { QuerybaraError, type Session, type SqlDialect, type TableDef } from '@querybara/core';
+import { quoteIdent, quoteQualified } from '@querybara/sql-tools';
 
 import { drain, queryRows, text } from '../util';
 
@@ -20,7 +20,7 @@ import { drain, queryRows, text } from '../util';
 export function dialectOf(session: Session): SqlDialect {
   const engine = session.engine;
   if (engine === 'postgres' || engine === 'mysql' || engine === 'mariadb') return engine;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `${engine} is not a SQL engine`,
   });
@@ -98,7 +98,7 @@ export async function beginSnapshot(
   if (options.consistent === false) return { mode: 'none', end: async () => undefined };
   const dialect = dialectOf(session);
   if (session.inTransaction) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The session already has an open transaction',
     });
@@ -170,7 +170,7 @@ export async function currentDatabase(session: Session): Promise<string> {
   );
   const name = text(rows[0]?.[0]);
   if (name === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'No database is selected',
       hint: 'Choose the database to back up or restore into',
@@ -199,7 +199,7 @@ export async function createDatabase(
     [name],
   );
   if (exists.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The database "${name}" exists already`,
       hint: 'Restore into it without creating it, or choose a new name',

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { JoineryError, schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
+import { QuerybaraError, schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { discoverKey } from '../src/commands/data-compare';
@@ -55,7 +55,11 @@ function pair(
     if (options.fail && text.includes(options.fail)) {
       target.inTransaction = engine === 'postgres';
       return {
-        error: new JoineryError({ code: 'SQL_ERROR', message: 'lock timeout', sqlState: '55P03' }),
+        error: new QuerybaraError({
+          code: 'SQL_ERROR',
+          message: 'lock timeout',
+          sqlState: '55P03',
+        }),
       };
     }
     if (text === 'BEGIN') target.inTransaction = true;

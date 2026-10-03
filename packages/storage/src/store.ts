@@ -19,7 +19,7 @@ import { openDatabase, type OpenDatabaseOptions, type SqliteDatabase } from './s
 export interface StoreOptions {
   /**
    * Seals secrets with the `save` policy: Electron safeStorage in the desktop app, a
-   * passphrase sealer in joinery-cli.
+   * passphrase sealer in querybara-cli.
    */
   readonly sealer: SecretSealer;
   /** Clock for every timestamp the store writes; tests pin it. */
@@ -28,7 +28,7 @@ export interface StoreOptions {
 
 /**
  * The local-first store (spec §16: SQLite is the source of truth). Opened by the desktop main
- * process and by joinery-cli; both may have it open at once (WAL, busy timeout).
+ * process and by querybara-cli; both may have it open at once (WAL, busy timeout).
  */
 export interface Store {
   readonly db: SqliteDatabase;

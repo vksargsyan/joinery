@@ -4,14 +4,14 @@ import { EXECUTABLE, launchPackaged, type PackagedApp } from './launch';
 
 /**
  * A smoke test of the packaged app: the window loads from app.asar and a connection host starts
- * from inside the archive; with JOINERY_TEST_POSTGRES_URL it also runs a query.
+ * from inside the archive; with QUERYBARA_TEST_POSTGRES_URL it also runs a query.
  *
- *   JOINERY_PACKAGED_APP=dist/linux-unpacked/joinery playwright test -c e2e/packaged.config.ts
+ *   QUERYBARA_PACKAGED_APP=dist/linux-unpacked/querybara playwright test -c e2e/packaged.config.ts
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 
-test.skip(!EXECUTABLE, 'Set JOINERY_PACKAGED_APP to the packaged executable');
+test.skip(!EXECUTABLE, 'Set QUERYBARA_PACKAGED_APP to the packaged executable');
 
 let app: PackagedApp | undefined;
 

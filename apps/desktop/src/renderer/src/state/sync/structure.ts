@@ -6,7 +6,7 @@ import type {
   StructureResult,
   StructureScript,
   SyncOperationInfo,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import {
   DEFAULT_COMPARE_OPTIONS,
   missingDependencies,
@@ -15,7 +15,7 @@ import {
   type OperationKind,
   type SchemaDiff,
   type SyncObjectKind,
-} from '@joinery/sync';
+} from '@querybara/sync';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorMessage } from '../../lib/errors';

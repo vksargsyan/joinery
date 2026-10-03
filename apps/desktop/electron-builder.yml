@@ -1,10 +1,10 @@
 # Packaging (spec §20): release builds. Signing, notarisation and publishing credentials come
 # from the environment of the Package workflow (docs/releasing.md); without them electron-builder
 # builds unsigned. Test builds use electron-builder.adhoc.yml, which carries no update feed.
-appId: dev.joinery.desktop
-productName: Joinery
-executableName: joinery
-copyright: Copyright © 2026 Joinery
+appId: com.querybara.desktop
+productName: Querybara
+executableName: querybara
+copyright: Copyright © 2026 Querybara
 directories:
   output: dist
   buildResources: build
@@ -39,7 +39,7 @@ electronFuses:
 publish:
   provider: github
   owner: vksargsyan
-  repo: joinery
+  repo: querybara
   releaseType: draft
 
 # Icons are generated from build/icon.svg by scripts/icons.ts.
@@ -64,12 +64,13 @@ msi:
   perMachine: true
 
 mac:
-  # The bundle is Joinery.app: the top-level executableName (joinery, for Linux and Windows)
+  # The bundle is Querybara.app: the top-level executableName (querybara, for Linux and Windows)
   # would otherwise name it, and the DMG's volume, in lower case.
-  executableName: Joinery
+  executableName: Querybara
   # macOS 15 and earlier read the .icns; macOS 26 and later the Icon Composer icon compiled into
-  # Assets.car (scripts/icons.ts compiles it, so packaging needs no Xcode 26), named by
-  # CFBundleIconName. Without it they shrink the .icns into a grey tile of their own.
+  # Assets.car, named by CFBundleIconName. Without it they shrink the .icns into a grey tile of
+  # their own. Assets.car is not committed: `pnpm icons` compiles it on macOS 26 with Xcode 26,
+  # as the workflow's mac-icon job does for the macOS packaging job.
   icon: build/icon.icns
   extraResources:
     - from: build/Assets.car
@@ -93,7 +94,7 @@ linux:
   category: Development
   synopsis: Database manager for MySQL, MariaDB, PostgreSQL and more
   description: A database manager for MySQL, MariaDB, PostgreSQL, MongoDB and Redis.
-  maintainer: Joinery <https://github.com/vksargsyan/joinery>
+  maintainer: Querybara <https://github.com/vksargsyan/querybara>
   # The .desktop file is named after package.json's desktopName, which Electron uses as the
   # window's app id, so docks match running windows to it.
   syncDesktopName: true
@@ -109,10 +110,10 @@ linux:
     # about a gigabyte of runtimes on the runner. ADR 0013 records the Flathub route instead.
 appImage:
   artifactName: ${productName}-${version}-${arch}.${ext}
-# The npm name is scoped (@joinery/desktop), which is no package or file name.
+# The npm name is scoped (@querybara/desktop), which is no package or file name.
 deb:
-  packageName: joinery
-  artifactName: joinery_${version}_${arch}.${ext}
+  packageName: querybara
+  artifactName: querybara_${version}_${arch}.${ext}
 rpm:
-  packageName: joinery
-  artifactName: joinery-${version}.${arch}.${ext}
+  packageName: querybara
+  artifactName: querybara-${version}.${arch}.${ext}

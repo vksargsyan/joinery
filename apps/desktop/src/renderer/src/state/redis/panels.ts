@@ -1,6 +1,11 @@
-import { JoineryError, newId } from '@joinery/core';
-import type { RedisSessionInfo } from '@joinery/ipc';
-import { bytesKey, displayBytes, type CommandCatalog, type RedisBytes } from '@joinery/redis-tools';
+import { QuerybaraError, newId } from '@querybara/core';
+import type { RedisSessionInfo } from '@querybara/ipc';
+import {
+  bytesKey,
+  displayBytes,
+  type CommandCatalog,
+  type RedisBytes,
+} from '@querybara/redis-tools';
 import { create } from 'zustand';
 
 import { currentDock } from '../../components/dock';
@@ -155,7 +160,7 @@ export function panelLane(panelId: string): SessionLane {
   let lane = lanes.get(panelId);
   if (!lane) {
     const target = useRedisPanels.getState().targets[panelId];
-    if (!target) throw new JoineryError({ code: 'NOT_FOUND', message: 'The panel was closed' });
+    if (!target) throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The panel was closed' });
     lane = new SessionLane(
       target.profileId,
       target.database === undefined ? undefined : String(target.database),
@@ -281,10 +286,10 @@ export interface RedisWriteRequest<T> {
 export async function redisWrite<T>(request: RedisWriteRequest<T>): Promise<T | undefined> {
   const profile = await profileById(request.profileId);
   if (!profile)
-    throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
   const decision = decideRedisSafety(request.operation, redisWritePolicy(profile));
   if (decision.action === 'refuse') {
-    throw new JoineryError({ code: 'READ_ONLY', message: decision.reason });
+    throw new QuerybaraError({ code: 'READ_ONLY', message: decision.reason });
   }
   if (decision.action === 'confirm') {
     const production = profile.presentation.environment === 'production';

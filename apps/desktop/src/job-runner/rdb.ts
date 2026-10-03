@@ -2,14 +2,14 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   rdbReportOf,
   type RdbAnalyzeInput,
   type RdbAnalyzeProgress,
   type RdbReport,
-} from '@joinery/ipc';
-import { RdbError, analyzeRdb, displayBytes } from '@joinery/redis-tools';
+} from '@querybara/ipc';
+import { RdbError, analyzeRdb, displayBytes } from '@querybara/redis-tools';
 
 /**
  * An RDB file analysed in the job runner (ADR 0022): read as a stream in 1 MiB chunks, summed
@@ -28,7 +28,7 @@ export async function analyzeRdbFile(
     size = (await stat(input.path)).size;
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: code === 'ENOENT' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
       message:
         code === 'ENOENT'
@@ -57,7 +57,7 @@ export async function analyzeRdbFile(
     );
   } catch (error) {
     if (error instanceof RdbError) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: error.message,
         hint: 'Choose a dump.rdb file written by Redis or Valkey (SAVE, BGSAVE or --rdb)',

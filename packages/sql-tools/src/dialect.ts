@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * Identifier and literal quoting per dialect. MariaDB follows MySQL rules. Callers that build

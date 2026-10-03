@@ -1,4 +1,4 @@
-import { newId } from '@joinery/core';
+import { newId } from '@querybara/core';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

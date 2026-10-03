@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * The visual query builder's model (spec §8): one SELECT as the builder shows it. It is plain

@@ -22,7 +22,7 @@ import {
   type DslRaw,
   type DslSortItem,
   type Occur,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { DropdownMenu } from 'radix-ui';
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 
@@ -49,9 +49,9 @@ import { openSearchConsole } from './open';
  * back into the builder.
  */
 
-const FIELD_DRAG = 'application/x-joinery-search-field';
-const CLAUSE_DRAG = 'application/x-joinery-search-clause';
-const SORT_DRAG = 'application/x-joinery-search-sort';
+const FIELD_DRAG = 'application/x-querybara-search-field';
+const CLAUSE_DRAG = 'application/x-querybara-search-clause';
+const SORT_DRAG = 'application/x-querybara-search-sort';
 
 const CONTROL =
   'h-6 rounded border border-border bg-panel-2 px-1.5 font-mono text-xs text-fg placeholder:font-sans placeholder:text-muted/60 focus:border-accent focus:outline-none aria-[invalid=true]:border-danger disabled:opacity-50';

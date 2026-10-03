@@ -1,9 +1,9 @@
 import { isIP } from 'node:net';
 import { checkServerIdentity, type ConnectionOptions, type PeerCertificate } from 'node:tls';
 
-import type { HostPort } from '@joinery/core';
-import type { NetworkTarget } from '@joinery/driver-sql-base';
-import type { NodeRoute } from '@joinery/tunnel';
+import type { HostPort } from '@querybara/core';
+import type { NetworkTarget } from '@querybara/driver-sql-base';
+import type { NodeRoute } from '@querybara/tunnel';
 import { Redis, type RedisOptions } from 'ioredis';
 
 import type { RedisConnectionPlan } from './config';

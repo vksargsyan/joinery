@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { ImportMode, TransferPreview, TransferRowFormat } from '@joinery/ipc';
+import { QuerybaraError } from '@querybara/core';
+import type { ImportMode, TransferPreview, TransferRowFormat } from '@querybara/ipc';
 import { useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 
@@ -106,7 +106,7 @@ function wizardApi(): ImportWizardApi {
       });
       const table = findTable(snapshot, target.schema, target.table ?? '');
       if (!table) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_FOUND',
           message: `Table ${target.schema}.${target.table ?? ''} was not found`,
         });

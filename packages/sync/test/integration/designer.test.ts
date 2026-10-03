@@ -1,4 +1,4 @@
-import type { CellValue, ColumnDef, SchemaSnapshot, Session, TableDef } from '@joinery/core';
+import type { CellValue, ColumnDef, SchemaSnapshot, Session, TableDef } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { designDropTable, designTable } from '../../src';
@@ -776,7 +776,7 @@ async function myPartitions(bench: Workbench): Promise<void> {
 // ---------------------------------------------------------------------------------------------
 
 describe('table designer on real servers', () => {
-  if (servers.length === 0) it.skip('no JOINERY_TEST_*_URL is set', () => undefined);
+  if (servers.length === 0) it.skip('no QUERYBARA_TEST_*_URL is set', () => undefined);
 
   for (const server of servers) {
     describe(server.engine, () => {

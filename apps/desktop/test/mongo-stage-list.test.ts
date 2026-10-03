@@ -1,4 +1,4 @@
-import { formatShellInline, fromEjson } from '@joinery/mongo-tools';
+import { formatShellInline, fromEjson } from '@querybara/mongo-tools';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -88,7 +88,7 @@ describe('stage list operations', () => {
     expect(values[1]!.warning).toBe('$geoNear must be the first stage');
     expect(values[2]!.warning).toBe('$out must be the last stage');
     expect(values[3]!.warning).toBeUndefined();
-    expect(values[4]!.warning).toMatch(/not in Joinery's stage list/);
+    expect(values[4]!.warning).toMatch(/not in Querybara's stage list/);
     expect(values[5]!.issue?.message).toBe('The stage is empty');
     // A disabled stage does not count for placement.
     const text = checkStages([

@@ -1,4 +1,4 @@
-import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
+import { schemaSnapshotSchema, type SchemaSnapshot, type SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { buildCatalog } from '../../src';

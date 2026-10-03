@@ -1,7 +1,7 @@
 import type { Readable, Writable } from 'node:stream';
 
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   type BrowseNode,
   type Capabilities,
@@ -13,7 +13,7 @@ import {
   type ResultChunk,
   type SchemaSnapshot,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   ChangeEvent,
   CollectionInfo,
@@ -44,7 +44,7 @@ import type {
   UserInfo,
   WatchScope,
   WriteSummary,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { MongoClient } from 'mongodb';
 
 import * as admin from './admin';
@@ -203,7 +203,7 @@ export class MongoDbSession implements MongoSession {
 
   async begin(): Promise<void> {
     if (!this.capabilities().transactions) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: 'Transactions are not available on a standalone server',
         hint: 'Transactions need a replica set or a sharded cluster (a one-member replica set works)',
@@ -211,7 +211,7 @@ export class MongoDbSession implements MongoSession {
     }
     await this.ctx.gate.run(async () => {
       if (this.ctx.transaction) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'A transaction is already open',
         });
@@ -236,7 +236,7 @@ export class MongoDbSession implements MongoSession {
       const session = this.ctx.transaction;
       if (!session) {
         if (how === 'rollback') return;
-        throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'No transaction is open' });
+        throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'No transaction is open' });
       }
       this.ctx.transaction = undefined;
       const interrupted = this.ctx.transactionInterrupted;
@@ -244,7 +244,7 @@ export class MongoDbSession implements MongoSession {
       try {
         if (how === 'commit') {
           if (interrupted) {
-            throw new JoineryError({
+            throw new QuerybaraError({
               code: 'CONFLICT',
               message: 'The transaction was aborted when an operation in it was cancelled',
               hint: 'Start a new transaction and run the changes again',

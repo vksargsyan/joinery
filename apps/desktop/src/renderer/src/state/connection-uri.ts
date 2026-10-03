@@ -1,8 +1,8 @@
-import { connectionOptionsSchema } from '@joinery/core';
+import { connectionOptionsSchema } from '@querybara/core';
 
 /**
  * Small readers of connection URI text for the connection dialog. Main owns URI parsing (the
- * profile comes from @joinery/storage's parser over IPC); these only answer what the page needs
+ * profile comes from @querybara/storage's parser over IPC); these only answer what the page needs
  * on its own side: the pasted password, which never travels back from main, and how many hosts a
  * URI names. They read a URI the way that parser does, so both sides agree on where the user info
  * and the hosts are.

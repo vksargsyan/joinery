@@ -1,5 +1,10 @@
-import { isSqlEngine, type SchemaSnapshot, type SqlDialect, type SqlEngineId } from '@joinery/core';
-import type { ErModelDraftSummary } from '@joinery/ipc';
+import {
+  isSqlEngine,
+  type SchemaSnapshot,
+  type SqlDialect,
+  type SqlEngineId,
+} from '@querybara/core';
+import type { ErModelDraftSummary } from '@querybara/ipc';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
@@ -44,7 +49,7 @@ import { diagramSvg } from './svg';
  * or without types; views can be added; a table can be selected (its relationships and
  * neighbours stand out), hidden, or shown with its neighbours alone; a search highlights
  * matching tables. The diagram exports as SVG, PNG or Mermaid text, to a file or the clipboard.
- * It reloads when the structure changes through Joinery or on Refresh.
+ * It reloads when the structure changes through Querybara or on Refresh.
  */
 
 export interface ErTarget {
@@ -481,7 +486,7 @@ export class ErDiagramView {
       const { path } = await mainApi().dialogs.saveFile({
         title: 'Save the ER model',
         defaultName: `${stem || 'model'}.model.json`,
-        filters: [{ name: 'Joinery ER model', extensions: ['json'] }],
+        filters: [{ name: 'Querybara ER model', extensions: ['json'] }],
       });
       if (path === null) return;
       await mainApi().dialogs.writeFile({ path, text: documentText(document) });
@@ -503,7 +508,7 @@ export class ErDiagramView {
     try {
       const { path } = await mainApi().dialogs.openFile({
         title: 'Open an ER model',
-        filters: [{ name: 'Joinery ER model', extensions: ['json'] }],
+        filters: [{ name: 'Querybara ER model', extensions: ['json'] }],
       });
       if (path === null) return;
       const { text } = await mainApi().dialogs.readFile({ path });

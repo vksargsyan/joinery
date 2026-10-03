@@ -1,4 +1,4 @@
-import { JoineryError, cancelledError, errorDataSchema, fromErrorData } from '@joinery/core';
+import { QuerybaraError, cancelledError, errorDataSchema, fromErrorData } from '@querybara/core';
 
 import {
   check,
@@ -43,30 +43,30 @@ type Options = { readonly signal?: AbortSignal; readonly onProgress?: (progress:
 interface PendingCall {
   receive(message: ServerMessage): void;
   /** Ends the call locally; `immediate` drops buffered stream items rather than delivering them. */
-  fail(error: JoineryError, immediate: boolean): void;
+  fail(error: QuerybaraError, immediate: boolean): void;
 }
 
-function remoteError(data: unknown): JoineryError {
+function remoteError(data: unknown): QuerybaraError {
   const parsed = errorDataSchema.safeParse(data);
   if (parsed.success) return fromErrorData(parsed.data);
-  return new JoineryError({ code: 'INTERNAL', message: 'The server sent a malformed error' });
+  return new QuerybaraError({ code: 'INTERNAL', message: 'The server sent a malformed error' });
 }
 
-function protocolError(path: string, message: ServerMessage): JoineryError {
-  return new JoineryError({
+function protocolError(path: string, message: ServerMessage): QuerybaraError {
+  return new QuerybaraError({
     code: 'INTERNAL',
     message: `Unexpected "${message.t}" message for ${path}`,
   });
 }
 
-function connectionClosed(): JoineryError {
-  return new JoineryError({ code: 'CONNECTION_FAILED', message: 'The connection was closed' });
+function connectionClosed(): QuerybaraError {
+  return new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'The connection was closed' });
 }
 
 class ClientCore {
   private nextId = 1;
   private readonly pending = new Map<number, PendingCall>();
-  private closed: JoineryError | undefined;
+  private closed: QuerybaraError | undefined;
   private readonly unsubscribe: readonly (() => void)[];
 
   constructor(
@@ -80,13 +80,13 @@ class ClientCore {
   }
 
   /** Posts a message; returns the error when it cannot be sent (a value clone rejects). */
-  send(message: ClientMessage): JoineryError | undefined {
+  send(message: ClientMessage): QuerybaraError | undefined {
     try {
       this.port.postMessage(message);
       return undefined;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      return new JoineryError({ code: 'VALIDATION_FAILED', message: `Cannot send: ${reason}` });
+      return new QuerybaraError({ code: 'VALIDATION_FAILED', message: `Cannot send: ${reason}` });
     }
   }
 
@@ -96,7 +96,7 @@ class ClientCore {
     input: unknown,
     signal: AbortSignal | undefined,
     call: PendingCall,
-  ): { readonly id: number } | { readonly error: JoineryError } {
+  ): { readonly id: number } | { readonly error: QuerybaraError } {
     if (this.closed) return { error: this.closed };
     if (signal?.aborted) return { error: cancelledError() };
     const checked = check(entry.input, input, `input for ${entry.path}`);
@@ -138,7 +138,7 @@ class ClientCore {
     this.pending.get(parsed.data.id)?.receive(parsed.data);
   }
 
-  shutDown(error: JoineryError, cancel: boolean): void {
+  shutDown(error: QuerybaraError, cancel: boolean): void {
     if (this.closed) return;
     const calls = [...this.pending];
     if (cancel) for (const [id] of calls) this.send({ $rpc: PROTOCOL_VERSION, t: 'cancel', id });
@@ -150,10 +150,10 @@ class ClientCore {
   dispose(): void {
     if (this.closed === undefined) {
       this.shutDown(
-        new JoineryError({ code: 'CANCELLED', message: 'The RPC client was disposed' }),
+        new QuerybaraError({ code: 'CANCELLED', message: 'The RPC client was disposed' }),
         true,
       );
-      this.closed = new JoineryError({
+      this.closed = new QuerybaraError({
         code: 'CONNECTION_FAILED',
         message: 'The RPC client was disposed',
       });
@@ -167,9 +167,9 @@ function deliverProgress(
   entry: MethodEntry,
   value: unknown,
   onProgress: ((progress: unknown) => void) | undefined,
-): JoineryError | undefined {
+): QuerybaraError | undefined {
   if (entry.progress === undefined) {
-    return new JoineryError({
+    return new QuerybaraError({
       code: 'INTERNAL',
       message: `${entry.path} sent an undeclared progress event`,
     });
@@ -181,7 +181,7 @@ function deliverProgress(
     return undefined;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return new JoineryError({ code: 'INTERNAL', message: `onProgress threw: ${message}` });
+    return new QuerybaraError({ code: 'INTERNAL', message: `onProgress threw: ${message}` });
   }
 }
 
@@ -195,7 +195,7 @@ function callUnary(
     const signal = options?.signal;
     let id = -1;
     const onAbort = (): void => settle(cancelledError(), true);
-    const settle = (error: JoineryError | undefined, cancel: boolean, value?: unknown): void => {
+    const settle = (error: QuerybaraError | undefined, cancel: boolean, value?: unknown): void => {
       signal?.removeEventListener('abort', onAbort);
       core.finish(id, cancel);
       if (error) reject(error);
@@ -252,7 +252,7 @@ class ClientStream implements RpcStream<unknown>, PendingCall {
   /** The server side is running (registered with the core). */
   private live = false;
   /** Set once the server side has ended; delivered after the buffer drains. */
-  private terminal: { readonly error: JoineryError | undefined } | undefined;
+  private terminal: { readonly error: QuerybaraError | undefined } | undefined;
   /** Nothing more will be delivered. */
   private closed = false;
   private id = -1;
@@ -330,7 +330,7 @@ class ClientStream implements RpcStream<unknown>, PendingCall {
     }
   }
 
-  fail(error: JoineryError, immediate: boolean): void {
+  fail(error: QuerybaraError, immediate: boolean): void {
     this.live = false;
     if (immediate) this.stop(error);
     else this.end(error, false);
@@ -352,7 +352,7 @@ class ClientStream implements RpcStream<unknown>, PendingCall {
   }
 
   /** The server side is over (or must be stopped): deliver buffered items, then `error` or done. */
-  private end(error: JoineryError | undefined, cancel: boolean): void {
+  private end(error: QuerybaraError | undefined, cancel: boolean): void {
     if (this.closed || this.terminal) return;
     this.detach(cancel);
     const waiter = this.waiters.shift();
@@ -368,7 +368,7 @@ class ClientStream implements RpcStream<unknown>, PendingCall {
   }
 
   /** Stops now, dropping buffered items: with `error` for abort and dispose, done for return(). */
-  private stop(error: JoineryError | undefined): void {
+  private stop(error: QuerybaraError | undefined): void {
     if (this.closed) return;
     this.detach(true);
     this.buffer.length = 0;
@@ -419,7 +419,7 @@ function buildTree(
 /**
  * Creates a typed client for `contract` on `port`. Calls are multiplexed by id, so any number can
  * run at once. Every call validates its input before sending and the server's answer on receipt;
- * failures reject with a JoineryError (VALIDATION_FAILED, or the server's own error code).
+ * failures reject with a QuerybaraError (VALIDATION_FAILED, or the server's own error code).
  *
  * - Unary methods return a promise. `signal` cancels the call (it rejects with CANCELLED and the
  *   handler's signal aborts); `onProgress` receives validated progress events.

@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 import type { Block, Clause, Cte, Marker, RelationRef, Segment, StatementModel } from './analysis';
 import type { Catalog, CatalogRelation, CatalogRelationKind, CatalogSchema } from './catalog';

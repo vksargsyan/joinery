@@ -1,13 +1,13 @@
 import {
   capabilitiesFor,
-  JoineryError,
+  QuerybaraError,
   type Capabilities,
   type ConnectionCheckResult,
   type DriverAdapter,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { checkConnection as checkSqlConnection } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import { checkConnection as checkSqlConnection } from '@querybara/driver-sql-base';
 
 import { PostgresSession } from './session';
 
@@ -22,7 +22,7 @@ export class PostgresAdapter implements DriverAdapter {
   connect(resolved: ResolvedProfile): Promise<Session> {
     if (resolved.profile.engine !== 'postgres') {
       return Promise.reject(
-        new JoineryError({
+        new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `The PostgreSQL adapter cannot open a ${resolved.profile.engine} profile`,
         }),

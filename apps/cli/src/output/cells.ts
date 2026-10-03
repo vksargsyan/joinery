@@ -1,4 +1,4 @@
-import type { CellValue, ColumnKind, LargeValueHandle } from '@joinery/core';
+import type { CellValue, ColumnKind, LargeValueHandle } from '@querybara/core';
 
 /**
  * How CellValues print. Text formats (table, CSV, TSV) use the server's text form for strings,

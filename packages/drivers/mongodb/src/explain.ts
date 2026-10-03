@@ -1,12 +1,12 @@
-import type { PlanNode } from '@joinery/core';
+import type { PlanNode } from '@querybara/core';
 import {
   isRecord,
   planNode,
   scalarDetail,
   toNumber,
   type PlanDetail,
-} from '@joinery/driver-sql-base';
-import type { ExplainSummary } from '@joinery/mongo-tools';
+} from '@querybara/driver-sql-base';
+import type { ExplainSummary } from '@querybara/mongo-tools';
 
 /**
  * Explain output → PlanNode tree (spec §9, visual explain for queryPlanner and executionStats).

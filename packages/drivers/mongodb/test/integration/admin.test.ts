@@ -1,6 +1,6 @@
 import { Readable, Writable } from 'node:stream';
 
-import { EJSON } from '@joinery/mongo-tools';
+import { EJSON } from '@querybara/mongo-tools';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { MongoSession } from '../../src';

@@ -1,4 +1,4 @@
-import type { ActionResult, ServerSession } from '@joinery/core';
+import type { ActionResult, ServerSession } from '@querybara/core';
 import { useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

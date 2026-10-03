@@ -4,7 +4,7 @@ import {
   upcomingRuns,
   type MissedRunPolicy,
   type ScheduleRule,
-} from '@joinery/core';
+} from '@querybara/core';
 import { useMemo, useState } from 'react';
 
 import { cx } from '../ui';
@@ -312,8 +312,8 @@ export function RuleEditor(props: {
         <span>
           <span className="text-fg">Catch up on a missed run</span>
           <span className="block text-muted">
-            If Joinery was closed or the computer asleep when it was due, run it once when Joinery
-            is back.
+            If Querybara was closed or the computer asleep when it was due, run it once when
+            Querybara is back.
           </span>
         </span>
       </label>

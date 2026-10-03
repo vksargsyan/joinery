@@ -29,7 +29,7 @@ import {
  * sizes, from build/icon.svg; and the committed icons in build/ are what it produces.
  */
 
-const out = mkdtempSync(join(tmpdir(), 'joinery-icons-'));
+const out = mkdtempSync(join(tmpdir(), 'querybara-icons-'));
 
 afterAll(() => {
   rmSync(out, { recursive: true, force: true });
@@ -162,8 +162,9 @@ describe('generateIcons', () => {
   it('centres the Icon Composer layer on the artwork at the tile share', () => {
     const layer = decodePng(readFileSync(join(out, ICON_COMPOSER, 'Assets', 'artwork.png')));
     const [left, top, right, bottom] = opaqueBox(layer);
-    // The artwork is taller than wide, so its height is the share.
-    expect(Math.abs((bottom! - top!) / 1024 - MAC_ARTWORK_SHARE)).toBeLessThan(0.01);
+    // The artwork's longer side is the share.
+    const longer = Math.max(right! - left!, bottom! - top!);
+    expect(Math.abs(longer / 1024 - MAC_ARTWORK_SHARE)).toBeLessThan(0.01);
     expect(Math.abs((left! + right!) / 2 - 512)).toBeLessThanOrEqual(2);
     expect(Math.abs((top! + bottom!) / 2 - 512)).toBeLessThanOrEqual(2);
   });
@@ -172,8 +173,8 @@ describe('generateIcons', () => {
     const document = JSON.parse(readFileSync(join(out, ICON_COMPOSER, 'icon.json'), 'utf8'));
     expect(document.groups[0].layers[0]['image-name']).toBe('artwork.png');
     expect(document.fill['linear-gradient']).toEqual([
-      'srgb:0.14118,0.12549,0.10980,1.00000',
-      'srgb:0.06667,0.05882,0.05490,1.00000',
+      'srgb:1.00000,0.99216,0.97255,1.00000',
+      'srgb:0.94510,0.92157,0.87451,1.00000',
     ]);
   });
 });
@@ -183,9 +184,15 @@ describe('the committed icons', () => {
     for (const icon of expectedIcons()) expect(sizesIn(BUILD_DIR, icon)).toEqual(icon.sizes);
   });
 
-  it('include the asset catalog macOS 26 reads, and the packaging bundles it', () => {
-    const catalog = readFileSync(join(BUILD_DIR, ASSET_CATALOG));
-    expect(catalog.toString('ascii', 0, 8)).toBe('BOMStore');
+  it('leave the asset catalog to a Mac, and the packaging bundles it', () => {
+    // Assets.car is compiled at packaging time, never committed (ADR 0033).
+    const ignored = readFileSync(join(BUILD_DIR, '..', '..', '..', '.gitignore'), 'utf8');
+    expect(ignored).toContain(`apps/desktop/build/${ASSET_CATALOG}`);
+    const workflow = readFileSync(
+      join(BUILD_DIR, '..', '..', '..', '.github', 'workflows', 'package.yml'),
+      'utf8',
+    );
+    expect(workflow).toContain(`grep -q '^build/${ASSET_CATALOG}  actool'`);
     const config = readFileSync(join(BUILD_DIR, '..', 'electron-builder.yml'), 'utf8');
     expect(config).toContain(`from: build/${ASSET_CATALOG}`);
     expect(config).toContain(`CFBundleIconName: ${ASSET_ICON_NAME}`);
@@ -205,7 +212,7 @@ describe('the committed icons', () => {
         worst = Math.max(worst, Math.abs(fresh[i]! - committed[i]!));
       expect(
         worst,
-        `build/${icon.file} is stale: run pnpm --filter @joinery/desktop icons`,
+        `build/${icon.file} is stale: run pnpm --filter @querybara/desktop icons`,
       ).toBeLessThanOrEqual(2);
     }
   });

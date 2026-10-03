@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 
 import type { ColumnInfo } from './columns';
 import { formatPgArray, parsePgArray, pgArrayFromJson, type PgArray } from './pg-array';

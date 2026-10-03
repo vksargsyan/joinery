@@ -1,5 +1,5 @@
-import { JoineryError, type ErrorCode, type ErrorData } from '@joinery/core';
-import { errorMessage, errorProp, mapNetworkError, tlsHint } from '@joinery/driver-sql-base';
+import { QuerybaraError, type ErrorCode, type ErrorData } from '@querybara/core';
+import { errorMessage, errorProp, mapNetworkError, tlsHint } from '@querybara/driver-sql-base';
 
 import { redactSecrets } from './config';
 
@@ -158,7 +158,7 @@ function describeSelection(
   error: unknown,
   context: MongoErrorContext,
   redact: (text: string) => string,
-): JoineryError {
+): QuerybaraError {
   const reason = record(record(error)?.['reason']);
   const type = typeof reason?.['type'] === 'string' ? reason['type'] : 'Unknown';
   const servers = reason?.['servers'] instanceof Map ? [...reason['servers'].values()] : [];
@@ -172,7 +172,7 @@ function describeSelection(
     const inner = record(serverError)?.['cause'] ?? serverError;
     const network = mapNetworkError(inner, address) ?? mapNetworkError(serverError, address);
     if (network) {
-      return new JoineryError({ ...network.toJSON(), message: redact(network.message) }, cause);
+      return new QuerybaraError({ ...network.toJSON(), message: redact(network.message) }, cause);
     }
     if (serverCode(serverError) !== undefined && AUTH_CODES.has(serverCode(serverError)!)) {
       return mapMongoError(serverError, context);
@@ -187,7 +187,7 @@ function describeSelection(
   const within = context.timeoutMs !== undefined ? ` within ${context.timeoutMs} ms` : '';
   const topology = `topology ${type}${members ? `; servers: ${members}` : '; no servers'}`;
   if (type === 'ReplicaSetNoPrimary' && servers.length === 0 && context.replicaSet) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `No member of replica set "${context.replicaSet}" answered at ${context.where} (${topology})`,
@@ -197,7 +197,7 @@ function describeSelection(
     );
   }
   if (type === 'ReplicaSetNoPrimary' && servers.length > 0) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `The replica set has no reachable primary${within} (${topology})`,
@@ -206,7 +206,7 @@ function describeSelection(
       cause,
     );
   }
-  return new JoineryError(
+  return new QuerybaraError(
     {
       code: 'TIMEOUT',
       message: `No server was selectable${within} at ${context.where} (${topology})`,
@@ -217,16 +217,16 @@ function describeSelection(
 }
 
 /**
- * Maps anything the mongodb driver throws to a JoineryError with a fix hint, never leaking a
+ * Maps anything the mongodb driver throws to a QuerybaraError with a fix hint, never leaking a
  * secret: server errors by code (auth, permissions, validation with the failed rules, duplicate
  * keys, timeouts, cancellation, conflicts, unsupported features), server selection failures by
  * the topology behind them, network and TLS failures, and the driver's own client errors.
  */
-export function mapMongoError(error: unknown, context: MongoErrorContext): JoineryError {
+export function mapMongoError(error: unknown, context: MongoErrorContext): QuerybaraError {
   const redact = (text: string): string => redactSecrets(text, context.secrets);
-  if (error instanceof JoineryError) {
+  if (error instanceof QuerybaraError) {
     const data = error.toJSON();
-    return new JoineryError(
+    return new QuerybaraError(
       {
         ...data,
         message: redact(data.message),
@@ -238,11 +238,11 @@ export function mapMongoError(error: unknown, context: MongoErrorContext): Joine
   const cause = { cause: error };
   const name = errorProp(error, 'name') ?? '';
   const message = redact(errorMessage(error));
-  const make = (code: ErrorCode, extra: Partial<ErrorData> = {}): JoineryError =>
-    new JoineryError({ code, message, ...extra }, cause);
+  const make = (code: ErrorCode, extra: Partial<ErrorData> = {}): QuerybaraError =>
+    new QuerybaraError({ code, message, ...extra }, cause);
 
   if (context.cancelRequested || name === 'AbortError') {
-    return new JoineryError({ code: 'CANCELLED', message: 'Query cancelled' }, cause);
+    return new QuerybaraError({ code: 'CANCELLED', message: 'Query cancelled' }, cause);
   }
 
   const writeError = firstWriteError(error);
@@ -323,7 +323,7 @@ export function mapMongoError(error: unknown, context: MongoErrorContext): Joine
       const network =
         mapNetworkError(inner ?? error, context.where) ?? mapNetworkError(error, context.where);
       if (network)
-        return new JoineryError({ ...network.toJSON(), message: redact(network.message) }, cause);
+        return new QuerybaraError({ ...network.toJSON(), message: redact(network.message) }, cause);
       if (/certificate|ssl|tls/i.test(message)) {
         return make('TLS_FAILED', { hint: tlsHint(message) });
       }
@@ -340,7 +340,7 @@ export function mapMongoError(error: unknown, context: MongoErrorContext): Joine
       return make('VALIDATION_FAILED');
     case 'MongoMissingDependencyError':
       return make('NOT_SUPPORTED', {
-        hint: `This needs the optional package ${errorProp(error, 'dependencyName') ?? 'named above'}, which Joinery does not ship`,
+        hint: `This needs the optional package ${errorProp(error, 'dependencyName') ?? 'named above'}, which Querybara does not ship`,
       });
     case 'MongoMissingCredentialsError':
     case 'MongoOIDCError':
@@ -364,6 +364,6 @@ export function mapMongoError(error: unknown, context: MongoErrorContext): Joine
   }
   const network = mapNetworkError(error, context.where);
   if (network)
-    return new JoineryError({ ...network.toJSON(), message: redact(network.message) }, cause);
+    return new QuerybaraError({ ...network.toJSON(), message: redact(network.message) }, cause);
   return make('INTERNAL');
 }

@@ -1,4 +1,4 @@
-import type { RedisReply } from '@joinery/redis-tools';
+import type { RedisReply } from '@querybara/redis-tools';
 
 /**
  * Converts what ioredis returns into the structured-clone-safe RedisReply tree, and back out

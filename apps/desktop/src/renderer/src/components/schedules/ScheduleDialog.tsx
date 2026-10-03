@@ -1,5 +1,5 @@
-import type { ScheduleRule } from '@joinery/core';
-import type { ScheduleNotify, ScheduleOutput } from '@joinery/ipc';
+import type { ScheduleRule } from '@querybara/core';
+import type { ScheduleNotify, ScheduleOutput } from '@querybara/ipc';
 import { useEffect, useMemo, useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';
@@ -324,7 +324,7 @@ function Editor({ draft }: { readonly draft: ScheduleDraft }) {
         </section>
 
         <p className="rounded-md bg-panel-2 px-3 py-2 text-xs text-muted">
-          Schedules run while Joinery is open, and closing it with schedules on asks first. Runs
+          Schedules run while Querybara is open, and closing it with schedules on asks first. Runs
           missed while it is closed are caught up or skipped, as chosen above, when it opens again.
           A run needs the connection&apos;s password saved.
         </p>

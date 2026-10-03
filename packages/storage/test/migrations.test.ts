@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -67,7 +67,7 @@ describe('migrate', () => {
     second.close();
   });
 
-  it('refuses a store written by a newer Joinery', () => {
+  it('refuses a store written by a newer Querybara', () => {
     const location = join(tempDir(), 'store.db');
     const db = openDatabase(location);
     migrate(db);
@@ -75,11 +75,11 @@ describe('migrate', () => {
     db.close();
 
     const error = thrown(() => openStore(location, { sealer: testSealer() }));
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
     expect(error).toMatchObject({
       code: 'NOT_SUPPORTED',
       message: expect.stringContaining(`schema version ${SCHEMA_VERSION + 5}`),
-      hint: expect.stringMatching(/Update Joinery/),
+      hint: expect.stringMatching(/Update Querybara/),
     });
   });
 

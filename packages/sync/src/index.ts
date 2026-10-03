@@ -1,5 +1,5 @@
 /**
- * @joinery/sync — structure sync and data compare (spec §13).
+ * @querybara/sync — structure sync and data compare (spec §13).
  *
  * Structure: `compareSchemas` diffs two schema snapshots into ordered, tickable operations;
  * `generateScript` turns the selected ones into a deployment script; `renderHtmlReport`

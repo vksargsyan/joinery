@@ -1,4 +1,4 @@
-import { JoineryError, type SchemaSnapshot, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type SchemaSnapshot, type SqlDialect } from '@querybara/core';
 
 import { errorMessage } from '../lib/errors';
 import {
@@ -17,13 +17,13 @@ import {
  * so completion works immediately; then the connection's session facts are read and the
  * snapshots refreshed from the server in the background and stored again. A snapshot the
  * designer or a table view asks for is always one read from the server since the last change
- * Joinery knows of, never the stored copy.
+ * Querybara knows of, never the stored copy.
  *
  * Large servers are never introspected whole: PostgreSQL loads the connected database (the
  * others cannot be queried from it, so they load only when a designer or table view asks),
  * MySQL/MariaDB the current database plus each database the user expands in the explorer,
  * switches to with USE, names as a qualifier or opens a table in. Refreshes follow DDL run from
- * Joinery (at COMMIT inside a PostgreSQL transaction), designer saves and drops (`invalidate`)
+ * Querybara (at COMMIT inside a PostgreSQL transaction), designer saves and drops (`invalidate`)
  * and the explorer's Refresh. `MetadataSink.changed` reports structure that changed, so open
  * views reload their definitions and the explorer its folders.
  *
@@ -94,7 +94,7 @@ interface Job {
 
 interface Entry {
   readonly snapshot: SchemaSnapshot;
-  /** Read from the server since the last change Joinery knows of (not the stored copy). */
+  /** Read from the server since the last change Querybara knows of (not the stored copy). */
   readonly fresh: boolean;
 }
 
@@ -200,8 +200,8 @@ export class MetadataCache {
     const database = scope.database ?? state.facts?.database;
     if (database === undefined) {
       throw state.failed
-        ? new JoineryError({ code: 'CONNECTION_FAILED', message: state.error ?? 'Not connected' })
-        : new JoineryError({ code: 'NOT_FOUND', message: 'No database is selected' });
+        ? new QuerybaraError({ code: 'CONNECTION_FAILED', message: state.error ?? 'Not connected' })
+        : new QuerybaraError({ code: 'NOT_FOUND', message: 'No database is selected' });
     }
     const held = state.entries.get(database);
     if (held?.fresh) return held.snapshot;
@@ -219,7 +219,7 @@ export class MetadataCache {
     const read = state.entries.get(database);
     if (read?.fresh) return read.snapshot;
     throw (
-      job.error ?? new JoineryError({ code: 'CANCELLED', message: 'The connection was closed' })
+      job.error ?? new QuerybaraError({ code: 'CANCELLED', message: 'The connection was closed' })
     );
   }
 
@@ -264,7 +264,7 @@ export class MetadataCache {
   }
 
   /**
-   * The structure changed through Joinery (a designer save or a drop): every held snapshot is
+   * The structure changed through Querybara (a designer save or a drop): every held snapshot is
    * stale at once, so the next `snapshot` waits for the new read, and all are read again. False
    * when nothing is held, so nothing will report the change.
    */
@@ -281,7 +281,7 @@ export class MetadataCache {
   }
 
   /**
-   * What a run in a query tab changed (spec §5: refresh after DDL run from Joinery). DDL inside
+   * What a run in a query tab changed (spec §5: refresh after DDL run from Querybara). DDL inside
    * an open PostgreSQL transaction is refreshed when the tab commits, since the metadata session
    * cannot see it before. Returns the effects so the caller can track the tab's USE/search_path.
    */

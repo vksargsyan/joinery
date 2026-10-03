@@ -1,5 +1,5 @@
-import { connectionProfileSchema, type ResolvedProfile } from '@joinery/core';
-import type { JobEvent, JobInfo, JobSpec } from '@joinery/ipc';
+import { connectionProfileSchema, type ResolvedProfile } from '@querybara/core';
+import type { JobEvent, JobInfo, JobSpec } from '@querybara/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { HostKeyVerification } from '../src/main/host-keys';
@@ -381,7 +381,7 @@ describe('JobManager', () => {
     manager.shutdown();
     expect(manager.get(running.id)).toMatchObject({
       state: 'cancelled',
-      error: { message: 'Joinery quit while the job was running' },
+      error: { message: 'Querybara quit while the job was running' },
     });
     expect(runners[0]!.ofType('shutdown')).toHaveLength(1);
     expect(history.map((j) => j.id)).toEqual([running.id]);

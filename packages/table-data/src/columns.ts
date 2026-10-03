@@ -6,7 +6,7 @@ import type {
   SqlDialect,
   TableDef,
   TypeDef,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /**
  * What the data grid knows about one column: its kind for editors and filters, the limits the

@@ -1,4 +1,4 @@
-import { newId, type CellValue, type SqlDialect } from '@joinery/core';
+import { newId, type CellValue, type SqlDialect } from '@querybara/core';
 import {
   checkRawWhere,
   formatCell,
@@ -10,7 +10,7 @@ import {
   type FilterNode,
   type FilterOperator,
   type RawWhereCheck,
-} from '@joinery/table-data';
+} from '@querybara/table-data';
 
 /**
  * The filter bar's editable model (spec §7: a visual builder with column, operator, value and

@@ -8,7 +8,7 @@ import {
   type DslItem,
   type Occur,
   type SearchPage,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type * as MainClient from '../src/renderer/src/lib/main-client';

@@ -12,9 +12,9 @@ import {
 } from '../src/main/app-protocol';
 import { isPortMessage, isPortPayload, toPortMessage } from '../src/shared/bridge';
 
-const root = mkdtempSync(join(tmpdir(), 'joinery-protocol-'));
+const root = mkdtempSync(join(tmpdir(), 'querybara-protocol-'));
 mkdirSync(join(root, 'assets'));
-writeFileSync(join(root, 'index.html'), '<!doctype html><title>Joinery</title>');
+writeFileSync(join(root, 'index.html'), '<!doctype html><title>Querybara</title>');
 writeFileSync(join(root, 'assets', 'index.js'), 'console.log(1)');
 writeFileSync(join(root, 'secret.env'), 'TOKEN=1');
 
@@ -23,8 +23,8 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 describe('app:// protocol', () => {
   it('maps app URLs to files under the renderer root', () => {
     expect(resolveAppFile(root, APP_ENTRY_URL)).toBe(join(root, 'index.html'));
-    expect(resolveAppFile(root, 'app://joinery/')).toBe(join(root, 'index.html'));
-    expect(resolveAppFile(root, 'app://joinery/assets/index.js?v=2#x')).toBe(
+    expect(resolveAppFile(root, 'app://querybara/')).toBe(join(root, 'index.html'));
+    expect(resolveAppFile(root, 'app://querybara/assets/index.js?v=2#x')).toBe(
       join(root, 'assets', 'index.js'),
     );
   });
@@ -32,15 +32,15 @@ describe('app:// protocol', () => {
   it('refuses other hosts, schemes, traversal and unknown file types', () => {
     for (const url of [
       'app://other/index.html',
-      'https://joinery/index.html',
+      'https://querybara/index.html',
       'file:///etc/passwd',
-      'app://joinery/../../etc/passwd',
-      'app://joinery/%2e%2e/%2e%2e/etc/passwd',
-      'app://joinery/assets/..%2f..%2fsecret.env',
-      'app://joinery/assets%5c..%5c..%5cindex.html',
-      'app://joinery/secret.env',
-      'app://joinery/%00index.html',
-      'app://joinery/%E0%A4%A',
+      'app://querybara/../../etc/passwd',
+      'app://querybara/%2e%2e/%2e%2e/etc/passwd',
+      'app://querybara/assets/..%2f..%2fsecret.env',
+      'app://querybara/assets%5c..%5c..%5cindex.html',
+      'app://querybara/secret.env',
+      'app://querybara/%00index.html',
+      'app://querybara/%E0%A4%A',
     ]) {
       expect(resolveAppFile(root, url), url).toBeUndefined();
     }
@@ -53,10 +53,10 @@ describe('app:// protocol', () => {
     expect(ok.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(ok.headers.get('content-security-policy')).toBe("default-src 'none'");
     expect(ok.headers.get('x-content-type-options')).toBe('nosniff');
-    expect(await ok.text()).toContain('<title>Joinery</title>');
+    expect(await ok.text()).toContain('<title>Querybara</title>');
 
-    expect((await handle(new Request('app://joinery/missing.js'))).status).toBe(404);
-    expect((await handle(new Request('app://joinery/secret.env'))).status).toBe(404);
+    expect((await handle(new Request('app://querybara/missing.js'))).status).toBe(404);
+    expect((await handle(new Request('app://querybara/secret.env'))).status).toBe(404);
     expect((await handle(new Request(APP_ENTRY_URL, { method: 'POST' }))).status).toBe(405);
     expect(mimeTypeOf('x.woff2')).toBe('font/woff2');
   });
@@ -80,6 +80,6 @@ describe('port messages between preload and page', () => {
     }
     expect(isPortMessage(toPortMessage({ kind: 'connection', connectionId: 'c1' }))).toBe(true);
     expect(isPortMessage({ kind: 'main' })).toBe(false);
-    expect(isPortMessage({ joinery: 'port', kind: 'main', connectionId: 'c1' })).toBe(false);
+    expect(isPortMessage({ querybara: 'port', kind: 'main', connectionId: 'c1' })).toBe(false);
   });
 });

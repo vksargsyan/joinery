@@ -1,4 +1,4 @@
-import type { CellValue } from '@joinery/core';
+import type { CellValue } from '@querybara/core';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 

@@ -1,4 +1,4 @@
-import type { AutosaveEntry, AutosaveSaveInput, StoredProfile } from '@joinery/ipc';
+import type { AutosaveEntry, AutosaveSaveInput, StoredProfile } from '@querybara/ipc';
 import { describe, expect, it } from 'vitest';
 
 import {

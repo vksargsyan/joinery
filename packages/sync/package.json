@@ -1,5 +1,5 @@
 {
-  "name": "@joinery/sync",
+  "name": "@querybara/sync",
   "version": "0.0.0",
   "private": true,
   "description": "Structure diff, data compare and sync script generation.",
@@ -13,13 +13,13 @@
     "test:integration": "vitest run test/integration --testTimeout=120000 --hookTimeout=120000"
   },
   "dependencies": {
-    "@joinery/core": "workspace:*",
-    "@joinery/sql-tools": "workspace:*"
+    "@querybara/core": "workspace:*",
+    "@querybara/sql-tools": "workspace:*"
   },
   "devDependencies": {
-    "@joinery/driver-mysql": "workspace:*",
-    "@joinery/driver-postgres": "workspace:*",
-    "@joinery/driver-sql-base": "workspace:*",
+    "@querybara/driver-mysql": "workspace:*",
+    "@querybara/driver-postgres": "workspace:*",
+    "@querybara/driver-sql-base": "workspace:*",
     "@types/node": "catalog:",
     "fast-check": "catalog:",
     "typescript": "catalog:",

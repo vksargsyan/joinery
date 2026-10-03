@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ArchiveWriter, type BackupObject } from '@joinery/backup';
-import { fileSink } from '@joinery/transfer';
+import { ArchiveWriter, type BackupObject } from '@querybara/backup';
+import { fileSink } from '@querybara/transfer';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -16,7 +16,7 @@ import { backupOptions, restoreOptions } from '../src/commands/backup-cli';
 import { FakeAdapter, FakeSession, ScriptedPrompter, column, run, tempDir } from './helpers';
 
 /**
- * `joinery backup` and `joinery restore` in-process: flag parsing, the checks made before
+ * `querybara backup` and `querybara restore` in-process: flag parsing, the checks made before
  * anything connects (formats, encryption, read-only), passphrases from the environment or a
  * prompt and never from argv, `restore --list`, and the confirmation of a restore over what is
  * there, against a fake session.
@@ -86,11 +86,11 @@ async function archive(name: string, passphrase?: string): Promise<string> {
 
 describe('flags', () => {
   it('reads the format from the file name', () => {
-    expect(formatFromName('shop.jbak')).toBe('jbak');
+    expect(formatFromName('shop.qbak')).toBe('qbak');
     expect(formatFromName('shop.SQL')).toBe('sql');
     expect(formatFromName('shop.sql.gz')).toBe('sql-gz');
     expect(formatFromName('shop.dump')).toBe('custom');
-    expect(formatFromName('shop.bak')).toBe('jbak');
+    expect(formatFromName('shop.bak')).toBe('qbak');
   });
 
   it('turns table flags into a selection', () => {
@@ -101,7 +101,7 @@ describe('flags', () => {
     });
     expect(objectRef('table', 'my.table', false)).toEqual({ kind: 'table', name: 'my.table' });
     const options = backupOptions({
-      out: 'x.jbak',
+      out: 'x.qbak',
       schema: ['public'],
       table: ['orders'],
       excludeData: ['public.log'],
@@ -114,9 +114,9 @@ describe('flags', () => {
       excludeData: [{ kind: 'table', schema: 'public', name: 'log' }],
     });
     expect(
-      restoreOptions('x.jbak', { select: ['orders'], continue: true, keepExpiry: true }),
+      restoreOptions('x.qbak', { select: ['orders'], continue: true, keepExpiry: true }),
     ).toMatchObject({
-      file: 'x.jbak',
+      file: 'x.qbak',
       select: ['orders'],
       continueOnError: true,
       keepExpiry: true,
@@ -153,16 +153,16 @@ describe('flags', () => {
   });
 });
 
-describe('joinery backup', () => {
+describe('querybara backup', () => {
   it('refuses options that do not go together before connecting', async () => {
     const session = new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 }));
     const adapter = new FakeAdapter('postgres', session);
     const cases: [string[], RegExp][] = [
-      [['--out', 'x.sql', '--encrypt'], /Encryption needs the Joinery archive/],
+      [['--out', 'x.sql', '--encrypt'], /Encryption needs the Querybara archive/],
       [['--out', 'x.dump'], /custom format is written by pg_dump/],
-      [['--out', 'x.jbak', '--native'], /do not write Joinery archives/],
+      [['--out', 'x.qbak', '--native'], /do not write Querybara archives/],
       [
-        ['--out', 'x.jbak', '--format', 'custom', '--native', '--schema-only', '--data-only'],
+        ['--out', 'x.qbak', '--format', 'custom', '--native', '--schema-only', '--data-only'],
         /cannot be used with/,
       ],
     ];
@@ -172,31 +172,31 @@ describe('joinery backup', () => {
       expect(result.stderr).toMatch(message);
     }
     const mongo = await run(['backup', 'mongodb://h/app', '--out', 'x.sql'], { adapter, cwd: dir });
-    expect(mongo.stderr).toMatch(/MongoDB backups are Joinery archives/);
+    expect(mongo.stderr).toMatch(/MongoDB backups are Querybara archives/);
     expect(adapter.connects).toHaveLength(0);
   });
 
   it('takes the passphrase from the environment or a prompt, never from argv', async () => {
     const session = new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 }));
     const adapter = new FakeAdapter('postgres', session);
-    const none = await run(['backup', URI, '--out', 'x.jbak', '--encrypt'], { adapter, cwd: dir });
+    const none = await run(['backup', URI, '--out', 'x.qbak', '--encrypt'], { adapter, cwd: dir });
     expect(none.code).toBe(2);
     expect(none.stderr).toContain('Encrypting the backup needs a passphrase');
-    expect(none.stderr).toContain('JOINERY_BACKUP_PASSPHRASE');
-    const short = await run(['backup', URI, '--out', 'x.jbak', '--encrypt'], {
+    expect(none.stderr).toContain('QUERYBARA_BACKUP_PASSPHRASE');
+    const short = await run(['backup', URI, '--out', 'x.qbak', '--encrypt'], {
       adapter,
       cwd: dir,
       prompter: new ScriptedPrompter(true, { secret: ['short'] }),
     });
     expect(short.stderr).toContain('at least 8 characters');
-    const mismatch = await run(['backup', URI, '--out', 'x.jbak', '--encrypt'], {
+    const mismatch = await run(['backup', URI, '--out', 'x.qbak', '--encrypt'], {
       adapter,
       cwd: dir,
       prompter: new ScriptedPrompter(true, { secret: [PASSPHRASE, `${PASSPHRASE}!`] }),
     });
     expect(mismatch.stderr).toContain('do not match');
     expect(adapter.connects).toHaveLength(0);
-    const unknown = await run(['backup', URI, '--out', 'x.jbak', '--passphrase', PASSPHRASE], {
+    const unknown = await run(['backup', URI, '--out', 'x.qbak', '--passphrase', PASSPHRASE], {
       adapter,
       cwd: dir,
     });
@@ -205,15 +205,15 @@ describe('joinery backup', () => {
   });
 });
 
-describe('joinery restore', () => {
+describe('querybara restore', () => {
   it('lists an archive, unlocking it with the passphrase from the environment', async () => {
-    await archive('plain.jbak');
-    await archive('sealed.jbak', PASSPHRASE);
+    await archive('plain.qbak');
+    await archive('sealed.qbak', PASSPHRASE);
     const adapter = new FakeAdapter(
       'postgres',
       new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 })),
     );
-    const plain = await run(['restore', URI, 'plain.jbak', '--list'], { adapter, cwd: dir });
+    const plain = await run(['restore', URI, 'plain.qbak', '--list'], { adapter, cwd: dir });
     expect(plain.code, plain.stderr).toBe(0);
     expect(plain.stdout.split('\n')).toEqual([
       'schema:public\tschema\tpublic',
@@ -221,16 +221,16 @@ describe('joinery restore', () => {
       'table:audit.orders\ttable\taudit.orders',
       '',
     ]);
-    const locked = await run(['restore', URI, 'sealed.jbak', '--list'], { adapter, cwd: dir });
+    const locked = await run(['restore', URI, 'sealed.qbak', '--list'], { adapter, cwd: dir });
     expect(locked.code).toBe(2);
     expect(locked.stderr).toContain('needs its passphrase');
-    const wrong = await run(['restore', URI, 'sealed.jbak', '--list'], {
+    const wrong = await run(['restore', URI, 'sealed.qbak', '--list'], {
       adapter,
       cwd: dir,
-      env: { JOINERY_BACKUP_PASSPHRASE: 'not the passphrase' },
+      env: { QUERYBARA_BACKUP_PASSPHRASE: 'not the passphrase' },
     });
     expect(wrong.stderr).toMatch(/passphrase is wrong/);
-    const sealed = await run(['restore', URI, 'sealed.jbak', '--list', '--passphrase-env', 'KEY'], {
+    const sealed = await run(['restore', URI, 'sealed.qbak', '--list', '--passphrase-env', 'KEY'], {
       adapter,
       cwd: dir,
       env: { KEY: PASSPHRASE },
@@ -242,23 +242,23 @@ describe('joinery restore', () => {
   });
 
   it('refuses a read-only target and a selection that is not there', async () => {
-    await archive('plain.jbak');
+    await archive('plain.qbak');
     const adapter = new FakeAdapter(
       'postgres',
       new FakeSession('postgres', () => ({ command: 'SELECT', rowsAffected: 0 })),
     );
-    const readOnly = await run(['restore', URI, 'plain.jbak', '--read-only'], {
+    const readOnly = await run(['restore', URI, 'plain.qbak', '--read-only'], {
       adapter,
       cwd: dir,
     });
     expect(readOnly.code).toBe(2);
     expect(readOnly.stderr).toContain('is read-only, so nothing can be restored');
-    const missing = await run(['restore', URI, 'plain.jbak', '--select', 'nope'], {
+    const missing = await run(['restore', URI, 'plain.qbak', '--select', 'nope'], {
       adapter,
       cwd: dir,
     });
     expect(missing.stderr).toContain('The backup has no object "nope"');
-    const create = await run(['restore', URI, 'plain.jbak', '--create-database'], {
+    const create = await run(['restore', URI, 'plain.qbak', '--create-database'], {
       adapter,
       cwd: dir,
     });

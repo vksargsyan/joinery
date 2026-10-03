@@ -1,6 +1,6 @@
 import type { Readable, Writable } from 'node:stream';
 
-import type { ExplainOptions, PlanNode, Session } from '@joinery/core';
+import type { ExplainOptions, PlanNode, Session } from '@querybara/core';
 import type {
   ChangeEvent,
   CollectionInfo,
@@ -32,7 +32,7 @@ import type {
   UserInfo,
   WatchScope,
   WriteSummary,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 /** Options every potentially long document operation takes. */
 export interface MongoOpOptions {

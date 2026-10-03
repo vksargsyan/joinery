@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 
-import { newId, rowAt, type CellValue, type Session } from '@joinery/core';
-import { createPostgresAdapter } from '@joinery/driver-postgres';
-import { resolvedProfileFromUrl } from '@joinery/driver-sql-base';
+import { newId, rowAt, type CellValue, type Session } from '@querybara/core';
+import { createPostgresAdapter } from '@querybara/driver-postgres';
+import { resolvedProfileFromUrl } from '@querybara/driver-sql-base';
 
 /**
  * Direct server access for the end-to-end tests: a scratch database per suite (always dropped),
@@ -35,7 +35,7 @@ export async function query(session: Session, sql: string): Promise<CellValue[][
 export async function scratchDatabase(
   url: string,
 ): Promise<{ readonly name: string; readonly url: string; drop(): Promise<void> }> {
-  const name = `joinery_e2e_${randomBytes(4).toString('hex')}`;
+  const name = `querybara_e2e_${randomBytes(4).toString('hex')}`;
   const admin = await connect(url);
   try {
     await query(admin, `CREATE DATABASE ${name}`);

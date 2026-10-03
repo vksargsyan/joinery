@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 
-import { newId, type ConnectionProfile } from '@joinery/core';
+import { newId, type ConnectionProfile } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { REDACTED, exportProfiles, importProfiles } from '../src';
@@ -78,7 +78,7 @@ describe('profile export', () => {
     expect({ ...importProfiles(withoutSecrets, PASSPHRASE).secrets }).toEqual({});
     const withSecrets = exportProfiles([pg], { passphrase: PASSPHRASE, secrets, cost: TEST_COST });
     const raw = Buffer.from(withSecrets);
-    for (const needle of ['db-password-123', 'Local Postgres', 'localhost', 'joinery.profiles']) {
+    for (const needle of ['db-password-123', 'Local Postgres', 'localhost', 'querybara.profiles']) {
       expect(raw.includes(Buffer.from(needle))).toBe(false);
     }
   });
@@ -163,18 +163,18 @@ describe('profile export', () => {
       thrown(() => importProfiles(new TextEncoder().encode('{"profiles":[]}'), PASSPHRASE)),
     ).toMatchObject({
       code: 'VALIDATION_FAILED',
-      message: 'This is not a Joinery export file',
+      message: 'This is not a Querybara export file',
     });
   });
 
-  it('refuses files written by a newer Joinery', () => {
+  it('refuses files written by a newer Querybara', () => {
     const payload = new TextEncoder().encode(
-      JSON.stringify({ format: 'joinery.profiles', version: 2, profiles: [] }),
+      JSON.stringify({ format: 'querybara.profiles', version: 2, profiles: [] }),
     );
-    const bytes = encryptEnvelope('JNRX', payload, new PassphraseKeys(PASSPHRASE), TEST_COST);
+    const bytes = encryptEnvelope('QBRX', payload, new PassphraseKeys(PASSPHRASE), TEST_COST);
     expect(thrown(() => importProfiles(bytes, PASSPHRASE))).toMatchObject({
       code: 'NOT_SUPPORTED',
-      hint: 'Update Joinery to import it.',
+      hint: 'Update Querybara to import it.',
     });
   });
 

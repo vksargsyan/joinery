@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   newId,
   type CellValue,
   type ColumnKind,
@@ -10,9 +10,14 @@ import {
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
-import { renderForeignKey, renderSequence, renderTableStatements, sqlLiteral } from '@joinery/sync';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
+import {
+  renderForeignKey,
+  renderSequence,
+  renderTableStatements,
+  sqlLiteral,
+} from '@querybara/sync';
 
 import { CsvFormatter, type CsvDialect, type CsvQuoting } from './csv';
 import type { Sink } from './io';
@@ -135,8 +140,8 @@ function base64Text(bytes: Uint8Array): string {
   return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
 }
 
-function handleError(): JoineryError {
-  return new JoineryError({
+function handleError(): QuerybaraError {
+  return new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: 'A large value was only previewed; fetch it in full before exporting',
   });
@@ -655,7 +660,7 @@ function frameFor(
       return {
         prologue: (first) => {
           const heading = escapeHtml(title ?? (combined ? 'Exported tables' : (first ?? 'Export')));
-          return `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="${encoding === 'utf-16le' ? 'utf-16' : 'utf-8'}">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="generator" content="Joinery">\n<title>${heading}</title>\n<style>\n${HTML_STYLE}\n</style>\n</head>\n<body>\n<h1>${heading}</h1>\n`;
+          return `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="${encoding === 'utf-16le' ? 'utf-16' : 'utf-8'}">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="generator" content="Querybara">\n<title>${heading}</title>\n<style>\n${HTML_STYLE}\n</style>\n</head>\n<body>\n<h1>${heading}</h1>\n`;
         },
         before: (_index, name) =>
           combined ? `<section>\n<h2>${escapeHtml(name)}</h2>\n` : '<section>\n',
@@ -879,9 +884,10 @@ async function streamSource(
       emit(false);
     }
   }
-  if (signal?.aborted === true) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+  if (signal?.aborted === true)
+    throw new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
   if (!begun) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The statement returned no result set to export',
     });
@@ -936,7 +942,7 @@ async function resolveSource(
   const schemaDef = pg ? snapshot.schemas.find((s) => s.name === schema) : snapshot.schemas[0];
   const def = schemaDef?.tables.find((t) => t.name === table.name);
   if (def === undefined) {
-    throw new JoineryError({ code: 'NOT_FOUND', message: `Table "${table.name}" was not found` });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: `Table "${table.name}" was not found` });
   }
   const renamed = sqlOptions.table !== undefined ? { ...def, name: sqlOptions.table } : def;
   return {
@@ -945,8 +951,8 @@ async function resolveSource(
   };
 }
 
-function invalidExport(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+function invalidExport(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 /** Formats that can hold several tables in one file. */
@@ -976,7 +982,9 @@ function failureOf(error: unknown): RowError {
 }
 
 function isCancel(error: unknown, signal: AbortSignal | undefined): boolean {
-  return signal?.aborted === true || (error instanceof JoineryError && error.code === 'CANCELLED');
+  return (
+    signal?.aborted === true || (error instanceof QuerybaraError && error.code === 'CANCELLED')
+  );
 }
 
 /**
@@ -1169,7 +1177,7 @@ export async function exportTables(options: ExportTablesOptions): Promise<Export
 
   const format = options.format;
   if (!combinableFormat(format)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `A combined file is not available for ${format.toUpperCase()}; export one file per table`,
     });

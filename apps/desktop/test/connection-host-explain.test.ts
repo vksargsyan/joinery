@@ -1,7 +1,7 @@
 import { MessageChannel } from 'node:worker_threads';
 
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   connectionProfileSchema,
   type ConnectionProfile,
@@ -11,8 +11,8 @@ import {
   type ResolvedProfile,
   type ResultChunk,
   type Session,
-} from '@joinery/core';
-import { connectionHostContract, createClient, fromNodePort } from '@joinery/ipc';
+} from '@querybara/core';
+import { connectionHostContract, createClient, fromNodePort } from '@querybara/ipc';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ConnectionHost, checkExplainAnalyze } from '../src/connection-host/host';
@@ -31,13 +31,13 @@ class ExplainSession implements Session {
 
   // eslint-disable-next-line require-yield
   async *execute(): AsyncGenerator<ResultChunk> {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
   }
 
   async cancel(): Promise<void> {}
 
   introspect(): never {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
   }
 
   async browse() {

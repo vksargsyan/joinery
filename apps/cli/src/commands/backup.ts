@@ -21,22 +21,22 @@ import {
   type RestoreConflict,
   type RestoreProgress,
   type RestoreSummary,
-} from '@joinery/backup';
+} from '@querybara/backup';
 import {
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   type EngineId,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import { fileSink } from '@joinery/transfer';
+} from '@querybara/core';
+import { fileSink } from '@querybara/transfer';
 import {
   connectThroughTransport,
   needsTransport,
   tunnelledProfile,
   type TransportSession,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 
 import { closeQuietly, missingPasswordHint } from '../connect';
 import { CliError, EXIT, InterruptedError, type ExitCode } from '../errors';
@@ -45,12 +45,12 @@ import { confirmOperation } from '../safety';
 import { resolvedProfile, withPassword, type Target, type TargetOverrides } from '../target';
 
 /**
- * `joinery backup` and `joinery restore` (spec §14): the desktop job runner's @joinery/backup
+ * `querybara backup` and `querybara restore` (spec §14): the desktop job runner's @querybara/backup
  * engine on the command line, for PostgreSQL, MySQL, MariaDB, MongoDB and Redis. Progress goes
  * to stderr; `restore --list` prints an archive's objects on stdout.
  *
  * Archive passphrases never come from the command line: they are read from an environment
- * variable (--passphrase-env, default JOINERY_BACKUP_PASSPHRASE) or asked for without echo.
+ * variable (--passphrase-env, default QUERYBARA_BACKUP_PASSPHRASE) or asked for without echo.
  * Restores follow the write rules: a read-only target refuses, production and "confirm writes"
  * profiles need --yes or a confirmation, and restoring over existing objects lists what is
  * dropped or overwritten and needs --yes or a confirmation every time.
@@ -58,16 +58,16 @@ import { resolvedProfile, withPassword, type Target, type TargetOverrides } from
  * Exit codes: 0 done, 1 restored but statements failed (--continue), 2 failed, 130 interrupted.
  */
 
-export const PASSPHRASE_ENV = 'JOINERY_BACKUP_PASSPHRASE';
+export const PASSPHRASE_ENV = 'QUERYBARA_BACKUP_PASSPHRASE';
 
 /** The shortest passphrase a new encrypted backup accepts (the desktop wizard's rule too). */
 export const MIN_PASSPHRASE_LENGTH = 8;
 
-export type BackupFileFormat = 'jbak' | 'sql' | 'sql-gz' | 'custom';
+export type BackupFileFormat = 'qbak' | 'sql' | 'sql-gz' | 'custom';
 
 export interface BackupOptions extends TargetOverrides {
   readonly out: string;
-  /** Default: from the file's extension, else jbak. */
+  /** Default: from the file's extension, else qbak. */
   readonly format?: BackupFileFormat;
   readonly encrypt: boolean;
   readonly passphraseEnv?: string;
@@ -113,7 +113,7 @@ export function formatFromName(file: string): BackupFileFormat {
   if (name.endsWith('.sql.gz') || name.endsWith('.gz')) return 'sql-gz';
   if (name.endsWith('.sql')) return 'sql';
   if (name.endsWith('.dump') || name.endsWith('.backup')) return 'custom';
-  return 'jbak';
+  return 'qbak';
 }
 
 /**
@@ -215,7 +215,7 @@ async function openAny(
     try {
       opened = await open(current, current.profile.engine);
     } catch (error) {
-      const refused = error instanceof JoineryError && error.code === 'AUTH_FAILED';
+      const refused = error instanceof QuerybaraError && error.code === 'AUTH_FAILED';
       if (!refused || current.passwordKnown) throw error;
       if (!runtime.ctx.prompter.interactive) {
         throw new CliError(error.message, {
@@ -231,7 +231,7 @@ async function openAny(
       opened = await open(current, current.profile.engine);
     }
     if (current.profile.engine === 'mysql' && /mariadb/i.test(opened.session.serverVersion)) {
-      // A mysql:// target that is MariaDB gets MariaDB's rules, as `joinery query` does.
+      // A mysql:// target that is MariaDB gets MariaDB's rules, as `querybara query` does.
       const first = opened;
       opened = await open(current, 'mariadb').finally(() => first.close().catch(() => undefined));
     }
@@ -331,17 +331,17 @@ function checkBackupOptions(
   format: BackupFileFormat,
 ): void {
   const sql = isSqlEngine(engine);
-  if (!sql && format !== 'jbak') {
+  if (!sql && format !== 'qbak') {
     throw new CliError(
-      `${ENGINES[engine].displayName} backups are Joinery archives (.jbak), not ${format}`,
-      { hint: 'Leave --format out, or use --format jbak' },
+      `${ENGINES[engine].displayName} backups are Querybara archives (.qbak), not ${format}`,
+      { hint: 'Leave --format out, or use --format qbak' },
     );
   }
   if (options.native && !sql) {
     throw new CliError('--native backs up PostgreSQL, MySQL and MariaDB only');
   }
-  if (options.native && format === 'jbak') {
-    throw new CliError('pg_dump and mysqldump do not write Joinery archives', {
+  if (options.native && format === 'qbak') {
+    throw new CliError('pg_dump and mysqldump do not write Querybara archives', {
       hint: 'Use --format sql, sql-gz or (PostgreSQL) custom',
     });
   }
@@ -351,8 +351,8 @@ function checkBackupOptions(
   if (format === 'custom' && engine !== 'postgres') {
     throw new CliError('The custom format is PostgreSQL only');
   }
-  if (options.encrypt && format !== 'jbak') {
-    throw new CliError('Encryption needs the Joinery archive format (.jbak)');
+  if (options.encrypt && format !== 'qbak') {
+    throw new CliError('Encryption needs the Querybara archive format (.qbak)');
   }
   if (!options.structure && !options.data) {
     throw new CliError('--schema-only and --data-only leave nothing to back up');
@@ -363,7 +363,7 @@ function backupLine(progress: BackupProgress): string {
   return `${progress.phase}${progress.object !== undefined ? ` ${progress.object}` : ''} · ${plural(progress.rows, 'row')} · ${formatBytes(progress.bytes)} · ${formatDuration(progress.elapsedMs)}`;
 }
 
-/** `joinery backup`. */
+/** `querybara backup`. */
 export async function backupCommand(
   runtime: Runtime,
   spec: string,
@@ -398,7 +398,7 @@ export async function backupCommand(
           engine: session.engine,
           serverVersion: session.serverVersion,
           database: options.database ?? (await currentDatabase(session)),
-          format: format === 'jbak' ? 'sql' : format,
+          format: format === 'qbak' ? 'sql' : format,
           ...(selection.schemas !== undefined ? { schemas: selection.schemas } : {}),
           ...(selection.include !== undefined
             ? {
@@ -419,8 +419,8 @@ export async function backupCommand(
         ...common,
         signal,
         session,
-        format: format === 'custom' ? 'jbak' : format,
-        producer: 'joinery-cli',
+        format: format === 'custom' ? 'qbak' : format,
+        producer: 'querybara-cli',
         compress: options.compress,
         ...(key !== undefined ? { encryption: { passphrase: key } } : {}),
         selection: selectionOf(options, postgres),
@@ -485,7 +485,7 @@ async function inspect(
   options: RestoreOptions,
 ): Promise<{ readonly info: BackupInspection; readonly passphrase?: string }> {
   const info = await inspectBackup(path);
-  if (info.format !== 'jbak' || !info.encrypted) return { info };
+  if (info.format !== 'qbak' || !info.encrypted) return { info };
   const key = await passphrase(runtime, options.passphraseEnv, 'decrypt');
   return { info: await inspectBackup(path, key), passphrase: key };
 }
@@ -522,7 +522,7 @@ function checkFits(engine: EngineId, info: BackupInspection): void {
   }
 }
 
-/** `joinery restore`. */
+/** `querybara restore`. */
 export async function restoreCommand(
   runtime: Runtime,
   spec: string,
@@ -556,7 +556,7 @@ export async function restoreCommand(
     throw new CliError('--create-database works with PostgreSQL, MySQL and MariaDB');
   }
   const native = options.native || info.format === 'custom';
-  if (native && (info.format === 'jbak' || !isSqlEngine(engine))) {
+  if (native && (info.format === 'qbak' || !isSqlEngine(engine))) {
     throw new CliError('--native restores SQL scripts and pg_dump archives only');
   }
   const select =
@@ -564,7 +564,7 @@ export async function restoreCommand(
       ? selectObjects(info.manifest.objects, options.select)
       : undefined;
   if (!info.manifest && options.select.length > 0) {
-    throw new CliError('--select needs a Joinery archive (.jbak)');
+    throw new CliError('--select needs a Querybara archive (.qbak)');
   }
 
   runtime.interrupts.throwIfInterrupted();

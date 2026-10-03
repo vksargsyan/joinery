@@ -46,8 +46,8 @@ export function UpdateNotice() {
           {notice.kind !== 'ready'
             ? notice.text
             : notice.installsOnQuit
-              ? `Joinery ${notice.version} is ready. Restart now, or it installs when you quit.`
-              : `Joinery ${notice.version} is ready. Restart now to install it; your system asks for an administrator password.`}
+              ? `Querybara ${notice.version} is ready. Restart now, or it installs when you quit.`
+              : `Querybara ${notice.version} is ready. Restart now to install it; your system asks for an administrator password.`}
         </p>
         {notice.kind !== 'ready' && (
           <button

@@ -2,7 +2,7 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { buildMongoClientPlan, parseHostList, redactSecrets, splitMongoUri } from '../src';
@@ -94,7 +94,7 @@ describe('buildMongoClientPlan', () => {
           options: {
             connectTimeoutMs: 4000,
             idleTimeoutMs: 60000,
-            applicationName: 'Joinery test',
+            applicationName: 'Querybara test',
             authSource: 'users',
             directConnection: true,
             readPreference: 'secondaryPreferred',
@@ -107,7 +107,7 @@ describe('buildMongoClientPlan', () => {
     expect(plan.url).toBe('mongodb://db.example.com:27017/');
     expect(plan.url).not.toContain('s3cret');
     expect(plan.options).toMatchObject({
-      appName: 'Joinery test',
+      appName: 'Querybara test',
       connectTimeoutMS: 4000,
       serverSelectionTimeoutMS: 4000,
       maxIdleTimeMS: 60000,
@@ -313,7 +313,7 @@ describe('buildMongoClientPlan', () => {
   });
 
   it('sends a replica set behind a tunnel through its SOCKS5 endpoint, by the members’ names', () => {
-    const socks5 = { host: '127.0.0.1', port: 41000, user: 'joinery-ab', password: 'route-pw' };
+    const socks5 = { host: '127.0.0.1', port: 41000, user: 'querybara-ab', password: 'route-pw' };
     const nodeRoute = {
       socks5,
       forward: async () => ({ host: '127.0.0.1', port: 1 }),
@@ -349,7 +349,7 @@ describe('buildMongoClientPlan', () => {
       replicaSet: 'rs0',
       proxyHost: '127.0.0.1',
       proxyPort: 41000,
-      proxyUsername: 'joinery-ab',
+      proxyUsername: 'querybara-ab',
       proxyPassword: 'route-pw',
       tls: true,
     });

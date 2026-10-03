@@ -30,7 +30,7 @@ import { AGGREGATE, FIND, TYPES, bsonValue } from './codegen-fixtures';
  */
 
 const GOLDEN = fileURLToPath(new URL('./golden/code-export', import.meta.url));
-const UPDATE = process.env['JOINERY_UPDATE_GOLDEN'] === '1';
+const UPDATE = process.env['QUERYBARA_UPDATE_GOLDEN'] === '1';
 
 // [type, shell literal, Node.js, Python, Java, C#, Go, PHP]
 const TYPE_GOLDENS: readonly (readonly [string, string, ...string[]])[] = [
@@ -466,7 +466,7 @@ describe('Node.js values round trip', () => {
           toEjson(bson.EJSON.parse(toEjson({ v: value }), { relaxed: false })),
         );
       }),
-      { numRuns: Number(process.env['JOINERY_FUZZ_RUNS'] ?? 300) },
+      { numRuns: Number(process.env['QUERYBARA_FUZZ_RUNS'] ?? 300) },
     );
   });
 });

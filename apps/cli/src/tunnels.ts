@@ -2,13 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import {
-  JoineryError,
+  QuerybaraError,
   type ConnectionProfile,
   type ProxyOptions,
   type SecretRef,
   type SshAuth,
   type SshHop,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   FileKnownHosts,
   TransportManager,
@@ -17,7 +17,7 @@ import {
   knownHostsVerifier,
   type HostKeyVerifier,
   type KnownHostsStore,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 
 import type { Prompter } from './context';
 import { CliError } from './errors';
@@ -60,15 +60,15 @@ export interface TunnelFlags {
 }
 
 /** The SSH password for URI hops (and saved profiles) when no flag names another variable. */
-export const SSH_PASSWORD_ENV = 'JOINERY_SSH_PASSWORD';
-export const SSH_KEY_PASSPHRASE_ENV = 'JOINERY_SSH_KEY_PASSPHRASE';
-export const PROXY_PASSWORD_ENV = 'JOINERY_PROXY_PASSWORD';
+export const SSH_PASSWORD_ENV = 'QUERYBARA_SSH_PASSWORD';
+export const SSH_KEY_PASSPHRASE_ENV = 'QUERYBARA_SSH_KEY_PASSPHRASE';
+export const PROXY_PASSWORD_ENV = 'QUERYBARA_PROXY_PASSWORD';
 /** Next to the store, as in the desktop app's user data folder. */
 export const KNOWN_HOSTS_FILE_NAME = 'known_hosts';
 
-const SSH_PASSWORD_REF = 'joinery-cli-ssh-password';
-const SSH_PASSPHRASE_REF = 'joinery-cli-ssh-passphrase';
-const PROXY_PASSWORD_REF = 'joinery-cli-proxy-password';
+const SSH_PASSWORD_REF = 'querybara-cli-ssh-password';
+const SSH_PASSPHRASE_REF = 'querybara-cli-ssh-passphrase';
+const PROXY_PASSWORD_REF = 'querybara-cli-proxy-password';
 
 export interface TunnelDeps {
   readonly env: Readonly<Record<string, string | undefined>>;
@@ -108,9 +108,9 @@ export function describeRoute(profile: ConnectionProfile): string | undefined {
 
 /**
  * Adds the command line's `--ssh` hops and `--proxy` to a URI target's profile and collects the
- * secrets they need: the SSH password (`--ssh-password-env`, JOINERY_SSH_PASSWORD or a hidden
- * prompt per hop), the key passphrase (JOINERY_SSH_KEY_PASSPHRASE or a prompt, checked against
- * the key now) and the proxy password (in the URL or JOINERY_PROXY_PASSWORD).
+ * secrets they need: the SSH password (`--ssh-password-env`, QUERYBARA_SSH_PASSWORD or a hidden
+ * prompt per hop), the key passphrase (QUERYBARA_SSH_KEY_PASSPHRASE or a prompt, checked against
+ * the key now) and the proxy password (in the URL or QUERYBARA_PROXY_PASSWORD).
  */
 export async function applyTunnelFlags(
   profile: ConnectionProfile,
@@ -256,7 +256,7 @@ export function cliHostKeyVerifier(
       return 'trust';
     }
     if (!prompter.interactive) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'SSH_FAILED',
         message: `The host key of the SSH server ${where} is not known yet (${fingerprint})`,
         hint: `Compare the fingerprint with the one the server's administrator gives you, then run again with --ssh-accept-new to trust it (it is remembered in ${path}), or connect once from the desktop app`,

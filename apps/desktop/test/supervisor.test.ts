@@ -1,5 +1,5 @@
-import { connectionProfileSchema, type ResolvedProfile } from '@joinery/core';
-import type { ConnectionEvent } from '@joinery/ipc';
+import { connectionProfileSchema, type ResolvedProfile } from '@querybara/core';
+import type { ConnectionEvent } from '@querybara/ipc';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConnectionSupervisor } from '../src/main/supervisor';

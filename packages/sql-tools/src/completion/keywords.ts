@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * Keyword sets for completion, by position. An entry may be several words ("LEFT JOIN") and may

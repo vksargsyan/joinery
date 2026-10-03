@@ -5,8 +5,8 @@ import {
   type ConnectionProfileInput,
   type HostPort,
   type ResolvedProfile,
-} from '@joinery/core';
-import type { NodeRoute } from '@joinery/tunnel';
+} from '@querybara/core';
+import type { NodeRoute } from '@querybara/tunnel';
 import { Redis } from 'ioredis';
 import { describe, expect, it } from 'vitest';
 

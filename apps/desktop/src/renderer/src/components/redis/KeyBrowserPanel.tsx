@@ -1,4 +1,4 @@
-import { utf8Bytes } from '@joinery/redis-tools';
+import { utf8Bytes } from '@querybara/redis-tools';
 import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 
 import { errorMessage } from '../../lib/errors';

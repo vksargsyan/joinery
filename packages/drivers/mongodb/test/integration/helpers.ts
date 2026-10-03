@@ -6,7 +6,7 @@ import {
   type ExecOptions,
   type ResolvedProfile,
   type ResultChunk,
-} from '@joinery/core';
+} from '@querybara/core';
 
 import {
   isMongoSession,
@@ -17,11 +17,11 @@ import {
 } from '../../src';
 
 /** The 8.0 replica set (CI's shape): everything, including transactions and change streams. */
-export const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
+export const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
 /** The 7.0 standalone with TLS preferred and an X.509 user (local only). */
-export const STANDALONE_URL = process.env['JOINERY_TEST_MONGODB_STANDALONE_URL'];
-export const TLS_CA = process.env['JOINERY_TEST_MONGODB_TLS_CA'];
-export const X509_CERT = process.env['JOINERY_TEST_MONGODB_X509_CERT'];
+export const STANDALONE_URL = process.env['QUERYBARA_TEST_MONGODB_STANDALONE_URL'];
+export const TLS_CA = process.env['QUERYBARA_TEST_MONGODB_TLS_CA'];
+export const X509_CERT = process.env['QUERYBARA_TEST_MONGODB_X509_CERT'];
 
 /**
  * A resolved MongoDB profile from a test URL: a host endpoint (or a host list with the URL's
@@ -74,7 +74,7 @@ export async function connectMongo(
 
 /** A database name no other test uses. */
 export function testDatabase(): string {
-  return `joinery_it_${randomBytes(5).toString('hex')}`;
+  return `querybara_it_${randomBytes(5).toString('hex')}`;
 }
 
 let counter = 0;

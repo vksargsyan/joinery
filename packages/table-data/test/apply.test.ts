@@ -1,4 +1,4 @@
-import { JoineryError, type SqlDialect } from '@joinery/core';
+import { QuerybaraError, type SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -59,7 +59,7 @@ describe('applyChanges', () => {
         : { rowsAffected: 1 },
     );
     const error = await applyChanges(session, plan).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(JoineryError);
+    expect(error).toBeInstanceOf(QuerybaraError);
     expect(error).toMatchObject({
       code: 'CONFLICT',
       message:
@@ -72,7 +72,7 @@ describe('applyChanges', () => {
     const { plan } = setup('mysql');
     const session = new FakeSession('mysql', (sql) =>
       sql.startsWith('INSERT')
-        ? new JoineryError({
+        ? new QuerybaraError({
             code: 'SQL_ERROR',
             message: "Duplicate entry 'eu-6' for key 'PRIMARY'",
           })
@@ -83,7 +83,7 @@ describe('applyChanges', () => {
       code: 'SQL_ERROR',
       message: "Could not insert new row 1: Duplicate entry 'eu-6' for key 'PRIMARY'",
     });
-    expect((error as JoineryError).detail).toBe(
+    expect((error as QuerybaraError).detail).toBe(
       "INSERT INTO `items` (`region`, `id`) VALUES ('eu', 6)",
     );
     expect(session.log.at(-1)).toBe('<rollback>');
@@ -125,7 +125,7 @@ describe('applyChanges', () => {
     ok.inTransaction = true;
     await applyChanges(ok, plan);
     expect(ok.log.map((s) => s.split(' ').slice(0, 2).join(' '))).toEqual([
-      'SAVEPOINT joinery_apply',
+      'SAVEPOINT querybara_apply',
       'UPDATE "items"',
       'INSERT INTO',
       'RELEASE SAVEPOINT',
@@ -133,14 +133,14 @@ describe('applyChanges', () => {
     expect(ok.inTransaction).toBe(true);
     const failing = new FakeSession('postgres', (sql) =>
       sql.startsWith('INSERT')
-        ? new JoineryError({ code: 'SQL_ERROR', message: 'boom' })
+        ? new QuerybaraError({ code: 'SQL_ERROR', message: 'boom' })
         : { columns: names, rows: [fullRow(5, 'b')], rowsAffected: 1 },
     );
     failing.inTransaction = true;
     await expect(applyChanges(failing, plan)).rejects.toThrow(/boom/);
     expect(failing.log.slice(-2)).toEqual([
-      'ROLLBACK TO SAVEPOINT joinery_apply',
-      'RELEASE SAVEPOINT joinery_apply',
+      'ROLLBACK TO SAVEPOINT querybara_apply',
+      'RELEASE SAVEPOINT querybara_apply',
     ]);
   });
 

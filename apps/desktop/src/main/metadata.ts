@@ -1,5 +1,5 @@
-import type { HandlersOf, mainContract } from '@joinery/ipc';
-import type { Store } from '@joinery/storage';
+import type { HandlersOf, mainContract } from '@querybara/ipc';
+import type { Store } from '@querybara/storage';
 
 /**
  * The main contract's metadata cache and snippet handlers (spec §5, §6). Main only stores and

@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mariadb mariadb_column_checks_dev
 -- Target: mariadb mariadb_column_checks_prod
 -- Operations: 7 (1 destructive)

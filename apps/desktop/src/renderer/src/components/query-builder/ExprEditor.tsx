@@ -3,7 +3,7 @@ import {
   checkFragment,
   type AggregateFunction,
   type QueryExpr,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 
 import { exprKey, type ColumnOption } from '../../state/query-builder/options';
 import { SmallInput, SmallSelect, useBuilder } from './parts';

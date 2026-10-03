@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { ZipReader, ZipWriter, isCompoundFile, isZip, memoryReader, memorySink } from '../src';
@@ -117,7 +117,7 @@ describe('ZIP', () => {
       /end of the central directory is missing/,
     );
     await expect(contents(new TextEncoder().encode('not a zip at all, clearly'))).rejects.toThrow(
-      JoineryError,
+      QuerybaraError,
     );
     expect(isCompoundFile(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toBe(
       true,

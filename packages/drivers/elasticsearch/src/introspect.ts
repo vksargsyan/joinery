@@ -1,5 +1,5 @@
-import type { ColumnDef, SchemaSnapshot, TableDef } from '@joinery/core';
-import { member, parseJsonTree, stringAt, type JsonNode } from '@joinery/search-tools';
+import type { ColumnDef, SchemaSnapshot, TableDef } from '@querybara/core';
+import { member, parseJsonTree, stringAt, type JsonNode } from '@querybara/search-tools';
 
 import type { SearchContext } from './context';
 import { listIndices } from './indices';

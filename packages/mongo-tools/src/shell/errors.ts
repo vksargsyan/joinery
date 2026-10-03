@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /** A 1-based line and column in the parsed text. */
 export interface TextLocation {
@@ -26,7 +26,7 @@ export function locationAt(text: string, offset: number): TextLocation {
  * (so it survives the trip across processes) plus the 1-based line and column for messages.
  * The message ends with "(line L, column C)"; `reason` is the message without the location.
  */
-export class ShellParseError extends JoineryError {
+export class ShellParseError extends QuerybaraError {
   readonly offset: number;
   readonly line: number;
   readonly column: number;

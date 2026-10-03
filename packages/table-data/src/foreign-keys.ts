@@ -1,4 +1,4 @@
-import type { CellValue, ForeignKeyDef, SqlDialect, TableDef } from '@joinery/core';
+import type { CellValue, ForeignKeyDef, SqlDialect, TableDef } from '@querybara/core';
 
 import type { ColumnInfo } from './columns';
 import { and, condition, escapeLike, textMatch, type FilterGroup } from './filter';

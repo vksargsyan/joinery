@@ -1,4 +1,4 @@
-import { EJSON, type ChangeEvent } from '@joinery/mongo-tools';
+import { EJSON, type ChangeEvent } from '@querybara/mongo-tools';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { MongoSession } from '../../src';

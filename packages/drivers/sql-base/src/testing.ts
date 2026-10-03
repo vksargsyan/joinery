@@ -4,7 +4,7 @@ import {
   type ConnectionProfileInput,
   type ResolvedProfile,
   type SqlEngineId,
-} from '@joinery/core';
+} from '@querybara/core';
 
 const SCHEMES: Readonly<Record<string, SqlEngineId>> = {
   postgres: 'postgres',
@@ -16,7 +16,7 @@ const SCHEMES: Readonly<Record<string, SqlEngineId>> = {
 /**
  * Builds a resolved profile from a URL such as `postgres://user:pass@127.0.0.1:5432/db`, with
  * the password moved into the secrets map the way the connection host does it. For tests and
- * tooling (JOINERY_TEST_*_URL); TLS defaults to `disable` unless `?tls=<mode>` is given.
+ * tooling (QUERYBARA_TEST_*_URL); TLS defaults to `disable` unless `?tls=<mode>` is given.
  */
 export function resolvedProfileFromUrl(
   url: string,

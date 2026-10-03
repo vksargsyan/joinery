@@ -1,5 +1,5 @@
-import type { ConnectionCheckResult, ResolvedProfile } from '@joinery/core';
-import { keySlot, type RedisReply } from '@joinery/redis-tools';
+import type { ConnectionCheckResult, ResolvedProfile } from '@querybara/core';
+import { keySlot, type RedisReply } from '@querybara/redis-tools';
 import {
   MemoryKnownHosts,
   TransportManager,
@@ -7,7 +7,7 @@ import {
   knownHostsVerifier,
   runSshStep,
   type TransportSession,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { redisProfileFromUrl, type RedisSession } from '../../src';

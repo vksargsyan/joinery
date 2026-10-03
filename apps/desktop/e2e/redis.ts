@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto';
 
-import { createRedisAdapter, redisProfileFromUrl, type RedisSession } from '@joinery/driver-redis';
-import { replyText, type RedisReply } from '@joinery/redis-tools';
+import {
+  createRedisAdapter,
+  redisProfileFromUrl,
+  type RedisSession,
+} from '@querybara/driver-redis';
+import { replyText, type RedisReply } from '@querybara/redis-tools';
 
 /**
  * Direct Redis access for the end-to-end tests: a session that bypasses the app, to seed keys
@@ -13,9 +17,9 @@ export function connectRedis(url: string): Promise<RedisSession> {
   return createRedisAdapter().connect(redisProfileFromUrl(url));
 }
 
-/** `joinery:e2e:<random>:`, unique per run. */
+/** `querybara:e2e:<random>:`, unique per run. */
 export function e2ePrefix(): string {
-  return `joinery:e2e:${randomBytes(4).toString('hex')}:`;
+  return `querybara:e2e:${randomBytes(4).toString('hex')}:`;
 }
 
 /** Runs one command (text arguments) and returns its reply. */

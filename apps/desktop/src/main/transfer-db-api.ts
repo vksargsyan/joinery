@@ -1,19 +1,19 @@
 import {
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   requiresWriteConfirmation,
   type ConnectionProfile,
   type EngineId,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   transferInspectionSchema,
   transferPlanSchema,
   type HandlersOf,
   type TransferJob,
   type mainContract,
-} from '@joinery/ipc';
-import type { Store, StoredProfile } from '@joinery/storage';
+} from '@querybara/ipc';
+import type { Store, StoredProfile } from '@querybara/storage';
 
 import type { JobDescription, JobManager } from './jobs';
 import { resolveProfile } from './secrets';
@@ -29,19 +29,19 @@ import { resolveProfile } from './secrets';
 
 type Handlers = HandlersOf<typeof mainContract>['transferDb'];
 
-function unavailable(): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
+function unavailable(): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Jobs cannot run here' });
 }
 
 function profileOf(store: Store, id: string): StoredProfile {
   const profile = store.profiles.get(id);
   if (!profile)
-    throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
   return profile;
 }
 
 /**
- * The engine pairs a transfer supports (@joinery/transfer's `transferSupport`, which the job
+ * The engine pairs a transfer supports (@querybara/transfer's `transferSupport`, which the job
  * runner applies again; main does not load the transfer engine).
  */
 export function checkTransferEngines(source: EngineId, target: EngineId): void {
@@ -50,7 +50,7 @@ export function checkTransferEngines(source: EngineId, target: EngineId): void {
     (source === 'mongodb' && isSqlEngine(target)) ||
     (source === 'redis' && target === 'redis');
   if (ok) return;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Data transfer from ${ENGINES[source].displayName} to ${ENGINES[target].displayName} is not supported`,
   });
@@ -69,7 +69,7 @@ export function destructiveChoices(job: TransferJob): string[] {
 /** The write rules for a transfer, checked before it starts (spec §4, §12). */
 export function checkTransferSafety(job: TransferJob, target: ConnectionProfile): void {
   if (target.presentation.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: `"${target.name}" is read-only, so nothing can be transferred into it`,
     });
@@ -77,13 +77,13 @@ export function checkTransferSafety(job: TransferJob, target: ConnectionProfile)
   if (job.confirmed === true) return;
   const destructive = destructiveChoices(job);
   if (destructive.length > 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `The transfer ${destructive.join(' and ')}, and needs confirmation`,
     });
   }
   if (requiresWriteConfirmation(target)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: `Transferring into ${
         target.presentation.environment === 'production'

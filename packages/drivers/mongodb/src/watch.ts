@@ -1,10 +1,10 @@
-import { JoineryError, cancelledError } from '@joinery/core';
+import { QuerybaraError, cancelledError } from '@querybara/core';
 import {
   bsonTag,
   type ChangeEvent,
   type TopologyKind,
   type WatchScope,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import type { ChangeStream, ChangeStreamOptions, Document, Timestamp } from 'mongodb';
 
 import { RAW_BSON, documentsArg, ejson, valueArg, type MongoContext } from './context';
@@ -48,7 +48,7 @@ export async function* watch(
 ): AsyncGenerator<ChangeEvent> {
   ctx.assertOpen();
   if (topology === 'standalone') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'Change streams are not available on a standalone server',
       hint: 'Change streams need a replica set or a sharded cluster (a one-member replica set works)',

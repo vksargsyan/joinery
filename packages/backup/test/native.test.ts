@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 
-import { connectionProfileSchema, type ResolvedProfile } from '@joinery/core';
+import { connectionProfileSchema, type ResolvedProfile } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

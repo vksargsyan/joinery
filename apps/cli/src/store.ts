@@ -1,13 +1,18 @@
 import { existsSync, statSync } from 'node:fs';
 import { posix, win32 } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
-import { createPassphraseSealer, openStore, type SecretSealer, type Store } from '@joinery/storage';
+import { QuerybaraError } from '@querybara/core';
+import {
+  createPassphraseSealer,
+  openStore,
+  type SecretSealer,
+  type Store,
+} from '@querybara/storage';
 
 /** The desktop app's store file name inside Electron `userData` (apps/desktop main process). */
-export const STORE_FILE_NAME = 'joinery.db';
+export const STORE_FILE_NAME = 'querybara.db';
 /** Electron app name, and so the `userData` folder name. */
-export const APP_DIR_NAME = 'Joinery';
+export const APP_DIR_NAME = 'Querybara';
 
 export interface StorePathInput {
   /** --store */
@@ -21,13 +26,13 @@ export interface StorePathInput {
 export interface StoreLocation {
   readonly path: string;
   /** Where the path came from, for --verbose and error hints. */
-  readonly source: '--store' | 'JOINERY_STORE' | 'JOINERY_USER_DATA_DIR' | 'default';
+  readonly source: '--store' | 'QUERYBARA_STORE' | 'QUERYBARA_USER_DATA_DIR' | 'default';
 }
 
 /**
- * The directory Electron uses as `userData` for an app named "Joinery": `~/.config/Joinery`
- * (or `$XDG_CONFIG_HOME/Joinery`) on Linux, `~/Library/Application Support/Joinery` on macOS
- * and `%APPDATA%\Joinery` on Windows. The CLI shares the desktop app's store there.
+ * The directory Electron uses as `userData` for an app named "Querybara": `~/.config/Querybara`
+ * (or `$XDG_CONFIG_HOME/Querybara`) on Linux, `~/Library/Application Support/Querybara` on macOS
+ * and `%APPDATA%\Querybara` on Windows. The CLI shares the desktop app's store there.
  */
 export function defaultDataDir(
   platform: NodeJS.Platform,
@@ -45,7 +50,7 @@ export function defaultDataDir(
 }
 
 /**
- * Where the local store lives: `--store`, then `JOINERY_STORE`, then `JOINERY_USER_DATA_DIR`
+ * Where the local store lives: `--store`, then `QUERYBARA_STORE`, then `QUERYBARA_USER_DATA_DIR`
  * (the desktop app's own override of `userData`), then the desktop app's default. A path that
  * is an existing directory means the store file inside it.
  */
@@ -53,13 +58,13 @@ export function resolveStorePath(input: StorePathInput): StoreLocation {
   const path = input.platform === 'win32' ? win32 : posix;
   const pick = (): StoreLocation => {
     if (input.flag) return { path: path.resolve(input.cwd, input.flag), source: '--store' };
-    const fromEnv = input.env['JOINERY_STORE'];
-    if (fromEnv) return { path: path.resolve(input.cwd, fromEnv), source: 'JOINERY_STORE' };
-    const userData = input.env['JOINERY_USER_DATA_DIR'];
+    const fromEnv = input.env['QUERYBARA_STORE'];
+    if (fromEnv) return { path: path.resolve(input.cwd, fromEnv), source: 'QUERYBARA_STORE' };
+    const userData = input.env['QUERYBARA_USER_DATA_DIR'];
     if (userData) {
       return {
         path: path.join(path.resolve(input.cwd, userData), STORE_FILE_NAME),
-        source: 'JOINERY_USER_DATA_DIR',
+        source: 'QUERYBARA_USER_DATA_DIR',
       };
     }
     return {
@@ -68,7 +73,7 @@ export function resolveStorePath(input: StorePathInput): StoreLocation {
     };
   };
   const location = pick();
-  if (location.source !== 'JOINERY_USER_DATA_DIR' && location.source !== 'default') {
+  if (location.source !== 'QUERYBARA_USER_DATA_DIR' && location.source !== 'default') {
     try {
       if (statSync(location.path).isDirectory()) {
         return { ...location, path: path.join(location.path, STORE_FILE_NAME) };
@@ -80,23 +85,23 @@ export function resolveStorePath(input: StorePathInput): StoreLocation {
   return location;
 }
 
-/** Sealer id of the CLI when no JOINERY_PASSPHRASE is set: nothing can be saved or unsealed. */
-export const UNAVAILABLE_SEALER_ID = 'joinery-cli-none';
+/** Sealer id of the CLI when no QUERYBARA_PASSPHRASE is set: nothing can be saved or unsealed. */
+export const UNAVAILABLE_SEALER_ID = 'querybara-cli-none';
 
 /**
  * The CLI cannot use Electron safeStorage, so it seals with a passphrase from
- * JOINERY_PASSPHRASE. Without one, saving a secret fails with a hint, and values sealed by the
+ * QUERYBARA_PASSPHRASE. Without one, saving a secret fails with a hint, and values sealed by the
  * desktop app (or another passphrase) read as unreadable, which the target resolver turns into
  * an environment variable lookup or a prompt.
  */
 export function cliSealer(env: Readonly<Record<string, string | undefined>>): SecretSealer {
-  const passphrase = env['JOINERY_PASSPHRASE'];
+  const passphrase = env['QUERYBARA_PASSPHRASE'];
   if (passphrase) return createPassphraseSealer(passphrase);
   const unavailable = (): never => {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
-      message: 'Secrets cannot be saved without JOINERY_PASSPHRASE',
-      hint: 'Set JOINERY_PASSPHRASE to seal saved passwords with a passphrase',
+      message: 'Secrets cannot be saved without QUERYBARA_PASSPHRASE',
+      hint: 'Set QUERYBARA_PASSPHRASE to seal saved passwords with a passphrase',
     });
   };
   return {

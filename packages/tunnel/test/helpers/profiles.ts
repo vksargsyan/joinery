@@ -4,7 +4,7 @@ import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 
 /** A resolved postgres profile pointing at `target`, with the given tunnel settings. */
 export function resolvedWith(

@@ -1,13 +1,13 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   type CellValue,
   type Session,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
-import { renderTableStatements } from '@joinery/sync';
+} from '@querybara/core';
+import { renderTableStatements } from '@querybara/sync';
 
 /** Small helpers for driving a Session from the transfer pipeline. */
 
@@ -15,7 +15,7 @@ import { renderTableStatements } from '@joinery/sync';
 export function dialectOf(session: Session, given?: SqlDialect): SqlDialect {
   if (given !== undefined) return given;
   if (isSqlEngine(session.engine)) return session.engine;
-  throw new JoineryError({
+  throw new QuerybaraError({
     code: 'NOT_SUPPORTED',
     message: `Data transfer with ${session.engine} is not supported yet`,
   });
@@ -58,7 +58,7 @@ export async function loadTable(
     : snapshot.schemas[0];
   const table = schemaDef?.tables.find((t) => t.name === name);
   if (table === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: `Table "${pg ? `${schema ?? 'public'}.` : ''}${name}" was not found`,
     });

@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { isIP } from 'node:net';
 import type { ConnectionOptions as TlsConnectionOptions } from 'node:tls';
 
-import { ENGINES, JoineryError, type ResolvedProfile, type TlsMode } from '@joinery/core';
-import { buildTlsSettings, type FileReader, type TlsSettings } from '@joinery/driver-sql-base';
-import { cloudIdUrl, needsTransport, tunnelTarget } from '@joinery/tunnel';
+import { ENGINES, QuerybaraError, type ResolvedProfile, type TlsMode } from '@querybara/core';
+import { buildTlsSettings, type FileReader, type TlsSettings } from '@querybara/driver-sql-base';
+import { cloudIdUrl, needsTransport, tunnelTarget } from '@querybara/tunnel';
 
 /** One node the client sends requests to. */
 export interface SearchNodeTarget {
@@ -49,8 +49,8 @@ export interface SearchClientPlan {
   readonly secrets: readonly string[];
 }
 
-function invalid(message: string, hint: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message, hint });
+function invalid(message: string, hint: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message, hint });
 }
 
 /** A node URL parsed: scheme (http unless TLS is on), host, port and path prefix. */
@@ -122,7 +122,7 @@ function base64(text: string): string {
 function secret(resolved: ResolvedProfile, id: string, what: string): string {
   const value = resolved.secrets[id];
   if (value === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'AUTH_FAILED',
       message: `The ${what} for this connection was not provided`,
       hint: `Enter the ${what}, or save it in the profile`,
@@ -187,7 +187,7 @@ export function buildSearchClientPlan(
 ): SearchClientPlan {
   const { profile } = resolved;
   if (profile.engine !== 'elasticsearch') {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The Elasticsearch adapter cannot open a ${ENGINES[profile.engine].displayName} profile`,
     });
@@ -197,7 +197,7 @@ export function buildSearchClientPlan(
     // Throws NOT_SUPPORTED with a hint for several URLs.
     tunnelTarget(profile);
     if (!resolved.endpointOverride) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: profile.ssh
           ? 'This profile uses an SSH tunnel, but no tunnel is open for it'
@@ -219,7 +219,7 @@ export function buildSearchClientPlan(
       cloud = true;
       break;
     default:
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `${ENGINES[profile.engine].displayName} does not accept a "${endpoint.kind}" endpoint`,
         hint: 'Use node URLs such as https://host:9200 (or a Cloud ID for Elastic Cloud)',

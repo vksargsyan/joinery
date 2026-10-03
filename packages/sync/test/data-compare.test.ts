@@ -1,4 +1,4 @@
-import type { CellValue, ColumnMeta } from '@joinery/core';
+import type { CellValue, ColumnMeta } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { compareTableData, generateDataSyncScript } from '../src';

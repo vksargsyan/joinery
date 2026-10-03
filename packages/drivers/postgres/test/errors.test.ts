@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { mapPgError } from '../src/errors';
@@ -21,7 +21,7 @@ describe('mapPgError', () => {
       }),
       { where, statement },
     );
-    expect(mapped).toBeInstanceOf(JoineryError);
+    expect(mapped).toBeInstanceOf(QuerybaraError);
     expect(mapped.toJSON()).toEqual({
       code: 'SQL_ERROR',
       message: 'syntax error at or near "FORM"',
@@ -118,8 +118,8 @@ describe('mapPgError', () => {
     expect(mapPgError(new Error('something odd'), { where }).code).toBe('INTERNAL');
   });
 
-  it('passes JoineryErrors through', () => {
-    const original = new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+  it('passes QuerybaraErrors through', () => {
+    const original = new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
     expect(mapPgError(original, { where })).toBe(original);
   });
 });

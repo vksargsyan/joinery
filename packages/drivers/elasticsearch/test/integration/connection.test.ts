@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:net';
 
-import type { ConnectionCheckResult, ResolvedProfile } from '@joinery/core';
-import { parseJsonTree, stringAt } from '@joinery/search-tools';
+import type { ConnectionCheckResult, ResolvedProfile } from '@querybara/core';
+import { parseJsonTree, stringAt } from '@querybara/search-tools';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createSearchAdapter, isSearchSession, type SearchSession } from '../../src';
@@ -161,7 +161,7 @@ describe.skipIf(!ES_URL)('Elasticsearch authentication', () => {
       const created = await admin.request({
         method: 'POST',
         path: '/_security/api_key',
-        body: JSON.stringify({ name: 'joinery-it', expiration: '1h' }),
+        body: JSON.stringify({ name: 'querybara-it', expiration: '1h' }),
       });
       expect(created.status).toBe(200);
       const node = parseJsonTree(created.body);
@@ -204,7 +204,7 @@ describe.skipIf(!ES_URL)('Elasticsearch authentication', () => {
 
   it('reports a missing privilege as such', async () => {
     const admin = await connect(server);
-    const user = `joinery-it-${Date.now()}`;
+    const user = `querybara-it-${Date.now()}`;
     let limited: SearchSession | undefined;
     try {
       await admin.request({

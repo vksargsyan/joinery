@@ -1,6 +1,6 @@
 # Packaging and releasing
 
-How Joinery's installers are built, signed, updated and audited (spec §18 "Signed builds, a
+How Querybara's installers are built, signed, updated and audited (spec §18 "Signed builds, a
 software bill of materials per release", §20 "Packaging and updates"). The decisions behind it
 are in [ADR 0013](adr/0013-packaging-and-updates.md).
 
@@ -21,7 +21,7 @@ version, the update status and the licence report).
 | `release`     | `ubuntu-24.04`     | a draft GitHub release with everything above (tags only)       |                                                                                         |
 
 The Windows arm64 packages are built but not smoke-tested. On the `windows-11-arm` runner the
-NSIS installer's silent install finished without putting `joinery.exe` under
+NSIS installer's silent install finished without putting `querybara.exe` under
 `%LOCALAPPDATA%\Programs` (the x64 install of the same installer works), so the job that tested
 it was dropped until that is investigated. Treat the arm64 NSIS install as unverified.
 
@@ -32,10 +32,10 @@ electron-updater loads from the archive.
 Two configurations:
 
 - `apps/desktop/electron-builder.adhoc.yml`: **test builds** (pull requests, branch runs,
-  `pnpm --filter @joinery/desktop package`). Unsigned, ad-hoc signed on macOS, and without an
+  `pnpm --filter @querybara/desktop package`). Unsigned, ad-hoc signed on macOS, and without an
   update feed, so the app never tries to update itself; its About box says "test build".
 - `apps/desktop/electron-builder.yml`: **release builds** (a `v*` tag). It carries the update
-  feed (`publish` → GitHub Releases of `vksargsyan/joinery`), which electron-builder writes into
+  feed (`publish` → GitHub Releases of `vksargsyan/querybara`), which electron-builder writes into
   `resources/app-update.yml`, and the update metadata next to the installers: `latest.yml`
   (Windows), `latest-mac.yml`, `latest-linux.yml` and `latest-linux-arm64.yml`. CI always runs
   electron-builder with `--publish never`; the `release` job uploads.
@@ -123,7 +123,7 @@ downloaded installer's Authenticode signature against it.
 
 `apps/desktop/src/main/updates.ts` runs electron-updater in the main process, in its own session
 that may only reach GitHub over https. Updates download in the background; the window then shows
-"Joinery x.y.z is ready" with Restart now, Release notes and Later. Help → Check for Updates (the
+"Querybara x.y.z is ready" with Restart now, Release notes and Later. Help → Check for Updates (the
 app menu on macOS) checks at once; the About box (Help → About, or the header's About button)
 holds the channel, "Check for updates automatically" and the status. Automatic checks run 30 s
 after start-up and every 4 hours. Development runs and the e2e tests (unpackaged) and test
@@ -147,15 +147,15 @@ new version.
 A release's update metadata can carry `stagingPercentage`: each install keeps a random id in its
 user data directory (`.updaterId`) and takes the update only when the id falls within the
 percentage, so the same machines stay in as it grows. Set it when building with the manual
-run's `rollout` input or the repository variable `JOINERY_ROLLOUT_PERCENT` (default 100, which
+run's `rollout` input or the repository variable `QUERYBARA_ROLLOUT_PERCENT` (default 100, which
 omits the field). To change it on a published release:
 
 ```sh
 tag=v1.4.0
 mkdir rollout && cd rollout
-gh release download "$tag" -R vksargsyan/joinery -p 'latest*.yml'
-pnpm --filter @joinery/desktop rollout 50 "$PWD"                     # 100 = everyone, 0 = halt
-gh release upload "$tag" -R vksargsyan/joinery --clobber latest*.yml
+gh release download "$tag" -R vksargsyan/querybara -p 'latest*.yml'
+pnpm --filter @querybara/desktop rollout 50 "$PWD"                     # 100 = everyone, 0 = halt
+gh release upload "$tag" -R vksargsyan/querybara --clobber latest*.yml
 ```
 
 Setting 0 halts a rollout that went wrong; installs that already updated keep the new version.
@@ -167,12 +167,12 @@ Administrators turn updates off (and can pin the channel) machine-wide. Any sour
 updates off wins; a pinned channel greys out the user's choice. Every source can only be written
 by an administrator, except the environment variable, which can only turn updates off.
 
-| Platform       | Where                                                                                                                                                                                    |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows        | `HKLM\SOFTWARE\Policies\Joinery`: `DisableUpdates` (REG_DWORD, 1 = off), `UpdateChannel` (REG_SZ, `stable`/`beta`), e.g. from Group Policy or Intune                                     |
-| macOS          | a configuration profile for the preference domain `dev.joinery.desktop` (`/Library/Managed Preferences/dev.joinery.desktop.plist`): `DisableUpdates` (boolean), `UpdateChannel` (string) |
-| macOS, Linux   | a JSON file: `/Library/Application Support/Joinery/policy.json`, `/etc/joinery/policy.json`                                                                                              |
-| Every platform | the environment variable `JOINERY_DISABLE_UPDATES=1` (a system-wide variable for a fleet)                                                                                                |
+| Platform       | Where                                                                                                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows        | `HKLM\SOFTWARE\Policies\Querybara`: `DisableUpdates` (REG_DWORD, 1 = off), `UpdateChannel` (REG_SZ, `stable`/`beta`), e.g. from Group Policy or Intune                                       |
+| macOS          | a configuration profile for the preference domain `com.querybara.desktop` (`/Library/Managed Preferences/com.querybara.desktop.plist`): `DisableUpdates` (boolean), `UpdateChannel` (string) |
+| macOS, Linux   | a JSON file: `/Library/Application Support/Querybara/policy.json`, `/etc/querybara/policy.json`                                                                                              |
+| Every platform | the environment variable `QUERYBARA_DISABLE_UPDATES=1` (a system-wide variable for a fleet)                                                                                                  |
 
 Windows has no policy file: standard users may create folders under `%ProgramData%`, so a file
 there would let any user switch updates off for everyone on the machine.
@@ -188,7 +188,7 @@ not updated by the app in any case; the switch also covers NSIS installs and the
 platforms.
 
 ```bat
-reg add HKLM\SOFTWARE\Policies\Joinery /v DisableUpdates /t REG_DWORD /d 1 /f
+reg add HKLM\SOFTWARE\Policies\Querybara /v DisableUpdates /t REG_DWORD /d 1 /f
 ```
 
 ## SBOM and licence notices
@@ -203,31 +203,34 @@ reg add HKLM\SOFTWARE\Policies\Joinery /v DisableUpdates /t REG_DWORD /d 1 /f
   its licence is unknown: none declared, `UNLICENSED`, or `SEE LICENSE IN <file>`. For an unknown
   one, read the package's licence and record it under `reviewed` in
   `apps/desktop/electron.vite.config.ts` (`'name@version': 'MIT'`).
-- **SBOM**: `pnpm --filter @joinery/desktop sbom` (after a build) writes a CycloneDX 1.6 JSON
+- **SBOM**: `pnpm --filter @querybara/desktop sbom` (after a build) writes a CycloneDX 1.6 JSON
   bill of materials of the desktop app from `pnpm-lock.yaml`: every package in the app's
   dependency closure with its version, purl, integrity hash, licence and dependency graph.
   Packages the app ships are `required`, build tools `excluded`, first-party workspace packages
   are listed too. `SOURCE_DATE_EPOCH` fixes its timestamp. The `linux` job generates it on every
-  run; a release attaches it as `joinery-<version>.cdx.json`, next to the notices.
+  run; a release attaches it as `querybara-<version>.cdx.json`, next to the notices.
 
 ## Icons
 
-Every icon comes from `apps/desktop/build/icon.svg` (a joined database cylinder, ADR 0032):
-`pnpm --filter @joinery/desktop icons` renders `icon.ico` (16–256 px), `icons/<n>x<n>.png`
+Every icon comes from `apps/desktop/build/icon.svg` (the capybara, ADR 0033):
+`pnpm --filter @querybara/desktop icons` renders `icon.ico` (16–256 px), `icons/<n>x<n>.png`
 (Linux, and the window icon) and `icon.png`, the artwork free-standing; and for macOS the
-artwork on a Tenmoku tile: `icon.icns` (macOS 15 and earlier, with Apple's margin) and the Icon
+artwork on a cream tile: `icon.icns` (macOS 15 and earlier, with Apple's margin) and the Icon
 Composer package `icon.icon`, which it compiles into `Assets.car` (macOS 26 and later) when Xcode
-26 or later is installed. The outputs are committed, so packaging needs no Xcode 26; regenerate
-on a Mac after changing the SVG. A unit test fails when they no longer match the SVG.
+26 or later is installed. The outputs are committed, except `Assets.car`: actool needs macOS 26
+to compile it, so the workflow's `mac-icon` job compiles it on `macos-26` for the macOS packaging
+job, and a local macOS package needs `pnpm --filter @querybara/desktop icons` run on macOS 26 with
+Xcode 26 beforehand. A unit test fails when the committed icons no longer match
+the SVG.
 
 ## Local builds
 
 ```sh
-pnpm --filter @joinery/desktop package                     # test build for this OS, in apps/desktop/dist
+pnpm --filter @querybara/desktop package                     # test build for this OS, in apps/desktop/dist
 cd apps/desktop && pnpm exec electron-builder --config electron-builder.adhoc.yml --linux AppImage deb rpm --x64
-JOINERY_PACKAGED_APP=$PWD/dist/linux-unpacked/joinery xvfb-run -a pnpm exec playwright test -c e2e/packaged.config.ts
+QUERYBARA_PACKAGED_APP=$PWD/dist/linux-unpacked/querybara xvfb-run -a pnpm exec playwright test -c e2e/packaged.config.ts
 ```
 
 The rpm target needs `rpmbuild` (`apt install rpm`). An AppImage runs without FUSE with
 `APPIMAGE_EXTRACT_AND_RUN=1`. A deb can be tried without installing it: `dpkg-deb -x` it into a
-folder and point `JOINERY_PACKAGED_APP` at `opt/Joinery/joinery` inside.
+folder and point `QUERYBARA_PACKAGED_APP` at `opt/Querybara/querybara` inside.

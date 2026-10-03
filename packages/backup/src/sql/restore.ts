@@ -1,6 +1,6 @@
-import { JoineryError, newId, toErrorData, type Session, type SqlDialect } from '@joinery/core';
-import { StatementSplitter } from '@joinery/sql-tools';
-import { decodeSource, fileSource, runSqlFile, type ByteSource } from '@joinery/transfer';
+import { QuerybaraError, newId, toErrorData, type Session, type SqlDialect } from '@querybara/core';
+import { StatementSplitter } from '@querybara/sql-tools';
+import { decodeSource, fileSource, runSqlFile, type ByteSource } from '@querybara/transfer';
 
 import type { BackupObject } from '../archive/manifest';
 import type { ArchiveReader } from '../archive/reader';
@@ -20,7 +20,7 @@ import { planSqlObjects, type SqlObject } from './objects';
 import { dialectOf, isMariaDb, prepareSession } from './session';
 
 /**
- * Restores of SQL backups (spec §14): everything or selected objects of a Joinery archive, or a
+ * Restores of SQL backups (spec §14): everything or selected objects of a Querybara archive, or a
  * plain SQL script, into the session's database (which may have another name than the source).
  *
  * The write rules are enforced here, in the process that runs the statements: objects that
@@ -66,7 +66,7 @@ function family(engine: string): string {
 export function checkCompatible(archiveEngine: string, session: Session): string[] {
   const target = session.engine === 'mysql' && isMariaDb(session) ? 'mariadb' : session.engine;
   if (family(archiveEngine) !== family(target)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: `This is a ${archiveEngine} backup; it cannot be restored into ${target}`,
       hint: 'Use the data transfer wizard to move data between engines',
@@ -103,13 +103,13 @@ export async function planSqlRestore(options: SqlRestorePlanOptions): Promise<Sq
   if (structure && !hasStructure)
     warnings.push('The backup holds no definitions; only rows are restored');
   if (!structure && !data) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Nothing to restore' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Nothing to restore' });
   }
   const selected = options.select !== undefined ? new Set(options.select) : undefined;
   if (selected) {
     const unknown = [...selected].filter((id) => !manifest.objects.some((o) => o.id === id));
     if (unknown.length > 0) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: `The backup has no object ${unknown[0]}`,
       });
@@ -227,7 +227,7 @@ export interface SqlRestoreOptions extends RestoreCommonOptions, SqlRestorePlanO
 
 class Stop extends Error {}
 
-/** Restores a Joinery archive of a SQL database. */
+/** Restores a Querybara archive of a SQL database. */
 export async function restoreSqlArchive(options: SqlRestoreOptions): Promise<RestoreSummary> {
   const { session, archive, signal } = options;
   const dialect: SqlDialect = dialectOf(session);
@@ -275,7 +275,7 @@ export async function restoreSqlArchive(options: SqlRestoreOptions): Promise<Res
     throwIfAborted(signal);
     statements++;
     const savepoint = transaction && (soft || onError === 'continue');
-    if (savepoint) await guard('SAVEPOINT joinery_restore');
+    if (savepoint) await guard('SAVEPOINT querybara_restore');
     try {
       for await (const chunk of session.execute(sql, {
         executionId: newId(),
@@ -285,10 +285,10 @@ export async function restoreSqlArchive(options: SqlRestoreOptions): Promise<Res
           rows += chunk.rowsAffected;
         }
       }
-      if (savepoint) await guard('RELEASE SAVEPOINT joinery_restore');
+      if (savepoint) await guard('RELEASE SAVEPOINT querybara_restore');
     } catch (error) {
       if (isCancel(error, signal)) throw error;
-      if (savepoint) await guard('ROLLBACK TO SAVEPOINT joinery_restore');
+      if (savepoint) await guard('ROLLBACK TO SAVEPOINT querybara_restore');
       if (soft) {
         const message = `${object ?? 'A statement'}: ${errorMessage(error)}`;
         warnings.push(message);
@@ -311,7 +311,7 @@ export async function restoreSqlArchive(options: SqlRestoreOptions): Promise<Res
   };
 
   let status: TransferStatus = 'completed';
-  let fatal: JoineryError | undefined;
+  let fatal: QuerybaraError | undefined;
   let objectsRestored = 0;
   try {
     await prepareSession(session, 'restore', signal);
@@ -422,7 +422,7 @@ export async function restoreSqlArchive(options: SqlRestoreOptions): Promise<Res
     else if (isCancel(error, signal)) status = 'cancelled';
     else {
       status = 'failed';
-      fatal = error instanceof JoineryError ? error : new JoineryError(toErrorData(error));
+      fatal = error instanceof QuerybaraError ? error : new QuerybaraError(toErrorData(error));
       log('error', fatal.message);
     }
     if (session.inTransaction) await guard('ROLLBACK').catch(() => undefined);

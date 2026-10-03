@@ -134,10 +134,10 @@ export function EndpointFields(props: {
             />
           </Field>
           <Note>
-            Joinery looks up the hosts (the _mongodb._tcp SRV record) and default options in DNS, as
-            a mongodb+srv:// URI does, and connects with TLS unless you turn it off on the TLS tab.
-            The lookup happens on this computer, also when the servers are reached through an SSH
-            tunnel or a proxy.
+            Querybara looks up the hosts (the _mongodb._tcp SRV record) and default options in DNS,
+            as a mongodb+srv:// URI does, and connects with TLS unless you turn it off on the TLS
+            tab. The lookup happens on this computer, also when the servers are reached through an
+            SSH tunnel or a proxy.
           </Note>
         </>
       );
@@ -172,7 +172,7 @@ export function EndpointFields(props: {
             label="Seed nodes"
             rowLabel="Seed"
             newRow={() => defaultHostRow(engine)}
-            hint="Any reachable nodes; Joinery discovers the rest of the cluster from them."
+            hint="Any reachable nodes; Querybara discovers the rest of the cluster from them."
           />
           <Note>A cluster has only database 0.</Note>
         </>
@@ -186,7 +186,7 @@ export function EndpointFields(props: {
             label="Sentinels"
             rowLabel="Sentinel"
             newRow={defaultSentinelRow}
-            hint="Joinery asks them for the current master."
+            hint="Querybara asks them for the current master."
           />
           <Field label="Master name" htmlFor="cx-master-name" error={errors.masterName?.message}>
             <Input
@@ -218,7 +218,7 @@ export function EndpointFields(props: {
             />
           </Field>
           <Note>
-            From the deployment page in Elastic Cloud. Joinery connects to its Elasticsearch
+            From the deployment page in Elastic Cloud. Querybara connects to its Elasticsearch
             endpoint over TLS.
           </Note>
         </>

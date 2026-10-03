@@ -61,41 +61,41 @@ jobs:
       postgres:
         image: postgres:${{ matrix.postgres }}
         env:
-          POSTGRES_USER: joinery
-          POSTGRES_PASSWORD: joinery
-          POSTGRES_DB: joinery_test
+          POSTGRES_USER: querybara
+          POSTGRES_PASSWORD: querybara
+          POSTGRES_DB: querybara_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-cmd "pg_isready -U querybara" --health-interval 5s --health-timeout 5s
           --health-retries 20
       mysql:
         image: mysql:${{ matrix.mysql }}
         env:
-          MYSQL_ROOT_PASSWORD: joinery
-          MYSQL_DATABASE: joinery_test
+          MYSQL_ROOT_PASSWORD: querybara
+          MYSQL_DATABASE: querybara_test
         ports: ['3306:3306']
         options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1 -pjoinery" --health-interval 5s
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pquerybara" --health-interval 5s
           --health-timeout 5s --health-retries 30
       mariadb:
         image: mariadb:${{ matrix.mariadb }}
         env:
-          MARIADB_ROOT_PASSWORD: joinery
-          MARIADB_DATABASE: joinery_test
+          MARIADB_ROOT_PASSWORD: querybara
+          MARIADB_DATABASE: querybara_test
         ports: ['3307:3306']
         options: >-
           --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s
           --health-timeout 5s --health-retries 30
     env:
-      JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
-      JOINERY_TEST_MYSQL_URL: mysql://root:joinery@127.0.0.1:3306/joinery_test
-      JOINERY_TEST_MARIADB_URL: mariadb://root:joinery@127.0.0.1:3307/joinery_test
-      JOINERY_TEST_MONGODB_URL: mongodb://joinery:joinery@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
-      JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
-      JOINERY_TEST_REDIS_ACL_USER: app:app-secret
-      JOINERY_TEST_REDIS_SENTINEL: 127.0.0.1:26380/joinery-master
-      JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
-      JOINERY_TEST_ELASTICSEARCH_URL: http://elastic:joinery-es@127.0.0.1:9200
+      QUERYBARA_TEST_POSTGRES_URL: postgres://querybara:querybara@127.0.0.1:5432/querybara_test
+      QUERYBARA_TEST_MYSQL_URL: mysql://root:querybara@127.0.0.1:3306/querybara_test
+      QUERYBARA_TEST_MARIADB_URL: mariadb://root:querybara@127.0.0.1:3307/querybara_test
+      QUERYBARA_TEST_MONGODB_URL: mongodb://querybara:querybara@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
+      QUERYBARA_TEST_REDIS_URL: redis://default:querybara@127.0.0.1:63790/0
+      QUERYBARA_TEST_REDIS_ACL_USER: app:app-secret
+      QUERYBARA_TEST_REDIS_SENTINEL: 127.0.0.1:26380/querybara-master
+      QUERYBARA_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
+      QUERYBARA_TEST_ELASTICSEARCH_URL: http://elastic:querybara-es@127.0.0.1:9200
     steps:
       - uses: actions/checkout@v7
       # A MongoDB replica set and a Redis Sentinel and Cluster need server arguments, which
@@ -118,22 +118,22 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: joinery
-          POSTGRES_PASSWORD: joinery
-          POSTGRES_DB: joinery_test
+          POSTGRES_USER: querybara
+          POSTGRES_PASSWORD: querybara
+          POSTGRES_DB: querybara_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U joinery" --health-interval 5s --health-timeout 5s
+          --health-cmd "pg_isready -U querybara" --health-interval 5s --health-timeout 5s
           --health-retries 20
     env:
-      JOINERY_TEST_POSTGRES_URL: postgres://joinery:joinery@127.0.0.1:5432/joinery_test
-      JOINERY_TEST_MONGODB_URL: mongodb://joinery:joinery@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
-      JOINERY_TEST_REDIS_URL: redis://default:joinery@127.0.0.1:63790/0
-      JOINERY_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
-      JOINERY_TEST_ELASTICSEARCH_URL: http://elastic:joinery-es@127.0.0.1:9200
+      QUERYBARA_TEST_POSTGRES_URL: postgres://querybara:querybara@127.0.0.1:5432/querybara_test
+      QUERYBARA_TEST_MONGODB_URL: mongodb://querybara:querybara@127.0.0.1:27018/?replicaSet=rs0&authSource=admin
+      QUERYBARA_TEST_REDIS_URL: redis://default:querybara@127.0.0.1:63790/0
+      QUERYBARA_TEST_REDIS_CLUSTER: 127.0.0.1:7100,127.0.0.1:7101,127.0.0.1:7102
+      QUERYBARA_TEST_ELASTICSEARCH_URL: http://elastic:querybara-es@127.0.0.1:9200
       # Ubuntu runners restrict the unprivileged user namespaces Chromium's sandbox needs. Only
       # the e2e launcher honours this; the app itself always keeps the renderer sandbox on.
-      JOINERY_E2E_NO_SANDBOX: '1'
+      QUERYBARA_E2E_NO_SANDBOX: '1'
     steps:
       - uses: actions/checkout@v7
       - run: .github/scripts/start-nosql.sh 8.0 redis:7.4
@@ -144,10 +144,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: xvfb-run -a pnpm --filter @joinery/desktop test:e2e
+      - run: xvfb-run -a pnpm --filter @querybara/desktop test:e2e
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: e2e-results
-          path: /tmp/joinery-e2e-results
+          path: /tmp/querybara-e2e-results
           retention-days: 7

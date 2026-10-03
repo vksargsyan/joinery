@@ -14,12 +14,12 @@ import { connectionTab, launchApp, openNewConnection, type LaunchedApp } from '.
  * warning that only lets the user remove the remembered key.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Postgres via SSH';
 const SSH_USER = 'tunnel';
 const SSH_PASSWORD = 'e2e-Bastion-pw';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -130,7 +130,7 @@ test('warns about a changed host key and trusts the new one only after the old o
   await page.getByRole('menuitem', { name: 'Disconnect' }).click();
   await expect(profile.getByText('Not connected', { exact: true })).toBeAttached();
 
-  // Pretend Joinery remembered another key for this server.
+  // Pretend Querybara remembered another key for this server.
   const userData = await launched.app.evaluate(({ app }) => app.getPath('userData'));
   const knownHosts = join(userData, 'known_hosts');
   const remembered = 'SHA256:rememberedKeyrememberedKeyrememberedKey01';

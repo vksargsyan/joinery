@@ -1,5 +1,5 @@
-import { JoineryError, fromErrorData, newId, type ResolvedProfile } from '@joinery/core';
-import type { JobEvent, JobInfo, JobLogEntry, JobState } from '@joinery/ipc';
+import { QuerybaraError, fromErrorData, newId, type ResolvedProfile } from '@querybara/core';
+import type { JobEvent, JobInfo, JobLogEntry, JobState } from '@querybara/ipc';
 
 import {
   runnerToMainSchema,
@@ -89,7 +89,7 @@ interface LiveJob {
 
 interface PendingRequest {
   resolve(value: unknown): void;
-  reject(error: JoineryError): void;
+  reject(error: QuerybaraError): void;
   readonly timer: ReturnType<typeof setTimeout> | undefined;
   readonly onProgress?: ((progress: unknown) => void) | undefined;
 }
@@ -214,7 +214,7 @@ export class JobManager {
     } catch (error) {
       this.#finish(job, {
         state: 'failed',
-        error: new JoineryError({
+        error: new QuerybaraError({
           code: 'INTERNAL',
           message: 'The job runner could not start',
           ...(error instanceof Error ? { detail: error.message } : {}),
@@ -251,7 +251,7 @@ export class JobManager {
           : setTimeout(() => {
               this.#requests.delete(requestId);
               reject(
-                new JoineryError({ code: 'TIMEOUT', message: 'The job runner did not answer' }),
+                new QuerybaraError({ code: 'TIMEOUT', message: 'The job runner did not answer' }),
               );
               this.#scheduleIdle();
             }, limit);
@@ -283,7 +283,7 @@ export class JobManager {
         clearTimeout(timer);
         this.#requests.delete(requestId);
         reject(
-          new JoineryError({
+          new QuerybaraError({
             code: 'INTERNAL',
             message: 'The job runner could not start',
             ...(error instanceof Error ? { detail: error.message } : {}),
@@ -308,13 +308,13 @@ export class JobManager {
     for (const job of [...this.#running.values()]) {
       this.#finish(job, {
         state: 'cancelled',
-        error: { code: 'CANCELLED', message: 'Joinery quit while the job was running' },
+        error: { code: 'CANCELLED', message: 'Querybara quit while the job was running' },
       });
     }
     for (const [id, pending] of [...this.#requests]) {
       clearTimeout(pending.timer);
       this.#requests.delete(id);
-      pending.reject(new JoineryError({ code: 'CANCELLED', message: 'Joinery is quitting' }));
+      pending.reject(new QuerybaraError({ code: 'CANCELLED', message: 'Querybara is quitting' }));
     }
     this.#stopProcess();
   }
@@ -323,7 +323,7 @@ export class JobManager {
     if (this.#idleTimer) clearTimeout(this.#idleTimer);
     this.#idleTimer = undefined;
     if (this.#process) return this.#process;
-    const process = this.#spawn('Joinery job runner');
+    const process = this.#spawn('Querybara job runner');
     this.#process = process;
     process.onMessage((raw) => this.#onMessage(process, raw));
     process.onExit((code) => this.#onExit(process, code));
@@ -454,7 +454,7 @@ export class JobManager {
     for (const [id, pending] of [...this.#requests]) {
       clearTimeout(pending.timer);
       this.#requests.delete(id);
-      pending.reject(new JoineryError({ code: 'INTERNAL', message }));
+      pending.reject(new QuerybaraError({ code: 'INTERNAL', message }));
     }
   }
 

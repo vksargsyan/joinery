@@ -1,6 +1,6 @@
-import type { SchemaSnapshot, SqlDialect, SqlEngineId, TableDef } from '@joinery/core';
-import type { CompletionResult, SignatureHelp, SqlDiagnostic } from '@joinery/sql-tools';
-import type { ValidationIssue } from '@joinery/sync';
+import type { SchemaSnapshot, SqlDialect, SqlEngineId, TableDef } from '@querybara/core';
+import type { CompletionResult, SignatureHelp, SqlDiagnostic } from '@querybara/sql-tools';
+import type { ValidationIssue } from '@querybara/sync';
 
 import type {
   CompleteRequest,

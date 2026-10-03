@@ -1,4 +1,4 @@
-import type { EngineId, Session } from '@joinery/core';
+import type { EngineId, Session } from '@querybara/core';
 
 import type { RowError, TransferStatus } from '../types';
 

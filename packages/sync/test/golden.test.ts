@@ -2,8 +2,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { schemaSnapshotSchema } from '@joinery/core';
-import type { SchemaSnapshot } from '@joinery/core';
+import { schemaSnapshotSchema } from '@querybara/core';
+import type { SchemaSnapshot } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { compareSchemas, generateScript, normalizeSnapshot } from '../src';

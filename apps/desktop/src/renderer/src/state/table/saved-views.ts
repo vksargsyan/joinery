@@ -1,5 +1,5 @@
-import { FILTER_OPERATORS, type SortTerm } from '@joinery/table-data';
-import type { GridLayout, GridView, GridViewTable } from '@joinery/ipc';
+import { FILTER_OPERATORS, type SortTerm } from '@querybara/table-data';
+import type { GridLayout, GridView, GridViewTable } from '@querybara/ipc';
 import { z } from 'zod';
 
 import type { ColumnLayout, LayoutColumn } from '../grid-layout';

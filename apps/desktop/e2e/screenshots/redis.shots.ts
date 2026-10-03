@@ -1,4 +1,8 @@
-import { createRedisAdapter, redisProfileFromUrl, type RedisSession } from '@joinery/driver-redis';
+import {
+  createRedisAdapter,
+  redisProfileFromUrl,
+  type RedisSession,
+} from '@querybara/driver-redis';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { chooseEngine, connectionTab, openNewConnection, type LaunchedApp } from '../app';
@@ -27,7 +31,7 @@ let launched: LaunchedApp | undefined;
 let page: Page;
 
 const CART = 'cart:1705';
-const DUMP = process.env['JOINERY_DEMO_RDB'] ?? '/tmp/larchwood-files/larchwood.rdb';
+const DUMP = process.env['QUERYBARA_DEMO_RDB'] ?? '/tmp/larchwood-files/larchwood.rdb';
 
 test.beforeAll(async () => {
   launched = await launchForShots();

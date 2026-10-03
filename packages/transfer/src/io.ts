@@ -82,7 +82,7 @@ export interface SpooledSource {
  * can be previewed, then read again, or read at any position; memory stays flat.
  */
 export async function spoolToFile(source: ByteSource): Promise<SpooledSource> {
-  const dir = await mkdtemp(join(tmpdir(), 'joinery-spool-'));
+  const dir = await mkdtemp(join(tmpdir(), 'querybara-spool-'));
   const path = join(dir, 'source');
   const remove = (): Promise<void> => rm(dir, { recursive: true, force: true });
   let size = 0;

@@ -5,9 +5,9 @@ import type {
   SqlDialect,
   TableDef,
   TypeDef,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified } from '@joinery/sql-tools';
-import { diffSchemas, renderDropRoutine, type SyncOperation } from '@joinery/sync';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified } from '@querybara/sql-tools';
+import { diffSchemas, renderDropRoutine, type SyncOperation } from '@querybara/sync';
 
 import type { BackupObjectKind } from '../archive/manifest';
 import type { Selectable } from '../selection';

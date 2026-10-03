@@ -1,8 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { MongoSession } from '@joinery/driver-mongodb';
-import { toEjson } from '@joinery/mongo-tools';
+import type { MongoSession } from '@querybara/driver-mongodb';
+import { toEjson } from '@querybara/mongo-tools';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -14,14 +14,14 @@ import { connectMongo, scratchMongoDatabase, withoutTls } from './mongo-db';
  * and limit built from the keyboard and with clicks (and one drag), the find() text following
  * each change, the run and its result count, an incomplete value that stops the run, and the
  * builder following the text when it is edited by hand, including a query it cannot show.
- * With JOINERY_E2E_SHOTS set, screenshots are saved there as mongo-builder-*.png.
+ * With QUERYBARA_E2E_SHOTS set, screenshots are saved there as mongo-builder-*.png.
  */
 
-const MONGO_URL = process.env['JOINERY_TEST_MONGODB_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const MONGO_URL = process.env['QUERYBARA_TEST_MONGODB_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Mongo builder';
 
-test.skip(!MONGO_URL, 'Set JOINERY_TEST_MONGODB_URL to run the MongoDB end-to-end tests');
+test.skip(!MONGO_URL, 'Set QUERYBARA_TEST_MONGODB_URL to run the MongoDB end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 

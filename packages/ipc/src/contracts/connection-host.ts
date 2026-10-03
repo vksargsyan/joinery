@@ -1,4 +1,4 @@
-import { engineIdSchema, schemaSnapshotSchema } from '@joinery/core';
+import { engineIdSchema, schemaSnapshotSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import { defineContract } from '../contract';

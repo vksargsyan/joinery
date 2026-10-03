@@ -1,5 +1,5 @@
-import { newId } from '@joinery/core';
-import type { RpcStream } from '@joinery/ipc';
+import { newId } from '@querybara/core';
+import type { RpcStream } from '@querybara/ipc';
 import {
   SqlTranslationError,
   formatShell,
@@ -11,7 +11,7 @@ import {
   type ExportTarget,
   type Namespace,
   type SqlTranslation,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

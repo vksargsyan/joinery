@@ -4,7 +4,7 @@ import {
   detectHyperLogLog,
   setBitOffsets,
   utf8Bytes,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { useEffect, useState } from 'react';
 
 import { errorMessage } from '../../../lib/errors';

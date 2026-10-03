@@ -40,7 +40,7 @@ describe('parseSlowlog', () => {
         integer(15023),
         array([bulk('EVAL'), bulk('while true do end'), bulk(Uint8Array.of(0xff))]),
         bulk('127.0.0.1:50000'),
-        bulk('joinery'),
+        bulk('querybara'),
       ]),
       array([integer(13), integer(1790676000), integer(20000), array([bulk('KEYS'), bulk('*')])]),
     ]);
@@ -50,7 +50,7 @@ describe('parseSlowlog', () => {
       timestamp: 1790677000,
       durationMicros: 15023,
       client: '127.0.0.1:50000',
-      clientName: 'joinery',
+      clientName: 'querybara',
     });
     expect(entries[0]!.args.map(displayBytes)).toEqual(['EVAL', 'while true do end', '\\xff']);
     expect(entries[1]!.client).toBeUndefined();

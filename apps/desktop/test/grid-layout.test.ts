@@ -1,4 +1,4 @@
-import { tableDefSchema } from '@joinery/core';
+import { tableDefSchema } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -27,7 +27,7 @@ import {
   viewTable,
   type ViewState,
 } from '../src/renderer/src/state/table/saved-views';
-import { describeColumns } from '@joinery/table-data';
+import { describeColumns } from '@querybara/table-data';
 
 /**
  * Grid column layouts (hide, reorder, pin, resize) and saved table views: the pure models the

@@ -1,4 +1,4 @@
-import { JoineryError, newId, type EngineId, type ServerToolsInfo } from '@joinery/core';
+import { QuerybaraError, newId, type EngineId, type ServerToolsInfo } from '@querybara/core';
 import { create } from 'zustand';
 
 import { currentDock } from '../../components/dock';
@@ -137,7 +137,7 @@ export function showTab(panelId: string, tab: ServerToolsTab, focus?: ServerTool
 
 export function panelState(panelId: string): ServerToolsPanelState {
   const state = useServerToolsPanels.getState().panels[panelId];
-  if (!state) throw new JoineryError({ code: 'NOT_FOUND', message: 'The panel was closed' });
+  if (!state) throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The panel was closed' });
   return state;
 }
 

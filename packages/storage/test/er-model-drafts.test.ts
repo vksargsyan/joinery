@@ -9,7 +9,7 @@ import { fakeClock, memoryStore, postgresProfile, thrown } from './helpers';
  */
 
 const document = {
-  format: 'joinery.er-model',
+  format: 'querybara.er-model',
   version: 1,
   model: { schemas: [{ name: 'public', tables: [] }] },
 };

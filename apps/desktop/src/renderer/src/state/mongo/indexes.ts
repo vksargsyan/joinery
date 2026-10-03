@@ -4,7 +4,7 @@ import type {
   IndexKind,
   IndexSpec,
   Namespace,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import {
   Int32,
   formatShellInline,
@@ -12,7 +12,7 @@ import {
   parseShellDocument,
   quoteShellString,
   toEjson,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useStore } from 'zustand';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 

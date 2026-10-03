@@ -1,4 +1,4 @@
-import type { KeybindingOverride } from '@joinery/ipc';
+import type { KeybindingOverride } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { bindingLabel, chordOf, isPlainChord, parseBinding } from '../lib/keys';

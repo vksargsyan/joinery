@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /**
  * CSV and TSV (RFC 4180, spec §12). The parser is incremental: text is pushed in chunks of any
@@ -59,7 +59,7 @@ const enum State {
 function charCode(value: string | null | undefined, name: string): number {
   if (value === null || value === undefined) return -1;
   if (value.length !== 1) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `The CSV ${name} must be a single character`,
     });
@@ -76,7 +76,7 @@ export function csvDialect(options: Partial<CsvDialect> = {}): CsvDialect {
   const q = charCode(quote, 'quote');
   const e = charCode(escape, 'escape character');
   if (d === q || d === e || d === LF || d === CR || q === LF || q === CR) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message:
         'The CSV delimiter, quote and escape characters must differ from each other and from line breaks',
@@ -133,7 +133,7 @@ export class CsvParser {
     this.parse(text, out);
     this.offset += text.length;
     if (this.acc.length > this.maxFieldLength) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `A field starting on line ${this.recordLine} is longer than ${this.maxFieldLength} characters`,
         hint: 'Check the quote character: an unbalanced quote makes the rest of the file one field',
@@ -150,7 +150,7 @@ export class CsvParser {
     switch (this.state) {
       case State.Quoted:
       case State.QuotedEscape:
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Unterminated quoted field in the record starting on line ${this.recordLine}`,
           hint: 'Check the quote and escape characters',

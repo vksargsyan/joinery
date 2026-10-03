@@ -6,7 +6,7 @@ import { idSchema } from './common';
 /**
  * Schemas for the workspace state kept in the local store: saved table views (spec §7, "save
  * views per table") and editor autosave for crash restore (spec §18). They mirror
- * `@joinery/storage`'s records; this package does not depend on storage.
+ * `@querybara/storage`'s records; this package does not depend on storage.
  */
 
 const timestampSchema = z.iso.datetime({ offset: true });

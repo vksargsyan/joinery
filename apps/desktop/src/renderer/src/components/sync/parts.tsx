@@ -1,4 +1,4 @@
-import type { OperationKind } from '@joinery/sync';
+import type { OperationKind } from '@querybara/sync';
 import { useState, type ReactNode } from 'react';
 
 import type { RunningJob } from '../../state/sync/structure';

@@ -1,4 +1,4 @@
-# 0005. Autocomplete on Joinery's lexer, not the parser's suggestion API
+# 0005. Autocomplete on Querybara's lexer, not the parser's suggestion API
 
 - Status: Accepted
 - Date: 2026-09-29
@@ -17,7 +17,7 @@ or which aliases they carry.
 
 ## Decision
 
-`complete()` and `signatureHelp()` in `@joinery/sql-tools` work only on Joinery's own lexer,
+`complete()` and `signatureHelp()` in `@querybara/sql-tools` work only on Querybara's own lexer,
 splitter and `statementAt`: they classify the cursor position from tokens, build the scope
 (FROM/JOIN relations, aliases, CTEs, subquery columns) themselves, and look names up in a
 `Catalog` built from schema snapshots (`buildCatalog`). They never load dt-sql-parser; a test

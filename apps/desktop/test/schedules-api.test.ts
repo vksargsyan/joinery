@@ -8,8 +8,8 @@ import {
   type Client,
   type MainContract,
   type ScheduleSaveInput,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createMainHandlers } from '../src/main/api';
@@ -65,7 +65,7 @@ function setup(dialogs: { folder?: string; open?: string } = {}) {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'l', remote: 'r' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',
@@ -105,9 +105,9 @@ function backup(profileId: string, folder = '/backups'): ScheduleSaveInput {
     comparisonId: null,
     task: {
       kind: 'backup',
-      job: { kind: 'backup', profileId, database: 'shop', format: 'jbak' },
+      job: { kind: 'backup', profileId, database: 'shop', format: 'qbak' },
       encrypted: false,
-      output: { folder, fileName: '{name}-{date}-{time}.jbak', keep: 7 },
+      output: { folder, fileName: '{name}-{date}-{time}.qbak', keep: 7 },
     },
     rule: { kind: 'weekly', days: [0, 1, 2, 3, 4, 5, 6], times: ['02:00'] },
     missed: 'run-once',

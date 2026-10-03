@@ -1,8 +1,8 @@
 import { MessageChannel } from 'node:worker_threads';
 
-import { schemaSnapshotSchema, type SchemaSnapshot } from '@joinery/core';
-import { createClient, fromNodePort, mainContract, serve } from '@joinery/ipc';
-import { openStore, type SecretSealer, type Store } from '@joinery/storage';
+import { schemaSnapshotSchema, type SchemaSnapshot } from '@querybara/core';
+import { createClient, fromNodePort, mainContract, serve } from '@querybara/ipc';
+import { openStore, type SecretSealer, type Store } from '@querybara/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createMainHandlers } from '../src/main/api';
@@ -42,7 +42,7 @@ function setup() {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'host', remote: 'renderer' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',

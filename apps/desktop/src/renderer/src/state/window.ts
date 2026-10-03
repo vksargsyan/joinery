@@ -11,7 +11,7 @@ export interface WindowState {
 
 export const useWindowState = create<WindowState>(() => ({
   // Tests import this outside a page.
-  platform: typeof window === 'undefined' ? 'darwin' : (window.joinery?.platform ?? 'darwin'),
+  platform: typeof window === 'undefined' ? 'darwin' : (window.querybara?.platform ?? 'darwin'),
   fullScreen: false,
 }));
 

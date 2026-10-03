@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -11,17 +11,17 @@ import { connect, query, scratchDatabase } from './db';
 
 /**
  * Backup and restore through the wizards against a real PostgreSQL server (spec §14): a
- * database backed up to an encrypted Joinery archive, then two of its tables restored from it
+ * database backed up to an encrypted Querybara archive, then two of its tables restored from it
  * into a new database the restore creates, and the rows checked there. Native file dialogs are
  * stubbed in the main process to answer with files in a temporary folder.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
 const NAME = 'E2E Backup';
 const PASSPHRASE = 'e2e backup passphrase';
-const RESTORED = `joinery_e2e_${randomBytes(4).toString('hex')}_restored`;
+const RESTORED = `querybara_e2e_${randomBytes(4).toString('hex')}_restored`;
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -32,7 +32,7 @@ let direct: Session | undefined;
 let work = '';
 
 test.beforeAll(async () => {
-  work = mkdtempSync(join(tmpdir(), 'joinery-e2e-backup-'));
+  work = mkdtempSync(join(tmpdir(), 'querybara-e2e-backup-'));
   database = await scratchDatabase(PG_URL!);
   direct = await connect(PG_URL!, database.name);
   for (const sql of [
@@ -107,14 +107,14 @@ test('connects and shows the database', async () => {
 });
 
 test('backs up the database to an encrypted archive', async () => {
-  const file = join(work, 'shop.jbak');
+  const file = join(work, 'shop.qbak');
   await menu(treeRow(database!.name), 'Back up…');
   const wizard = page.getByRole('dialog', { name: 'Back up' });
   await expect(wizard.getByTestId('backup-object')).toHaveText(['customers', 'notes', 'orders']);
   await expect(wizard.getByRole('checkbox', { name: /^Everything/ })).toBeChecked();
   await wizard.getByRole('button', { name: 'Next' }).click();
 
-  await expect(wizard.getByLabel('Format')).toHaveValue('jbak');
+  await expect(wizard.getByLabel('Format')).toHaveValue('qbak');
   await wizard.getByRole('checkbox', { name: /Encrypt with a passphrase/ }).check();
   await wizard.getByLabel('Passphrase', { exact: true }).fill(PASSPHRASE);
   await wizard.getByLabel('Passphrase again').fill(`${PASSPHRASE}?`);
@@ -127,12 +127,12 @@ test('backs up the database to an encrypted archive', async () => {
 
   await expect(wizard.getByTestId('backup-state')).toHaveText('Completed');
   await expect(wizard.getByTestId('backup-summary')).toContainText('6 rows');
-  await expect(wizard.getByTestId('backup-history')).toContainText('shop.jbak');
+  await expect(wizard.getByTestId('backup-history')).toContainText('shop.qbak');
   await wizard.getByRole('button', { name: 'Close' }).click();
 
   expect(existsSync(file)).toBe(true);
   const bytes = readFileSync(file);
-  expect(bytes.subarray(0, 4).toString('latin1')).toBe('JBAK');
+  expect(bytes.subarray(0, 4).toString('latin1')).toBe('QBAK');
   // Encrypted: neither the rows nor the object names are readable in the file.
   expect(bytes.includes(Buffer.from('Ada Lovelace'))).toBe(false);
   expect(bytes.includes(Buffer.from('customers'))).toBe(false);
@@ -140,7 +140,7 @@ test('backs up the database to an encrypted archive', async () => {
 });
 
 test('restores two tables from it into a new database', async () => {
-  await stubDialog('open', join(work, 'shop.jbak'));
+  await stubDialog('open', join(work, 'shop.qbak'));
   await menu(treeRow(database!.name), 'Restore…');
   const wizard = page.getByRole('dialog', { name: 'Restore' });
   await wizard.getByRole('button', { name: 'Choose backup file…' }).click();

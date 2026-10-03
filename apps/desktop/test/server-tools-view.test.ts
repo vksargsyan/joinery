@@ -5,7 +5,7 @@ import type {
   ServerAccount,
   ServerSession,
   ServerSetting,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

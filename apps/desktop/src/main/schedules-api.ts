@@ -1,4 +1,4 @@
-import { ENGINES, JoineryError, describeRule, isSqlEngine } from '@joinery/core';
+import { ENGINES, QuerybaraError, describeRule, isSqlEngine } from '@querybara/core';
 import {
   scheduleTaskSchema,
   type HandlersOf,
@@ -6,8 +6,8 @@ import {
   type ScheduleInfo,
   type ScheduleSaveInput,
   type mainContract,
-} from '@joinery/ipc';
-import type { ScheduleRecord, Store } from '@joinery/storage';
+} from '@querybara/ipc';
+import type { ScheduleRecord, Store } from '@querybara/storage';
 
 import type { FileGrants } from './jobs-api';
 import { checkJobSafety } from './jobs-api';
@@ -47,8 +47,8 @@ export interface ScheduleServices {
   readonly scheduleEvents?: ScheduleEvents | undefined;
 }
 
-function unavailable(): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message: 'Schedules are not available here' });
+function unavailable(): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'Schedules are not available here' });
 }
 
 /** Why the schedule's runs would fail as things stand. */
@@ -78,7 +78,7 @@ function warningsOf(store: Store, schedule: ScheduleRecord): string[] {
     missingSecrets(schedule.profileId, 'connection');
   }
   const task = scheduleTaskSchema.safeParse(schedule.task);
-  if (!task.success) warnings.push('The schedule was saved by another version of Joinery');
+  if (!task.success) warnings.push('The schedule was saved by another version of Querybara');
   else if (
     task.data.kind === 'backup' &&
     task.data.encrypted &&
@@ -139,32 +139,32 @@ function checkSave(
 
   if (task.kind === 'comparison') {
     if (input.comparisonId === null || input.profileId !== null) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'A comparison schedule runs a saved comparison',
       });
     }
     if (!store.comparisons.get(input.comparisonId)) {
-      throw new JoineryError({ code: 'NOT_FOUND', message: 'The saved comparison was deleted' });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The saved comparison was deleted' });
     }
   } else {
     if (input.profileId === null || input.comparisonId !== null) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The schedule runs on a connection',
       });
     }
     if (task.job.profileId !== input.profileId) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'The job runs on another connection than the schedule',
       });
     }
     const profile = store.profiles.get(input.profileId);
     if (!profile)
-      throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
     if (task.kind !== 'backup' && !isSqlEngine(profile.engine)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `${ENGINES[profile.engine].displayName} connections do not run SQL files or exports`,
       });
@@ -183,14 +183,14 @@ function checkSave(
     const kept =
       previous !== undefined && store.secrets.get(passphraseRef(previous.id)) !== undefined;
     if (!kept) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'An encrypted backup needs its passphrase',
       });
     }
   }
   if (task.kind === 'backup' && input.passphrase !== undefined && !store.secrets.canSave()) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message:
         'Secure storage is not available, so the passphrase cannot be kept for scheduled runs',
@@ -210,7 +210,7 @@ export function scheduleHandlers(
   const require = (id: string): ScheduleRecord => {
     const schedule = store.schedules.get(id);
     if (!schedule)
-      throw new JoineryError({ code: 'NOT_FOUND', message: 'The schedule was deleted' });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The schedule was deleted' });
     return schedule;
   };
 
@@ -275,8 +275,8 @@ export function scheduleHandlers(
       try {
         return { runId: scheduler().runNow(id).id };
       } catch (error) {
-        if (error instanceof JoineryError) throw error;
-        throw new JoineryError({
+        if (error instanceof QuerybaraError) throw error;
+        throw new QuerybaraError({
           code: 'CONFLICT',
           message: error instanceof Error ? error.message : String(error),
         });

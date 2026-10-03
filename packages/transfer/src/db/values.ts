@@ -1,11 +1,11 @@
-import type { CellValue, SqlDialect } from '@joinery/core';
+import type { CellValue, SqlDialect } from '@querybara/core';
 
 import { ConversionError, targetKind } from '../mapping';
 import type { SourceCell } from '../types';
 
 /**
  * Cell adapters between a SQL source and a SQL target. A source cell arrives as the driver
- * returns it (@joinery/core CellValue conventions) and leaves as a cell the import pipeline's
+ * returns it (@querybara/core CellValue conventions) and leaves as a cell the import pipeline's
  * per-column converter (`converterFor`) turns into what the target column takes. The adapter
  * only bridges what that converter reads differently from a file: bytes travel as `\x` hex
  * text (which it decodes back), integers into booleans compare with zero, MySQL zero dates

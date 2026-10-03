@@ -5,12 +5,12 @@ import { createInterface } from 'node:readline';
 
 import {
   ENGINES,
-  JoineryError,
+  QuerybaraError,
   type CellValue,
   type ColumnKind,
   type ColumnMeta,
   type SqlDialect,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   DataActions,
   DataRowAction,
@@ -18,7 +18,7 @@ import type {
   DataTableResult,
   JobRowError,
   JobSummary,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import {
   DataSyncScriptBuilder,
   columnIndex,
@@ -31,8 +31,8 @@ import {
   type RowDiff,
   type TableRef,
   type TablePair,
-} from '@joinery/sync';
-import { formatCell } from '@joinery/table-data';
+} from '@querybara/sync';
+import { formatCell } from '@querybara/table-data';
 
 import type { DataApplyJob, DataCompareJob } from '../shared/sync-jobs';
 import {
@@ -298,7 +298,7 @@ export async function runDataCompare(
   if (crossFamily) {
     const pgSnapshot = sourceDialect === 'postgres' ? sourceSnapshot : targetSnapshot;
     if (pgSnapshot.schemas.length !== 1) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `Comparing ${ENGINES[source.engine].displayName} data with ${ENGINES[target.engine].displayName} data needs one PostgreSQL schema`,
         hint: 'Choose the PostgreSQL schema to compare with the MySQL or MariaDB database.',
@@ -475,7 +475,7 @@ export async function readManifest(spoolDir: string): Promise<SpoolManifest> {
   try {
     text = await readFile(join(spoolDir, MANIFEST_FILE), 'utf8');
   } catch {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: 'The comparison’s rows are gone',
       hint: 'Compare again.',
@@ -607,7 +607,7 @@ export async function dataSyncScript(input: {
     await out.write(line);
   };
   try {
-    await write('-- Joinery data sync');
+    await write('-- Querybara data sync');
     await write(
       `-- ${plural(total, 'statement')}; each table's changes run in their own transaction`,
     );
@@ -639,7 +639,7 @@ export async function runDataApply(
   checkTargetWrite(context.targetProfile, job.confirmed);
   const manifest = await readManifest(job.spoolDir);
   if (manifest.dialect !== sqlDialect(target)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The target connection is not the one that was compared',
     });
@@ -647,7 +647,7 @@ export async function runDataApply(
   const units = syncPlan(manifest, job.tables, job.actions);
   const total = units.reduce((sum, u) => sum + u.count + u.prologue.length + u.epilogue.length, 0);
   if (total === 0) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The selected tables have nothing to apply for the chosen actions',
     });

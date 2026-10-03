@@ -4,14 +4,14 @@ import { connect as tlsConnect, type ConnectionOptions } from 'node:tls';
 
 import {
   CONNECTION_CHECK_STEPS,
-  JoineryError,
+  QuerybaraError,
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type HostPort,
   type ResolvedProfile,
-} from '@joinery/core';
-import { errorMessage, type CheckConnectionDeps } from '@joinery/driver-sql-base';
-import { numberAt, parseJsonTree, searchCapabilities, stringAt } from '@joinery/search-tools';
+} from '@querybara/core';
+import { errorMessage, type CheckConnectionDeps } from '@querybara/driver-sql-base';
+import { numberAt, parseJsonTree, searchCapabilities, stringAt } from '@querybara/search-tools';
 
 import { parseRoot } from './cluster';
 import { buildSearchClientPlan, hostPort, redactSecrets, type SearchClientPlan } from './config';
@@ -46,7 +46,7 @@ const defaultDeps: SearchCheckDeps = {
   probe(target, timeoutMs) {
     return new Promise((resolve, reject) => {
       if (target.kind !== 'tcp') {
-        reject(new JoineryError({ code: 'NOT_SUPPORTED', message: 'A TCP endpoint is needed' }));
+        reject(new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'A TCP endpoint is needed' }));
         return;
       }
       const socket = netConnect({ host: target.host, port: target.port });
@@ -126,7 +126,11 @@ class StepLog {
     return this.report({ step, status: 'skipped', durationMs: 0, message });
   }
 
-  failure(step: ConnectionCheckStep, started: number, error: JoineryError): ConnectionCheckResult {
+  failure(
+    step: ConnectionCheckStep,
+    started: number,
+    error: QuerybaraError,
+  ): ConnectionCheckResult {
     return this.report({
       step,
       status: 'failed',
@@ -159,8 +163,8 @@ function errorContextOf(plan: SearchClientPlan): SearchErrorContext {
   };
 }
 
-function asJoinery(error: unknown, context: SearchErrorContext): JoineryError {
-  return error instanceof JoineryError ? error : mapTransportError(error, context);
+function asQuerybara(error: unknown, context: SearchErrorContext): QuerybaraError {
+  return error instanceof QuerybaraError ? error : mapTransportError(error, context);
 }
 
 /** The stepwise Test Connection (see the module comment). */
@@ -197,7 +201,7 @@ export async function* checkSearchConnection(
   try {
     plan = buildSearchClientPlan(resolved);
   } catch (error) {
-    yield log.failure('dns', started, asJoinery(error, fallback));
+    yield log.failure('dns', started, asQuerybara(error, fallback));
     yield* log.skipRest();
     return;
   }
@@ -219,7 +223,11 @@ export async function* checkSearchConnection(
     const resolvedNames = names.filter((_, i) => results[i]!.status === 'fulfilled');
     if (resolvedNames.length === 0) {
       const first = results[0] as PromiseRejectedResult;
-      yield log.failure('dns', started, asJoinery(first.reason, { ...context, where: names[0]! }));
+      yield log.failure(
+        'dns',
+        started,
+        asQuerybara(first.reason, { ...context, where: names[0]! }),
+      );
       yield* log.skipRest();
       return;
     }
@@ -252,7 +260,7 @@ export async function* checkSearchConnection(
     yield log.failure(
       'tcp',
       started,
-      asJoinery(first.reason, { ...context, where: hostPort(nodes[0]!.host, nodes[0]!.port) }),
+      asQuerybara(first.reason, { ...context, where: hostPort(nodes[0]!.host, nodes[0]!.port) }),
     );
     yield* log.skipRest();
     return;
@@ -310,7 +318,7 @@ async function* httpSteps(
             : 'Encrypted; certificate and host name verified',
       );
     } catch (error) {
-      const mapped = asJoinery(error, { ...context, where: node.label });
+      const mapped = asQuerybara(error, { ...context, where: node.label });
       // A plain HTTP port answers a TLS hello with text, or hangs up.
       const plainHttp =
         /wrong version number|packet length|unexpected eof|disconnected before|ECONNRESET|EPROTO/i.test(
@@ -319,7 +327,7 @@ async function* httpSteps(
       const failure =
         mapped.code === 'TLS_FAILED' && !plainHttp
           ? mapped
-          : new JoineryError({
+          : new QuerybaraError({
               code: 'TLS_FAILED',
               message: `TLS negotiation with ${node.label} failed: ${redactSecrets(errorMessage(error), plan.secrets)}`,
               hint: 'The node may not have TLS on its HTTP port: try an http:// URL, or check the TLS mode and certificates',
@@ -338,7 +346,7 @@ async function* httpSteps(
     try {
       response = await client.request({ method: 'GET', path: '/' });
     } catch (error) {
-      const mapped = asJoinery(error, context);
+      const mapped = asQuerybara(error, context);
       yield log.failure(mapped.code === 'TLS_FAILED' ? 'tls' : 'auth', started, mapped);
       yield* log.skipRest();
       return;
@@ -356,7 +364,7 @@ async function* httpSteps(
       try {
         root = parseRoot(response.body, response.headers);
       } catch (error) {
-        yield log.failure('auth', started, asJoinery(error, context));
+        yield log.failure('auth', started, asQuerybara(error, context));
         yield* log.skipRest();
         return;
       }
@@ -395,7 +403,7 @@ async function* httpSteps(
         return;
       }
     } catch (error) {
-      yield log.failure('ping', started, asJoinery(error, context));
+      yield log.failure('ping', started, asQuerybara(error, context));
       yield* log.skipRest();
       return;
     }
@@ -472,7 +480,7 @@ async function* throughTransport(
       const address = await d.lookup(first.host);
       yield log.ok('dns', started, `The ${what} ${first.host} resolves to ${address}`);
     } catch (error) {
-      yield log.failure('dns', started, asJoinery(error, context));
+      yield log.failure('dns', started, asQuerybara(error, context));
       yield* log.skipRest();
       return;
     }
@@ -485,7 +493,7 @@ async function* throughTransport(
     );
     yield log.ok('tcp', started, `Connected to the ${what} ${where}`);
   } catch (error) {
-    yield log.failure('tcp', started, asJoinery(error, context));
+    yield log.failure('tcp', started, asQuerybara(error, context));
     yield* log.skipRest();
     return;
   }
@@ -494,7 +502,7 @@ async function* throughTransport(
   try {
     outcome = await runSshStep(resolved);
   } catch (error) {
-    yield log.failure('ssh', started, asJoinery(error, context));
+    yield log.failure('ssh', started, asQuerybara(error, context));
     yield* log.skipRest();
     return;
   }
@@ -515,7 +523,7 @@ async function* throughTransport(
     try {
       plan = buildSearchClientPlan(through);
     } catch (error) {
-      yield log.failure('tls', d.now(), asJoinery(error, context));
+      yield log.failure('tls', d.now(), asQuerybara(error, context));
       yield* log.skipRest();
       return;
     }

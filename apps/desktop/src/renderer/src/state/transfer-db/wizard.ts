@@ -1,4 +1,4 @@
-import { isSqlEngine, requiresWriteConfirmation, type EngineId } from '@joinery/core';
+import { isSqlEngine, requiresWriteConfirmation, type EngineId } from '@querybara/core';
 import type {
   ColumnOverrideInfo,
   DbTableModeInfo,
@@ -7,7 +7,7 @@ import type {
   TransferJob,
   TransferOptionsInfo,
   TransferPlanInfo,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorMessage } from '../../lib/errors';
@@ -65,7 +65,7 @@ export function endpointOf(profile: StoredProfile): TransferEndpoint {
   };
 }
 
-/** The engine pairs the transfer engine supports (@joinery/transfer `transferSupport`). */
+/** The engine pairs the transfer engine supports (@querybara/transfer `transferSupport`). */
 export function canTransfer(source: EngineId, target: EngineId): boolean {
   return (
     (isSqlEngine(source) && (isSqlEngine(target) || target === 'mongodb')) ||
@@ -101,7 +101,7 @@ export interface ObjectEdit {
   }[];
 }
 
-/** The BSON types a SQL column can be written as (@joinery/transfer MONGO_FIELD_TYPES). */
+/** The BSON types a SQL column can be written as (@querybara/transfer MONGO_FIELD_TYPES). */
 export const MONGO_FIELD_TYPES = [
   'string',
   'int',
@@ -118,7 +118,7 @@ export const MONGO_FIELD_TYPES = [
 
 export type TransferOptionsState = Required<TransferOptionsInfo>;
 
-/** The engine's defaults (@joinery/transfer DEFAULT_DB_TRANSFER_OPTIONS; the tests compare). */
+/** The engine's defaults (@querybara/transfer DEFAULT_DB_TRANSFER_OPTIONS; the tests compare). */
 export const DEFAULT_TRANSFER_OPTIONS: TransferOptionsState = {
   mode: 'create',
   batchSize: 1000,

@@ -1,4 +1,4 @@
-import type { ValidationIssue } from '@joinery/sync';
+import type { ValidationIssue } from '@querybara/sync';
 import type {
   InputHTMLAttributes,
   ReactNode,

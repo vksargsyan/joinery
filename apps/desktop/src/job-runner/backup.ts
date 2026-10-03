@@ -15,15 +15,15 @@ import {
   type BackupSummary,
   type RestoreProgress,
   type RestoreSummary,
-} from '@joinery/backup';
+} from '@querybara/backup';
 import {
-  JoineryError,
+  QuerybaraError,
   fromErrorData,
   isSqlEngine,
   requiresWriteConfirmation,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   BackupInspection,
   BackupJob,
@@ -32,8 +32,8 @@ import type {
   NativeToolInfo,
   RestoreJob,
   RestorePlan,
-} from '@joinery/ipc';
-import { fileSink } from '@joinery/transfer';
+} from '@querybara/ipc';
+import { fileSink } from '@querybara/transfer';
 import { open } from 'node:fs/promises';
 
 import type { BackupRunnerRequest } from '../shared/backup-protocol';
@@ -41,7 +41,7 @@ import type { JobSession } from './runner';
 import type { JobContext, JobOutcome } from './tasks';
 
 /**
- * Backups and restores in the job runner (spec §14, ADR 0006): the @joinery/backup engine with
+ * Backups and restores in the job runner (spec §14, ADR 0006): the @querybara/backup engine with
  * the job's progress events, log and summary, so they share the job list, history and
  * notifications with imports and exports. The restore write rules are enforced here too: a
  * read-only profile refuses, and the engine refuses to drop or overwrite anything the user did
@@ -56,8 +56,8 @@ export interface BackupJobContext extends JobContext {
   readonly connect: (database: string) => Promise<JobSession>;
 }
 
-function invalid(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+function invalid(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 function jobProgress(
@@ -88,17 +88,17 @@ export function checkBackupJob(job: BackupJob, engine: string): void {
   if (native && !isSqlEngine(engine as never)) {
     throw invalid('The native tools back up MySQL, MariaDB and PostgreSQL only');
   }
-  if (native && job.format === 'jbak')
-    throw invalid('The native tools do not write .jbak archives');
+  if (native && job.format === 'qbak')
+    throw invalid('The native tools do not write .qbak archives');
   if (!native && job.format === 'custom') throw invalid('The custom format needs pg_dump');
   if (job.format === 'custom' && engine !== 'postgres') {
     throw invalid('The custom format is PostgreSQL only');
   }
-  if (job.encryption !== undefined && (job.format !== 'jbak' || native)) {
-    throw invalid('Encryption needs the Joinery archive format (.jbak)');
+  if (job.encryption !== undefined && (job.format !== 'qbak' || native)) {
+    throw invalid('Encryption needs the Querybara archive format (.qbak)');
   }
-  if (!isSqlEngine(engine as never) && job.format !== 'jbak') {
-    throw invalid('MongoDB and Redis backups use the Joinery archive format (.jbak)');
+  if (!isSqlEngine(engine as never) && job.format !== 'qbak') {
+    throw invalid('MongoDB and Redis backups use the Querybara archive format (.qbak)');
   }
 }
 
@@ -145,7 +145,7 @@ export async function runBackupJob(job: BackupJob, ctx: BackupJobContext): Promi
       serverVersion: session.serverVersion,
       database,
       output: fileSink(path),
-      format: job.format === 'jbak' ? 'sql' : job.format,
+      format: job.format === 'qbak' ? 'sql' : job.format,
       ...(job.selection?.schemas !== undefined ? { schemas: job.selection.schemas } : {}),
       ...(tables.length > 0 ? { tables } : {}),
       ...(job.structure !== undefined ? { structure: job.structure } : {}),
@@ -159,8 +159,8 @@ export async function runBackupJob(job: BackupJob, ctx: BackupJobContext): Promi
       ...common,
       session,
       output: fileSink(path),
-      format: job.format === 'custom' ? 'jbak' : job.format,
-      producer: 'Joinery',
+      format: job.format === 'custom' ? 'qbak' : job.format,
+      producer: 'Querybara',
       ...(job.compress !== undefined ? { compress: job.compress } : {}),
       ...(job.encryption !== undefined
         ? { encryption: { passphrase: job.encryption.passphrase } }
@@ -213,14 +213,14 @@ async function databaseOptions(
 
 export async function runRestoreJob(job: RestoreJob, ctx: BackupJobContext): Promise<JobOutcome> {
   if (ctx.readOnly) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'READ_ONLY',
       message: 'This connection is read-only, so nothing can be restored into it',
     });
   }
   // Main asks first; the rule holds here too, where the statements run.
   if (requiresWriteConfirmation(ctx.resolved.profile) && job.confirmed !== true) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'CONFIRMATION_REQUIRED',
       message: 'Restoring into this connection needs confirmation',
     });

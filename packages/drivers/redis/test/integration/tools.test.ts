@@ -1,5 +1,5 @@
-import type { ConnectionCheckResult } from '@joinery/core';
-import { infoMetrics, parseKeyspace } from '@joinery/redis-tools';
+import type { ConnectionCheckResult } from '@querybara/core';
+import { infoMetrics, parseKeyspace } from '@querybara/redis-tools';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { MonitorEvent, PubSubMessage, RedisSession } from '../../src';
@@ -128,7 +128,7 @@ describe.skipIf(!REDIS_URL)('server tools (standalone)', () => {
       expect(entry).toBeDefined();
       expect(entry!.durationMicros).toBeGreaterThanOrEqual(0);
       expect(dec(entry!.args[0]!)!.toLowerCase()).toBe('echo');
-      expect(entry!.clientName).toBe('Joinery');
+      expect(entry!.clientName).toBe('Querybara');
       expect(await session.slowlogLength()).toBeGreaterThan(0);
     } finally {
       await session.command([
@@ -144,13 +144,13 @@ describe.skipIf(!REDIS_URL)('server tools (standalone)', () => {
 
   it('lists and kills clients', async () => {
     const victim = await connect(
-      standaloneProfile({ options: { applicationName: 'Joinery victim' } }),
+      standaloneProfile({ options: { applicationName: 'Querybara victim' } }),
     );
     try {
       const clients = await session.clientList();
-      const target = clients.find((c) => c.name === 'Joinery-victim');
+      const target = clients.find((c) => c.name === 'Querybara-victim');
       expect(target).toBeDefined();
-      expect(clients.some((c) => c.name === 'Joinery' && c.cmd === 'client|list')).toBe(true);
+      expect(clients.some((c) => c.name === 'Querybara' && c.cmd === 'client|list')).toBe(true);
       expect(await session.clientKill(target!.id)).toBe(true);
       expect(await session.clientKill(target!.id)).toBe(false);
       expect((await session.clientList({ type: 'replica' })).length).toBeGreaterThanOrEqual(1);
@@ -249,7 +249,7 @@ describe.skipIf(!REDIS_URL)('server tools (standalone)', () => {
   });
 
   it('creates, edits and deletes an ACL user', async () => {
-    const name = `joinery-it-${p.split(':')[2]}`;
+    const name = `querybara-it-${p.split(':')[2]}`;
     try {
       await session.aclSetUser(name, ['on', '>s3cret', '~tmp:*', '+get']);
       expect(await session.aclGetUser(name)).toMatchObject({

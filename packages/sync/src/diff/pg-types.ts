@@ -1,5 +1,5 @@
-import type { TypeDef } from '@joinery/core';
-import { quoteIdent, quoteString } from '@joinery/sql-tools';
+import type { TypeDef } from '@querybara/core';
+import { quoteIdent, quoteString } from '@querybara/sql-tools';
 
 import type { SyncWarning } from '../model';
 import type { NormalizeContext } from '../normalize';

@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { MessageChannel } from 'node:worker_threads';
 
-import { ArchiveWriter } from '@joinery/backup';
+import { ArchiveWriter } from '@querybara/backup';
 import {
   connectionProfileSchema,
   type ConnectionProfileInput,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   createClient,
   fromNodePort,
@@ -19,9 +19,9 @@ import {
   type JobInfo,
   type MainContract,
   type RestoreJob,
-} from '@joinery/ipc';
-import { openStore, type SecretSealer } from '@joinery/storage';
-import { fileSink } from '@joinery/transfer';
+} from '@querybara/ipc';
+import { openStore, type SecretSealer } from '@querybara/storage';
+import { fileSink } from '@querybara/transfer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -57,7 +57,7 @@ let dir = '';
 const cleanup: (() => void)[] = [];
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'joinery-backup-jobs-'));
+  dir = mkdtempSync(join(tmpdir(), 'querybara-backup-jobs-'));
 });
 
 afterEach(() => {
@@ -94,7 +94,7 @@ class AnsweringRunner implements JobRunnerProcess {
           result:
             kind === 'restore-plan'
               ? {
-                  format: 'jbak',
+                  format: 'qbak',
                   objects: ['table:public.orders'],
                   added: [],
                   skipped: [],
@@ -102,7 +102,7 @@ class AnsweringRunner implements JobRunnerProcess {
                   warnings: [],
                 }
               : kind === 'backup-inspect'
-                ? { format: 'jbak', size: 10, encrypted: true }
+                ? { format: 'qbak', size: 10, encrypted: true }
                 : [],
         });
       }
@@ -134,7 +134,7 @@ function setup(dialogs: { open?: string; save?: string } = {}) {
       spawnHost: hosts.spawn,
       createChannel: () => ({ local: 'l', remote: 'r' }),
       appInfo: () => ({
-        name: 'Joinery',
+        name: 'Querybara',
         version: '0.1.0',
         platform: 'linux',
         arch: 'x64',
@@ -209,8 +209,8 @@ function backupJob(profileId: string, overrides: Partial<BackupJob> = {}): Backu
     kind: 'backup',
     profileId,
     database: 'shop',
-    format: 'jbak',
-    output: { path: '/backups/shop.jbak' },
+    format: 'qbak',
+    output: { path: '/backups/shop.qbak' },
     encryption: { passphrase: PASSPHRASE },
     ...overrides,
   };
@@ -221,7 +221,7 @@ function restoreJob(profileId: string, overrides: Partial<RestoreJob> = {}): Res
     kind: 'restore',
     profileId,
     database: 'shop_copy',
-    path: '/backups/shop.jbak',
+    path: '/backups/shop.qbak',
     passphrase: PASSPHRASE,
     onError: 'stop',
     ...overrides,
@@ -238,19 +238,19 @@ async function settled(main: Client<MainContract['shape']>, jobId: string): Prom
 
 describe('backup and restore jobs in main', () => {
   it('backs up to the saved file only, and never hands the passphrase back', async () => {
-    const { main, runners, store, leaked } = setup({ save: '/backups/shop.jbak' });
+    const { main, runners, store, leaked } = setup({ save: '/backups/shop.qbak' });
     const profile = await saveProfile(main);
     await expect(main.jobs.start({ job: backupJob(profile.id) })).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
-      message: 'shop.jbak was not chosen in a file dialog',
+      message: 'shop.qbak was not chosen in a file dialog',
     });
-    await main.dialogs.saveFile({ defaultName: 'shop.jbak' });
+    await main.dialogs.saveFile({ defaultName: 'shop.qbak' });
     const { jobId } = await main.jobs.start({ job: backupJob(profile.id) });
     const job = await settled(main, jobId);
     expect(job).toMatchObject({
       kind: 'backup',
-      title: 'Back up shop to shop.jbak',
-      target: { file: '/backups/shop.jbak', format: 'Joinery archive', database: 'shop' },
+      title: 'Back up shop to shop.qbak',
+      target: { file: '/backups/shop.qbak', format: 'Querybara archive', database: 'shop' },
     });
     const start = runners[0]!.sent.find((m) => m.type === 'start');
     expect(start?.type === 'start' && start.job).toMatchObject({
@@ -263,17 +263,17 @@ describe('backup and restore jobs in main', () => {
   });
 
   it('restores only a picked file and follows the write rules whatever the page sends', async () => {
-    const { main, runners } = setup({ open: '/backups/shop.jbak' });
+    const { main, runners } = setup({ open: '/backups/shop.qbak' });
     const dev = await saveProfile(main);
     await expect(main.jobs.start({ job: restoreJob(dev.id) })).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
     });
-    await expect(main.backup.inspect({ path: '/backups/shop.jbak' })).rejects.toMatchObject({
+    await expect(main.backup.inspect({ path: '/backups/shop.qbak' })).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
     });
     await main.dialogs.openFile({});
-    expect(await main.backup.inspect({ path: '/backups/shop.jbak' })).toMatchObject({
-      format: 'jbak',
+    expect(await main.backup.inspect({ path: '/backups/shop.qbak' })).toMatchObject({
+      format: 'qbak',
       encrypted: true,
     });
 
@@ -300,7 +300,7 @@ describe('backup and restore jobs in main', () => {
   });
 
   it('plans a restore in the job runner with the resolved profile', async () => {
-    const { main, runners, leaked } = setup({ open: '/backups/shop.jbak' });
+    const { main, runners, leaked } = setup({ open: '/backups/shop.qbak' });
     const profile = await saveProfile(main);
     await main.dialogs.openFile({});
     const plan = await main.backup.planRestore({ job: restoreJob(profile.id) });
@@ -320,14 +320,14 @@ describe('backup and restore jobs in main', () => {
   });
 
   it('backs up MongoDB and Redis connections too', async () => {
-    const { main } = setup({ save: '/backups/keys.jbak' });
+    const { main } = setup({ save: '/backups/keys.qbak' });
     const redis = await saveProfile(main, {
       engine: 'redis',
       endpoint: { kind: 'host', host: 'localhost', port: 6379 },
     });
     await main.dialogs.saveFile({});
     const { jobId } = await main.jobs.start({
-      job: backupJob(redis.id, { database: '2', output: { path: '/backups/keys.jbak' } }),
+      job: backupJob(redis.id, { database: '2', output: { path: '/backups/keys.qbak' } }),
     });
     expect((await settled(main, jobId)).state).toBe('completed');
   });
@@ -335,16 +335,16 @@ describe('backup and restore jobs in main', () => {
   it('describes backups and restores for the job list and the notification', () => {
     const profileId = crypto.randomUUID();
     expect(describeJob(backupJob(profileId, { method: 'native', format: 'custom' }))).toEqual({
-      title: 'Back up shop to shop.jbak with the native tools',
-      target: { file: '/backups/shop.jbak', format: 'pg_dump custom format', database: 'shop' },
+      title: 'Back up shop to shop.qbak with the native tools',
+      target: { file: '/backups/shop.qbak', format: 'pg_dump custom format', database: 'shop' },
     });
     expect(describeJob(restoreJob(profileId, { select: ['a', 'b'] })).title).toBe(
-      'Restore shop.jbak (2 selected) into shop_copy',
+      'Restore shop.qbak (2 selected) into shop_copy',
     );
     const job: JobInfo = {
       id: crypto.randomUUID(),
       kind: 'restore',
-      title: 'Restore shop.jbak into shop_copy',
+      title: 'Restore shop.qbak into shop_copy',
       profileId,
       profileName: 'Shop',
       state: 'completed',
@@ -364,7 +364,7 @@ describe('backup and restore jobs in main', () => {
     };
     expect(notificationFor(job)).toEqual({
       title: 'Restore finished',
-      body: 'Restore shop.jbak into shop_copy: 1,200 rows, 2 statements failed',
+      body: 'Restore shop.qbak into shop_copy: 1,200 rows, 2 statements failed',
     });
   });
 });
@@ -399,7 +399,7 @@ function runnerSetup() {
 describe('backup and restore in the job runner', () => {
   it('reads a backup file, unlocking an encrypted archive with its passphrase', async () => {
     const { runner, find, posted } = runnerSetup();
-    const path = join(dir, 'shop.jbak');
+    const path = join(dir, 'shop.qbak');
     const writer = await ArchiveWriter.create({
       sink: fileSink(path),
       encryption: { passphrase: PASSPHRASE, cost: { log2N: 10, r: 8, p: 1 } },
@@ -407,7 +407,7 @@ describe('backup and restore in the job runner', () => {
     await writer.add('data/0001-orders.sql', 'application/sql', 'INSERT INTO orders VALUES (1);');
     await writer.finish({
       createdAt: '2026-09-29T12:00:00.000Z',
-      producer: 'Joinery',
+      producer: 'Querybara',
       engine: 'postgres',
       serverVersion: '16.4',
       database: 'shop',
@@ -430,7 +430,7 @@ describe('backup and restore in the job runner', () => {
       request: { kind: 'backup-inspect', input: { path } },
     });
     expect((await find('response', 'r1')).result).toMatchObject({
-      format: 'jbak',
+      format: 'qbak',
       encrypted: true,
     });
     expect((await find('response', 'r1')).result).not.toHaveProperty('objects');
@@ -454,7 +454,7 @@ describe('backup and restore in the job runner', () => {
     });
 
     const script = join(dir, 'shop.sql');
-    writeFileSync(script, '-- Joinery backup of shop (postgres 16.4)\nSELECT 1;\n');
+    writeFileSync(script, '-- Querybara backup of shop (postgres 16.4)\nSELECT 1;\n');
     runner.handle({
       type: 'request',
       requestId: 'r4',
@@ -472,7 +472,7 @@ describe('backup and restore in the job runner', () => {
     runner.handle({
       type: 'start',
       jobId: 'j1',
-      job: restoreJob('p1', { path: join(dir, 'missing.jbak') }),
+      job: restoreJob('p1', { path: join(dir, 'missing.qbak') }),
       resolved: resolvedProfile(presentation({ readOnly: true })),
     });
     const done = await find('done', 'j1');
@@ -481,7 +481,7 @@ describe('backup and restore in the job runner', () => {
     runner.handle({
       type: 'start',
       jobId: 'j2',
-      job: restoreJob('p1', { path: join(dir, 'missing.jbak') }),
+      job: restoreJob('p1', { path: join(dir, 'missing.qbak') }),
       resolved: resolvedProfile(presentation({ environment: 'production' })),
     });
     expect((await find('done', 'j2')).error?.code).toBe('CONFIRMATION_REQUIRED');
@@ -492,7 +492,7 @@ describe('backup and restore in the job runner', () => {
     const job = backupJob('p1');
     const { encryption: _encryption, ...plain } = job;
     expect(() => checkBackupJob(job, 'postgres')).not.toThrow();
-    expect(() => checkBackupJob({ ...job, method: 'native' }, 'postgres')).toThrow(/\.jbak/);
+    expect(() => checkBackupJob({ ...job, method: 'native' }, 'postgres')).toThrow(/\.qbak/);
     expect(() =>
       checkBackupJob({ ...job, format: 'sql', output: { path: '/b/x.sql' } }, 'mysql'),
     ).toThrow(/Encryption/);
@@ -500,7 +500,9 @@ describe('backup and restore in the job runner', () => {
     expect(() => checkBackupJob({ ...plain, method: 'native', format: 'custom' }, 'mysql')).toThrow(
       /PostgreSQL only/,
     );
-    expect(() => checkBackupJob({ ...plain, format: 'sql' }, 'mongodb')).toThrow(/Joinery archive/);
+    expect(() => checkBackupJob({ ...plain, format: 'sql' }, 'mongodb')).toThrow(
+      /Querybara archive/,
+    );
     expect(() => checkBackupJob({ ...job, method: 'native' }, 'redis')).toThrow(/MySQL/);
   });
 });

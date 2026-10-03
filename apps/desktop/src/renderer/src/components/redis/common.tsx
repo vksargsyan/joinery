@@ -1,4 +1,4 @@
-import { displayBytes } from '@joinery/redis-tools';
+import { displayBytes } from '@querybara/redis-tools';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { errorMessage } from '../../lib/errors';

@@ -1,10 +1,10 @@
-import { JoineryError, toErrorData, type ResolvedProfile } from '@joinery/core';
-import { fromElectronPort } from '@joinery/ipc';
+import { QuerybaraError, toErrorData, type ResolvedProfile } from '@querybara/core';
+import { fromElectronPort } from '@querybara/ipc';
 import {
   TransportManager,
   checkConnectionThroughTransport,
   connectThroughTransport,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 
 import { mainToHostSchema, type HostRequest, type HostToMain } from '../shared/host-protocol';
 import { loadAdapter } from './adapters';
@@ -39,7 +39,7 @@ async function runRequest(requestId: string, request: HostRequest): Promise<void
   const controller = new AbortController();
   requests.set(requestId, controller);
   try {
-    if (!host) throw new JoineryError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
+    if (!host) throw new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'Not connected' });
     const result = await host.request(request, {
       signal: controller.signal,
       progress: (progress) => send({ type: 'request-progress', requestId, progress }),

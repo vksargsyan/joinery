@@ -21,8 +21,8 @@ const backup = {
   kind: 'backup',
   profileId: PROFILE_ID,
   database: 'shop',
-  format: 'jbak',
-  output: { path: '/backups/shop.jbak' },
+  format: 'qbak',
+  output: { path: '/backups/shop.qbak' },
   encryption: { passphrase: 'correct horse' },
   selection: {
     schemas: ['public'],
@@ -33,7 +33,7 @@ const backup = {
 const restore = {
   kind: 'restore',
   profileId: PROFILE_ID,
-  path: '/backups/shop.jbak',
+  path: '/backups/shop.qbak',
   passphrase: 'correct horse',
   select: ['table:public.orders:create'],
   onError: 'stop',
@@ -64,14 +64,14 @@ describe('backup schemas', () => {
 
   it('validates what the wizards get back', () => {
     expect(
-      backupInspectionSchema.safeParse({ format: 'jbak', size: 10, encrypted: true }).success,
+      backupInspectionSchema.safeParse({ format: 'qbak', size: 10, encrypted: true }).success,
     ).toBe(true);
     expect(
       backupInspectionSchema.safeParse({ format: 'tar', size: 10, encrypted: false }).success,
     ).toBe(false);
     expect(
       restorePlanSchema.safeParse({
-        format: 'jbak',
+        format: 'qbak',
         objects: ['a'],
         added: [],
         skipped: [{ id: 'b', reason: 'needs c' }],

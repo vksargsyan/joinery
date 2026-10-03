@@ -1,4 +1,4 @@
-$4933
+$4937
 # Server
 redis_version:7.0.15
 redis_git_sha1:00000000
@@ -21,8 +21,8 @@ uptime_in_days:0
 hz:10
 configured_hz:10
 lru_clock:12292215
-executable:/home/user/joinery/redis-server
-config_file:/tmp/joinery-redis/c7100/redis.conf
+executable:/home/user/querybara/redis-server
+config_file:/tmp/querybara-redis/c7100/redis.conf
 io_threads_active:0
 
 # Clients

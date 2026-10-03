@@ -2,7 +2,7 @@ import type {
   CompletionItemKind as SqlItemKind,
   CompletionResult,
   SignatureHelp,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 import type { IRange, languages } from 'monaco-editor/editor';
 
 /**

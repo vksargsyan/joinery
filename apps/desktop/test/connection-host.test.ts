@@ -1,7 +1,7 @@
 import { MessageChannel } from 'node:worker_threads';
 
 import {
-  JoineryError,
+  QuerybaraError,
   capabilitiesFor,
   connectionProfileSchema,
   toColumnChunk,
@@ -11,13 +11,13 @@ import {
   type ResolvedProfile,
   type ResultChunk,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   DEFAULT_STREAM_WINDOW,
   connectionHostContract,
   createClient,
   fromNodePort,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ConnectionHost } from '../src/connection-host/host';
@@ -40,7 +40,7 @@ class FakeSession implements Session {
 
   async *execute(text: string, opts: ExecOptions): AsyncGenerator<ResultChunk> {
     if (text === 'boom') {
-      throw new JoineryError({ code: 'SQL_ERROR', message: 'syntax error', position: 0 });
+      throw new QuerybaraError({ code: 'SQL_ERROR', message: 'syntax error', position: 0 });
     }
     try {
       yield {
@@ -68,7 +68,7 @@ class FakeSession implements Session {
   }
 
   introspect(): never {
-    throw new JoineryError({ code: 'NOT_SUPPORTED', message: 'no' });
+    throw new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'no' });
   }
 
   async browse(path: readonly string[]): Promise<BrowseNode[]> {

@@ -1,5 +1,5 @@
-import { ENGINES } from '@joinery/core';
-import type { SavedComparison } from '@joinery/ipc';
+import { ENGINES } from '@querybara/core';
+import type { SavedComparison } from '@querybara/ipc';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DropdownMenu } from 'radix-ui';
 import { useState, type ReactElement } from 'react';

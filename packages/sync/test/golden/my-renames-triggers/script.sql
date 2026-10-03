@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mysql renames_triggers_dev
 -- Target: mysql renames_triggers_prod
 -- Operations: 6

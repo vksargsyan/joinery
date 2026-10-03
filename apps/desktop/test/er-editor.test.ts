@@ -1,4 +1,4 @@
-import type { SchemaSnapshot } from '@joinery/core';
+import type { SchemaSnapshot } from '@querybara/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { tableId } from '../src/renderer/src/state/er-diagram/model';
@@ -501,7 +501,7 @@ describe('keeping and reopening ER models', () => {
     await view.openModelFile();
     expect(view.state.notice).toEqual({
       kind: 'error',
-      text: 'The file is not a Joinery ER model (it is not JSON)',
+      text: 'The file is not a Querybara ER model (it is not JSON)',
     });
 
     mocks.readFile.mockResolvedValueOnce({ text: file.replace('"postgres"', '"mysql"') });

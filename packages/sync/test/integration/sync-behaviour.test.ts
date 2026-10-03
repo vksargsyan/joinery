@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import type { CheckDef, IndexDef, SchemaSnapshot, Session } from '@joinery/core';
+import type { CheckDef, IndexDef, SchemaSnapshot, Session } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { compareSchemas, generateScript, setAllSelected } from '../../src';
@@ -46,7 +46,7 @@ async function syncAll(
 
 describe('MySQL triggers follow column and table renames', () => {
   if (mysqlFamily.length === 0)
-    it.skip('no MySQL-family JOINERY_TEST_*_URL is set', () => undefined);
+    it.skip('no MySQL-family QUERYBARA_TEST_*_URL is set', () => undefined);
 
   for (const server of mysqlFamily) {
     it(`re-creates triggers whose bodies use renamed names, and they fire (${server.engine})`, async () => {
@@ -78,7 +78,7 @@ describe('MySQL triggers follow column and table renames', () => {
 });
 
 describe('hand-written PostgreSQL checks and indexes converge', () => {
-  if (postgres.length === 0) it.skip('JOINERY_TEST_POSTGRES_URL is not set', () => undefined);
+  if (postgres.length === 0) it.skip('QUERYBARA_TEST_POSTGRES_URL is not set', () => undefined);
 
   const checks: CheckDef[] = [
     { name: 'products_price_positive', expression: 'price > 0' },

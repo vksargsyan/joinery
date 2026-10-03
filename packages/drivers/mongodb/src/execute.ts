@@ -1,18 +1,18 @@
 import {
   DEFAULT_PAGE_SIZE,
-  JoineryError,
+  QuerybaraError,
   toColumnChunk,
   type ColumnMeta,
   type ExecOptions,
   type ResultChunk,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   Int32,
   bsonTag,
   isBsonDocument,
   parseShell,
   type BsonDocument,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import type { Document } from 'mongodb';
 
 import { RAW_BSON, ejson, type Execution, type MongoContext } from './context';
@@ -67,14 +67,17 @@ const WRITE_COUNTS: Readonly<Record<string, string>> = {
 export function parseCommand(text: string): { name: string; command: BsonDocument } {
   const value = parseShell(text);
   if (!isBsonDocument(value)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'A command must be a document such as { ping: 1 } or { find: "collection" }',
     });
   }
   const name = Object.keys(value)[0];
   if (name === undefined) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The command document is empty' });
+    throw new QuerybaraError({
+      code: 'VALIDATION_FAILED',
+      message: 'The command document is empty',
+    });
   }
   return { name, command: value };
 }
@@ -118,7 +121,7 @@ export async function* executeCommand(
     opts.params !== undefined &&
     (Array.isArray(opts.params) ? opts.params.length > 0 : Object.keys(opts.params).length > 0)
   ) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'MongoDB commands take no parameters; write the values into the command document',
     });

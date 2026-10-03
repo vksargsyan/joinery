@@ -1,4 +1,4 @@
-import type { SortTerm } from '@joinery/table-data';
+import type { SortTerm } from '@querybara/table-data';
 
 /**
  * Server-side sort from header clicks (spec §7): a click sorts by that column ascending, then

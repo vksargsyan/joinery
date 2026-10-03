@@ -1,10 +1,10 @@
 import {
-  JoineryError,
+  QuerybaraError,
   connectionProfileSchema,
   newId,
   secretRefsOf,
   type ConnectionProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   DEFAULT_APP_SETTINGS,
   appSettingsPatchSchema,
@@ -18,13 +18,13 @@ import {
   type HandlersOf,
   type HostKeyPromptEvent,
   type mainContract,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import {
   parseConnectionUri,
   type PreviousRun,
   type Store,
   type StoredProfile,
-} from '@joinery/storage';
+} from '@querybara/storage';
 
 import type { PortPayload } from '../shared/bridge';
 import { runConnectionCheck } from './checker';
@@ -86,7 +86,7 @@ export interface MainServices<P> {
   readonly jobs?: JobManager;
   /** Structure and data compare on the job runner (spec §13); without it they are refused. */
   readonly sync?: SyncService;
-  /** Runs scheduled jobs while Joinery is open; absent in tests that do not need it. */
+  /** Runs scheduled jobs while Querybara is open; absent in tests that do not need it. */
   readonly scheduler?: Scheduler;
   readonly scheduleEvents?: ScheduleEvents;
   /** How the app's previous run ended (`unclean` after a crash), for editor restore. */
@@ -115,8 +115,8 @@ export interface WindowServices<P> extends FileDialogs {
 
 const SETTINGS_KEY = 'app';
 
-function notFound(what: string, id: string): JoineryError {
-  return new JoineryError({ code: 'NOT_FOUND', message: `${what} ${id} was not found` });
+function notFound(what: string, id: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_FOUND', message: `${what} ${id} was not found` });
 }
 
 function mergeSettings(base: AppSettings, patch: AppSettingsPatch): AppSettings {
@@ -305,7 +305,7 @@ export function createMainHandlers<P>(
       info: () => services.appInfo(),
       openExternal: async ({ url }) => {
         if (!isSafeExternalUrl(url)) {
-          throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Only https links open' });
+          throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Only https links open' });
         }
         await services.openExternal(url);
       },
@@ -316,7 +316,7 @@ export function createMainHandlers<P>(
         ),
       menu: ({ command }) => {
         if ((command === 'reload' || command === 'toggleDevTools') && !services.development) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: 'Reload and the developer tools are for development runs',
           });
@@ -347,7 +347,7 @@ export function createMainHandlers<P>(
     ssh: {
       inspectKey: async ({ path, passphrase }) => {
         if (services.keysDir === undefined) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'NOT_SUPPORTED',
             message: 'Private keys cannot be checked here',
           });

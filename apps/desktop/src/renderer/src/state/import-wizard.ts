@@ -1,4 +1,4 @@
-import type { SqlDialect, TableDef } from '@joinery/core';
+import type { SqlDialect, TableDef } from '@querybara/core';
 import {
   DATA_TYPE_PATTERN,
   type ColumnMappingInfo,
@@ -13,7 +13,7 @@ import {
   type TransferRowFormat,
   type XlsxReadSettings,
   type XmlReadSettings,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
 import { errorMessage } from '../lib/errors';
@@ -211,7 +211,7 @@ function mappingProblem(state: ImportWizardState): string | undefined {
     const badType = state.newColumns.find(
       (c) => c.include && c.dataType.trim() !== '' && !DATA_TYPE_PATTERN.test(c.dataType.trim()),
     );
-    if (badType) return `"${badType.dataType}" is not a column type Joinery can use`;
+    if (badType) return `"${badType.dataType}" is not a column type Querybara can use`;
     if (state.planError) return state.planError;
     return state.plan === undefined ? 'Planning the new table…' : undefined;
   }

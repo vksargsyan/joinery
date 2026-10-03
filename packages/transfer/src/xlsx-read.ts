@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import {
   gunzip,
@@ -53,8 +53,8 @@ function isSpace(c: number): boolean {
   return c === 32 || c === 9 || c === 10 || c === 13;
 }
 
-function invalid(message: string, hint?: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
+function invalid(message: string, hint?: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message, ...(hint ? { hint } : {}) });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -369,7 +369,7 @@ export class Workbook {
     if (name !== undefined) {
       const sheet = this.sheets.find((s) => s.name === name);
       if (sheet === undefined) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'NOT_FOUND',
           message: `The workbook has no worksheet "${name}"`,
           hint: `Its worksheets: ${this.sheets.map((s) => s.name).join(', ')}`,

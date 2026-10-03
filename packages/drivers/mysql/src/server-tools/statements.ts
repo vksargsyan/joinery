@@ -1,13 +1,13 @@
 import {
-  JoineryError,
+  QuerybaraError,
   MASKED_SECRET,
   type AccountOptions,
   type AccountRef,
   type GrantObjectKind,
   type MaintenanceTargetRef,
   type ServerAction,
-} from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+} from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 import { statement, type ToolStatement } from './runner';
 
@@ -21,12 +21,12 @@ export type Flavor = 'mysql' | 'mariadb';
 
 const lit = (value: string): string => quoteString(value, 'mysql');
 
-function invalid(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+function invalid(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
-function unsupported(message: string): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message });
+function unsupported(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message });
 }
 
 export function checkName(name: string, what: string, max = 64): string {

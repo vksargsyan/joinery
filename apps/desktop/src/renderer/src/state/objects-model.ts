@@ -1,4 +1,4 @@
-import { isSqlEngine, type BrowseNode, type BrowseNodeKind, type EngineId } from '@joinery/core';
+import { isSqlEngine, type BrowseNode, type BrowseNodeKind, type EngineId } from '@querybara/core';
 
 import { formatCount } from '../lib/format';
 import { formatBytes } from './redis/value-model';

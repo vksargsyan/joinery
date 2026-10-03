@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { significantTokens, tokenize, type TokenKind } from '../src';

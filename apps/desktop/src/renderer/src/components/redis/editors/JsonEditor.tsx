@@ -1,4 +1,4 @@
-import { bytesKey, utf8Bytes } from '@joinery/redis-tools';
+import { bytesKey, utf8Bytes } from '@querybara/redis-tools';
 import { useEffect, useState } from 'react';
 
 import { errorMessage } from '../../../lib/errors';

@@ -7,7 +7,7 @@
 
 The spec (§3, §18) splits the desktop app into a main process, a sandboxed preload, a React
 renderer without Node.js, and one Electron utility process per open connection. The renderer
-talks typed, zod-validated RPC (`@joinery/ipc`) to main, and directly to each connection host
+talks typed, zod-validated RPC (`@querybara/ipc`) to main, and directly to each connection host
 so result rows never pass through main. Secrets go from main to hosts only.
 
 Three constraints shape the wiring:
@@ -23,10 +23,10 @@ Three constraints shape the wiring:
 ## Decision
 
 **Every RPC channel is a MessagePort.** The page asks for the main contract with
-`window.joinery.requestMainPort()`; the preload sends a hello on one IPC channel. Main answers
+`window.querybara.requestMainPort()`; the preload sends a hello on one IPC channel. Main answers
 only its own window's main frame on the app origin: it creates a `MessageChannelMain`, serves
 `mainContract` on one end with `serve` (which validates every message with zod) and transfers
-the other end with `webContents.postMessage('joinery:port', { kind: 'main' }, [port])`. Each
+the other end with `webContents.postMessage('querybara:port', { kind: 'main' }, [port])`. Each
 page load gets a fresh channel; the previous server is disposed.
 
 `openConnection` does the same for a connection host: main attaches one end of a new channel to
@@ -37,7 +37,7 @@ reconnects after a host crash.
 
 **The preload forwards ports without interpreting them.** It checks the payload shape and that
 exactly one port came with it, then re-posts it to its own window:
-`window.postMessage({ joinery: 'port', kind, connectionId? }, location.origin, [port])`. The page
+`window.postMessage({ querybara: 'port', kind, connectionId? }, location.origin, [port])`. The page
 accepts a port only when `event.source === window`, `event.origin === location.origin`, the data
 has exactly that shape and one port is attached. Ports may arrive before or after the RPC reply
 that asked for them, so the page keeps them until claimed. The bridge exposes nothing else but
@@ -48,7 +48,7 @@ platform and version strings.
 `shutdown` one way; `ready`, `failed`, `check-step`, `check-done` the other. Nothing on it ever
 travels towards the renderer. Sessions belong to the port that opened them and close with it.
 
-**The renderer is served from `app://joinery/`**, a privileged standard, secure scheme. The
+**The renderer is served from `app://querybara/`**, a privileged standard, secure scheme. The
 handler maps paths inside `out/renderer` only (encoded and dot-dot escapes are refused), serves
 known file types, and adds the CSP header to every response; the same policy is written into
 index.html as a meta tag by the build. In development the Vite dev server gets the header

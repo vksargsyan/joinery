@@ -4,7 +4,7 @@ import {
   type CodeExportLanguage,
   type CodeLanguage,
   type ExportTarget,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 import { errorMessage } from '../../lib/errors';
 import { mainApi } from '../../lib/main-client';

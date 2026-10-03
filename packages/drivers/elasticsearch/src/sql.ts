@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   esqlRequest,
   parseTableReply,
@@ -10,7 +10,7 @@ import {
   translatedDsl,
   type SearchRequest,
   type SearchTable,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import type { SearchContext } from './context';
 import type { SearchOpOptions, SqlQueryOptions, SqlTranslation } from './types';
@@ -23,7 +23,7 @@ import type { SearchOpOptions, SqlQueryOptions, SqlTranslation } from './types';
 
 function checkSql(ctx: SearchContext): void {
   if (!ctx.facts.capabilities.sql) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'This Elasticsearch cluster has no SQL API (the OSS distribution lacks it)',
     });
@@ -50,7 +50,7 @@ export async function* sqlQuery(
 ): AsyncGenerator<SearchTable> {
   checkSql(ctx);
   if (query.trim() === '') {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Write a SQL query to run' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Write a SQL query to run' });
   }
   const maxRows = opts.maxRows ?? Number.POSITIVE_INFINITY;
   const first = await send(
@@ -114,13 +114,13 @@ export async function esql(
   opts: SearchOpOptions = {},
 ): Promise<SearchTable> {
   if (!ctx.facts.capabilities.esql) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_SUPPORTED',
       message: 'This cluster has no ES|QL (Elasticsearch 8.11 and later have it)',
     });
   }
   if (query.trim() === '') {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'Write an ES|QL query to run' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'Write an ES|QL query to run' });
   }
   const { text } = await send(ctx, esqlRequest(query), opts);
   return parseTableReply(text);

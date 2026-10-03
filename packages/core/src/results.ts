@@ -74,7 +74,7 @@ export type NoticeSeverity = (typeof NOTICE_SEVERITIES)[number];
 /**
  * What `Session.execute` yields for one statement, in order:
  * zero or more result sets (`columns` then `rows`...), `status`/`notice` as they occur, then
- * exactly one `end`. Errors are thrown from the iterator as JoineryError.
+ * exactly one `end`. Errors are thrown from the iterator as QuerybaraError.
  *
  * The iterator is the cursor: rows are fetched as the consumer pulls, so a consumer that stops
  * at a row limit and later resumes gets "Fetch more" for free. Returning early closes the cursor.

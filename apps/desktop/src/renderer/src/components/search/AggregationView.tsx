@@ -3,7 +3,7 @@ import {
   aggregationTree,
   type AggregationNode,
   type AggregationTable,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 import { useMemo, useState } from 'react';
 
 import { formatCount } from '../../lib/format';

@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   member,
   nodeText,
@@ -13,7 +13,7 @@ import {
   type SearchDocument,
   type SearchPage,
   type SearchWriteResult,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { queryString, segment, type SearchContext } from './context';
 import { mapResponseError } from './errors';
@@ -181,7 +181,7 @@ export async function* search(
         // A server without the _shard_doc tiebreaker refuses the first page: scroll instead.
         const refused =
           !started &&
-          error instanceof JoineryError &&
+          error instanceof QuerybaraError &&
           /_shard_doc/.test(`${error.message} ${error.detail ?? ''}`);
         if (!refused) throw error;
       }
@@ -400,7 +400,7 @@ async function concurrently<T>(
     return await write();
   } catch (error) {
     if (
-      !(error instanceof JoineryError) ||
+      !(error instanceof QuerybaraError) ||
       error.code !== 'CONFLICT' ||
       id === undefined ||
       opts.ifSeqNo === undefined
@@ -412,12 +412,12 @@ async function concurrently<T>(
       ...(opts.signal ? { signal: opts.signal } : {}),
     }).catch(() => undefined);
     if (current && !current.found) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_FOUND',
         message: `The document ${id} in ${index} was deleted since it was read`,
       });
     }
-    throw new JoineryError(
+    throw new QuerybaraError(
       {
         code: 'CONFLICT',
         message: `The document ${id} in ${index} changed since it was read`,

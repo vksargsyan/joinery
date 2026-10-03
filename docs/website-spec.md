@@ -1,11 +1,11 @@
-# Build the Joinery website: landing page, searchable documentation, real screenshots and data-flow motion graphics
+# Build the Querybara website: landing page, searchable documentation, real screenshots and data-flow motion graphics
 
-You are building the public website for **Joinery**. The site has four parts:
+You are building the public website for **Querybara**. The site has four parts:
 
 1. A landing page.
 2. Complete documentation with fast search.
 3. Real screenshots of the product.
-4. Animated diagrams that show how data moves through Joinery and the databases it manages.
+4. Animated diagrams that show how data moves through Querybara and the databases it manages.
 
 Work autonomously through the milestones in §12. Stop and ask only for the decisions listed in §14.
 
@@ -15,9 +15,9 @@ Work autonomously through the milestones in §12. Stop and ask only for the deci
 
 | Name                  | Value                                                     |
 | --------------------- | --------------------------------------------------------- |
-| Product repo (exists) | `~/My/joinery` (GitHub: `vksargsyan/joinery`)             |
-| Website repo (new)    | `~/My/joinery-website`, a sibling of the product repo     |
-| Download source       | `https://github.com/vksargsyan/joinery/releases`          |
+| Product repo (exists) | `~/My/querybara` (GitHub: `vksargsyan/querybara`)         |
+| Website repo (new)    | `~/My/querybara-website`, a sibling of the product repo   |
+| Download source       | `https://github.com/vksargsyan/querybara/releases`        |
 | Site URL              | read from `SITE_URL` env, default `http://localhost:4321` |
 
 - Create the website repo with `git init -b main`.
@@ -26,24 +26,24 @@ Work autonomously through the milestones in §12. Stop and ask only for the deci
 
 ---
 
-## 1. What Joinery is: read these sources first, invent nothing
+## 1. What Querybara is: read these sources first, invent nothing
 
-Joinery is a cross-platform desktop database manager (Electron, React, TypeScript).
+Querybara is a cross-platform desktop database manager (Electron, React, TypeScript).
 
 - **Engines:** MySQL, MariaDB, PostgreSQL, MongoDB, Redis/Valkey and Elasticsearch, all in one app.
-- **CLI:** a headless CLI, `joinery`, runs the same engine.
+- **CLI:** a headless CLI, `querybara`, runs the same engine.
 - **Version:** read it from `apps/desktop/package.json` on `main` (a **beta**). Always work from `main`; other branches can be far behind.
 
-Before writing anything, read the following in `~/My/joinery`:
+Before writing anything, read the following in `~/My/querybara`:
 
 - `README.md`. The "What works today" section is the feature inventory.
 - `docs/adr/*.md`. These say how things work: process model, tunnels, job runner, sync, query builder, ER diagrams, search module, packaging.
 - `docs/releasing.md`. Covers installers, platforms, update channels, staged rollout and the managed-fleet policy switch.
-- `docs/backup-archive-format.md`. The `.jbak` format.
+- `docs/backup-archive-format.md`. The `.qbak` format.
 - `apps/desktop/src/renderer/src/components/**`. Take **exact UI labels** (menu items, buttons, dialog titles, tab names) from here. Grep for a label before you use it in a how-to step.
-- `apps/cli/src/**` (commander program). Covers commands, flags and env vars (`JOINERY_STORE`, `JOINERY_BACKUP_PASSPHRASE`, …).
+- `apps/cli/src/**` (commander program). Covers commands, flags and env vars (`QUERYBARA_STORE`, `QUERYBARA_BACKUP_PASSPHRASE`, …).
 - `apps/desktop/build/icon.svg` and `apps/desktop/src/renderer/src/styles.css`. These hold the brand mark and the app's theme tokens.
-- `apps/desktop/e2e/**`. The Playwright-for-Electron harness you will reuse for screenshots (`app.ts`, `db.ts`, `mongo-db.ts`, `redis.ts`, `search.ts`; existing specs already have a `shot()` helper driven by `JOINERY_E2E_SHOTS`).
+- `apps/desktop/e2e/**`. The Playwright-for-Electron harness you will reuse for screenshots (`app.ts`, `db.ts`, `mongo-db.ts`, `redis.ts`, `search.ts`; existing specs already have a `shot()` helper driven by `QUERYBARA_E2E_SHOTS`).
 - `AGENTS.md`. Follow it in the product repo.
 
 Rules for accuracy:
@@ -55,7 +55,7 @@ Rules for accuracy:
   - invented metrics, benchmarks, user counts, testimonials or customer logos
   - pricing
   - comparisons that name competitor products
-  - licence claims: the repo has no LICENSE file, so don't call Joinery "open source" or name a licence
+  - licence claims: the repo has no LICENSE file, so don't call Querybara "open source" or name a licence
   - lorem ipsum
 
 ---
@@ -76,12 +76,12 @@ Rules for accuracy:
 
 ## 3. Design direction: "utterly beautiful", made testable
 
-**Concept: precision joinery.** Fine hairlines, an exact grid, and parts that interlock, like the joined cylinder of the logo. A small dovetail is the one recurring motif, used for section dividers and list markers. Never use wood textures, woodgrain or clip art.
+**Concept: precision craft.** Fine hairlines and an exact grid. A small rounded pebble is the one recurring motif, used for section dividers and list markers. Never use wood textures, woodgrain or clip art.
 
 **Brand palette.** Derive it from the product:
 
 - **The app's design system is Kiln** (ADR 0025): Tenmoku (dark) and Bisque (light), rust as the only accent, the other glazes (celadon, ochre, red, cobalt, lilac) carrying meaning. Take the exact values from `styles.css` and `lib/kiln.ts`.
-- **Logo:** the joined-cylinder icon (ADR 0032), `apps/desktop/build/icon.svg`.
+- **Logo:** the capybara icon (ADR 0033), `apps/desktop/build/icon.svg`.
 - **App light theme:** bg `#f6f7f9`, panel `#ffffff`, fg `#1a1e24`, accent `#2f6fec`.
 
 **Tokens.** Define every colour, space, radius, shadow and duration as a CSS custom property in one tokens file. Both the landing page and the Starlight theme override use that file. Components never use raw hex values.
@@ -130,7 +130,7 @@ Fix whatever fails these checks.
 Build these sections in order. Each feature section shows a real screenshot (§6) or a motion piece (§7) and links to its docs page.
 
 1. **Navigation bar.** It is sticky and turns translucent on scroll. It holds:
-   - the logo (`icon.svg`) with the "Joinery" wordmark
+   - the logo (`icon.svg`) with the "Querybara" wordmark
    - links: Docs, CLI, Download, GitHub
    - a search button showing `⌘K` / `Ctrl K`, which opens the same Pagefind search as the docs
    - the theme toggle
@@ -139,7 +139,7 @@ Build these sections in order. Each feature section shows a real screenshot (§6
    - A "Beta · v{version}" pill.
    - A primary CTA, **Download for {detected OS}**, and a secondary CTA, **Read the docs**. The primary CTA links to `releases/latest`. If OS detection fails, link to the releases page instead.
    - The hero screenshot: a PostgreSQL query tab with results.
-3. **Engines.** Six engine tiles with one line each on what Joinery does for that engine. Use text wordmarks or neutral glyphs, not third-party logos.
+3. **Engines.** Six engine tiles with one line each on what Querybara does for that engine. Use text wordmarks or neutral glyphs, not third-party logos.
    - The **M1 "one app, every engine"** animation (§7) runs behind or beside the tiles.
 4. **Feature showcase.** Each item gets a screenshot or animation plus 2–4 tight bullets:
    - Query editor, autocomplete and visual explain
@@ -174,7 +174,7 @@ Build these sections in order. Each feature section shows a real screenshot (§6
      - Linux: AppImage, deb and rpm, for x64 and arm64
    - Notes on stable and beta update channels.
    - The honest note that test builds are unsigned, and how to open them on macOS.
-9. **Footer.** Docs sections, GitHub, Releases and a "Built from Joinery {version} @ {short SHA}" line.
+9. **Footer.** Docs sections, GitHub, Releases and a "Built from Querybara {version} @ {short SHA}" line.
 
 Copy tone: confident, concrete, short. Every sentence names a real capability. No superlatives the product can't back up.
 
@@ -301,8 +301,8 @@ Copy tone: confident, concrete, short. Every sentence names a real capability. N
 
 - Supported engines and versions: take the tested versions from the CI matrix in `.github/workflows/ci.yml`
 - Feature matrix by engine
-- The `.jbak` archive format
-- How Joinery works: the process model, with animation **M9**
+- The `.qbak` archive format
+- How Querybara works: the process model, with animation **M9**
 - Security model
 - Data and settings locations
 - Updates, channels, staged rollout and managed-fleet policy
@@ -325,10 +325,10 @@ Frontmatter carries `title`, `description`, `engines: [...]` and `keywords: [...
 
 ### 5.3 Generated content
 
-These must stay in sync with the product, so generate them with scripts in the website repo that read `../joinery`:
+These must stay in sync with the product, so generate them with scripts in the website repo that read `../querybara`:
 
-- **CLI reference.** `scripts/sync-cli.ts` builds the CLI (`pnpm --filter @joinery/cli build`), runs `joinery <cmd> --help` for every command, and writes MDX pages from the output. Hand-written explanation and examples go in clearly separated sections around the generated part.
-- **Version and commit.** `scripts/sync-meta.ts` writes `src/data/joinery.json` with the desktop version, the short SHA, engine versions from the CI matrix, and the date.
+- **CLI reference.** `scripts/sync-cli.ts` builds the CLI (`pnpm --filter @querybara/cli build`), runs `querybara <cmd> --help` for every command, and writes MDX pages from the output. Hand-written explanation and examples go in clearly separated sections around the generated part.
+- **Version and commit.** `scripts/sync-meta.ts` writes `src/data/querybara.json` with the desktop version, the short SHA, engine versions from the CI matrix, and the date.
 - **CLI output in docs.** Real output captured from runs against the demo databases (§6.3), pasted as text, not images.
 
 ### 5.4 Coverage check
@@ -344,14 +344,14 @@ Add `scripts/coverage.ts` and wire it into `pnpm check`. It:
 
 ### 6.1 Non-negotiables
 
-- **Real product only.** Every screenshot comes from the real Joinery app, built from `~/My/joinery` at its current commit. Never mock, redraw, AI-generate, composite or retouch UI.
+- **Real product only.** Every screenshot comes from the real Querybara app, built from `~/My/querybara` at its current commit. Never mock, redraw, AI-generate, composite or retouch UI.
 - **Allowed post-processing:** crop, resize and compression. Frames and shadows are added in CSS.
 - **If a shot can't be captured** (Docker missing, a flow broken), don't fake it. Use a clearly labelled placeholder, then list the shot and the reason in the final report.
 - **No private data.** No real hostnames, IPs, user names, emails, tokens or home-directory paths may appear in any shot. Check file dialogs, title bars and connection lists.
 
 ### 6.2 Capture harness (lives in the product repo)
 
-- **Branch.** Add the harness to `~/My/joinery` on a new branch, `docs/website-screenshots`. This is the only change you make in the product repo. No product code changes.
+- **Branch.** Add the harness to `~/My/querybara` on a new branch, `docs/website-screenshots`. This is the only change you make in the product repo. No product code changes.
 - **Location and config.** It lives in `apps/desktop/e2e/screenshots/`:
   - `screenshots.config.ts` (Playwright config with `testMatch: '*.shots.ts'`, so it never runs with the e2e suite)
   - one `*.shots.ts` file per area
@@ -361,7 +361,7 @@ Add `scripts/coverage.ts` and wire it into `pnpm check`. It:
 - **Themes.** Capture every shot in **both themes** by setting the app's Theme setting to Dark, then Light.
 - **Linux.** On Linux, run under `xvfb-run -a`.
 - **Product repo rules.** The harness must pass the repo's `pnpm check` (strict TS, no `any`, ESLint, Prettier). Commit it with conventional commits. Don't push.
-- **Output.** Write to `JOINERY_E2E_SHOTS=~/My/joinery-website/screenshots/raw/{dark,light}/`.
+- **Output.** Write to `QUERYBARA_E2E_SHOTS=~/My/querybara-website/screenshots/raw/{dark,light}/`.
 - **Optimiser.** A website script, `scripts/optimize-shots.ts`, converts the raw shots into `src/assets/screenshots/` and updates `src/data/screenshots.json`. Each entry holds:
   - `id`
   - `alt` (describes what is on screen)
@@ -369,8 +369,8 @@ Add `scripts/coverage.ts` and wire it into `pnpm check`. It:
   - `engine`
   - `pages`
   - `capturedAt`
-  - `joineryVersion`
-  - `joinerySha`
+  - `querybaraVersion`
+  - `querybaraSha`
 - **Rendering.** Astro's `<Picture>` renders AVIF and WebP with a PNG fallback, responsive `srcset`, and explicit width and height. Images below the fold load lazily.
 - **One-command regeneration.** `pnpm shots` in the website repo starts the demo databases, runs the harness, optimises the output and stops the databases.
 
@@ -414,7 +414,7 @@ Name each file `<id>.png`. Capture it in both themes.
 | `import-preview`     | CSV/Excel import with live preview and auto-matched columns                 | Import                     |
 | `export`             | Export wizard with format options                                           | Export                     |
 | `jobs`               | Job list with progress, one finished, one running                           | Jobs                       |
-| `backup` / `restore` | Backup to an encrypted `.jbak`; restore with selected objects               | Landing, Backup            |
+| `backup` / `restore` | Backup to an encrypted `.qbak`; restore with selected objects               | Landing, Backup            |
 | `server-monitor`     | Monitor charts after a minute of synthetic load                             | Landing, Server tools      |
 | `sessions`           | Sessions list with cancel/terminate                                         | Server tools               |
 | `top-queries`        | Top queries with reason and fix                                             | Server tools               |
@@ -439,9 +439,9 @@ Add more shots wherever a docs page would otherwise have no visual.
 
 ---
 
-## 7. Motion graphics: how data flows through Joinery and the databases
+## 7. Motion graphics: how data flows through Querybara and the databases
 
-Animated, theme-aware diagrams that make the invisible parts of Joinery visible: where queries go, how rows stream back, how data changes shape between engines. They serve as explanations first and decoration second.
+Animated, theme-aware diagrams that make the invisible parts of Querybara visible: where queries go, how rows stream back, how data changes shape between engines. They serve as explanations first and decoration second.
 
 ### 7.1 Accuracy
 
@@ -456,17 +456,17 @@ Each animation depicts the **real mechanism** as described in the ADRs and sourc
 
 ### 7.2 Pieces (storyboard outlines; verify each against the sources)
 
-| id     | Title                 | What it shows                                                                                                                                                                                                                                                                                                                                                                                                                                    | Placement                             |
-| ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| **M1** | One app, every engine | Joinery at the centre. Queries flow out to the six engines; results flow back and settle into a grid. Calm, looping, ambient.                                                                                                                                                                                                                                                                                                                    | Landing, engines section              |
-| **M2** | Life of a query       | Editor → statement splitter (cuts on `;`, respects `DELIMITER` and dollar quoting) → safety check (a risky write on a production profile raises a confirmation) → the connection's own host process → optional SSH tunnel → database. Rows stream **straight back to the page, not through the main process**, in 1,000-row batches into the canvas grid. A final beat: Cancel sends a server-side cancel. Sources: README "Querying", ADR 0004. | Docs: Query editor; How Joinery works |
-| **M3** | Through the bastion   | Laptop → jump host → bastion → database over **one shared SSH session** used by all of a connection's tabs. A host key is checked against `known_hosts`: new → trust prompt, changed → blocking warning. Variant: a MongoDB replica set or Redis Cluster reached node by node through the loopback SOCKS5 route. Source: ADR 0008.                                                                                                               | Landing, security; Docs: SSH          |
-| **M4** | Changing shape        | Cross-engine transfer in three panels: **SQL → MongoDB**: `orders` rows plus their `order_items` (joined through the FK) fold into one document with an embedded array. **MongoDB → SQL**: a document flattens into columns; its array becomes a child table, or a JSON column. **SQL → SQL**: the type mapping applies, data streams first, then keys, indexes and FKs are added. A short Redis → Redis coda shows DUMP/RESTORE carrying TTLs.  | Landing; Docs: Data transfer          |
-| **M5** | Sync to zero          | Two schemas side by side → a diff of create/alter/drop operations (destructive ones arrive **unticked**) → a dependency-ordered script → apply (the script is verified against the reviewed one; one transaction on PostgreSQL) → re-compare → "0 differences". Source: ADR 0009.                                                                                                                                                                | Landing; Docs: Structure sync         |
-| **M6** | Checksums, not rows   | Data compare: the source key space is walked in ranges, and a checksum per range is computed **on each server**. Matching ranges fade away without moving a row. A mismatched range is **bisected** until it holds ≤1,000 rows; only those rows stream to Joinery to be compared, and then a sync script is generated. Checksums are on by default only when both sides are the same engine family. Source: `packages/sync/src/data/compare.ts`. | Docs: Data compare                    |
-| **M7** | Import pipeline       | A CSV or Excel file → format, delimiter and encoding detected → live preview → columns auto-matched, types inferred → mode chosen (append/update/upsert/…) → rows stream in the **job runner process**, with a progress bar; one bad row is set aside with its row, line and column. Cancel rolls back. Source: ADR 0006.                                                                                                                        | Docs: Import; Jobs                    |
-| **M8** | Backup and restore    | A PostgreSQL/MySQL database read in one consistent snapshot (with MongoDB collections plus their indexes, and Redis keys plus their TTLs, as variants) → a `.jbak` archive assembling one file per object, sealed with AES-256-GCM when a passphrase is set → restore of selected objects into another database, with "what would be dropped" listed first.                                                                                      | Landing; Docs: Backup                 |
-| **M9** | How Joinery works     | The process model: React renderer (no Node.js) ↔ main over a MessagePort; the renderer ↔ **one connection-host utility process per open connection** directly; the job runner started on demand; secrets travel only main → hosts/runner. Interactive: hover a process to highlight its channels.                                                                                                                                                | Docs: How Joinery works               |
+| id     | Title                 | What it shows                                                                                                                                                                                                                                                                                                                                                                                                                                      | Placement                               |
+| ------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **M1** | One app, every engine | Querybara at the centre. Queries flow out to the six engines; results flow back and settle into a grid. Calm, looping, ambient.                                                                                                                                                                                                                                                                                                                    | Landing, engines section                |
+| **M2** | Life of a query       | Editor → statement splitter (cuts on `;`, respects `DELIMITER` and dollar quoting) → safety check (a risky write on a production profile raises a confirmation) → the connection's own host process → optional SSH tunnel → database. Rows stream **straight back to the page, not through the main process**, in 1,000-row batches into the canvas grid. A final beat: Cancel sends a server-side cancel. Sources: README "Querying", ADR 0004.   | Docs: Query editor; How Querybara works |
+| **M3** | Through the bastion   | Laptop → jump host → bastion → database over **one shared SSH session** used by all of a connection's tabs. A host key is checked against `known_hosts`: new → trust prompt, changed → blocking warning. Variant: a MongoDB replica set or Redis Cluster reached node by node through the loopback SOCKS5 route. Source: ADR 0008.                                                                                                                 | Landing, security; Docs: SSH            |
+| **M4** | Changing shape        | Cross-engine transfer in three panels: **SQL → MongoDB**: `orders` rows plus their `order_items` (joined through the FK) fold into one document with an embedded array. **MongoDB → SQL**: a document flattens into columns; its array becomes a child table, or a JSON column. **SQL → SQL**: the type mapping applies, data streams first, then keys, indexes and FKs are added. A short Redis → Redis coda shows DUMP/RESTORE carrying TTLs.    | Landing; Docs: Data transfer            |
+| **M5** | Sync to zero          | Two schemas side by side → a diff of create/alter/drop operations (destructive ones arrive **unticked**) → a dependency-ordered script → apply (the script is verified against the reviewed one; one transaction on PostgreSQL) → re-compare → "0 differences". Source: ADR 0009.                                                                                                                                                                  | Landing; Docs: Structure sync           |
+| **M6** | Checksums, not rows   | Data compare: the source key space is walked in ranges, and a checksum per range is computed **on each server**. Matching ranges fade away without moving a row. A mismatched range is **bisected** until it holds ≤1,000 rows; only those rows stream to Querybara to be compared, and then a sync script is generated. Checksums are on by default only when both sides are the same engine family. Source: `packages/sync/src/data/compare.ts`. | Docs: Data compare                      |
+| **M7** | Import pipeline       | A CSV or Excel file → format, delimiter and encoding detected → live preview → columns auto-matched, types inferred → mode chosen (append/update/upsert/…) → rows stream in the **job runner process**, with a progress bar; one bad row is set aside with its row, line and column. Cancel rolls back. Source: ADR 0006.                                                                                                                          | Docs: Import; Jobs                      |
+| **M8** | Backup and restore    | A PostgreSQL/MySQL database read in one consistent snapshot (with MongoDB collections plus their indexes, and Redis keys plus their TTLs, as variants) → a `.qbak` archive assembling one file per object, sealed with AES-256-GCM when a passphrase is set → restore of selected objects into another database, with "what would be dropped" listed first.                                                                                        | Landing; Docs: Backup                   |
+| **M9** | How Querybara works   | The process model: React renderer (no Node.js) ↔ main over a MessagePort; the renderer ↔ **one connection-host utility process per open connection** directly; the job runner started on demand; secrets travel only main → hosts/runner. Interactive: hover a process to highlight its channels.                                                                                                                                                  | Docs: How Querybara works               |
 
 ### 7.3 Craft and behaviour
 
@@ -551,10 +551,10 @@ Each animation depicts the **real mechanism** as described in the ADRs and sourc
 | `es\|ql`             | SQL and ES\|QL       |
 | `reindex`            | Mappings and reindex |
 | `upsert`             | Import               |
-| `jbak`               | `.jbak` format       |
+| `qbak`               | `.qbak` format       |
 | `encrypt backup`     | Backup and restore   |
 | `--continue`         | `run-file`           |
-| `JOINERY_STORE`      | Global options       |
+| `QUERYBARA_STORE`    | Global options       |
 | `postgres compare`   | Structure sync       |
 | `ttl`                | Redis TTL            |
 | `staged rollout`     | Updates              |
@@ -565,7 +565,7 @@ Each animation depicts the **real mechanism** as described in the ADRs and sourc
 ## 9. Website repo structure
 
 ```
-joinery-website/
+querybara-website/
   astro.config.mjs
   package.json                 # scripts: dev, build, preview, check, shots, sync, record-motion
   docker-compose.demo.yml
@@ -578,7 +578,7 @@ joinery-website/
     components/motion/{M1…M9}.astro
     content/docs/…               # MDX, IA from §5.1
     assets/screenshots/{dark,light}/…
-    data/{joinery.json,screenshots.json}
+    data/{querybara.json,screenshots.json}
     pages/index.astro
   motion/<id>.md                 # storyboards with sources
   tests/{search,a11y,links,visual}.spec.ts

@@ -1,4 +1,4 @@
-import { JoineryError, missedRunPolicySchema, newId, scheduleRuleSchema } from '@joinery/core';
+import { QuerybaraError, missedRunPolicySchema, newId, scheduleRuleSchema } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -147,7 +147,7 @@ export class ScheduleRepository {
     return this.#db.transaction(() => {
       const id = schedule.id ?? newId();
       if (this.get(id)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Schedule ${id} already exists`,
         });
@@ -326,7 +326,7 @@ export class ScheduleRepository {
 
   #requireTarget(profileId: string | null, comparisonId: string | null): void {
     if ((profileId === null) === (comparisonId === null)) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: 'A schedule runs on a connection or a saved comparison',
       });

@@ -1,4 +1,4 @@
-import type { ErrorData } from '@joinery/core';
+import type { ErrorData } from '@querybara/core';
 import {
   formatShell,
   fromEjson,
@@ -8,7 +8,7 @@ import {
   type BsonDocument,
   type InsertOneResult,
   type WriteSummary,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 
 import { errorInfo } from '../../lib/errors';
 import { issueOf, type TextIssue } from './query-bar';

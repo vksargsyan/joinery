@@ -4,20 +4,20 @@ import { connect as tlsConnect, type ConnectionOptions } from 'node:tls';
 
 import {
   CONNECTION_CHECK_STEPS,
-  JoineryError,
+  QuerybaraError,
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type HostPort,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   buildTlsSettings,
   errorMessage,
   mapNetworkError,
   type CheckConnectionDeps,
   type NetworkTarget,
-} from '@joinery/driver-sql-base';
-import { tunnelledProfile, type Transport } from '@joinery/tunnel';
+} from '@querybara/driver-sql-base';
+import { tunnelledProfile, type Transport } from '@querybara/tunnel';
 import { MongoClient } from 'mongodb';
 
 import { buildMongoClientPlan, hostPortText, redactSecrets, type MongoClientPlan } from './config';
@@ -35,7 +35,7 @@ import type { MongoDbSession } from './session';
 /** Network primitives, injectable for tests (the SQL check's deps plus SRV and TLS probes). */
 export interface MongoCheckDeps extends CheckConnectionDeps {
   /**
-   * @joinery/tunnel's `runSshStep`; for a replica set its transport also has `nodes`, which
+   * @querybara/tunnel's `runSshStep`; for a replica set its transport also has `nodes`, which
    * reach every member.
    */
   runSshStep?(resolved: ResolvedProfile): Promise<{
@@ -60,7 +60,7 @@ const defaultDeps: Omit<MongoCheckDeps, 'connect'> = {
     return new Promise((resolve, reject) => {
       if (target.kind !== 'tcp') {
         reject(
-          new JoineryError({ code: 'NOT_SUPPORTED', message: 'MongoDB needs a TCP endpoint' }),
+          new QuerybaraError({ code: 'NOT_SUPPORTED', message: 'MongoDB needs a TCP endpoint' }),
         );
         return;
       }
@@ -192,7 +192,11 @@ class StepLog {
     return this.report({ step, status: 'skipped', durationMs: 0, message });
   }
 
-  failure(step: ConnectionCheckStep, started: number, error: JoineryError): ConnectionCheckResult {
+  failure(
+    step: ConnectionCheckStep,
+    started: number,
+    error: QuerybaraError,
+  ): ConnectionCheckResult {
     return this.report({
       step,
       status: 'failed',
@@ -216,8 +220,8 @@ class StepLog {
   }
 }
 
-function asJoinery(error: unknown, where: string, secrets: readonly string[]): JoineryError {
-  if (error instanceof JoineryError) return error;
+function asQuerybara(error: unknown, where: string, secrets: readonly string[]): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   return mapNetworkError(error, where) ?? mapMongoError(error, { where, secrets });
 }
 
@@ -255,7 +259,7 @@ export async function* checkMongoConnection(
   try {
     plan = buildMongoClientPlan(resolved);
   } catch (error) {
-    yield log.failure('dns', started, asJoinery(error, profile.name, secrets));
+    yield log.failure('dns', started, asQuerybara(error, profile.name, secrets));
     yield* log.skipRest();
     return;
   }
@@ -274,7 +278,7 @@ export async function* checkMongoConnection(
       yield log.failure(
         'dns',
         started,
-        new JoineryError({
+        new QuerybaraError({
           code: 'CONNECTION_FAILED',
           message: `No SRV record _mongodb._tcp.${name} could be read${code ? ` (${code})` : ''}`,
           hint: 'Check the cluster host name; a mongodb+srv name needs an SRV record in DNS (VPN, network)',
@@ -298,7 +302,7 @@ export async function* checkMongoConnection(
         yield log.failure(
           'dns',
           started,
-          asJoinery(first.reason, hostPortText(failed[0]!), secrets),
+          asQuerybara(first.reason, hostPortText(failed[0]!), secrets),
         );
         yield* log.skipRest();
         return;
@@ -333,7 +337,7 @@ export async function* checkMongoConnection(
   const reachable = probed.filter((_, i) => reached[i]!.status === 'fulfilled');
   if (reachable.length === 0) {
     const first = reached[0] as PromiseRejectedResult;
-    yield log.failure('tcp', started, asJoinery(first.reason, hostPortText(probed[0]!), secrets));
+    yield log.failure('tcp', started, asQuerybara(first.reason, hostPortText(probed[0]!), secrets));
     yield* log.skipRest();
     return;
   }
@@ -389,11 +393,11 @@ async function* driverSteps(
       await d.tlsHandshake(socket, settings.options ?? {}, timeoutMs);
       yield log.ok('tls', started, tlsMessage(plan.tls.mode));
     } catch (error) {
-      const mapped = asJoinery(error, where, plan.secrets);
+      const mapped = asQuerybara(error, where, plan.secrets);
       const failure =
         mapped.code === 'TLS_FAILED'
           ? mapped
-          : new JoineryError({
+          : new QuerybaraError({
               code: 'TLS_FAILED',
               message: `TLS negotiation with ${where} failed: ${redactSecrets(errorMessage(error), plan.secrets)}`,
               hint: 'Check that the server has TLS enabled and that the TLS mode and certificates in the profile match it',
@@ -409,7 +413,7 @@ async function* driverSteps(
   try {
     session = await d.connect(resolved);
   } catch (error) {
-    let failure = asJoinery(error, plan.where, plan.secrets);
+    let failure = asQuerybara(error, plan.where, plan.secrets);
     if (failure.code !== 'AUTH_FAILED' && failure.code !== 'TLS_FAILED') {
       failure = await diagnoseTopology(plan, target.server, d, failure);
     }
@@ -428,7 +432,7 @@ async function* driverSteps(
       await session.ping();
       yield log.ok('ping', started);
     } catch (error) {
-      yield log.failure('ping', started, asJoinery(error, plan.where, plan.secrets));
+      yield log.failure('ping', started, asQuerybara(error, plan.where, plan.secrets));
       yield* log.skipRest();
       return;
     }
@@ -454,8 +458,8 @@ async function diagnoseTopology(
   plan: MongoClientPlan,
   first: HostPort,
   d: MongoCheckDeps,
-  failure: JoineryError,
-): Promise<JoineryError> {
+  failure: QuerybaraError,
+): Promise<QuerybaraError> {
   let hello: Record<string, unknown>;
   try {
     hello = await d.hello(plan, first);
@@ -464,7 +468,7 @@ async function diagnoseTopology(
   }
   const setName = typeof hello['setName'] === 'string' ? hello['setName'] : undefined;
   if (plan.replicaSet !== undefined && setName !== plan.replicaSet) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: setName
@@ -480,7 +484,7 @@ async function diagnoseTopology(
   const hosts = Array.isArray(hello['hosts']) ? hello['hosts'].map(String) : [];
   const seeds = new Set(plan.seeds.map(hostPortText));
   if (setName && hosts.length > 0 && !hosts.some((h) => seeds.has(h))) {
-    return new JoineryError(
+    return new QuerybaraError(
       {
         code: 'CONNECTION_FAILED',
         message: `${failure.message}. The replica set "${setName}" advertises its members as ${hosts.join(', ')}`,
@@ -512,7 +516,7 @@ async function* throughTransport(
       const address = await d.lookup(first.host);
       yield log.ok('dns', started, `The ${what} ${first.host} resolves to ${address}`);
     } catch (error) {
-      yield log.failure('dns', started, asJoinery(error, firstWhere, secrets));
+      yield log.failure('dns', started, asQuerybara(error, firstWhere, secrets));
       yield* log.skipRest();
       return;
     }
@@ -525,7 +529,7 @@ async function* throughTransport(
     );
     yield log.ok('tcp', started, `Connected to the ${what} ${firstWhere}`);
   } catch (error) {
-    yield log.failure('tcp', started, asJoinery(error, firstWhere, secrets));
+    yield log.failure('tcp', started, asQuerybara(error, firstWhere, secrets));
     yield* log.skipRest();
     return;
   }
@@ -534,7 +538,7 @@ async function* throughTransport(
   try {
     outcome = await runSshStep(resolved);
   } catch (error) {
-    yield log.failure('ssh', started, asJoinery(error, firstWhere, secrets));
+    yield log.failure('ssh', started, asQuerybara(error, firstWhere, secrets));
     yield* log.skipRest();
     return;
   }
@@ -552,7 +556,7 @@ async function* throughTransport(
       plan = buildMongoClientPlan(through);
       target = await targetThroughTunnel(plan, transport, d);
     } catch (error) {
-      yield log.failure('tls', d.now(), asJoinery(error, profile.name, secrets));
+      yield log.failure('tls', d.now(), asQuerybara(error, profile.name, secrets));
       yield* log.skipRest();
       return;
     }

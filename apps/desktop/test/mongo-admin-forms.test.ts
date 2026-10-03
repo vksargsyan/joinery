@@ -4,7 +4,7 @@ import {
   toEjson,
   type CollectionInfo,
   type UserInfo,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {

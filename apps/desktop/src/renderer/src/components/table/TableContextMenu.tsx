@@ -1,5 +1,5 @@
 import type { GridSelection } from '@glideapps/glide-data-grid';
-import { COPY_FORMATS, DEFAULT, isDefault, type CopyFormat } from '@joinery/table-data';
+import { COPY_FORMATS, DEFAULT, isDefault, type CopyFormat } from '@querybara/table-data';
 import { DropdownMenu } from 'radix-ui';
 
 import { copyToClipboard } from '../../lib/clipboard';

@@ -16,12 +16,12 @@ import type {
   SettingScope,
   ToolCell,
   TopQuery,
-} from '@joinery/core';
-import type { Row } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { Row } from '@querybara/driver-sql-base';
 
 /**
  * PostgreSQL server tools: rows of the catalog and statistics views turned into the
- * engine-neutral shapes of @joinery/core. Pure, so they are tested with fixture rows; the
+ * engine-neutral shapes of @querybara/core. Pure, so they are tested with fixture rows; the
  * version differences of PostgreSQL 13 to 18 are handled by reading `to_jsonb` rows, where a
  * column a version lacks is simply absent.
  */

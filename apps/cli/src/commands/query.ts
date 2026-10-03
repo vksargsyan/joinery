@@ -3,12 +3,12 @@ import { resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 
 import {
-  JoineryError,
+  QuerybaraError,
   type CellValue,
   type ResultChunk,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   StatementSplitter,
   analyzeStatement,
@@ -18,7 +18,7 @@ import {
   findParameters,
   parameterNames,
   type SqlStatement,
-} from '@joinery/sql-tools';
+} from '@querybara/sql-tools';
 
 import { cancellable, closeQuietly } from '../connect';
 import type { Prompter } from '../context';
@@ -76,7 +76,7 @@ const READ_CHUNK_BYTES = 256 * 1024;
 const DML = /^(INSERT|UPDATE|DELETE|MERGE|REPLACE|COPY|LOAD)\b/i;
 
 /**
- * `joinery query <target>`: runs SQL statement by statement (spec §6, "Run SQL File"). Files
+ * `querybara query <target>`: runs SQL statement by statement (spec §6, "Run SQL File"). Files
  * and stdin stream through StatementSplitter, so memory stays flat for large dumps; results
  * stream to stdout in the chosen format; the safety policy gates risky statements; Ctrl+C
  * cancels the running statement through the session. Exit 0 when every statement ran, 2 when
@@ -395,7 +395,7 @@ function scriptInput(runtime: Runtime, options: QueryOptions): ScriptInput {
 function nonInteractive(): Prompter {
   const refuse = (): Promise<never> =>
     Promise.reject(
-      new JoineryError({
+      new QuerybaraError({
         code: 'CONFIRMATION_REQUIRED',
         message: 'Cannot prompt while reading SQL from stdin',
       }),

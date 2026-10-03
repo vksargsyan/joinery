@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import {
   aggregateByPattern,
   buildCommandCatalog,
@@ -27,7 +27,7 @@ import {
   type RedisBytes,
   type RedisReply,
   type SlowlogEntry,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 import { Redis } from 'ioredis';
 
 import { addressOf, connectClient, type Arg } from './client';
@@ -87,7 +87,7 @@ export async function configGet(
     return { values, denied: false };
   } catch (error) {
     if (
-      error instanceof JoineryError &&
+      error instanceof QuerybaraError &&
       (error.engineCode === 'NOPERM' || /unknown command/i.test(error.message))
     ) {
       return { values: {}, denied: true };
@@ -368,7 +368,7 @@ async function sentinelView(ctx: RedisContext): Promise<RedisTopologyView['senti
     }
   }
   throw lastError === undefined
-    ? new JoineryError({ code: 'CONNECTION_FAILED', message: 'No Sentinel answered' })
+    ? new QuerybaraError({ code: 'CONNECTION_FAILED', message: 'No Sentinel answered' })
     : mapRedisError(lastError, ctx.conn.context('command', 'SENTINEL'));
 }
 

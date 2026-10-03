@@ -1,12 +1,12 @@
 import {
-  JoineryError,
+  QuerybaraError,
   toErrorData,
   type SchemaSnapshot,
   type Session,
   type SqlDialect,
-} from '@joinery/core';
-import { formatStatements } from '@joinery/sync';
-import { gzipSink, type Sink } from '@joinery/transfer';
+} from '@querybara/core';
+import { formatStatements } from '@querybara/sync';
+import { gzipSink, type Sink } from '@querybara/transfer';
 
 import type { BackupObject, Manifest } from '../archive/manifest';
 import { ArchiveWriter } from '../archive/writer';
@@ -40,7 +40,7 @@ import {
  * batched INSERTs streamed straight from the cursor into the output.
  *
  * `sql` and `sql-gz` write one script that any client can run (DDL, then rows, then foreign
- * keys, triggers and events, then privileges). `jbak` writes the Joinery archive: a DDL file per
+ * keys, triggers and events, then privileges). `qbak` writes the Querybara archive: a DDL file per
  * object and a data file per table, which allows selective restore, optionally encrypted.
  */
 
@@ -110,8 +110,8 @@ function scriptEpilogue(dialect: SqlDialect): string[] {
   return dialect === 'postgres' ? [] : ['SET foreign_key_checks = 1', 'SET unique_checks = 1'];
 }
 
-function invalid(message: string): JoineryError {
-  return new JoineryError({ code: 'VALIDATION_FAILED', message });
+function invalid(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'VALIDATION_FAILED', message });
 }
 
 function comment(text: string): string {
@@ -124,8 +124,8 @@ export async function backupSql(options: SqlBackupOptions): Promise<BackupSummar
   const structure = options.structure !== false;
   const withData = options.data !== false;
   if (!structure && !withData) throw invalid('Choose the structure, the data, or both');
-  if (options.encryption && options.format !== 'jbak') {
-    throw invalid('Encryption needs the Joinery archive format (.jbak)');
+  if (options.encryption && options.format !== 'qbak') {
+    throw invalid('Encryption needs the Querybara archive format (.qbak)');
   }
   const pacer = new Pacer(options.progressIntervalMs ?? 250);
   const warnings: string[] = [];
@@ -167,7 +167,7 @@ export async function backupSql(options: SqlBackupOptions): Promise<BackupSummar
   let script: Sink | undefined;
   let manifest: Manifest | undefined;
   let status: TransferStatus = 'completed';
-  let error: JoineryError | undefined;
+  let error: QuerybaraError | undefined;
   let objectCount = 0;
   let dataCount = 0;
   try {
@@ -269,7 +269,7 @@ export async function backupSql(options: SqlBackupOptions): Promise<BackupSummar
       return count;
     };
 
-    if (options.format === 'jbak') {
+    if (options.format === 'qbak') {
       archive = await ArchiveWriter.create({
         sink: counted,
         ...(options.compress !== undefined ? { compress: options.compress } : {}),
@@ -318,7 +318,7 @@ export async function backupSql(options: SqlBackupOptions): Promise<BackupSummar
       current = undefined;
       manifest = await archive.finish({
         createdAt: new Date().toISOString(),
-        producer: options.producer ?? 'Joinery',
+        producer: options.producer ?? 'Querybara',
         engine: session.engine,
         serverVersion: session.serverVersion,
         database,
@@ -345,7 +345,7 @@ export async function backupSql(options: SqlBackupOptions): Promise<BackupSummar
         statements.length === 0 ? '' : `${formatStatements(statements, dialect)}\n`;
       await write(
         [
-          comment(`Joinery backup of ${database} (${session.engine} ${session.serverVersion})`),
+          comment(`Querybara backup of ${database} (${session.engine} ${session.serverVersion})`),
           comment(`Created ${new Date().toISOString()}; snapshot: ${snapshotMode}`),
           comment(
             `${plural(finals.length, 'object')}${dataTables.length > 0 ? `; rows of ${plural(dataTables.length, 'table')}` : ''}`,
@@ -391,9 +391,9 @@ export async function backupSql(options: SqlBackupOptions): Promise<BackupSummar
   } catch (caught) {
     status = isCancel(caught, signal) ? 'cancelled' : 'failed';
     error =
-      caught instanceof JoineryError
+      caught instanceof QuerybaraError
         ? caught
-        : new JoineryError(toErrorData(caught), { cause: caught });
+        : new QuerybaraError(toErrorData(caught), { cause: caught });
     await snapshotHandle?.end().catch(() => undefined);
     if (archive) await archive.abort(caught);
     else if (script) await script.abort(caught).catch(() => undefined);

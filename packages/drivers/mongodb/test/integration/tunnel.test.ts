@@ -1,4 +1,8 @@
-import type { ConnectionCheckResult, ConnectionProfileInput, ResolvedProfile } from '@joinery/core';
+import type {
+  ConnectionCheckResult,
+  ConnectionProfileInput,
+  ResolvedProfile,
+} from '@querybara/core';
 import {
   MemoryKnownHosts,
   TransportManager,
@@ -6,7 +10,7 @@ import {
   knownHostsVerifier,
   runSshStep,
   type TransportSession,
-} from '@joinery/tunnel';
+} from '@querybara/tunnel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -233,11 +237,11 @@ describe.skipIf(!MONGO_URL)('MongoDB through an SSH tunnel', () => {
   });
 
   it('says clearly when an SRV name does not resolve on this computer', async () => {
-    const srv = throughSsh({ endpoint: { kind: 'srv', host: 'cluster0.joinery.invalid' } });
+    const srv = throughSsh({ endpoint: { kind: 'srv', host: 'cluster0.querybara.invalid' } });
     await expect(connectThroughTransport(mongodbAdapter, srv, manager)).rejects.toMatchObject({
       code: 'CONNECTION_FAILED',
       engineCode: 'SRV_NOT_RESOLVED',
-      message: expect.stringContaining('_mongodb._tcp.cluster0.joinery.invalid'),
+      message: expect.stringContaining('_mongodb._tcp.cluster0.querybara.invalid'),
       hint: expect.stringContaining('host list'),
     });
     const results = await steps(srv);

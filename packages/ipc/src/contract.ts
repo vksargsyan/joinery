@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { z } from 'zod';
 
 /**
@@ -234,7 +234,7 @@ export type RequestOf<T, P extends MethodPath<T> = MethodPath<T>> = {
 // Validation.
 
 export type Checked<T> =
-  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: JoineryError };
+  { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: QuerybaraError };
 
 /**
  * Validates `value` and returns the parsed result, or a VALIDATION_FAILED error naming `what`.
@@ -249,7 +249,10 @@ export function check(schema: z.ZodType, value: unknown, what: string): Checked<
     const message = error instanceof Error ? error.message : String(error);
     return {
       ok: false,
-      error: new JoineryError({ code: 'INTERNAL', message: `Cannot validate ${what}: ${message}` }),
+      error: new QuerybaraError({
+        code: 'INTERNAL',
+        message: `Cannot validate ${what}: ${message}`,
+      }),
     };
   }
   if (result.success) return { ok: true, value: result.data };
@@ -257,7 +260,7 @@ export function check(schema: z.ZodType, value: unknown, what: string): Checked<
   const where = first && first.path.length > 0 ? ` at ${first.path.map(String).join('.')}` : '';
   return {
     ok: false,
-    error: new JoineryError({
+    error: new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Invalid ${what}${where}: ${first?.message ?? 'validation failed'}`,
       detail: z.prettifyError(result.error),
@@ -270,7 +273,7 @@ export function check(schema: z.ZodType, value: unknown, what: string): Checked<
  * `serve` — e.g. an `ipcMain.handle` channel behind the preload bridge. Returns the method path
  * and the parsed input, narrowed by `method` when it is a literal path.
  *
- * Throws a JoineryError: NOT_FOUND for an unknown method, VALIDATION_FAILED for a bad payload.
+ * Throws a QuerybaraError: NOT_FOUND for an unknown method, VALIDATION_FAILED for a bad payload.
  */
 export function parseRequest<C extends ContractShape, M extends string>(
   contract: Contract<C>,
@@ -289,7 +292,7 @@ export function parseRequest(
 ): { readonly method: string; readonly input: unknown } {
   const entry = typeof method === 'string' ? contract.methods.get(method) : undefined;
   if (entry === undefined) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'NOT_FOUND',
       message: `Unknown method ${typeof method === 'string' ? `"${method}"` : ''}`.trimEnd(),
     });

@@ -1,4 +1,4 @@
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { bytesSource, runSqlFile } from '../../src';

@@ -1,5 +1,5 @@
-import type { PubSubMessage } from '@joinery/driver-redis';
-import { displayBytes, parseDisplayBytes, utf8Bytes } from '@joinery/redis-tools';
+import type { PubSubMessage } from '@querybara/driver-redis';
+import { displayBytes, parseDisplayBytes, utf8Bytes } from '@querybara/redis-tools';
 import { useEffect, useRef, useState } from 'react';
 
 import { errorMessage } from '../../../lib/errors';

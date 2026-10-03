@@ -11,7 +11,7 @@ import type { Connection } from 'ssh2';
 
 export interface TestSshServer {
   readonly port: number;
-  /** `SHA256:…` of the host key, as Joinery shows it. */
+  /** `SHA256:…` of the host key, as Querybara shows it. */
   readonly hostKeyFingerprint: string;
   readonly stats: { connections: number; authenticated: number; forwards: number };
   /** SSH sessions open right now. */

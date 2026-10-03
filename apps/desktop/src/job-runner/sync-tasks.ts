@@ -1,4 +1,4 @@
-import type { StructureScript } from '@joinery/ipc';
+import type { StructureScript } from '@querybara/ipc';
 
 import type { RunnerRequest } from '../shared/job-protocol';
 import type { SyncJobSpec } from '../shared/sync-jobs';

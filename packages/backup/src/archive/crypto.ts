@@ -7,10 +7,10 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /**
- * Passphrase encryption of Joinery archives: scrypt turns the passphrase and a random salt into
+ * Passphrase encryption of Querybara archives: scrypt turns the passphrase and a random salt into
  * two independent 256-bit keys, one for AES-256-GCM over every frame of every entry and one for
  * an HMAC-SHA256 over the archive header (so a wrong passphrase is told apart from a damaged
  * frame). Frames use the STREAM construction: the nonce is a random per-entry prefix plus the
@@ -69,10 +69,10 @@ export async function deriveKeys(
   cost: ScryptCost,
 ): Promise<ArchiveKeys> {
   if (passphrase.length === 0) {
-    throw new JoineryError({ code: 'VALIDATION_FAILED', message: 'The passphrase is empty' });
+    throw new QuerybaraError({ code: 'VALIDATION_FAILED', message: 'The passphrase is empty' });
   }
   if (!isValidScryptCost(cost)) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The archive asks for key derivation settings outside the allowed range',
     });
@@ -162,15 +162,15 @@ export function openFrame(
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(body), decipher.final()]);
   } catch {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'AUTH_FAILED',
       message: `The backup was modified or is damaged: ${what} failed its integrity check`,
     });
   }
 }
 
-export function damaged(what: string, detail?: string): JoineryError {
-  return new JoineryError({
+export function damaged(what: string, detail?: string): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `The backup is damaged: ${what}${detail ? ` (${detail})` : ''}`,
   });

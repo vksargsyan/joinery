@@ -1,5 +1,5 @@
-import type { ConnectionCheckResult, JoineryError } from '@joinery/core';
-import { keySlot } from '@joinery/redis-tools';
+import type { ConnectionCheckResult, QuerybaraError } from '@querybara/core';
+import { keySlot } from '@querybara/redis-tools';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RedisSession } from '../../src';
@@ -164,7 +164,7 @@ describe.skipIf(!REDIS_CLUSTER || !REDIS_URL)('Cluster', () => {
       method: 'dump-restore',
     });
     const missing = await session.rename(`${p}missing`, target).catch((e: unknown) => e);
-    expect((missing as JoineryError).code).toBe('NOT_FOUND');
+    expect((missing as QuerybaraError).code).toBe('NOT_FOUND');
     await session.setString(`${p}{s}1`, 'x');
     expect(await session.copy(`${p}{s}1`, `${p}{s}2`)).toEqual({ copied: true, method: 'copy' });
   });

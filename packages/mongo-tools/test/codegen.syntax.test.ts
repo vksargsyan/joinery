@@ -97,13 +97,13 @@ const CHECKERS: readonly Checker[] = [
   },
 ];
 
-const dir = mkdtempSync(join(tmpdir(), 'joinery-code-export-'));
+const dir = mkdtempSync(join(tmpdir(), 'querybara-code-export-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** Programs built from random documents, to catch escaping and layout mistakes. */
 function randomTargets(): ExportTarget[] {
-  const seed = Number(process.env['JOINERY_FUZZ_SEED'] ?? 20260929);
-  const runsCount = Number(process.env['JOINERY_FUZZ_RUNS'] ?? 300);
+  const seed = Number(process.env['QUERYBARA_FUZZ_SEED'] ?? 20260929);
+  const runsCount = Number(process.env['QUERYBARA_FUZZ_RUNS'] ?? 300);
   const documents = fc.sample(bsonDocument, { numRuns: Math.max(10, runsCount / 10), seed });
   return [
     { kind: 'aggregate', collection: 'fuzz', pipeline: documents.map((doc) => ({ $match: doc })) },

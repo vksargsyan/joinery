@@ -3,7 +3,7 @@ import {
   type SchemaSnapshot,
   type SqlDialect,
   type TableDef,
-} from '@joinery/core';
+} from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import { resolveDbTransferOptions, type DbTransferOptions, type TransferObjectSpec } from '../src';
@@ -329,7 +329,7 @@ describe('modes and problems', () => {
     ]);
     expect(result.problems).toEqual([
       'Table nope was not found on the source',
-      'people: "int; DROP TABLE x" is not a column type Joinery can use (name)',
+      'people: "int; DROP TABLE x" is not a column type Querybara can use (name)',
     ]);
   });
 

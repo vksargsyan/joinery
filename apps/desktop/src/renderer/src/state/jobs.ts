@@ -1,5 +1,5 @@
-import { JoineryError } from '@joinery/core';
-import type { JobEvent, JobInfo, JobSpec } from '@joinery/ipc';
+import { QuerybaraError } from '@querybara/core';
+import type { JobEvent, JobInfo, JobSpec } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { mainApi } from '../lib/main-client';
@@ -103,7 +103,7 @@ export function selectJob(jobId: string | undefined): void {
 export async function startJob(job: JobSpec): Promise<string | undefined> {
   const profile = await profileById(job.profileId);
   if (!profile)
-    throw new JoineryError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
+    throw new QuerybaraError({ code: 'NOT_FOUND', message: 'The connection was deleted' });
   const status = await mainApi().profiles.secretStatus({ profileId: job.profileId });
   let secrets: Record<string, string> | undefined;
   if (status.missing.length > 0) {

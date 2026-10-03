@@ -1,5 +1,5 @@
-import type { ColumnDef, ForeignKeyDef, IndexDef, TableDef } from '@joinery/core';
-import { quoteIdent, quoteQualified, quoteString } from '@joinery/sql-tools';
+import type { ColumnDef, ForeignKeyDef, IndexDef, TableDef } from '@querybara/core';
+import { quoteIdent, quoteQualified, quoteString } from '@querybara/sql-tools';
 
 import type { SyncOperation } from '../model';
 import { canonicalCharset } from '../normalize';

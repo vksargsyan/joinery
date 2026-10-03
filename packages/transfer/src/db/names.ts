@@ -1,4 +1,4 @@
-import type { SqlDialect } from '@joinery/core';
+import type { SqlDialect } from '@querybara/core';
 
 /**
  * Identifier rules shared by the transfer planners: engine length limits, safe column names

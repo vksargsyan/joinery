@@ -1,4 +1,4 @@
-import type { ReferentialAction, SchemaSnapshot, SqlDialect } from '@joinery/core';
+import type { ReferentialAction, SchemaSnapshot, SqlDialect } from '@querybara/core';
 
 /**
  * The entity-relationship diagram of a database or schema (spec §8, "ER diagrams"): its tables

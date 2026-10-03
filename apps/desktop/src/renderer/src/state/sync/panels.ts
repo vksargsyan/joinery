@@ -1,5 +1,5 @@
-import { newId, requiresWriteConfirmation } from '@joinery/core';
-import type { SavedComparison, StoredProfile } from '@joinery/ipc';
+import { newId, requiresWriteConfirmation } from '@querybara/core';
+import type { SavedComparison, StoredProfile } from '@querybara/ipc';
 import { create } from 'zustand';
 
 import { currentDock } from '../../components/dock';

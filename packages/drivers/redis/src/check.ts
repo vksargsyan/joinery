@@ -3,20 +3,20 @@ import { connect as netConnect, isIP } from 'node:net';
 
 import {
   CONNECTION_CHECK_STEPS,
-  JoineryError,
+  QuerybaraError,
   type ConnectionCheckResult,
   type ConnectionCheckStep,
   type DriverAdapter,
   type ResolvedProfile,
-} from '@joinery/core';
+} from '@querybara/core';
 import {
   describeTarget,
   errorMessage,
   mapNetworkError,
   type CheckConnectionDeps,
   type NetworkTarget,
-} from '@joinery/driver-sql-base';
-import { needsTransport, tunnelReach, tunnelledProfile, type Transport } from '@joinery/tunnel';
+} from '@querybara/driver-sql-base';
+import { needsTransport, tunnelReach, tunnelledProfile, type Transport } from '@querybara/tunnel';
 
 import { buildRedisConnectionPlan, type RedisConnectionPlan } from './config';
 import type { RedisSession } from './types';
@@ -24,7 +24,7 @@ import type { RedisSession } from './types';
 /** The network primitives of Test Connection, and the `ssh` step that opens a tunnel. */
 export interface RedisCheckDeps extends CheckConnectionDeps {
   /**
-   * @joinery/tunnel's `runSshStep`; for Sentinel and Cluster its transport also has `nodes`,
+   * @querybara/tunnel's `runSshStep`; for Sentinel and Cluster its transport also has `nodes`,
    * which reach every node.
    */
   runSshStep?(resolved: ResolvedProfile): Promise<{
@@ -62,11 +62,14 @@ const defaultDeps: CheckConnectionDeps = {
   now: () => performance.now(),
 };
 
-function asJoineryError(error: unknown, where: string): JoineryError {
-  if (error instanceof JoineryError) return error;
+function asQuerybaraError(error: unknown, where: string): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   return (
     mapNetworkError(error, where) ??
-    new JoineryError({ code: 'CONNECTION_FAILED', message: errorMessage(error) }, { cause: error })
+    new QuerybaraError(
+      { code: 'CONNECTION_FAILED', message: errorMessage(error) },
+      { cause: error },
+    )
   );
 }
 
@@ -93,7 +96,11 @@ class StepLog {
     return this.report({ step, status: 'skipped', durationMs: 0, message });
   }
 
-  failure(step: ConnectionCheckStep, started: number, error: JoineryError): ConnectionCheckResult {
+  failure(
+    step: ConnectionCheckStep,
+    started: number,
+    error: QuerybaraError,
+  ): ConnectionCheckResult {
     return this.report({
       step,
       status: 'failed',
@@ -117,7 +124,7 @@ class StepLog {
   }
 }
 
-/** DNS and TCP of the hosts Joinery contacts first; passes when at least one answers. */
+/** DNS and TCP of the hosts Querybara contacts first; passes when at least one answers. */
 async function* networkSteps(
   targets: readonly NetworkTarget[],
   what: string,
@@ -142,7 +149,7 @@ async function* networkSteps(
     const resolved = names.filter((_, i) => results[i]!.status === 'fulfilled');
     if (resolved.length === 0) {
       const first = results[0] as PromiseRejectedResult;
-      yield log.failure('dns', started, asJoineryError(first.reason, names[0]!));
+      yield log.failure('dns', started, asQuerybaraError(first.reason, names[0]!));
       return false;
     }
     const failed = names.filter((n) => !resolved.includes(n));
@@ -163,7 +170,7 @@ async function* networkSteps(
   const reachable = targets.filter((_, i) => probes[i]!.status === 'fulfilled');
   if (reachable.length === 0) {
     const first = probes[0] as PromiseRejectedResult;
-    yield log.failure('tcp', started, asJoineryError(first.reason, describeTarget(targets[0]!)));
+    yield log.failure('tcp', started, asQuerybaraError(first.reason, describeTarget(targets[0]!)));
     return false;
   }
   const unreachable = targets.length - reachable.length;
@@ -198,7 +205,7 @@ async function* driverSteps(
   try {
     plan = buildRedisConnectionPlan(resolved);
   } catch (error) {
-    const mapped = asJoineryError(error, resolved.profile.name);
+    const mapped = asQuerybaraError(error, resolved.profile.name);
     if (mapped.code !== 'TLS_FAILED') yield log.skipped('tls', 'Not checked');
     yield log.failure(mapped.code === 'TLS_FAILED' ? 'tls' : 'auth', started, mapped);
     yield* log.skipRest();
@@ -209,7 +216,7 @@ async function* driverSteps(
   try {
     session = (await adapter.connect(resolved)) as RedisSession;
   } catch (error) {
-    const mapped = asJoineryError(error, plan.where);
+    const mapped = asQuerybaraError(error, plan.where);
     if (tlsOff) {
       yield log.skipped('tls', plan.target.kind === 'socket' ? 'Unix socket' : 'TLS is disabled');
       yield log.failure('auth', started, mapped);
@@ -243,7 +250,7 @@ async function* driverSteps(
       await session.ping();
       yield log.ok('ping', started);
     } catch (error) {
-      yield log.failure('ping', started, asJoineryError(error, plan.where));
+      yield log.failure('ping', started, asQuerybaraError(error, plan.where));
       yield* log.skipRest();
       return;
     }
@@ -295,7 +302,7 @@ export async function* checkRedisConnection(
     try {
       tunnelReach(profile);
     } catch (error) {
-      yield log.failure('ssh', started, asJoineryError(error, profile.name));
+      yield log.failure('ssh', started, asQuerybaraError(error, profile.name));
       yield* log.skipRest();
       return;
     }
@@ -314,7 +321,7 @@ export async function* checkRedisConnection(
     try {
       outcome = await d.runSshStep(resolved);
     } catch (error) {
-      yield log.failure('ssh', started, asJoineryError(error, describeTarget(firstTarget)));
+      yield log.failure('ssh', started, asQuerybaraError(error, describeTarget(firstTarget)));
       yield* log.skipRest();
       return;
     }
@@ -341,7 +348,7 @@ export async function* checkRedisConnection(
     yield log.failure(
       needsTransport(profile) ? 'ssh' : 'dns',
       started,
-      asJoineryError(error, profile.name),
+      asQuerybaraError(error, profile.name),
     );
     yield* log.skipRest();
     return;

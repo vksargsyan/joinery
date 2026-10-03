@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { crc32, createDeflateRaw, createInflateRaw } from 'node:zlib';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 import type { ByteSource, RandomAccessReader, Sink } from './io';
 
@@ -51,8 +51,8 @@ export function isCompoundFile(bytes: Uint8Array): boolean {
   return bytes.length >= 8 && magic.every((byte, i) => bytes[i] === byte);
 }
 
-function corrupt(message: string): JoineryError {
-  return new JoineryError({
+function corrupt(message: string): QuerybaraError {
+  return new QuerybaraError({
     code: 'VALIDATION_FAILED',
     message: `Not a valid ZIP file: ${message}`,
   });
@@ -190,13 +190,13 @@ export class ZipReader {
    */
   async *read(entry: ZipEntry, onRead?: (position: number) => void): AsyncGenerator<Uint8Array> {
     if (entry.encrypted) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `"${entry.name}" is encrypted; save the file without a password`,
       });
     }
     if (entry.method !== 0 && entry.method !== 8) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'NOT_SUPPORTED',
         message: `"${entry.name}" uses ZIP compression method ${entry.method}; only stored and deflated entries are read`,
       });
@@ -244,7 +244,7 @@ export class ZipReader {
           yield chunk;
         }
       } catch (error) {
-        if (error instanceof JoineryError) throw error;
+        if (error instanceof QuerybaraError) throw error;
         throw corrupt(`"${entry.name}" does not decompress (${(error as Error).message})`);
       } finally {
         inflate.destroy();
@@ -258,7 +258,7 @@ export class ZipReader {
   /** A whole (small) entry as text; throws when it is longer than `limit` bytes. */
   async text(entry: ZipEntry, limit = 64 * 1024 * 1024): Promise<string> {
     if (entry.size > limit) {
-      throw new JoineryError({
+      throw new QuerybaraError({
         code: 'VALIDATION_FAILED',
         message: `"${entry.name}" is too large (${entry.size} bytes)`,
       });

@@ -1,5 +1,5 @@
-import { JoineryError, newId, type Session, type SqlDialect } from '@joinery/core';
-import { StatementSplitter, type SqlStatement } from '@joinery/sql-tools';
+import { QuerybaraError, newId, type Session, type SqlDialect } from '@querybara/core';
+import { StatementSplitter, type SqlStatement } from '@querybara/sql-tools';
 
 import { openInput, peekSource, type ByteSource } from './io';
 import { dialectOf } from './session';
@@ -82,7 +82,7 @@ export async function runSqlFile(options: SqlFileOptions): Promise<SqlFileSummar
   const errorLogLimit = options.errorLogLimit ?? 1000;
   const interval = options.progressIntervalMs ?? 250;
   if (single && session.inTransaction) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: 'The session already has an open transaction',
     });
@@ -125,19 +125,19 @@ export async function runSqlFile(options: SqlFileOptions): Promise<SqlFileSummar
     }
   };
   const cancelled = (error: unknown): boolean =>
-    signal?.aborted === true || (error instanceof JoineryError && error.code === 'CANCELLED');
+    signal?.aborted === true || (error instanceof QuerybaraError && error.code === 'CANCELLED');
 
   const runOne = async (statement: SqlStatement): Promise<void> => {
     if (signal?.aborted === true) throw new Stop('cancelled');
     statements++;
     const guard = single && onError === 'continue' && dialect === 'postgres';
-    if (guard) await control('SAVEPOINT joinery_statement');
+    if (guard) await control('SAVEPOINT querybara_statement');
     try {
       await execute(statement.text);
-      if (guard) await control('RELEASE SAVEPOINT joinery_statement');
+      if (guard) await control('RELEASE SAVEPOINT querybara_statement');
     } catch (error) {
       if (cancelled(error)) throw new Stop('cancelled');
-      if (guard) await control('ROLLBACK TO SAVEPOINT joinery_statement');
+      if (guard) await control('ROLLBACK TO SAVEPOINT querybara_statement');
       failed++;
       if (errors.length < errorLogLimit) {
         errors.push({

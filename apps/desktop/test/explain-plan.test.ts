@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 
-import type { PlanNode } from '@joinery/core';
+import type { PlanNode } from '@querybara/core';
 import {
   normaliseMysqlJsonPlan,
   normaliseMysqlTreePlan,
   parseExplainJson,
-} from '@joinery/driver-mysql';
-import { normalisePgPlan } from '@joinery/driver-postgres';
+} from '@querybara/driver-mysql';
+import { normalisePgPlan } from '@querybara/driver-postgres';
 import { describe, expect, it } from 'vitest';
 
 import {

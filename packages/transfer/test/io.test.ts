@@ -44,7 +44,7 @@ function chunked(bytes: Uint8Array, sizes: readonly number[]): ByteSource {
 
 let dir: string;
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'joinery-transfer-io-'));
+  dir = await mkdtemp(join(tmpdir(), 'querybara-transfer-io-'));
 });
 afterAll(async () => {
   await rm(dir, { recursive: true, force: true });

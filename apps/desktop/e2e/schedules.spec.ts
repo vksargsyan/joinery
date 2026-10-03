@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { Session } from '@joinery/core';
+import type { Session } from '@querybara/core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { launchApp, openNewConnection, type LaunchedApp } from './app';
@@ -17,11 +17,11 @@ import { connect, query, scratchDatabase } from './db';
  * remembered for the session, which scheduled runs in the same session can use.
  */
 
-const PG_URL = process.env['JOINERY_TEST_POSTGRES_URL'];
-const SHOTS = process.env['JOINERY_E2E_SHOTS'];
+const PG_URL = process.env['QUERYBARA_TEST_POSTGRES_URL'];
+const SHOTS = process.env['QUERYBARA_E2E_SHOTS'];
 const NAME = 'E2E Schedules';
 
-test.skip(!PG_URL, 'Set JOINERY_TEST_POSTGRES_URL to run the end-to-end tests');
+test.skip(!PG_URL, 'Set QUERYBARA_TEST_POSTGRES_URL to run the end-to-end tests');
 
 test.describe.configure({ mode: 'serial' });
 
@@ -36,7 +36,7 @@ test.beforeAll(async () => {
   direct = await connect(PG_URL!, database.name);
   await query(direct, 'CREATE TABLE orders (id integer PRIMARY KEY, total numeric(10,2) NOT NULL)');
   await query(direct, 'INSERT INTO orders VALUES (1, 10), (2, 20), (3, 30)');
-  work = mkdtempSync(join(tmpdir(), 'joinery-schedules-'));
+  work = mkdtempSync(join(tmpdir(), 'querybara-schedules-'));
   writeFileSync(join(work, 'refresh.sql'), 'INSERT INTO orders VALUES (4, 40);\n');
   launched = await launchApp();
   page = launched.page;
@@ -214,7 +214,7 @@ test('asks before quitting while a schedule is on, and stays open on Cancel', as
   // Native message boxes answer Cancel and record what they were asked.
   await launched!.app.evaluate(({ dialog }) => {
     const asked: Electron.MessageBoxOptions[] = [];
-    (globalThis as { joineryAsked?: typeof asked }).joineryAsked = asked;
+    (globalThis as { querybaraAsked?: typeof asked }).querybaraAsked = asked;
     dialog.showMessageBox = ((...args: unknown[]) => {
       asked.push(args.at(-1) as Electron.MessageBoxOptions);
       return Promise.resolve({ response: 1, checkboxChecked: false });
@@ -222,24 +222,24 @@ test('asks before quitting while a schedule is on, and stays open on Cancel', as
   });
   const asked = () =>
     launched!.app.evaluate(
-      () => (globalThis as { joineryAsked?: Electron.MessageBoxOptions[] }).joineryAsked ?? [],
+      () => (globalThis as { querybaraAsked?: Electron.MessageBoxOptions[] }).querybaraAsked ?? [],
     );
 
   await launched!.app.evaluate(({ app }) => app.quit());
   await expect.poll(async () => (await asked()).length).toBe(1);
   const [question] = await asked();
   expect(question!.message).toMatch(
-    /^(Quit|Close) Joinery\? Schedules don’t run while it’s closed\.$/,
+    /^(Quit|Close) Querybara\? Schedules don’t run while it’s closed\.$/,
   );
   expect(question!.detail).toMatch(
     /^The schedule “Run refresh\.sql” is on; its next run is (today|tomorrow) at \d\d:\d\d\./,
   );
   expect(question!.checkboxLabel).toBe('Don’t ask again');
-  // Cancelled: Joinery is still here.
+  // Cancelled: Querybara is still here.
   await expect(panel()).toBeVisible();
 
   // The panel's switch turns the question off, and on again.
-  const ask = panel().getByRole('switch', { name: 'Ask before closing Joinery' });
+  const ask = panel().getByRole('switch', { name: 'Ask before closing Querybara' });
   await expect(ask).toHaveAttribute('aria-checked', 'true');
   await ask.click();
   await expect(ask).toHaveAttribute('aria-checked', 'false');

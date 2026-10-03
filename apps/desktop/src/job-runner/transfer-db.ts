@@ -1,21 +1,21 @@
 import {
-  JoineryError,
+  QuerybaraError,
   isSqlEngine,
   newId,
   requiresWriteConfirmation,
   rowAt,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
+} from '@querybara/core';
 import type {
   JobProgress,
   JobRowError,
   TransferInspection,
   TransferJob,
   TransferPlanInfo,
-} from '@joinery/ipc';
-import { transferPlanSchema } from '@joinery/ipc';
-import { quoteString } from '@joinery/sql-tools';
+} from '@querybara/ipc';
+import { transferPlanSchema } from '@querybara/ipc';
+import { quoteString } from '@querybara/sql-tools';
 import {
   planDbTransfer,
   runDbTransfer,
@@ -24,14 +24,14 @@ import {
   type DbTransferSpec,
   type SessionOpener,
   type TransferPlan,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 
 import type { JobOutcome } from './tasks';
 
 /**
  * Data transfer between databases in the job runner (spec §12, ADR 0006): the wizard's
  * inspection of a connection and plan of a transfer, and the `transfer` job itself, all on
- * @joinery/transfer's pipeline. The write rules are enforced here, in the process that writes:
+ * @querybara/transfer's pipeline. The write rules are enforced here, in the process that writes:
  * a read-only target refuses, and a transfer that drops, empties or overwrites anything, or
  * writes to a production or confirm-every-write profile, runs only when confirmed.
  */
@@ -81,8 +81,8 @@ export function sameConnection(job: TransferJob): boolean {
 function refuse(
   code: 'READ_ONLY' | 'CONFIRMATION_REQUIRED' | 'NOT_SUPPORTED',
   message: string,
-): JoineryError {
-  return new JoineryError({ code, message });
+): QuerybaraError {
+  return new QuerybaraError({ code, message });
 }
 
 /** Checks the engines can transfer, before anything connects. */

@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { createSearchAdapter } from '@joinery/driver-elasticsearch';
+import { createSearchAdapter } from '@querybara/driver-elasticsearch';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { Reporter } from '../src/reporter';
@@ -17,12 +17,12 @@ import { describeEndpoint, resolveTarget, resolvedProfile } from '../src/target'
 import { MemoryStream, ScriptedPrompter, run, tempDir } from './helpers';
 
 /**
- * Elasticsearch in joinery-cli: console text into requests, response output,
+ * Elasticsearch in querybara-cli: console text into requests, response output,
  * http(s):// URL targets, and `query` / `test` end to end through the real adapter against a
  * small in-process HTTP server that answers like Elasticsearch.
  */
 
-describe('console requests in joinery query', () => {
+describe('console requests in querybara query', () => {
   it('reads requests with bodies, labels and write safety', () => {
     const planned = planSearchRequests(
       'GET _cluster/health\n\nPUT /orders?timeout=5s\n{"settings": {"number_of_replicas": 0}}\n\nDELETE /orders\n\nPOST /orders/_bulk\n{"index":{}}\n{"n":1}\n',
@@ -76,7 +76,7 @@ describe('http(s):// URL targets', () => {
   beforeEach(() => {
     const temp = tempDir();
     cleanup = temp.cleanup;
-    store = new StoreHandle({ path: `${temp.dir}/joinery.db`, source: '--store' }, {});
+    store = new StoreHandle({ path: `${temp.dir}/querybara.db`, source: '--store' }, {});
     return () => {
       store.close();
       cleanup();
@@ -107,11 +107,11 @@ describe('http(s):// URL targets', () => {
     expect(plain.label).toBe('Elasticsearch 127.0.0.1:9201');
   });
 
-  it('logs in with JOINERY_API_KEY when the URL has no user', async () => {
+  it('logs in with QUERYBARA_API_KEY when the URL has no user', async () => {
     const target = await resolveTarget(
       'https://es.example.com',
       {},
-      deps({ JOINERY_API_KEY: 'a2V5OnNlY3JldA==' }),
+      deps({ QUERYBARA_API_KEY: 'a2V5OnNlY3JldA==' }),
     );
     const resolved = resolvedProfile(target);
     expect(resolved.profile.auth).toMatchObject({ method: 'apiKey' });
@@ -184,7 +184,7 @@ beforeEach(() => {
 const cli = (argv: string[], prompter = new ScriptedPrompter(false)) =>
   run(argv, { adapter: createSearchAdapter(), prompter });
 
-describe('joinery query and test on Elasticsearch', () => {
+describe('querybara query and test on Elasticsearch', () => {
   it('prints each response body, with the status on stderr', async () => {
     const result = await cli(['query', url, '-e', 'GET _cluster/health\n\nGET /orders/_doc/1']);
     expect(result.code).toBe(0);

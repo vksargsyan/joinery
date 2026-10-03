@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { MASKED_SECRET, type ServerAction, type Session } from '@joinery/core';
+import { MASKED_SECRET, type ServerAction, type Session } from '@querybara/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createMysqlAdapter, createMysqlServerTools } from '../../src';

@@ -1,4 +1,4 @@
-import type { DbTableModeInfo } from '@joinery/ipc';
+import type { DbTableModeInfo } from '@querybara/ipc';
 
 import { childrenOf } from '../../state/transfer-db/wizard';
 import { SelectField, TextField } from '../designer/fields';

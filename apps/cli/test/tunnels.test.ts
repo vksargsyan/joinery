@@ -2,8 +2,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
 
-import { connectionProfileSchema } from '@joinery/core';
-import { openStore } from '@joinery/storage';
+import { connectionProfileSchema } from '@querybara/core';
+import { openStore } from '@querybara/storage';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { proxyUrl, sshHop } from '../src/options';
@@ -15,8 +15,8 @@ import { FakeAdapter, FakeSession, MemoryStream, ScriptedPrompter, run, tempDir 
 import { ed25519Key, startEchoServer, startSshServer, type TestSshServer } from './ssh-server';
 
 /**
- * SSH tunnels and proxies in joinery-cli (spec §4): the --ssh and --proxy flags, the secrets a
- * route needs, saved profiles with a tunnel, and `joinery test` through a real in-process SSH
+ * SSH tunnels and proxies in querybara-cli (spec §4): the --ssh and --proxy flags, the secrets a
+ * route needs, saved profiles with a tunnel, and `querybara test` through a real in-process SSH
  * server with a fake driver behind it.
  */
 
@@ -104,7 +104,7 @@ describe('URI targets with --ssh and --proxy', () => {
   let store: StoreHandle;
   beforeEach(() => {
     ({ dir, cleanup } = tempDir());
-    store = new StoreHandle({ path: join(dir, 'joinery.db'), source: '--store' }, {});
+    store = new StoreHandle({ path: join(dir, 'querybara.db'), source: '--store' }, {});
   });
   afterEach(() => {
     store.close();
@@ -139,11 +139,11 @@ describe('URI targets with --ssh and --proxy', () => {
     expect(() => connectionProfileSchema.parse(resolved.profile)).not.toThrow();
   });
 
-  it('takes the SSH password from JOINERY_SSH_PASSWORD, a prompt per hop, or fails with a hint', async () => {
+  it('takes the SSH password from QUERYBARA_SSH_PASSWORD, a prompt per hop, or fails with a hint', async () => {
     const fromEnv = await resolveTarget(
       URI,
       { tunnel: { ssh: hops.slice(0, 1) } },
-      deps(store, { JOINERY_SSH_PASSWORD: SSH_PASSWORD }),
+      deps(store, { QUERYBARA_SSH_PASSWORD: SSH_PASSWORD }),
     );
     expect(Object.values(resolvedProfile(fromEnv).secrets)).toEqual([SSH_PASSWORD]);
 
@@ -177,7 +177,7 @@ describe('URI targets with --ssh and --proxy', () => {
 
     const locked = join(dir, 'id_locked');
     writeFileSync(locked, ed25519Key('k3y'));
-    const env = { JOINERY_SSH_KEY_PASSPHRASE: 'k3y' };
+    const env = { QUERYBARA_SSH_KEY_PASSPHRASE: 'k3y' };
     const unlocked = resolvedProfile(
       await resolveTarget(URI, { tunnel: { ssh: hops, sshKey: locked } }, deps(store, env)),
     );
@@ -190,12 +190,12 @@ describe('URI targets with --ssh and --proxy', () => {
       resolveTarget(
         URI,
         { tunnel: { ssh: hops, sshKey: locked } },
-        deps(store, { JOINERY_SSH_KEY_PASSPHRASE: 'wrong' }),
+        deps(store, { QUERYBARA_SSH_KEY_PASSPHRASE: 'wrong' }),
       ),
     ).rejects.toMatchObject({ engineCode: 'BAD_PASSPHRASE' });
     await expect(
       resolveTarget(URI, { tunnel: { ssh: hops, sshKey: locked } }, deps(store)),
-    ).rejects.toMatchObject({ hint: expect.stringContaining('JOINERY_SSH_KEY_PASSPHRASE') });
+    ).rejects.toMatchObject({ hint: expect.stringContaining('QUERYBARA_SSH_KEY_PASSPHRASE') });
     await expect(
       resolveTarget(URI, { tunnel: { ssh: hops, sshKey: join(dir, 'missing') } }, deps(store)),
     ).rejects.toMatchObject({ message: expect.stringContaining('ENOENT') });
@@ -205,7 +205,7 @@ describe('URI targets with --ssh and --proxy', () => {
     const target = await resolveTarget(
       URI,
       { tunnel: { proxy: { kind: 'socks5', host: 'proxy', port: 1080, user: 'me' } } },
-      deps(store, { JOINERY_PROXY_PASSWORD: 'proxy-pw' }),
+      deps(store, { QUERYBARA_PROXY_PASSWORD: 'proxy-pw' }),
     );
     const resolved = resolvedProfile(target);
     expect(resolved.profile.proxy).toMatchObject({ kind: 'socks5', host: 'proxy', user: 'me' });
@@ -226,7 +226,7 @@ describe('saved profiles with a tunnel', () => {
   afterEach(() => cleanup());
 
   it('asks for their SSH secrets or takes them from the environment', async () => {
-    const path = join(dir, 'joinery.db');
+    const path = join(dir, 'querybara.db');
     const raw = openStore(path, { sealer: cliSealer({}) });
     const now = new Date().toISOString();
     raw.profiles.save(
@@ -258,7 +258,10 @@ describe('saved profiles with a tunnel', () => {
     raw.close();
     const store = new StoreHandle({ path, source: '--store' }, {});
     try {
-      const d = deps(store, { JOINERY_SSH_PASSWORD: SSH_PASSWORD, JOINERY_PROXY_PASSWORD: 'pp' });
+      const d = deps(store, {
+        QUERYBARA_SSH_PASSWORD: SSH_PASSWORD,
+        QUERYBARA_PROXY_PASSWORD: 'pp',
+      });
       const target = await resolveTarget(
         'prod',
         { tunnel: { ssh: [{ user: 'x', host: 'y', port: 22 }] } },
@@ -277,7 +280,7 @@ describe('saved profiles with a tunnel', () => {
       ]);
       await expect(resolveTarget('prod', {}, deps(store))).rejects.toMatchObject({
         code: 'AUTH_FAILED',
-        hint: expect.stringContaining('JOINERY_SSH_PASSWORD'),
+        hint: expect.stringContaining('QUERYBARA_SSH_PASSWORD'),
       });
     } finally {
       store.close();
@@ -285,7 +288,7 @@ describe('saved profiles with a tunnel', () => {
   });
 });
 
-describe('joinery test through an in-process SSH server', () => {
+describe('querybara test through an in-process SSH server', () => {
   let ssh: TestSshServer;
   let database: { port: number; close(): Promise<void> };
   beforeAll(async () => {
@@ -313,7 +316,7 @@ describe('joinery test through an in-process SSH server', () => {
         '--known-hosts',
         knownHosts,
       ];
-      const env = { BASTION_PW: SSH_PASSWORD, JOINERY_PASSWORD: 'db-pw' };
+      const env = { BASTION_PW: SSH_PASSWORD, QUERYBARA_PASSWORD: 'db-pw' };
 
       // A new host key is refused without a terminal or --ssh-accept-new.
       const refused = await run(args, { env, adapter, cwd: dir });
@@ -384,8 +387,8 @@ describe('joinery test through an in-process SSH server', () => {
   });
 
   it('shares the desktop app’s known hosts by default', () => {
-    expect(defaultKnownHostsPath('/home/me/.config/Joinery/joinery.db')).toBe(
-      '/home/me/.config/Joinery/known_hosts',
+    expect(defaultKnownHostsPath('/home/me/.config/Querybara/querybara.db')).toBe(
+      '/home/me/.config/Querybara/known_hosts',
     );
   });
 });

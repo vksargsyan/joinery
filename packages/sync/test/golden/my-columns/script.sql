@@ -1,4 +1,4 @@
--- Joinery structure sync
+-- Querybara structure sync
 -- Source: mysql shop_dev
 -- Target: mysql shop_prod
 -- Operations: 9 (3 destructive)

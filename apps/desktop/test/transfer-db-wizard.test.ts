@@ -1,4 +1,4 @@
-import { ENGINE_IDS, connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
+import { ENGINE_IDS, connectionProfileSchema, type ConnectionProfileInput } from '@querybara/core';
 import {
   DB_TABLE_MODES as IPC_TABLE_MODES,
   FIELD_SHAPES as IPC_FIELD_SHAPES,
@@ -7,7 +7,7 @@ import {
   type TransferInspection,
   type TransferJob,
   type TransferPlanInfo,
-} from '@joinery/ipc';
+} from '@querybara/ipc';
 import {
   DB_TABLE_MODES,
   DEFAULT_DB_TRANSFER_OPTIONS,
@@ -16,7 +16,7 @@ import {
   transferSupport,
   type DbTransferSpec,
   type TransferPlan,
-} from '@joinery/transfer';
+} from '@querybara/transfer';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import type { transferSpecOf } from '../src/job-runner/transfer-db';
@@ -405,7 +405,7 @@ describe('the transfer wizard', () => {
 });
 
 describe('the renderer’s copies of the engine’s lists', () => {
-  it('match @joinery/transfer and @joinery/ipc', () => {
+  it('match @querybara/transfer and @querybara/ipc', () => {
     expect(DEFAULT_TRANSFER_OPTIONS).toEqual(DEFAULT_DB_TRANSFER_OPTIONS);
     expect([...RENDERER_BSON_TYPES]).toEqual([...MONGO_FIELD_TYPES]);
     expect([...IPC_TABLE_MODES]).toEqual([...DB_TABLE_MODES]);

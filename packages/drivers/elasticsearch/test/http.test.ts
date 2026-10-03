@@ -80,7 +80,7 @@ function plan(nodes: SearchNodeTarget[], extra: Partial<SearchClientPlan> = {}):
     connectTimeoutMs: 2_000,
     keepAlive: true,
     sniff: false,
-    applicationName: 'Joinery test',
+    applicationName: 'Querybara test',
     where: nodes.map((n) => n.label).join(', '),
     tunnelled: false,
     cloud: false,
@@ -119,7 +119,7 @@ describe('SearchHttpClient', () => {
         authorization: 'Basic dTpw',
         'content-type': 'application/json',
         'x-opaque-id': 'op-1',
-        'user-agent': 'Joinery (Joinery test)',
+        'user-agent': 'Querybara (Querybara test)',
       });
     } finally {
       client.close();

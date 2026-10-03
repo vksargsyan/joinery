@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { ENGINES, type IntrospectScope } from '@joinery/core';
+import { ENGINES, type IntrospectScope } from '@querybara/core';
 import {
   compareSchemas,
   generateScript,
@@ -12,7 +12,7 @@ import {
   type RenameRule,
   type SchemaDiff,
   type SyncOperation,
-} from '@joinery/sync';
+} from '@querybara/sync';
 
 import { cancellable, closeQuietly, drain, type Connection } from '../connect';
 import { CliError, EXIT, formatError, type ExitCode } from '../errors';
@@ -44,7 +44,7 @@ export interface CompareCommandOptions {
 }
 
 /**
- * `joinery compare <source> <target>`: structure compare (spec §13). Introspects both sides,
+ * `querybara compare <source> <target>`: structure compare (spec §13). Introspects both sides,
  * diffs them, prints the operations (or JSON), writes the script and HTML report, and with
  * --apply runs the script on the target and re-compares, failing loudly unless zero
  * differences remain (step 8). Exit 0: no differences; 1: differences found or remaining; 2:

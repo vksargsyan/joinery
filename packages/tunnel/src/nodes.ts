@@ -1,12 +1,12 @@
 import type { Duplex } from 'node:stream';
 
-import { JoineryError, type HostPort } from '@joinery/core';
+import { QuerybaraError, type HostPort } from '@querybara/core';
 
 import { hostLabel } from './errors';
 import { LocalSocksServer } from './socks';
 import {
   LocalForwarder,
-  asJoineryError,
+  asQuerybaraError,
   type NodeRoute,
   type Route,
   type Transport,
@@ -30,8 +30,8 @@ function borrowed(route: Route): Route {
   };
 }
 
-function tooManyServers(): JoineryError {
-  return new JoineryError({
+function tooManyServers(): QuerybaraError {
+  return new QuerybaraError({
     code: 'CONNECTION_FAILED',
     message: `This connection already reaches ${MAX_NODE_FORWARDS} servers through the tunnel, the most it may`,
     hint: 'Connect to a smaller part of the topology, or reconnect to drop servers that left it',
@@ -45,7 +45,7 @@ function tooManyServers(): JoineryError {
  * chain or the configured proxy). Everything it opened closes with it.
  */
 export class NodeTransport implements Transport {
-  private readonly listeners = new Set<(error: JoineryError) => void>();
+  private readonly listeners = new Set<(error: QuerybaraError) => void>();
   /** Forwards by target, including those still starting. */
   private readonly forwards = new Map<string, Promise<LocalForwarder>>();
   /** Forwards that are listening, by target: what `forwardNow` can hand out at once. */
@@ -131,16 +131,16 @@ export class NodeTransport implements Transport {
       stream.destroy();
       return;
     }
-    throw asJoineryError(first ?? new JoineryError({ code: 'INTERNAL', message: 'No server' }));
+    throw asQuerybaraError(first ?? new QuerybaraError({ code: 'INTERNAL', message: 'No server' }));
   }
 
-  onError(listener: (error: JoineryError) => void): () => void {
+  onError(listener: (error: QuerybaraError) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   /** Reports a failure to the onError listeners. */
-  emitError(error: JoineryError): void {
+  emitError(error: QuerybaraError): void {
     if (this.closing) return;
     for (const listener of [...this.listeners]) listener(error);
   }
@@ -238,8 +238,8 @@ export class NodeTransport implements Transport {
   }
 }
 
-function closed(): JoineryError {
-  return new JoineryError({
+function closed(): QuerybaraError {
+  return new QuerybaraError({
     code: 'CONNECTION_FAILED',
     message: 'The tunnel was closed',
     hint: 'Open the connection again',

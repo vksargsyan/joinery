@@ -1,5 +1,5 @@
-import type { BrowseNode } from '@joinery/core';
-import { formatConsoleRequest } from '@joinery/search-tools';
+import type { BrowseNode } from '@querybara/core';
+import { formatConsoleRequest } from '@querybara/search-tools';
 
 import { loadChildren } from '../explorer';
 import { SessionLane } from '../session-lane';

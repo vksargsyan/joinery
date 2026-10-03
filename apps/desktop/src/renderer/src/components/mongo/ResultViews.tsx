@@ -7,7 +7,7 @@ import {
   type BsonTypeName,
   type BsonValue,
   type DocumentPath,
-} from '@joinery/mongo-tools';
+} from '@querybara/mongo-tools';
 import { useMemo, type ReactNode, type UIEvent } from 'react';
 
 import { copyToClipboard } from '../../lib/clipboard';

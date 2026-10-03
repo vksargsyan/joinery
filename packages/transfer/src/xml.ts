@@ -1,4 +1,4 @@
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 
 /**
  * A streaming, SAX-style XML parser (spec §12: XML import, and the parts of an xlsx workbook).
@@ -176,8 +176,8 @@ export class XmlParser {
     if (!this.#rootSeen) throw this.#error('there is no root element');
   }
 
-  #error(message: string): JoineryError {
-    return new JoineryError({
+  #error(message: string): QuerybaraError {
+    return new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Invalid XML on line ${this.#line}: ${message}`,
     });

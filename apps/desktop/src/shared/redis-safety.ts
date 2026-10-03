@@ -1,4 +1,4 @@
-import { requiresWriteConfirmation, type ConnectionProfile } from '@joinery/core';
+import { requiresWriteConfirmation, type ConnectionProfile } from '@querybara/core';
 import {
   configParameter,
   lookupCommand,
@@ -7,7 +7,7 @@ import {
   tryUtf8,
   type CommandCatalog,
   type RedisBytes,
-} from '@joinery/redis-tools';
+} from '@querybara/redis-tools';
 
 /**
  * The write rules for Redis (spec §4, §10, §15), shared by the connection host (which enforces
@@ -66,7 +66,7 @@ export function decideRedisSafety(
       action: 'refuse',
       reason: operation.write
         ? 'This connection is read-only, so writes are refused'
-        : 'This connection is read-only, and Joinery cannot tell whether this command writes',
+        : 'This connection is read-only, and Querybara cannot tell whether this command writes',
     };
   }
   if (operation.destructive !== undefined) {

@@ -2,7 +2,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import type { Duplex } from 'node:stream';
 
-import { JoineryError, type HostPort, type SshHop } from '@joinery/core';
+import { QuerybaraError, type HostPort, type SshHop } from '@querybara/core';
 import ssh2 from 'ssh2';
 import type { AuthenticationType, Client, ClientChannel, ConnectConfig } from 'ssh2';
 
@@ -90,7 +90,7 @@ async function authConfig(options: HopConnectOptions): Promise<AuthConfig> {
         throw tunnelError(
           'SSH_FAILED',
           `Cannot read the SSH private key file "${auth.keyPath}" (${code})`,
-          "Check the key file path in the profile's SSH settings and that Joinery can read it",
+          "Check the key file path in the profile's SSH settings and that Querybara can read it",
           error,
           code,
         );
@@ -121,7 +121,7 @@ async function authConfig(options: HopConnectOptions): Promise<AuthConfig> {
   }
 }
 
-function authRejected(hop: SshHop, error: unknown): JoineryError {
+function authRejected(hop: SshHop, error: unknown): QuerybaraError {
   const where = hostLabel(hop.host, hop.port);
   switch (hop.auth.method) {
     case 'password':
@@ -152,8 +152,8 @@ function authRejected(hop: SshHop, error: unknown): JoineryError {
 }
 
 /** Maps an ssh2 client error raised before the session was ready. */
-function mapHandshakeError(error: unknown, hop: SshHop): JoineryError {
-  if (error instanceof JoineryError) return error;
+function mapHandshakeError(error: unknown, hop: SshHop): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   const where = hostLabel(hop.host, hop.port);
   const level = errorProp(error, 'level');
   const message = errorMessage(error);
@@ -184,7 +184,7 @@ function mapHandshakeError(error: unknown, hop: SshHop): JoineryError {
     return tunnelError(
       'SSH_FAILED',
       `The SSH handshake with ${where} failed: ${message}`,
-      'Check that this is an SSH server; it may only offer algorithms Joinery does not support',
+      'Check that this is an SSH server; it may only offer algorithms Querybara does not support',
       error,
     );
   }
@@ -207,7 +207,7 @@ function mapHandshakeError(error: unknown, hop: SshHop): JoineryError {
 /**
  * Opens and authenticates one SSH hop. The host key goes through `verifier` first (the connect
  * timeout is paused while it runs, since it may prompt the user); a rejected or changed key, bad
- * credentials, an unreachable server or a timeout reject with a JoineryError and a fix hint.
+ * credentials, an unreachable server or a timeout reject with a QuerybaraError and a fix hint.
  */
 export async function connectHop(options: HopConnectOptions): Promise<Client> {
   const { hop } = options;
@@ -217,10 +217,10 @@ export async function connectHop(options: HopConnectOptions): Promise<Client> {
 
   return new Promise<Client>((resolve, reject) => {
     let settled = false;
-    let hostKeyError: JoineryError | undefined;
+    let hostKeyError: QuerybaraError | undefined;
     let timer: NodeJS.Timeout | undefined;
 
-    const finish = (error?: JoineryError): void => {
+    const finish = (error?: QuerybaraError): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -275,7 +275,7 @@ export async function connectHop(options: HopConnectOptions): Promise<Client> {
           },
           (error: unknown) => {
             hostKeyError =
-              error instanceof JoineryError
+              error instanceof QuerybaraError
                 ? error
                 : tunnelError(
                     'SSH_FAILED',
@@ -320,8 +320,8 @@ const OPEN_CONNECT_FAILED = 2;
 const OPEN_RESOURCE_SHORTAGE = 4;
 
 /** Maps a failed direct-tcpip open on `via` (an SSH hop label) towards `target`. */
-export function mapForwardError(error: unknown, via: string, target: string): JoineryError {
-  if (error instanceof JoineryError) return error;
+export function mapForwardError(error: unknown, via: string, target: string): QuerybaraError {
+  if (error instanceof QuerybaraError) return error;
   const reason = Number(errorProp(error, 'reason'));
   const detail = errorMessage(error)
     .replace(/^\(SSH\) Channel open failure:\s*/, '')

@@ -1,11 +1,11 @@
 import {
-  JoineryError,
+  QuerybaraError,
   toErrorData,
   type ErrorData,
   type ResolvedProfile,
   type Session,
-} from '@joinery/core';
-import type { JobProgress, JobSpec } from '@joinery/ipc';
+} from '@querybara/core';
+import type { JobProgress, JobSpec } from '@querybara/ipc';
 
 import {
   mainToRunnerSchema,
@@ -75,7 +75,7 @@ function withDatabase(resolved: ResolvedProfile, database: string | undefined): 
 }
 
 function cancelled(error: unknown): boolean {
-  return error instanceof JoineryError && error.code === 'CANCELLED';
+  return error instanceof QuerybaraError && error.code === 'CANCELLED';
 }
 
 function isSyncJob(job: RunnerJobSpec): job is SyncJobSpec {
@@ -253,12 +253,15 @@ export class JobRunner {
       let sourceSession: JobSession | undefined;
       if (job.kind === 'structure-compare' || job.kind === 'data-compare') {
         if (!source) {
-          throw new JoineryError({ code: 'INTERNAL', message: 'The source connection is missing' });
+          throw new QuerybaraError({
+            code: 'INTERNAL',
+            message: 'The source connection is missing',
+          });
         }
         sourceSession = await this.#deps.connect(withDatabase(source, job.source.database), jobId);
         opened.push(sourceSession);
       }
-      if (signal.aborted) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+      if (signal.aborted) throw new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
       for (const [profile, session] of [
         ...(sourceSession && source ? [[source.profile, sourceSession.session] as const] : []),
         [resolved.profile, target.session] as const,
@@ -313,7 +316,7 @@ export class JobRunner {
     let result: JobOutcome | { error: ErrorData };
     try {
       if (resolvedTarget === undefined) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: 'The transfer has no target',
         });
@@ -382,7 +385,7 @@ export class JobRunner {
         progress: { phase: 'Connecting', elapsedMs: 0 },
       });
       opened = await this.#deps.connect(withDatabase(resolved, connectDatabase(job)), jobId);
-      if (signal.aborted) throw new JoineryError({ code: 'CANCELLED', message: 'Cancelled' });
+      if (signal.aborted) throw new QuerybaraError({ code: 'CANCELLED', message: 'Cancelled' });
       const { session } = opened;
       this.#post({
         type: 'log',

@@ -1,4 +1,4 @@
-import { JoineryError, newId } from '@joinery/core';
+import { QuerybaraError, newId } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -73,7 +73,7 @@ export class FolderRepository {
     return this.#db.transaction(() => {
       const id = folder.id ?? newId();
       if (this.get(id)) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `Folder ${id} already exists`,
         });
@@ -99,7 +99,7 @@ export class FolderRepository {
       if (parentId !== null && parentId !== current.parentId) {
         this.#requireFolder(parentId);
         if (this.#isSelfOrDescendant(parentId, id)) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: 'A folder cannot be moved into itself or one of its subfolders',
           });

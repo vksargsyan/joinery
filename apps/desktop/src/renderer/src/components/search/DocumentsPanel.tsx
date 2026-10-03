@@ -1,5 +1,5 @@
 import type { GridSelection } from '@glideapps/glide-data-grid';
-import { parseJsonTree } from '@joinery/search-tools';
+import { parseJsonTree } from '@querybara/search-tools';
 import { useMemo, useState } from 'react';
 
 import { formatCount, formatDuration } from '../../lib/format';

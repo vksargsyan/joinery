@@ -1,4 +1,4 @@
-import { JoineryError, type Session } from '@joinery/core';
+import { QuerybaraError, type Session } from '@querybara/core';
 
 import type { RowError } from '../types';
 import type { Execution, TransferUnit, UnitContext, UnitResult } from './pipeline';
@@ -83,7 +83,7 @@ export function globMatch(pattern: Uint8Array | string, key: Uint8Array | string
 }
 
 function isBusyKey(error: unknown): boolean {
-  if (error instanceof JoineryError && error.engineCode === 'BUSYKEY') return true;
+  if (error instanceof QuerybaraError && error.engineCode === 'BUSYKEY') return true;
   return /BUSYKEY/.test(error instanceof Error ? error.message : String(error));
 }
 

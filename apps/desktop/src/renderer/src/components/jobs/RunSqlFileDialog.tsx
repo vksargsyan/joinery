@@ -1,4 +1,4 @@
-import type { TransferPreview } from '@joinery/ipc';
+import type { TransferPreview } from '@querybara/ipc';
 import { useState } from 'react';
 
 import { errorMessage } from '../../lib/errors';

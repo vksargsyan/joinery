@@ -1,5 +1,5 @@
-import { schemaSnapshotSchema } from '@joinery/core';
-import type { TableDef } from '@joinery/core';
+import { schemaSnapshotSchema } from '@querybara/core';
+import type { TableDef } from '@querybara/core';
 import { describe, expect, it } from 'vitest';
 
 import {

@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { JoineryError } from '@joinery/core';
+import { QuerybaraError } from '@querybara/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -59,7 +59,7 @@ describe('query', () => {
     const s = session((text) =>
       text.includes('bad')
         ? {
-            error: new JoineryError({
+            error: new QuerybaraError({
               code: 'SQL_ERROR',
               message: 'relation "bad" does not exist',
               sqlState: '42P01',
@@ -84,7 +84,7 @@ describe('query', () => {
     try {
       const s = session((text) =>
         text.includes('bad')
-          ? { error: new JoineryError({ code: 'SQL_ERROR', message: 'boom' }) }
+          ? { error: new QuerybaraError({ code: 'SQL_ERROR', message: 'boom' }) }
           : undefined,
       );
       const log = join(dir, 'errors.log');
@@ -278,7 +278,7 @@ describe('query safety', () => {
   });
 
   it('refuses writes on read-only profiles, and confirms every write on production', async () => {
-    const store = ['--store', join(dir, 'joinery.db')];
+    const store = ['--store', join(dir, 'querybara.db')];
     await run([...store, 'profiles', 'add', 'ro', 'postgres://u@h/db', '--read-only']);
     await run([
       ...store,

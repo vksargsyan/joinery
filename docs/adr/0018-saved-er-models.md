@@ -7,7 +7,7 @@
 ## Context
 
 ADR 0016 kept an edited ER model only while its diagram was open: closing the panel asked
-before throwing the changes away, and quitting Joinery lost them. Two things were missing.
+before throwing the changes away, and quitting Querybara lost them. Two things were missing.
 People have to be able to stop in the middle of a design and come back to it, after closing the
 diagram or restarting the app. And a model should be something to keep and hand on: saved to a
 file, reviewed in version control, and opened on another database (a colleague's, a staging
@@ -21,8 +21,8 @@ its script is whatever makes that database match.
 
 ## Decision
 
-**One document format** (`erModelDocumentSchema` in `@joinery/ipc`, format
-`joinery.er-model`, version 1) holds:
+**One document format** (`erModelDocumentSchema` in `@querybara/ipc`, format
+`querybara.er-model`, version 1) holds:
 
 - the engine, database and schema it was saved from;
 - the model's edited schema, plus any other schema the model changed where a foreign key
@@ -68,5 +68,5 @@ picked with `dialogs.openFile` in this window (up to 64 MB).
   it safe. Drafts over 32 MB are refused with a note to save a file instead.
 - A file carries no base, so opening it where the schema has drifted shows the full difference,
   drops included. The review lists them, and the apply needs them acknowledged, as for any edit.
-- The document is versioned. A file or draft from a newer Joinery is refused with a message,
+- The document is versioned. A file or draft from a newer Querybara is refused with a message,
   and the draft is left in place.

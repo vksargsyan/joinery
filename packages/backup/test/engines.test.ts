@@ -1,5 +1,5 @@
-import type { Capabilities, ResultChunk } from '@joinery/core';
-import { memorySink } from '@joinery/transfer';
+import type { Capabilities, ResultChunk } from '@querybara/core';
+import { memorySink } from '@querybara/transfer';
 import { EJSON } from 'bson';
 import { describe, expect, it } from 'vitest';
 
@@ -150,7 +150,7 @@ describe('Redis backup and restore', () => {
     const summary = await backupRedis({
       session: source,
       output: sink,
-      format: 'jbak',
+      format: 'qbak',
       ...(pattern !== undefined ? { pattern } : {}),
       scanCount: 3,
     });
@@ -207,6 +207,6 @@ describe('Redis backup and restore', () => {
   it('refuses archives of other engines and plain scripts', async () => {
     await expect(
       backupRedis({ session: new FakeRedis(), output: memorySink(), format: 'sql' }),
-    ).rejects.toThrow(/Joinery archive format/);
+    ).rejects.toThrow(/Querybara archive format/);
   });
 });

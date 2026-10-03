@@ -1,4 +1,4 @@
-import { openStore } from '@joinery/storage';
+import { openStore } from '@querybara/storage';
 import { describe, expect, it } from 'vitest';
 
 import {

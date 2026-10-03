@@ -1,4 +1,4 @@
-import { parseConsole, requestAt, type ConsoleCompletionOptions } from '@joinery/search-tools';
+import { parseConsole, requestAt, type ConsoleCompletionOptions } from '@querybara/search-tools';
 import { useEffect, useRef } from 'react';
 
 import { createEditor, EDITOR_FONT, monaco } from '../../lib/monaco';
@@ -40,7 +40,7 @@ export function ConsoleEditor(props: {
     const editor = createEditor(element, {
       ...EDITOR_FONT,
       model,
-      theme: latest.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
+      theme: latest.current.theme === 'dark' ? 'querybara-dark' : 'querybara-light',
       automaticLayout: true,
       fontSize: 13,
       minimap: { enabled: false },
@@ -64,7 +64,7 @@ export function ConsoleEditor(props: {
       latest.current.onRun(model.getValue(), start, end);
     };
     editor.addAction({
-      id: 'joinery.search.run',
+      id: 'querybara.search.run',
       label: 'Send request',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run,
@@ -78,7 +78,7 @@ export function ConsoleEditor(props: {
       const parse = parseConsole(text);
       monaco.editor.setModelMarkers(
         model,
-        'joinery-console',
+        'querybara-console',
         parse.issues.map((issue) => {
           const start = model.getPositionAt(issue.start);
           const end = model.getPositionAt(Math.max(issue.end, issue.start + 1));
@@ -107,7 +107,7 @@ export function ConsoleEditor(props: {
             isWholeLine: true,
             // Monaco keeps only letters, digits, - and _ in decoration classes, so a Tailwind
             // class with an opacity (bg-accent/10) would lose it: styles.css defines the wash.
-            className: 'joinery-console-request',
+            className: 'querybara-console-request',
             linesDecorationsClassName: 'border-l-2 border-accent',
           },
         },
@@ -133,7 +133,7 @@ export function ConsoleEditor(props: {
   }, []);
 
   useEffect(() => {
-    monaco.editor.setTheme(props.theme === 'dark' ? 'joinery-dark' : 'joinery-light');
+    monaco.editor.setTheme(props.theme === 'dark' ? 'querybara-dark' : 'querybara-light');
   }, [props.theme]);
 
   const marker = props.errorMarker;
@@ -141,12 +141,12 @@ export function ConsoleEditor(props: {
     const model = editorRef.current?.getModel();
     if (!model) return;
     if (!marker) {
-      monaco.editor.setModelMarkers(model, 'joinery-console-server', []);
+      monaco.editor.setModelMarkers(model, 'querybara-console-server', []);
       return;
     }
     const start = model.getPositionAt(marker.offset);
     const end = model.getPositionAt(Math.min(marker.offset + 1, model.getValueLength()));
-    monaco.editor.setModelMarkers(model, 'joinery-console-server', [
+    monaco.editor.setModelMarkers(model, 'querybara-console-server', [
       {
         severity: monaco.MarkerSeverity.Error,
         message: marker.message,
@@ -176,7 +176,7 @@ export function ResponseViewer(props: { readonly text: string; readonly theme: '
       ...EDITOR_FONT,
       model,
       readOnly: true,
-      theme: initial.current.theme === 'dark' ? 'joinery-dark' : 'joinery-light',
+      theme: initial.current.theme === 'dark' ? 'querybara-dark' : 'querybara-light',
       automaticLayout: true,
       fontSize: 13,
       minimap: { enabled: false },

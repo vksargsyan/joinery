@@ -5,7 +5,7 @@ import type {
   SearchNodeSummary,
   SearchShardInfo,
   SearchTaskStatus,
-} from '@joinery/search-tools';
+} from '@querybara/search-tools';
 
 import { errorInfo, errorMessage } from '../../lib/errors';
 import { BASE_STATE, SearchView, type SearchViewState } from './view';

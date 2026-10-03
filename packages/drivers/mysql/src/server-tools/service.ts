@@ -1,5 +1,5 @@
 import {
-  JoineryError,
+  QuerybaraError,
   atLeast,
   type AccessDetails,
   type AccessOverview,
@@ -24,8 +24,8 @@ import {
   type TopQueries,
   type TopQueryOptions,
   type TopQueryOrder,
-} from '@joinery/core';
-import type { Row } from '@joinery/driver-sql-base';
+} from '@querybara/core';
+import type { Row } from '@querybara/driver-sql-base';
 
 import {
   MYSQL_SESSION_DETAIL_COLUMNS,
@@ -147,8 +147,8 @@ const MAINTENANCE: readonly MaintenanceOperationInfo[] = [
 
 const PRIVILEGE_ERRORS = [1044, 1142, 1143, 1227, 1370, 3530];
 
-function notSupported(message: string): JoineryError {
-  return new JoineryError({ code: 'NOT_SUPPORTED', message });
+function notSupported(message: string): QuerybaraError {
+  return new QuerybaraError({ code: 'NOT_SUPPORTED', message });
 }
 
 /** Global privileges named by SHOW GRANTS lines on *.*. */
@@ -424,7 +424,7 @@ export class MysqlServerTools implements ServerTools {
         ],
       };
     } catch (error) {
-      if (error instanceof JoineryError && PRIVILEGE_ERRORS.includes(Number(error.engineCode))) {
+      if (error instanceof QuerybaraError && PRIVILEGE_ERRORS.includes(Number(error.engineCode))) {
         return {
           ...base,
           unavailable: {
@@ -470,7 +470,7 @@ export class MysqlServerTools implements ServerTools {
       );
       return { accounts: mysqlAccounts(users, edges, 'mysql'), notices: [] };
     } catch (error) {
-      if (error instanceof JoineryError && PRIVILEGE_ERRORS.includes(Number(error.engineCode))) {
+      if (error instanceof QuerybaraError && PRIVILEGE_ERRORS.includes(Number(error.engineCode))) {
         return {
           accounts: [],
           notices: [
@@ -493,7 +493,7 @@ export class MysqlServerTools implements ServerTools {
       scope ??
       (facts.database && databases.includes(facts.database) ? facts.database : databases[0]);
     if (scope !== undefined && !databases.includes(scope)) {
-      throw new JoineryError({ code: 'NOT_FOUND', message: `There is no database "${scope}"` });
+      throw new QuerybaraError({ code: 'NOT_FOUND', message: `There is no database "${scope}"` });
     }
     const hostless = grantee.host === undefined || grantee.host === '';
     const quote = (text: string): string => `'${text.replaceAll("'", "''")}'`;
@@ -708,7 +708,7 @@ export class MysqlServerTools implements ServerTools {
     switch (action.kind) {
       case 'session':
         if (String(threadIdOf(action.id)) === facts.connectionId) {
-          throw new JoineryError({
+          throw new QuerybaraError({
             code: 'VALIDATION_FAILED',
             message: "This is the server tools' own connection",
           });

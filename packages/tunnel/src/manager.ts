@@ -4,11 +4,11 @@ import type { Duplex } from 'node:stream';
 
 import {
   type HostPort,
-  type JoineryError,
+  type QuerybaraError,
   type ProxyOptions,
   type ResolvedProfile,
   type SshHop,
-} from '@joinery/core';
+} from '@querybara/core';
 import type { Client } from 'ssh2';
 
 import { tunnelReach, type TunnelReach } from './endpoint';
@@ -18,7 +18,7 @@ import { connectThroughProxy, describeProxy } from './proxy';
 import { agentSocket, connectHop, defaultKeyFileReader, forwardOut, hopLabel } from './ssh';
 import {
   LocalForwarder,
-  asJoineryError,
+  asQuerybaraError,
   type Route,
   type Transport,
   type TransportOptions,
@@ -32,7 +32,7 @@ class SshLink {
   ready: Promise<void> = Promise.resolve();
   private dead = false;
   private closed = false;
-  private readonly listeners = new Set<(error: JoineryError) => void>();
+  private readonly listeners = new Set<(error: QuerybaraError) => void>();
 
   constructor(
     readonly key: string,
@@ -48,13 +48,13 @@ class SshLink {
     return this.closed;
   }
 
-  onFailure(listener: (error: JoineryError) => void): () => void {
+  onFailure(listener: (error: QuerybaraError) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   /** The session failed or dropped: forget it so the next open reconnects, and tell its users. */
-  fail(error: JoineryError): void {
+  fail(error: QuerybaraError): void {
     if (this.dead) return;
     this.dead = true;
     this.onDead(this);
@@ -236,7 +236,7 @@ export class TransportManager {
       client.on('close', () => link.fail(sessionLost(link.label, 'the connection closed')));
       if (link.isClosed) client.end();
     })();
-    link.ready.catch((error: unknown) => link.fail(asJoineryError(error)));
+    link.ready.catch((error: unknown) => link.fail(asQuerybaraError(error)));
     return link;
   }
 
@@ -281,11 +281,11 @@ interface ChainSpec {
   readonly options: TransportOptions;
 }
 
-function sessionLost(label: string, reason: string): JoineryError {
+function sessionLost(label: string, reason: string): QuerybaraError {
   return tunnelError(
     'SSH_FAILED',
     `The SSH connection to ${label} was lost: ${reason}`,
-    'The SSH server or the network dropped the connection; Joinery reconnects on the next connection attempt',
+    'The SSH server or the network dropped the connection; Querybara reconnects on the next connection attempt',
     undefined,
     'SSH_DISCONNECTED',
   );
@@ -301,7 +301,7 @@ class SshRoute implements Route {
   private unsubscribe: (() => void)[] = [];
   private released = false;
   /** Where session failures go: the transport's onError listeners. */
-  report: (error: JoineryError) => void = () => undefined;
+  report: (error: QuerybaraError) => void = () => undefined;
 
   constructor(
     private readonly manager: TransportManager,

@@ -5,9 +5,9 @@ import {
   type ResolvedProfile,
   type SecretRef,
   type TlsMode,
-} from '@joinery/core';
-import { safetyPolicyFor, type SafetyPolicy } from '@joinery/sql-tools';
-import { parseConnectionUri, type Store, type StoredProfile } from '@joinery/storage';
+} from '@querybara/core';
+import { safetyPolicyFor, type SafetyPolicy } from '@querybara/sql-tools';
+import { parseConnectionUri, type Store, type StoredProfile } from '@querybara/storage';
 
 import type { Prompter } from './context';
 import { CliError } from './errors';
@@ -27,16 +27,16 @@ import {
 /**
  * Targets: every command's connection argument is a saved profile (name or id) or a connection
  * URI. URI passwords are used for the run only and never stored. Otherwise the password comes
- * from the profile's saved secret, JOINERY_PASSWORD_<PROFILE> / JOINERY_PASSWORD, or a hidden
+ * from the profile's saved secret, QUERYBARA_PASSWORD_<PROFILE> / QUERYBARA_PASSWORD, or a hidden
  * prompt; without a terminal and without a password the command fails and says how to pass one.
  *
  * A saved profile's SSH tunnel and proxy come with it; their missing secrets are read from
- * JOINERY_SSH_PASSWORD, JOINERY_SSH_KEY_PASSPHRASE and JOINERY_PROXY_PASSWORD or asked for. A URI
+ * QUERYBARA_SSH_PASSWORD, QUERYBARA_SSH_KEY_PASSPHRASE and QUERYBARA_PROXY_PASSWORD or asked for. A URI
  * target gets its tunnel and proxy from the command line (`--ssh`, `--proxy`, see tunnels.ts).
  *
  * An `http://` or `https://` URL is an Elasticsearch node. It can log in with the URL's
- * user and password, or with an API key from JOINERY_API_KEY; a saved profile's API key or
- * bearer token comes from its secret, JOINERY_API_KEY / JOINERY_BEARER_TOKEN, or a prompt.
+ * user and password, or with an API key from QUERYBARA_API_KEY; a saved profile's API key or
+ * bearer token comes from its secret, QUERYBARA_API_KEY / QUERYBARA_BEARER_TOKEN, or a prompt.
  */
 
 /** Per-run overrides applied on top of the profile or URI. */
@@ -76,7 +76,7 @@ export interface TargetDeps {
 }
 
 const URI_RE = /^(?:jdbc:)?[a-z][a-z0-9+.-]*:\/\//i;
-/** The engines joinery-cli connects to. */
+/** The engines querybara-cli connects to. */
 const CLI_ENGINES: ReadonlySet<string> = new Set([
   'postgres',
   'mysql',
@@ -88,7 +88,7 @@ const CLI_ENGINES: ReadonlySet<string> = new Set([
 const SQL_SCHEMES = new Set(['postgres', 'postgresql', 'mysql', 'mariadb']);
 /** MongoDB URIs work with `test` and `query` (the SQL commands refuse them when they connect). */
 const MONGO_SCHEMES = new Set(['mongodb', 'mongodb+srv']);
-/** Redis URIs work with `test` and `query` too (as @joinery/storage parses them). */
+/** Redis URIs work with `test` and `query` too (as @querybara/storage parses them). */
 export const REDIS_SCHEMES: ReadonlySet<string> = new Set([
   'redis',
   'rediss',
@@ -98,12 +98,12 @@ export const REDIS_SCHEMES: ReadonlySet<string> = new Set([
 /** Elasticsearch node URLs work with `test` and `query`. */
 export const SEARCH_SCHEMES: ReadonlySet<string> = new Set(['http', 'https']);
 /** SecretRef id for a password the CLI adds to a profile or URI that had none. */
-export const CLI_PASSWORD_REF = 'joinery-cli-password';
-/** SecretRef id for the API key JOINERY_API_KEY gives an http(s):// URL target. */
-export const CLI_API_KEY_REF = 'joinery-cli-api-key';
+export const CLI_PASSWORD_REF = 'querybara-cli-password';
+/** SecretRef id for the API key QUERYBARA_API_KEY gives an http(s):// URL target. */
+export const CLI_API_KEY_REF = 'querybara-cli-api-key';
 /** The variables that supply a search profile's API key or bearer token. */
-export const API_KEY_ENV = 'JOINERY_API_KEY';
-export const BEARER_TOKEN_ENV = 'JOINERY_BEARER_TOKEN';
+export const API_KEY_ENV = 'QUERYBARA_API_KEY';
+export const BEARER_TOKEN_ENV = 'QUERYBARA_BEARER_TOKEN';
 
 /** True when the argument is a connection URI rather than a profile name. */
 export function isConnectionUri(spec: string): boolean {
@@ -120,13 +120,13 @@ export function redactUri(text: string): string {
     .replace(/([?&](?:password|pass|pwd|sslpassword|token|secret)=)[^&\s]*/gi, '$1***');
 }
 
-/** JOINERY_PASSWORD_<PROFILE>: the profile name upper-cased, other characters as `_`. */
+/** QUERYBARA_PASSWORD_<PROFILE>: the profile name upper-cased, other characters as `_`. */
 export function passwordEnvName(profileName: string): string {
   const suffix = profileName
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
-  return `JOINERY_PASSWORD_${suffix}`;
+  return `QUERYBARA_PASSWORD_${suffix}`;
 }
 
 /** Resolves a command-line target into a connectable profile with its secrets. */
@@ -216,7 +216,7 @@ async function resolveUri(
     !REDIS_SCHEMES.has(scheme) &&
     !search
   ) {
-    throw new CliError(`joinery-cli does not support "${scheme}://" URIs`, {
+    throw new CliError(`querybara-cli does not support "${scheme}://" URIs`, {
       code: 'NOT_SUPPORTED',
       hint: 'Use a postgres://, postgresql://, mysql://, mariadb://, mongodb://, mongodb+srv://, redis://, rediss://, http:// or https:// URI, or a saved profile name',
     });
@@ -253,12 +253,12 @@ async function resolveUri(
   if (search && profile.auth.method === 'none' && apiKey !== undefined && apiKey !== '') {
     return withApiKey(target, apiKey);
   }
-  const password = parsed.password ?? deps.env['JOINERY_PASSWORD'];
+  const password = parsed.password ?? deps.env['QUERYBARA_PASSWORD'];
   if (password !== undefined) target = withPassword(target, password);
   return target;
 }
 
-/** A search URL target that logs in with an API key (JOINERY_API_KEY). */
+/** A search URL target that logs in with an API key (QUERYBARA_API_KEY). */
 function withApiKey(target: Target, apiKey: string): Target {
   const ref = { id: CLI_API_KEY_REF, policy: 'ask' as const };
   return {
@@ -278,7 +278,7 @@ async function resolveProfile(
   if (!store) {
     throw new CliError(`No profile named "${redactUri(spec)}"`, {
       code: 'NOT_FOUND',
-      hint: `There is no local store at ${deps.store.location.path}. Add a profile with "joinery profiles add", point --store at the desktop app's store, or pass a connection URI (postgres://, mysql://, mariadb://)`,
+      hint: `There is no local store at ${deps.store.location.path}. Add a profile with "querybara profiles add", point --store at the desktop app's store, or pass a connection URI (postgres://, mysql://, mariadb://)`,
     });
   }
   const stored = findProfile(store, spec);
@@ -290,7 +290,7 @@ async function resolveProfile(
   }
   if (!CLI_ENGINES.has(profile.engine)) {
     throw new CliError(
-      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; joinery-cli supports PostgreSQL, MySQL, MariaDB, MongoDB, Redis and Elasticsearch`,
+      `Profile "${profile.name}" is a ${ENGINES[profile.engine].displayName} connection; querybara-cli supports PostgreSQL, MySQL, MariaDB, MongoDB, Redis and Elasticsearch`,
       { code: 'NOT_SUPPORTED' },
     );
   }
@@ -323,7 +323,7 @@ async function resolveProfile(
       const value = await missingSecret(
         profile,
         'TLS key passphrase',
-        'JOINERY_TLS_KEY_PASSPHRASE',
+        'QUERYBARA_TLS_KEY_PASSPHRASE',
         unreadable.has(ref.id),
         deps,
       );
@@ -406,8 +406,8 @@ export function findProfile(store: Store, spec: string): StoredProfile {
     code: 'NOT_FOUND',
     hint:
       all.length > 0
-        ? 'Run "joinery profiles list" to see the saved profiles, or pass a connection URI'
-        : 'No profiles are saved yet; add one with "joinery profiles add", or pass a connection URI',
+        ? 'Run "querybara profiles list" to see the saved profiles, or pass a connection URI'
+        : 'No profiles are saved yet; add one with "querybara profiles add", or pass a connection URI',
   });
 }
 
@@ -434,7 +434,7 @@ function passwordFromEnv(
   profile: ConnectionProfile,
   env: Readonly<Record<string, string | undefined>>,
 ): string | undefined {
-  return env[passwordEnvName(profile.name)] ?? env['JOINERY_PASSWORD'];
+  return env[passwordEnvName(profile.name)] ?? env['QUERYBARA_PASSWORD'];
 }
 
 async function missingPassword(
@@ -449,19 +449,19 @@ async function missingPassword(
   if (deps.prompter.interactive) {
     if (unreadable) {
       deps.reporter.info(
-        `The saved password for "${profile.name}" cannot be read here (sealed by the desktop app's keychain, or JOINERY_PASSPHRASE is not set or differs).`,
+        `The saved password for "${profile.name}" cannot be read here (sealed by the desktop app's keychain, or QUERYBARA_PASSPHRASE is not set or differs).`,
       );
     }
     return deps.prompter.secret(`Password for ${profile.name}: `);
   }
   const why = unreadable
-    ? "It is saved, but sealed with a key joinery-cli does not have here: the desktop app's OS keychain, or a JOINERY_PASSPHRASE that is not set or differs. "
+    ? "It is saved, but sealed with a key querybara-cli does not have here: the desktop app's OS keychain, or a QUERYBARA_PASSPHRASE that is not set or differs. "
     : ref.policy === 'save'
       ? ''
       : `The profile asks for it every time (policy "${ref.policy}"). `;
   throw new CliError(`The password for profile "${profile.name}" is not available`, {
     code: 'AUTH_FAILED',
-    hint: `${why}Set ${envName} (or JOINERY_PASSWORD), or run in a terminal to be prompted`,
+    hint: `${why}Set ${envName} (or QUERYBARA_PASSWORD), or run in a terminal to be prompted`,
   });
 }
 

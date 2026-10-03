@@ -1,5 +1,5 @@
-import { JoineryError, type SqlDialect } from '@joinery/core';
-import { tokenize } from '@joinery/sql-tools';
+import { QuerybaraError, type SqlDialect } from '@querybara/core';
+import { tokenize } from '@querybara/sql-tools';
 
 /**
  * The raw WHERE box (spec §7) takes SQL the user types, inserted verbatim as
@@ -117,7 +117,7 @@ export function checkRawWhere(text: string, dialect: SqlDialect): RawWhereCheck 
 export function rawWhereSql(text: string, dialect: SqlDialect): string {
   const check = checkRawWhere(text, dialect);
   if (!check.ok) {
-    throw new JoineryError({
+    throw new QuerybaraError({
       code: 'VALIDATION_FAILED',
       message: `Invalid WHERE condition: ${check.message}`,
       position: check.position,

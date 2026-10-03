@@ -1,5 +1,5 @@
-import { connectionProfileSchema, type ConnectionProfileInput } from '@joinery/core';
-import type { StoredProfile } from '@joinery/ipc';
+import { connectionProfileSchema, type ConnectionProfileInput } from '@querybara/core';
+import type { StoredProfile } from '@querybara/ipc';
 
 import type { HostClient } from '../src/renderer/src/lib/main-client';
 import { useConnections } from '../src/renderer/src/state/connections';

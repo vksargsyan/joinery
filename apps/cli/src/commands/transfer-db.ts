@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { ENGINES, JoineryError, isSqlEngine, type EngineId, type Session } from '@joinery/core';
+import { ENGINES, QuerybaraError, isSqlEngine, type EngineId, type Session } from '@querybara/core';
 import {
   FIELD_SHAPES,
   planDbTransfer,
@@ -18,8 +18,8 @@ import {
   type SessionOpener,
   type TransferObjectSpec,
   type TransferPlan,
-} from '@joinery/transfer';
-import { connectThroughTransport, needsTransport } from '@joinery/tunnel';
+} from '@querybara/transfer';
+import { connectThroughTransport, needsTransport } from '@querybara/tunnel';
 import { InvalidArgumentError } from 'commander';
 
 import { connect, missingPasswordHint } from '../connect';
@@ -31,7 +31,7 @@ import type { TunnelFlags } from '../tunnels';
 import { describeRowError } from './transfer';
 
 /**
- * `joinery transfer <source> <target>` (spec §12): data transfer between databases through the
+ * `querybara transfer <source> <target>` (spec §12): data transfer between databases through the
  * same streaming pipeline as the desktop app's transfer jobs — PostgreSQL, MySQL and MariaDB to
  * any of them, SQL engines to MongoDB and back, Redis to Redis. `--dry-run` prints the plan (every column's source and
  * target type, the statements before and after the data) and changes nothing. The write rules
@@ -43,7 +43,7 @@ import { describeRowError } from './transfer';
 /** Failed rows printed on stderr; the rest only go to --error-log. */
 const SHOWN_ERRORS = 10;
 
-/** What `joinery transfer` does, from its flags (see `transferDbOptions` in program.ts). */
+/** What `querybara transfer` does, from its flags (see `transferDbOptions` in program.ts). */
 export interface TransferDbOptions {
   /** Tables (or collections) to transfer; `schema.table` names the PostgreSQL schema. */
   readonly objects: readonly string[];
@@ -192,7 +192,7 @@ async function openSide(
       try {
         opened = await openWith(runtime, engine, current, tunnel);
       } catch (error) {
-        const refused = error instanceof JoineryError && error.code === 'AUTH_FAILED';
+        const refused = error instanceof QuerybaraError && error.code === 'AUTH_FAILED';
         if (!refused || current.passwordKnown) throw error;
         if (!runtime.ctx.prompter.interactive) {
           throw new CliError(error.message, {
@@ -431,7 +431,7 @@ async function confirmPlan(
   }
 }
 
-/** Runs `joinery transfer`; see the top of this file. */
+/** Runs `querybara transfer`; see the top of this file. */
 export async function transferDbCommand(
   runtime: Runtime,
   sourceSpec: string,

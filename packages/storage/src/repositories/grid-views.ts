@@ -1,4 +1,4 @@
-import { JoineryError, newId } from '@joinery/core';
+import { QuerybaraError, newId } from '@querybara/core';
 import { z } from 'zod';
 
 import type { RepositoryContext } from '../internal/context';
@@ -131,7 +131,7 @@ export class GridViewRepository {
         [view.profileId, database, view.schema, view.table, view.name, id],
       );
       if (clash) {
-        throw new JoineryError({
+        throw new QuerybaraError({
           code: 'VALIDATION_FAILED',
           message: `A view named "${view.name}" already exists for this table`,
         });
